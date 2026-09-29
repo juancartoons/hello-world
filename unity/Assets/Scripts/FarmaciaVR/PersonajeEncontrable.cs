@@ -21,6 +21,10 @@ public class PersonajeEncontrable : MonoBehaviour
     public float distanciaToque = 0.3f;
 
     [Header("Efecto mientras lo miran")]
+    [Tooltip("Color que toma apenas lo miras (como el 'hover' de un botón)")]
+    public Color colorAlMirar = new Color(1f, 0.85f, 0.1f);
+    [Tooltip("Qué tan rápido cambia de color")]
+    public float velocidadColor = 8f;
     [Tooltip("Cuánto crece mientras lo miran (0.25 = 25%)")]
     public float crecimientoMaximo = 0.25f;
 
@@ -35,12 +39,31 @@ public class PersonajeEncontrable : MonoBehaviour
     Vector3 escalaOriginal;
     float tiempoMirando;
 
+    static readonly int idBaseColor = Shader.PropertyToID("_BaseColor"); // URP
+    static readonly int idColor = Shader.PropertyToID("_Color");         // Built-in
+    Renderer[] misRenderers;
+    Color[] coloresOriginales;
+    MaterialPropertyBlock bloque;
+    float mezclaColor;
+
     void Awake()
     {
         escalaOriginal = transform.localScale;
         misColliders = GetComponentsInChildren<Collider>();
         if (misColliders.Length == 0)
             Debug.LogWarning("PersonajeEncontrable: el personaje no tiene Collider, no se podrá encontrar mirándolo.", this);
+
+        bloque = new MaterialPropertyBlock();
+        misRenderers = GetComponentsInChildren<Renderer>();
+        coloresOriginales = new Color[misRenderers.Length];
+        for (int i = 0; i < misRenderers.Length; i++)
+        {
+            var mat = misRenderers[i].sharedMaterial;
+            coloresOriginales[i] = mat == null ? Color.white
+                : mat.HasProperty(idBaseColor) ? mat.GetColor(idBaseColor)
+                : mat.HasProperty(idColor) ? mat.GetColor(idColor)
+                : Color.white;
+        }
     }
 
     void Start()
@@ -69,10 +92,15 @@ public class PersonajeEncontrable : MonoBehaviour
             return;
         }
 
-        if (LoEstanMirando())
+        bool mirando = LoEstanMirando();
+        if (mirando)
             tiempoMirando += Time.deltaTime;
         else
             tiempoMirando = Mathf.Max(0f, tiempoMirando - Time.deltaTime * 2f);
+
+        // Cambia de color apenas lo miras; el crecimiento va con el tiempo mirando.
+        mezclaColor = Mathf.MoveTowards(mezclaColor, mirando ? 1f : 0f, Time.deltaTime * velocidadColor);
+        AplicarColor(mezclaColor);
 
         float progreso = Mathf.Clamp01(tiempoMirando / segundosMirando);
         transform.localScale = escalaOriginal * (1f + crecimientoMaximo * progreso);
@@ -126,5 +154,22 @@ public class PersonajeEncontrable : MonoBehaviour
     {
         tiempoMirando = 0f;
         transform.localScale = escalaOriginal;
+        mezclaColor = 0f;
+        AplicarColor(0f);
+    }
+
+    void AplicarColor(float mezcla)
+    {
+        for (int i = 0; i < misRenderers.Length; i++)
+        {
+            var r = misRenderers[i];
+            if (r == null)
+                continue;
+            Color c = Color.Lerp(coloresOriginales[i], colorAlMirar, mezcla);
+            r.GetPropertyBlock(bloque);
+            bloque.SetColor(idBaseColor, c);
+            bloque.SetColor(idColor, c);
+            r.SetPropertyBlock(bloque);
+        }
     }
 }
