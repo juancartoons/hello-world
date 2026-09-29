@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using System.Linq;
 using System.Text;
 using UnityEditor;
@@ -88,3 +89,4 @@ public static class ArreglarTeletransporte
         }
     }
 }
+#endif

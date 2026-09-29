@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -129,3 +130,4 @@ public static class ArmarPanelYJuego
             Debug.LogWarning("FarmaciaVR: no encontré 'Escondites'. Usa primero FarmaciaVR > Crear escondites.");
     }
 }
+#endif

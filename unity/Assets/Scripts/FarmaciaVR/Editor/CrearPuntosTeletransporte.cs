@@ -1,3 +1,4 @@
+#if UNITY_EDITOR
 using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -94,3 +95,4 @@ public static class CrearPuntosTeletransporte
         return mat;
     }
 }
+#endif
