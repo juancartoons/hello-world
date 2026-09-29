@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Events;
+using Debug = UnityEngine.Debug;
 
 // Va en el personaje escondido. Detecta cuando el jugador lo encuentra:
 // - mirándolo fijamente unos segundos, o

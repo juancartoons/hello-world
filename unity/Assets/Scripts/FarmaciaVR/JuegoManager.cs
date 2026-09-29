@@ -2,6 +2,7 @@ using System.Collections;
 using UnityEngine;
 using TMPro;
 using Random = UnityEngine.Random;
+using Debug = UnityEngine.Debug;
 
 // El "director" del juego: esconde al personaje, cuenta el tiempo,
 // muestra el premio y reinicia solo para el siguiente jugador.
