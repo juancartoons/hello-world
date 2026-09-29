@@ -29,13 +29,15 @@ public class JuegoManager : MonoBehaviour
     public string[] codigos = { "FARMA-7K2Q", "FARMA-3M8P", "FARMA-9T4X", "FARMA-5B1R", "FARMA-2H6W" };
 
     [Header("Sonidos y efectos (opcionales)")]
-    [Tooltip("AudioSource en el personaje con el 'pío'. Se vuelve sonido 3D automáticamente")]
-    public AudioSource sonidoPersonaje;
+    [Tooltip("Arrastra aquí el sonido del 'pío' (mp3/wav). Suena en 3D desde el personaje")]
+    public AudioClip sonidoPio;
     public float segundosEntrePios = 4f;
-    public AudioSource sonidoCelebracion;
+    [Tooltip("Arrastra aquí el sonido de celebración al encontrarlo")]
+    public AudioClip sonidoCelebracion;
     public ParticleSystem confeti;
 
     Transform cabeza;
+    AudioSource fuentePersonaje;
     int ultimoEscondite = -1;
     float tiempoRestante;
     bool buscando;
@@ -45,12 +47,15 @@ public class JuegoManager : MonoBehaviour
         var rig = FindFirstObjectByType<OVRCameraRig>();
         cabeza = rig != null ? rig.centerEyeAnchor : Camera.main != null ? Camera.main.transform : null;
 
-        if (sonidoPersonaje != null)
-        {
-            sonidoPersonaje.spatialBlend = 1f; // 3D: se oye más fuerte al acercarse
-            sonidoPersonaje.playOnAwake = false;
-            sonidoPersonaje.loop = false;
-        }
+        // El "pío" sale del personaje en 3D: se oye más fuerte al acercarse.
+        fuentePersonaje = personaje.GetComponent<AudioSource>();
+        if (fuentePersonaje == null)
+            fuentePersonaje = personaje.gameObject.AddComponent<AudioSource>();
+        fuentePersonaje.playOnAwake = false;
+        fuentePersonaje.loop = false;
+        fuentePersonaje.spatialBlend = 1f;
+        fuentePersonaje.rolloffMode = AudioRolloffMode.Linear;
+        fuentePersonaje.maxDistance = 15f;
 
         personaje.alSerEncontrado.AddListener(AlEncontrarlo);
         StartCoroutine(NuevaPartida());
@@ -109,8 +114,8 @@ public class JuegoManager : MonoBehaviour
     {
         while (buscando)
         {
-            if (sonidoPersonaje != null && sonidoPersonaje.clip != null)
-                sonidoPersonaje.Play();
+            if (sonidoPio != null)
+                fuentePersonaje.PlayOneShot(sonidoPio);
             yield return new WaitForSeconds(segundosEntrePios);
         }
     }
@@ -126,8 +131,8 @@ public class JuegoManager : MonoBehaviour
             confeti.transform.position = personaje.transform.position;
             confeti.Play();
         }
-        if (sonidoCelebracion != null)
-            sonidoCelebracion.Play();
+        if (sonidoCelebracion != null && cabeza != null)
+            AudioSource.PlayClipAtPoint(sonidoCelebracion, cabeza.position);
 
         StartCoroutine(ReiniciarDespues());
     }
