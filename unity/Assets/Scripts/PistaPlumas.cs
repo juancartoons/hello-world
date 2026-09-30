@@ -38,7 +38,7 @@ public class PistaPlumas : MonoBehaviour
         main.startLifetime = new ParticleSystem.MinMaxCurve(3.5f, 5f);
         main.startSpeed = new ParticleSystem.MinMaxCurve(0.02f, 0.06f);
         main.startSize = new ParticleSystem.MinMaxCurve(0.04f, 0.065f);
-        main.start3DRotation = true;
+        main.startRotation3D = true;
         main.startRotationX = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
         main.startRotationY = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
         main.startRotationZ = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
