@@ -4,19 +4,22 @@ using UnityEngine.Events;
 using Debug = UnityEngine.Debug;
 
 // Va en el personaje escondido. Detecta cuando el jugador lo encuentra:
-// - mirándolo fijamente unos segundos (cambia de color mientras lo miras), o
+// - mirándolo unos segundos (cambia de color mientras lo miras). No hace falta apuntarle exacto:
+//   cuenta un "círculo invisible" grande a su alrededor, siempre que no haya nada tapándolo.
 // - acercando la mano (tocándolo).
-// Al encontrarlo, salta hasta la mano derecha del jugador y queda flotando ahí para poder agarrarlo.
-// El personaje necesita un Collider (no trigger) para poder ser "mirado".
+// Al encontrarlo, salta hasta la mano derecha del jugador y queda flotando (ver AgarreAntigravedad).
+// Cuando el jugador está cerca, se mueve un poquito de vez en cuando (pista para encontrarlo).
 public class PersonajeEncontrable : MonoBehaviour
 {
     [Header("Encontrar mirando")]
-    [Tooltip("Segundos que hay que mirarlo fijamente")]
+    [Tooltip("Segundos que hay que mirarlo")]
     public float segundosMirando = 1.5f;
     [Tooltip("Distancia máxima (metros) desde la que cuenta la mirada")]
     public float distanciaMaxima = 12f;
-    [Tooltip("Qué tan 'gruesa' es la mirada. Más grande = más fácil")]
-    public float radioMirada = 0.15f;
+    [Tooltip("Radio (metros) del círculo invisible alrededor del personaje que cuenta como 'mirarlo'")]
+    public float radioVision = 0.45f;
+    [Tooltip("Ángulo mínimo (grados) que siempre cuenta, aunque esté lejos")]
+    public float anguloMinimo = 5f;
 
     [Header("Encontrar tocando")]
     [Tooltip("Distancia (metros) entre la mano y el personaje para contar como toque")]
@@ -35,6 +38,10 @@ public class PersonajeEncontrable : MonoBehaviour
     [Tooltip("Qué tan arriba de la mano queda flotando (metros)")]
     public float alturaSobreMano = 0.1f;
 
+    [Header("Pista: se mueve cuando estás cerca")]
+    public float distanciaPista = 2.5f;
+    public float segundosEntreSacudidas = 2.5f;
+
     [Header("Evento (se dispara cuando llega a la mano)")]
     public UnityEvent alSerEncontrado;
 
@@ -46,7 +53,8 @@ public class PersonajeEncontrable : MonoBehaviour
     Rigidbody cuerpo;
     Vector3 escalaOriginal;
     float tiempoMirando;
-    Coroutine rutinaSalto;
+    float proximaSacudida;
+    Coroutine rutinaSalto, rutinaSacudida;
 
     static readonly int idBaseColor = Shader.PropertyToID("_BaseColor"); // URP y shader toon
     static readonly int idColor = Shader.PropertyToID("_Color");         // Built-in
@@ -113,19 +121,76 @@ public class PersonajeEncontrable : MonoBehaviour
         AplicarColor(mezclaColor);
 
         if (tiempoMirando >= segundosMirando)
+        {
             Encontrado();
+            return;
+        }
+
+        // Pista: si estás cerca, se sacude un poquito de vez en cuando.
+        if (Time.time >= proximaSacudida && rutinaSacudida == null
+            && Vector3.Distance(cabeza.position, transform.position) < distanciaPista)
+        {
+            proximaSacudida = Time.time + segundosEntreSacudidas;
+            rutinaSacudida = StartCoroutine(Sacudida());
+        }
+    }
+
+    IEnumerator Sacudida()
+    {
+        Vector3 posicion = transform.position;
+        Quaternion rotacion = transform.rotation;
+        const float duracion = 0.4f;
+        for (float t = 0f; t < duracion && Activo; t += Time.deltaTime)
+        {
+            float k = t / duracion;
+            transform.position = posicion + Vector3.up * (Mathf.Sin(k * Mathf.PI) * 0.03f);
+            transform.rotation = rotacion * Quaternion.Euler(0f, Mathf.Sin(k * Mathf.PI * 4f) * 15f, 0f);
+            yield return null;
+        }
+        if (Activo)
+            transform.SetPositionAndRotation(posicion, rotacion);
+        rutinaSacudida = null;
     }
 
     bool LoEstanMirando()
     {
+        Bounds limites = Limites();
+        Vector3 hacia = limites.center - cabeza.position;
+        float distancia = hacia.magnitude;
+        if (distancia < 0.05f)
+            return true;
+        if (distancia > distanciaMaxima)
+            return false;
+
+        // ¿Está dentro del "círculo invisible" alrededor de donde miras?
+        float anguloPermitido = Mathf.Max(anguloMinimo, Mathf.Atan2(radioVision, distancia) * Mathf.Rad2Deg);
+        if (Vector3.Angle(cabeza.forward, hacia) > anguloPermitido)
+            return false;
+
+        // ¿Se ve de verdad? Basta con que se vea el centro o la parte de arriba.
+        return SeVe(limites.center) || SeVe(new Vector3(limites.center.x, limites.max.y, limites.center.z));
+    }
+
+    bool SeVe(Vector3 punto)
+    {
+        Vector3 hacia = punto - cabeza.position;
+        float distancia = hacia.magnitude;
         // Los triggers se ignoran para que las manos u otros objetos invisibles no bloqueen la mirada.
-        // Las góndolas y paredes sí la bloquean: hay que verlo de verdad.
-        if (Physics.SphereCast(cabeza.position, radioMirada, cabeza.forward, out RaycastHit hit,
-                distanciaMaxima, ~0, QueryTriggerInteraction.Ignore))
-        {
-            return hit.transform == transform || hit.transform.IsChildOf(transform);
-        }
-        return false;
+        if (!Physics.Raycast(cabeza.position, hacia / distancia, out RaycastHit hit, distancia, ~0, QueryTriggerInteraction.Ignore))
+            return true;
+        // Lo que esté pegado al personaje (el producto donde está apoyado) no cuenta como estorbo.
+        return hit.transform == transform || hit.transform.IsChildOf(transform) || hit.distance > distancia - 0.2f;
+    }
+
+    Bounds Limites()
+    {
+        if (misRenderers.Length == 0 || misRenderers[0] == null)
+            return new Bounds(transform.position, Vector3.one * 0.1f);
+        Bounds b = misRenderers[0].bounds;
+        for (int i = 1; i < misRenderers.Length; i++)
+            if (misRenderers[i] != null)
+                b.Encapsulate(misRenderers[i].bounds);
+        return b;
     }
 
     bool LoEstanTocando()
@@ -153,6 +218,11 @@ public class PersonajeEncontrable : MonoBehaviour
     {
         Activo = false;
         tiempoMirando = 0f;
+        if (rutinaSacudida != null)
+        {
+            StopCoroutine(rutinaSacudida);
+            rutinaSacudida = null;
+        }
         if (rutinaSalto != null)
             StopCoroutine(rutinaSalto);
         rutinaSalto = StartCoroutine(SaltarALaMano());
@@ -179,6 +249,10 @@ public class PersonajeEncontrable : MonoBehaviour
         mezclaColor = 0f;
         AplicarColor(0f);
         rutinaSalto = null;
+
+        var agarre = GetComponent<AgarreAntigravedad>();
+        if (agarre != null)
+            agarre.Activar();
         alSerEncontrado.Invoke();
     }
 
@@ -210,6 +284,14 @@ public class PersonajeEncontrable : MonoBehaviour
             StopCoroutine(rutinaSalto);
             rutinaSalto = null;
         }
+        if (rutinaSacudida != null)
+        {
+            StopCoroutine(rutinaSacudida);
+            rutinaSacudida = null;
+        }
+        var agarre = GetComponent<AgarreAntigravedad>();
+        if (agarre != null)
+            agarre.Desactivar();
         Quieto();
         tiempoMirando = 0f;
         transform.localScale = escalaOriginal;

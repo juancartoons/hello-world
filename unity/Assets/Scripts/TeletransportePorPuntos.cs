@@ -1,16 +1,21 @@
 using UnityEngine;
 
 // Teletransporte a puntos fijos del piso (discos con PuntoTeletransporte).
-// Con las manos: estira la mano hacia un disco (se pone amarillo) y pellizca (pulgar + índice).
-// Con controles (opcional): apunta con el control y aprieta el gatillo.
+// Con las manos: señala el disco con el dedo índice (los demás dedos doblados) y mantén el dedo
+// sobre el disco un momento: el disco se llena de amarillo y apareces ahí. No hay que pellizcar.
+// Con controles (opcional): apunta con el control y mantén, o aprieta el gatillo.
 public class TeletransportePorPuntos : MonoBehaviour
 {
-    [Tooltip("Material de la línea que sale de la mano (Sprites/Default)")]
+    [Tooltip("Material de la línea que sale del dedo (Sprites/Default)")]
     public Material materialLinea;
     [Tooltip("Distancia máxima (metros) a la que se puede apuntar")]
     public float alcance = 12f;
-    public float anchoLinea = 0.008f;
-    public Color colorLinea = new Color(1f, 1f, 1f, 0.6f);
+    [Tooltip("Segundos señalando un disco para teletransportarte")]
+    public float segundosApuntando = 0.6f;
+    [Tooltip("Pausa (segundos) después de teletransportarte, para no saltar dos veces seguidas")]
+    public float pausaDespues = 0.8f;
+    public float anchoLinea = 0.005f;
+    public Color colorLinea = new Color(1f, 1f, 1f, 0.5f);
     public Color colorLineaApuntando = new Color(1f, 0.85f, 0.1f, 1f);
 
     class Mano
@@ -20,14 +25,16 @@ public class TeletransportePorPuntos : MonoBehaviour
         public Transform anclaControl;
         public OVRInput.Controller control;
         public OVRHand hand;
+        public OVRSkeleton esqueleto;
         public LineRenderer linea;
-        public bool seleccionAnterior;
         public PuntoTeletransporte apuntado;
+        public float tiempo;
     }
 
     OVRCameraRig rig;
     Transform cabeza;
     Mano izquierda, derecha;
+    float bloqueadoHasta;
 
     void Start()
     {
@@ -39,18 +46,21 @@ public class TeletransportePorPuntos : MonoBehaviour
             return;
         }
         cabeza = rig.centerEyeAnchor;
-
-        var manos = FindObjectsByType<OVRHand>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-        izquierda = CrearMano(true, rig.leftHandAnchor, rig.leftControllerAnchor, OVRInput.Controller.LTouch, manos);
-        derecha = CrearMano(false, rig.rightHandAnchor, rig.rightControllerAnchor, OVRInput.Controller.RTouch, manos);
+        izquierda = CrearMano(true, rig.leftHandAnchor, rig.leftControllerAnchor, OVRInput.Controller.LTouch);
+        derecha = CrearMano(false, rig.rightHandAnchor, rig.rightControllerAnchor, OVRInput.Controller.RTouch);
     }
 
-    Mano CrearMano(bool esIzquierda, Transform anclaMano, Transform anclaControl, OVRInput.Controller control, OVRHand[] manos)
+    Mano CrearMano(bool esIzquierda, Transform anclaMano, Transform anclaControl, OVRInput.Controller control)
     {
-        var m = new Mano { esIzquierda = esIzquierda, anclaMano = anclaMano, anclaControl = anclaControl, control = control };
-        foreach (var h in manos)
-            if (h.transform.IsChildOf(anclaMano))
-                m.hand = h;
+        var m = new Mano
+        {
+            esIzquierda = esIzquierda,
+            anclaMano = anclaMano,
+            anclaControl = anclaControl,
+            control = control,
+            hand = ManosUtil.BuscarEnAncla<OVRHand>(anclaMano),
+            esqueleto = ManosUtil.BuscarEnAncla<OVRSkeleton>(anclaMano),
+        };
 
         var go = new GameObject(esIzquierda ? "LineaIzquierda" : "LineaDerecha");
         go.transform.SetParent(transform, false);
@@ -68,17 +78,17 @@ public class TeletransportePorPuntos : MonoBehaviour
     {
         if (izquierda == null)
             return;
-        Procesar(izquierda);
-        Procesar(derecha);
+        bool bloqueado = Time.time < bloqueadoHasta;
+        Procesar(izquierda, bloqueado);
+        Procesar(derecha, bloqueado);
     }
 
-    void Procesar(Mano m)
+    void Procesar(Mano m, bool bloqueado)
     {
-        if (!ObtenerRayo(m, out Vector3 origen, out Vector3 direccion, out bool seleccion))
+        if (bloqueado || !ObtenerRayo(m, out Vector3 origen, out Vector3 direccion, out bool gatillo))
         {
             m.linea.enabled = false;
             CambiarApuntado(m, null);
-            m.seleccionAnterior = false;
             return;
         }
 
@@ -89,6 +99,8 @@ public class TeletransportePorPuntos : MonoBehaviour
             punto = hit.collider.GetComponentInParent<PuntoTeletransporte>();
             fin = hit.point;
         }
+        if (punto != null && EstoyEncima(punto))
+            punto = null; // el disco donde ya estás parado no cuenta
 
         m.linea.enabled = true;
         m.linea.SetPosition(0, origen);
@@ -98,44 +110,77 @@ public class TeletransportePorPuntos : MonoBehaviour
         m.linea.endColor = c;
 
         CambiarApuntado(m, punto);
+        if (punto == null)
+            return;
 
-        // Se teletransporta en el momento en que empieza el pellizco (o el gatillo).
-        if (seleccion && !m.seleccionAnterior && punto != null)
-            Teletransportar(punto.transform.position);
-        m.seleccionAnterior = seleccion;
+        m.tiempo += Time.deltaTime;
+        float progreso = m.tiempo / Mathf.Max(0.05f, segundosApuntando);
+        punto.Resaltar(progreso);
+        if (progreso >= 1f || gatillo)
+            Teletransportar(punto);
     }
 
-    bool ObtenerRayo(Mano m, out Vector3 origen, out Vector3 direccion, out bool seleccion)
+    bool ObtenerRayo(Mano m, out Vector3 origen, out Vector3 direccion, out bool gatillo)
     {
         origen = direccion = Vector3.zero;
-        seleccion = false;
+        gatillo = false;
 
         // Controles (opcional)
         if ((OVRInput.GetActiveController() & m.control) != 0 && m.anclaControl != null)
         {
             origen = m.anclaControl.position;
             direccion = m.anclaControl.forward;
-            seleccion = OVRInput.Get(OVRInput.Button.PrimaryIndexTrigger, m.control);
+            gatillo = OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger, m.control);
             return true;
         }
 
         // Manos
-        if (m.hand == null || !m.hand.IsTracked || m.anclaMano == null)
+        if (m.hand == null || !m.hand.IsTracked)
             return false;
 
+        if (m.esqueleto == null)
+            m.esqueleto = ManosUtil.BuscarEnAncla<OVRSkeleton>(m.anclaMano);
+
+        var punta = ManosUtil.Hueso(m.esqueleto, "IndexTip");
+        var base1 = ManosUtil.Hueso(m.esqueleto, "Index1", "IndexProximal");
+        var falange = ManosUtil.Hueso(m.esqueleto, "Index3", "IndexDistal");
+        var medio = ManosUtil.Hueso(m.esqueleto, "MiddleTip");
+        var muneca = ManosUtil.Hueso(m.esqueleto, "WristRoot", "Wrist");
+
+        if (punta != null && base1 != null && falange != null && medio != null && muneca != null)
+        {
+            // Gesto de "señalar": índice estirado y dedo medio doblado.
+            Vector3 tramo1 = (falange.position - base1.position).normalized;
+            Vector3 tramo2 = (punta.position - falange.position).normalized;
+            bool indiceEstirado = Vector3.Dot(tramo1, tramo2) > 0.8f;
+            float largoIndice = Vector3.Distance(punta.position, muneca.position);
+            bool medioDoblado = Vector3.Distance(medio.position, muneca.position) < largoIndice * 0.75f;
+            if (!indiceEstirado || !medioDoblado)
+                return false;
+
+            origen = punta.position;
+            direccion = (punta.position - base1.position).normalized;
+            return true;
+        }
+
+        // Plan B si no hay esqueleto: rayo del hombro a la mano (mano estirada al frente).
+        if (m.anclaMano == null)
+            return false;
         Vector3 frente = cabeza.forward; frente.y = 0f; frente.Normalize();
         Vector3 derechaPlana = Vector3.Cross(Vector3.up, frente);
-
         origen = m.anclaMano.position;
-        // Solo cuenta si la mano está estirada hacia adelante (no cuando está abajo o pegada al cuerpo).
         if (Vector3.Dot(origen - cabeza.position, frente) < 0.25f)
             return false;
-
-        // Rayo "del hombro a la mano", como el puntero del menú de Meta.
         Vector3 hombro = cabeza.position + Vector3.down * 0.2f + derechaPlana * (m.esIzquierda ? -0.18f : 0.18f);
         direccion = (origen - hombro).normalized;
-        seleccion = m.hand.GetFingerIsPinching(OVRHand.HandFinger.Index);
         return true;
+    }
+
+    bool EstoyEncima(PuntoTeletransporte punto)
+    {
+        Vector3 d = punto.transform.position - cabeza.position;
+        d.y = 0f;
+        return d.magnitude < 0.35f;
     }
 
     void CambiarApuntado(Mano m, PuntoTeletransporte nuevo)
@@ -144,17 +189,21 @@ public class TeletransportePorPuntos : MonoBehaviour
             return;
         var otra = m == izquierda ? derecha : izquierda;
         if (m.apuntado != null && otra.apuntado != m.apuntado)
-            m.apuntado.Resaltar(false);
+            m.apuntado.Resaltar(0f);
         m.apuntado = nuevo;
-        if (nuevo != null)
-            nuevo.Resaltar(true);
+        m.tiempo = 0f;
     }
 
-    void Teletransportar(Vector3 destino)
+    void Teletransportar(PuntoTeletransporte punto)
     {
         // Mueve el rig para que la cabeza del jugador quede justo encima del punto.
-        Vector3 delta = destino - cabeza.position;
+        Vector3 delta = punto.transform.position - cabeza.position;
         delta.y = 0f;
         rig.transform.position += delta;
+
+        bloqueadoHasta = Time.time + pausaDespues;
+        CambiarApuntado(izquierda, null);
+        CambiarApuntado(derecha, null);
+        punto.Resaltar(0f);
     }
 }

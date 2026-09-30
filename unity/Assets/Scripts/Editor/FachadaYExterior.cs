@@ -1,0 +1,461 @@
+#if UNITY_EDITOR
+using System.Collections.Generic;
+using UnityEngine;
+
+// Construye (desde el menú ★) las paredes con ventanas, los vidrios, los rayos de sol que entran
+// y el exterior: calles de Bogotá, parqueadero, edificios de ladrillo, árboles, carros, bus del SITP,
+// cerros orientales, nubes y cielo. Todo en pocas mallas para que la Quest 2 lo mueva sin problema.
+internal static class FachadaYExterior
+{
+    struct Hueco
+    {
+        public float a0, a1, y0, y1;
+        public bool puerta;
+        public Hueco(float a0, float a1, float y0, float y1, bool puerta = false)
+        {
+            this.a0 = a0; this.a1 = a1; this.y0 = y0; this.y1 = y1; this.puerta = puerta;
+        }
+    }
+
+    static readonly Color pared = new Color(0.97f, 0.96f, 0.93f);
+    static readonly Color marco = new Color(0.35f, 0.38f, 0.44f);
+    static readonly Color grisOscuro = new Color(0.22f, 0.24f, 0.30f);
+    static readonly Color grisClaro = new Color(0.86f, 0.87f, 0.88f);
+    static readonly Color acera = new Color(0.78f, 0.78f, 0.76f);
+    static readonly Color asfalto = new Color(0.30f, 0.31f, 0.34f);
+    static readonly Color asfaltoParqueo = new Color(0.40f, 0.41f, 0.44f);
+    static readonly Color pasto = new Color(0.47f, 0.62f, 0.40f);
+    static readonly Color blanco = new Color(0.95f, 0.95f, 0.92f);
+    static readonly Color amarillo = new Color(0.98f, 0.80f, 0.20f);
+    static readonly Color vidrioOscuro = new Color(0.22f, 0.30f, 0.40f);
+    static readonly Color concreto = new Color(0.84f, 0.82f, 0.78f);
+    static readonly Color tronco = new Color(0.42f, 0.30f, 0.22f);
+    static readonly Color azulSitp = new Color(0.12f, 0.38f, 0.78f);
+    static readonly Color[] ladrillos =
+    {
+        new Color(0.70f, 0.35f, 0.24f), new Color(0.62f, 0.30f, 0.22f),
+        new Color(0.76f, 0.42f, 0.28f), new Color(0.66f, 0.38f, 0.30f),
+    };
+    static readonly Color[] verdes =
+    {
+        new Color(0.30f, 0.58f, 0.32f), new Color(0.24f, 0.50f, 0.28f), new Color(0.38f, 0.64f, 0.34f),
+    };
+    static readonly Color[] coloresCarro =
+    {
+        new Color(0.85f, 0.18f, 0.16f), new Color(0.92f, 0.92f, 0.90f), new Color(0.62f, 0.64f, 0.68f),
+        new Color(0.20f, 0.40f, 0.75f), new Color(0.15f, 0.16f, 0.18f),
+    };
+
+    // ================= Fachada: paredes con ventanas, vidrios y sol =================
+
+    internal static void ConstruirFachada(Transform raiz, Material matKit, Material matVidrio, Material matLuz, Vector3 dirLuz, string carpeta)
+    {
+        var fachada = new KitMalla();
+        var vidrio = new KitMalla();
+        var luz = new KitMalla();
+
+        // Sur: vitrina con puerta en el centro.
+        var sur = new List<Hueco>
+        {
+            new Hueco(-4.5f, -1.0f, 0.5f, 2.5f),
+            new Hueco(-0.7f, 0.7f, 0f, 2.3f, true),
+            new Hueco(1.0f, 4.5f, 0.5f, 2.5f),
+        };
+        // Este y oeste: ventana grande cerca de la entrada y ventanas altas sobre los estantes.
+        var lados = new List<Hueco>
+        {
+            new Hueco(-4.6f, -2.8f, 0.5f, 2.5f),
+            new Hueco(-2.2f, -0.4f, 2.15f, 2.7f),
+            new Hueco(0.2f, 2.0f, 2.15f, 2.7f),
+            new Hueco(2.6f, 4.4f, 2.15f, 2.7f),
+        };
+
+        Pared(fachada, vidrio, false, -5.0f, sur);
+        Pared(fachada, vidrio, true, 5.0f, lados);
+        Pared(fachada, vidrio, true, -5.0f, lados);
+
+        // Esquinas, losa del techo y umbral de la puerta.
+        foreach (float x in new[] { -5.05f, 5.05f })
+            foreach (float z in new[] { -5.05f, 5.05f })
+                fachada.Caja(new Vector3(x, 1.625f, z), new Vector3(0.3f, 3.25f, 0.3f), pared);
+        fachada.CajaMinMax(new Vector3(-5.25f, 3.1f, -5.25f), new Vector3(5.25f, 3.25f, 5.25f), grisClaro);
+        fachada.CajaMinMax(new Vector3(-0.7f, -0.12f, -5.1f), new Vector3(0.7f, 0f, -4.9f), acera, false);
+
+        // Sol entrando por las ventanas que le dan a la luz.
+        foreach (var h in sur)
+            SolPorHueco(luz, false, -4.9f, h, dirLuz);
+        foreach (var h in lados)
+        {
+            SolPorHueco(luz, true, 4.9f, h, dirLuz);
+            SolPorHueco(luz, true, -4.9f, h, dirLuz);
+        }
+
+        fachada.CrearObjeto("Kit_Fachada", raiz, matKit, carpeta);
+        vidrio.CrearObjeto("Vidrios", raiz, matVidrio, carpeta);
+        luz.CrearObjeto("LuzDeSol", raiz, matLuz, carpeta);
+    }
+
+    // Pared de 0.2 m de grosor con huecos. Si "enX" es true, la pared va a lo largo de Z en x = fijo;
+    // si no, va a lo largo de X en z = fijo.
+    static void Pared(KitMalla kit, KitMalla vidrio, bool enX, float fijo, List<Hueco> huecos)
+    {
+        const float mitadGrosor = 0.1f, alto = 3.0f, inicio = -5.1f, fin = 5.1f;
+
+        Vector3 P(float a, float y, float p) => enX ? new Vector3(p, y, a) : new Vector3(a, y, p);
+        void Bloque(float a0, float a1, float y0, float y1, float p0, float p1, Color color, bool contorno, KitMalla destino)
+        {
+            Vector3 q0 = P(a0, y0, p0), q1 = P(a1, y1, p1);
+            destino.CajaMinMax(Vector3.Min(q0, q1), Vector3.Max(q0, q1), color, contorno);
+        }
+
+        // Cortes a lo largo de la pared: los bordes de cada hueco.
+        var cortes = new List<float> { inicio, fin };
+        foreach (var h in huecos) { cortes.Add(h.a0); cortes.Add(h.a1); }
+        cortes.Sort();
+
+        for (int i = 0; i < cortes.Count - 1; i++)
+        {
+            float c0 = cortes[i], c1 = cortes[i + 1];
+            if (c1 - c0 < 0.001f)
+                continue;
+            var tramos = new List<Vector2> { new Vector2(0f, alto) };
+            foreach (var h in huecos)
+            {
+                if (h.a0 > c0 + 0.001f || h.a1 < c1 - 0.001f)
+                    continue;
+                var nuevos = new List<Vector2>();
+                foreach (var t in tramos)
+                {
+                    if (h.y1 <= t.x || h.y0 >= t.y) { nuevos.Add(t); continue; }
+                    if (h.y0 > t.x) nuevos.Add(new Vector2(t.x, h.y0));
+                    if (h.y1 < t.y) nuevos.Add(new Vector2(h.y1, t.y));
+                }
+                tramos = nuevos;
+            }
+            // Los pedazos de pared van sin contorno para que no se vean líneas en las uniones.
+            foreach (var t in tramos)
+                Bloque(c0, c1, t.x, t.y, fijo - mitadGrosor, fijo + mitadGrosor, pared, false, kit);
+        }
+
+        // Marcos (con contorno) y vidrios.
+        const float b = 0.03f;
+        float pm0 = fijo - mitadGrosor - 0.03f, pm1 = fijo + mitadGrosor + 0.03f;
+        foreach (var h in huecos)
+        {
+            float yBase = h.puerta ? 0f : h.y0;
+            Bloque(h.a0 - b, h.a1 + b, h.y1 - b, h.y1 + b, pm0, pm1, marco, true, kit);
+            if (!h.puerta)
+                Bloque(h.a0 - b, h.a1 + b, h.y0 - b, h.y0 + b, pm0, pm1, marco, true, kit);
+            Bloque(h.a0 - b, h.a0 + b, yBase, h.y1, pm0, pm1, marco, true, kit);
+            Bloque(h.a1 - b, h.a1 + b, yBase, h.y1, pm0, pm1, marco, true, kit);
+
+            float medio = (h.a0 + h.a1) / 2f;
+            if (h.puerta || h.a1 - h.a0 > 1.2f)
+                Bloque(medio - b, medio + b, yBase, h.y1, pm0, pm1, marco, true, kit);
+            if (h.puerta)
+            {
+                // Manijas de la puerta de vidrio.
+                foreach (float lado in new[] { -1f, 1f })
+                    Bloque(medio + lado * 0.1f - 0.015f, medio + lado * 0.1f + 0.015f, 0.9f, 1.3f,
+                        fijo - mitadGrosor - 0.08f, fijo + mitadGrosor + 0.08f, grisOscuro, true, kit);
+            }
+
+            Bloque(h.a0, h.a1, yBase, h.y1, fijo - 0.005f, fijo + 0.005f, Color.white, false, vidrio);
+        }
+    }
+
+    // Mancha de sol en el piso y rayo de luz entre la ventana y la mancha.
+    static void SolPorHueco(KitMalla luz, bool enX, float planoInterior, Hueco h, Vector3 dirLuz)
+    {
+        // Solo si el sol entra por esta pared (la luz va hacia adentro).
+        Vector3 haciaAdentro = enX ? new Vector3(-Mathf.Sign(planoInterior), 0f, 0f) : new Vector3(0f, 0f, -Mathf.Sign(planoInterior));
+        if (Vector3.Dot(dirLuz, haciaAdentro) <= 0.05f || dirLuz.y >= -0.05f)
+            return;
+        // Las ventanas altas quedan sobre los estantes: su luz pegaría en los muebles, así que no se dibuja.
+        if (!h.puerta && h.y0 > 1.5f)
+            return;
+
+        float yBase = h.puerta ? 0.05f : h.y0;
+        // Las ventanas anchas tienen parteluz: dos manchas separadas.
+        var paneles = new List<Vector2>();
+        float medio = (h.a0 + h.a1) / 2f;
+        if (h.puerta || h.a1 - h.a0 > 1.2f)
+        {
+            paneles.Add(new Vector2(h.a0 + 0.03f, medio - 0.03f));
+            paneles.Add(new Vector2(medio + 0.03f, h.a1 - 0.03f));
+        }
+        else
+        {
+            paneles.Add(new Vector2(h.a0 + 0.03f, h.a1 - 0.03f));
+        }
+
+        const float yPiso = 0.015f;
+        Vector3 Punto(float a, float y) => enX ? new Vector3(planoInterior, y, a) : new Vector3(a, y, planoInterior);
+        Vector3 Proyectar(Vector3 p)
+        {
+            float t = (p.y - yPiso) / -dirLuz.y;
+            Vector3 f = p + dirLuz * t;
+            f.y = yPiso;
+            return f;
+        }
+
+        Color mancha = new Color(1f, 1f, 1f, 0.38f);
+        Color rayoVentana = new Color(1f, 1f, 1f, 0.10f);
+        Color rayoPiso = new Color(1f, 1f, 1f, 0.02f);
+
+        foreach (var panel in paneles)
+        {
+            Vector3 w00 = Punto(panel.x, yBase), w10 = Punto(panel.y, yBase);
+            Vector3 w11 = Punto(panel.y, h.y1 - 0.03f), w01 = Punto(panel.x, h.y1 - 0.03f);
+            Vector3 f00 = Proyectar(w00), f10 = Proyectar(w10), f11 = Proyectar(w11), f01 = Proyectar(w01);
+
+            luz.CuadroColores(f00, f10, f11, f01, mancha, mancha, mancha, mancha);
+            luz.CuadroColores(w00, w10, f10, f00, rayoVentana, rayoVentana, rayoPiso, rayoPiso);
+            luz.CuadroColores(w01, w11, f11, f01, rayoVentana, rayoVentana, rayoPiso, rayoPiso);
+            luz.CuadroColores(w00, w01, f01, f00, rayoVentana, rayoVentana, rayoPiso, rayoPiso);
+            luz.CuadroColores(w10, w11, f11, f10, rayoVentana, rayoVentana, rayoPiso, rayoPiso);
+        }
+    }
+
+    // ================= Exterior =================
+
+    internal static void ConstruirExterior(Transform raiz, Material matKit, Material matCielo, Vector3 dirLuz, string carpeta)
+    {
+        var ext = new KitMalla();
+        var rnd = new System.Random(2026);
+
+        // Suelo: pasto lejano, asfalto de las calles y las manzanas (andenes) 12 cm más arriba.
+        ext.CajaMinMax(new Vector3(-400f, -0.5f, -400f), new Vector3(400f, -0.2f, 400f), pasto, false);
+        ext.CajaMinMax(new Vector3(-70f, -0.25f, -70f), new Vector3(70f, -0.13f, 70f), asfalto, false);
+        Manzana(ext, -7f, 70f, -8f, 70f);    // la de la farmacia
+        Manzana(ext, -7f, 70f, -70f, -16f);  // al frente, cruzando la calle
+        Manzana(ext, -70f, -13f, -8f, 70f);  // cruzando la carrera
+        Manzana(ext, -70f, -13f, -70f, -16f);
+
+        // Líneas de la calle (al frente) y de la carrera (al lado oeste), sin pintar en el cruce.
+        for (float x = -69f; x < 69f; x += 3f)
+            if (x + 1.5f < -13f || x > -7f)
+                ext.Piso(new Vector3(x + 0.75f, -0.125f, -12f), 0.75f, 0.06f, amarillo);
+        for (float z = -69f; z < 69f; z += 3f)
+            if (z + 1.5f < -16f || z > -8f)
+                ext.Piso(new Vector3(-10f, -0.125f, z + 0.75f), 0.06f, 0.75f, amarillo);
+        // Cebras
+        for (float z = -15.6f; z <= -8.3f; z += 0.9f)
+            ext.Piso(new Vector3(-4.7f, -0.124f, z), 1.5f, 0.22f, blanco);
+        for (float x = -12.6f; x <= -7.3f; x += 0.9f)
+            ext.Piso(new Vector3(x, -0.124f, -5f), 0.22f, 1.5f, blanco);
+
+        // Parqueadero al lado este de la farmacia.
+        ext.CajaMinMax(new Vector3(5.4f, -0.02f, -7.4f), new Vector3(24f, 0.005f, 14f), asfaltoParqueo, false);
+        float[] lineas = { -6f, -3.5f, -1f, 1.5f, 4f, 6.5f, 9f, 11.5f };
+        foreach (float xFila in new[] { 10f, 18.5f })
+        {
+            foreach (float z in lineas)
+                ext.Piso(new Vector3(xFila, 0.01f, z), 2.5f, 0.05f, blanco);
+            for (int i = 0; i < lineas.Length - 1; i++)
+                if (rnd.NextDouble() < 0.6)
+                    Carro(ext, new Vector3(xFila, 0.005f, (lineas[i] + lineas[i + 1]) / 2f), true, Elegir(rnd, coloresCarro), false);
+        }
+
+        // Carros y bus en la calle.
+        Carro(ext, new Vector3(-2f, -0.13f, -10f), true, amarillo, true);   // taxi
+        Carro(ext, new Vector3(16f, -0.13f, -14f), true, coloresCarro[0], false);
+        Carro(ext, new Vector3(-9f, -0.13f, 6f), false, coloresCarro[3], false);
+        Bus(ext, new Vector3(5f, -0.13f, -14f));
+
+        // Edificios cercanos (ladrillo bogotano, con ventanas y placas de concreto).
+        Edificio(ext, rnd, new Vector3(-6.5f, 0f, 5.3f), new Vector3(6.5f, 15f, 17f), Elegir(rnd, ladrillos));  // vecino de atrás
+        Edificio(ext, rnd, new Vector3(8f, 0f, 15f), new Vector3(24f, 18f, 26f), Elegir(rnd, ladrillos));       // detrás del parqueadero
+        Edificio(ext, rnd, new Vector3(25f, 0f, -6f), new Vector3(36f, 12f, 14f), concreto);                   // al este del parqueadero
+        float[][] frente = { new[] { -6.5f, 2f, 15f }, new[] { 2.5f, 11f, 18f }, new[] { 11.5f, 20f, 12f }, new[] { 20.5f, 30f, 15f } };
+        foreach (var e in frente)
+        {
+            Edificio(ext, rnd, new Vector3(e[0], 0f, -30f), new Vector3(e[1], e[2], -19f), Elegir(rnd, ladrillos));
+            Toldo(ext, rnd, new Vector3((e[0] + e[1]) / 2f, 2.6f, -18.6f), e[1] - e[0] - 1f, false);
+        }
+        float[][] carrera = { new[] { -7f, 2f, 12f }, new[] { 2.5f, 10f, 15f }, new[] { 10.5f, 20f, 18f }, new[] { 20.5f, 30f, 12f } };
+        foreach (var e in carrera)
+        {
+            Edificio(ext, rnd, new Vector3(-28f, 0f, e[0]), new Vector3(-16f, e[2], e[1]), Elegir(rnd, ladrillos));
+            Toldo(ext, rnd, new Vector3(-15.6f, 2.6f, (e[0] + e[1]) / 2f), e[1] - e[0] - 1f, true);
+        }
+        Edificio(ext, rnd, new Vector3(-28f, 0f, -30f), new Vector3(-16f, 21f, -19f), Elegir(rnd, ladrillos));
+
+        // Edificios de fondo (más claros, como vistos a través del aire).
+        for (int i = 0; i < 34; i++)
+        {
+            float ang = (float)rnd.NextDouble() * Mathf.PI * 2f;
+            float dist = Rango(rnd, 48f, 100f);
+            Vector3 c = new Vector3(Mathf.Cos(ang) * dist, 0f, Mathf.Sin(ang) * dist);
+            float ancho = Rango(rnd, 8f, 18f), fondo = Rango(rnd, 8f, 18f), alto = Rango(rnd, 12f, 48f);
+            Color color = Color.Lerp(rnd.NextDouble() < 0.6 ? Elegir(rnd, ladrillos) : concreto, new Color(0.75f, 0.82f, 0.9f), 0.35f);
+            Vector3 min = c - new Vector3(ancho / 2f, 0f, fondo / 2f);
+            Vector3 max = c + new Vector3(ancho / 2f, alto, fondo / 2f);
+            ext.CajaMinMax(min, max, color);
+            // Franjas de ventanas en la cara que mira hacia la farmacia.
+            Vector3 haciaCentro = -c.normalized;
+            Vector3 normal = Mathf.Abs(haciaCentro.x) > Mathf.Abs(haciaCentro.z)
+                ? new Vector3(Mathf.Sign(haciaCentro.x), 0f, 0f) : new Vector3(0f, 0f, Mathf.Sign(haciaCentro.z));
+            float mitadCara = Mathf.Abs(normal.x) > 0 ? fondo / 2f : ancho / 2f;
+            float offset = Mathf.Abs(normal.x) > 0 ? ancho / 2f : fondo / 2f;
+            for (float y = 4f; y < alto - 2f; y += 3f)
+                ext.Etiqueta(c + normal * (offset + 0.02f) + Vector3.up * y, normal, 0.55f, mitadCara * 0.8f,
+                    Color.Lerp(vidrioOscuro, new Color(0.75f, 0.82f, 0.9f), 0.35f));
+        }
+
+        // Árboles en andenes y parqueadero, y postes de luz.
+        foreach (float x in new[] { -5.8f, 7f, 13f, 19f, 25f }) Arbol(ext, rnd, new Vector3(x, 0f, -7f));
+        foreach (float x in new[] { -5f, 1f, 7f, 13f, 19f, 25f }) Arbol(ext, rnd, new Vector3(x, 0f, -17.3f));
+        foreach (float z in new[] { -2f, 4f, 10f, 16f }) Arbol(ext, rnd, new Vector3(-6.3f, 0f, z));
+        foreach (float z in new[] { -4f, 3f, 10f, 17f }) Arbol(ext, rnd, new Vector3(-14.3f, 0f, z));
+        foreach (float z in new[] { -5f, 3f, 11f }) Arbol(ext, rnd, new Vector3(14.25f, 0f, z));
+        foreach (float x in new[] { -6.2f, 6.5f, 15f, 24f }) Poste(ext, new Vector3(x, 0f, -7.7f), -1f);
+
+        // Cerros orientales al fondo (al este), y nubes.
+        float[][] cerros =
+        {
+            new[] { 330f, -260f, 170f, 150f }, new[] { 360f, -90f, 200f, 190f }, new[] { 340f, 80f, 180f, 170f },
+            new[] { 370f, 250f, 210f, 160f }, new[] { 420f, 0f, 260f, 230f }, new[] { 250f, 380f, 160f, 110f },
+        };
+        foreach (var c in cerros)
+        {
+            float lejania = Mathf.InverseLerp(300f, 450f, c[0]);
+            Color verde = Color.Lerp(new Color(0.34f, 0.52f, 0.36f), new Color(0.50f, 0.64f, 0.62f), lejania);
+            ext.Esfera(new Vector3(c[0], -30f, c[1]), new Vector3(c[2], c[3], c[2] * 0.9f), 2, verde);
+        }
+        for (int i = 0; i < 8; i++)
+        {
+            float ang = (float)rnd.NextDouble() * Mathf.PI * 2f;
+            float dist = Rango(rnd, 160f, 320f);
+            Vector3 c = new Vector3(Mathf.Cos(ang) * dist, Rango(rnd, 70f, 110f), Mathf.Sin(ang) * dist);
+            for (int k = 0; k < 3; k++)
+            {
+                Vector3 d = new Vector3(Rango(rnd, -14f, 14f), Rango(rnd, -2f, 3f), Rango(rnd, -6f, 6f));
+                float r = Rango(rnd, 9f, 16f);
+                ext.Esfera(c + d, new Vector3(r * 1.6f, r * 0.6f, r), 1, Color.white);
+            }
+        }
+
+        ext.CrearObjeto("Kit_Exterior", raiz, matKit, carpeta);
+
+        // Cielo con degradado y el sol.
+        var cielo = new KitMalla();
+        cielo.Cielo(700f, new Color(0.86f, 0.93f, 0.99f), new Color(0.42f, 0.66f, 0.94f), pasto);
+        cielo.Esfera(-dirLuz.normalized * 650f, Vector3.one * 22f, 2, new Color(1f, 0.97f, 0.85f), false);
+        cielo.CrearObjeto("Cielo", raiz, matCielo, carpeta);
+    }
+
+    // ---------- Piezas del exterior ----------
+
+    static void Manzana(KitMalla k, float x0, float x1, float z0, float z1)
+    {
+        k.CajaMinMax(new Vector3(x0, -0.25f, z0), new Vector3(x1, -0.01f, z1), acera);
+    }
+
+    static void Edificio(KitMalla k, System.Random rnd, Vector3 min, Vector3 max, Color color)
+    {
+        k.CajaMinMax(min, max, color);
+        float alto = max.y - min.y;
+        Vector3 centro = (min + max) / 2f;
+        Vector3 tam = max - min;
+
+        // Placas de concreto entre pisos (cada 3 m), un poco salidas.
+        for (float y = min.y + 3f; y < max.y - 0.5f; y += 3f)
+            k.CajaMinMax(new Vector3(min.x - 0.06f, y - 0.12f, min.z - 0.06f), new Vector3(max.x + 0.06f, y + 0.12f, max.z + 0.06f), concreto, false);
+        // Remate del techo
+        k.CajaMinMax(new Vector3(min.x - 0.1f, max.y, min.z - 0.1f), new Vector3(max.x + 0.1f, max.y + 0.4f, max.z + 0.1f), concreto);
+
+        // Ventanas en las cuatro caras (desde el segundo piso).
+        foreach (var normal in new[] { Vector3.right, Vector3.left, Vector3.forward, Vector3.back })
+        {
+            bool enX = Mathf.Abs(normal.x) > 0;
+            float largo = enX ? tam.z : tam.x;
+            float mitad = enX ? tam.x / 2f : tam.z / 2f;
+            int columnas = Mathf.Max(1, Mathf.FloorToInt(largo / 2.2f));
+            float paso = largo / columnas;
+            for (float y = min.y + 4.5f; y < max.y - 1f; y += 3f)
+            {
+                for (int c = 0; c < columnas; c++)
+                {
+                    float a = -largo / 2f + paso * (c + 0.5f);
+                    Vector3 p = centro + normal * (mitad + 0.02f) + (enX ? Vector3.forward : Vector3.right) * a;
+                    p.y = y;
+                    k.Etiqueta(p, normal, 0.7f, Mathf.Min(0.65f, paso * 0.35f), vidrioOscuro);
+                }
+            }
+        }
+    }
+
+    static void Toldo(KitMalla k, System.Random rnd, Vector3 centro, float ancho, bool enX)
+    {
+        Color[] colores = { new Color(0.85f, 0.2f, 0.2f), new Color(0.15f, 0.55f, 0.35f), new Color(0.95f, 0.65f, 0.15f), new Color(0.2f, 0.45f, 0.8f) };
+        Color color = Elegir(rnd, colores);
+        Vector3 tam = enX ? new Vector3(0.8f, 0.25f, ancho) : new Vector3(ancho, 0.25f, 0.8f);
+        k.Caja(centro, tam, color);
+        // Vitrina oscura de la tienda en el primer piso.
+        Vector3 normal = enX ? Vector3.right : Vector3.forward;
+        Vector3 cara = centro - normal * 0.38f + Vector3.down * 1.35f;
+        k.Etiqueta(cara, normal, 1.1f, ancho * 0.45f, vidrioOscuro);
+    }
+
+    static void Arbol(KitMalla k, System.Random rnd, Vector3 base0)
+    {
+        bool alto = rnd.NextDouble() < 0.35; // eucalipto / urapán más alto
+        float altoTronco = alto ? 3.2f : 2.0f;
+        k.Caja(base0 + Vector3.up * (altoTronco / 2f), new Vector3(0.25f, altoTronco, 0.25f), tronco);
+        float s = Rango(rnd, 0.85f, 1.2f);
+        Vector3 radios = alto ? new Vector3(1.2f, 2.3f, 1.2f) * s : new Vector3(1.5f, 1.3f, 1.5f) * s;
+        k.Esfera(base0 + Vector3.up * (altoTronco + radios.y * 0.7f), radios, 1, Elegir(rnd, verdes));
+    }
+
+    static void Poste(KitMalla k, Vector3 base0, float haciaZ)
+    {
+        k.Cilindro(base0 + Vector3.up * 2.5f, 0.06f, 5f, Vector3.up, 6, grisOscuro);
+        k.Caja(base0 + new Vector3(0f, 4.95f, haciaZ * 0.5f), new Vector3(0.08f, 0.08f, 1.0f), grisOscuro);
+        k.Caja(base0 + new Vector3(0f, 4.88f, haciaZ * 1.0f), new Vector3(0.25f, 0.1f, 0.45f), grisClaro);
+    }
+
+    static void Carro(KitMalla k, Vector3 piso, bool enX, Color color, bool taxi)
+    {
+        Vector3 largo = enX ? Vector3.right : Vector3.forward;
+        Vector3 lado = enX ? Vector3.forward : Vector3.right;
+        Vector3 Tam(float l, float a, float w) => largo * l + Vector3.up * a + lado * w;
+
+        k.Caja(piso + Vector3.up * 0.62f, Abs(Tam(4.2f, 0.62f, 1.8f)), color);
+        Vector3 cabina = piso + Vector3.up * 1.18f - largo * 0.2f;
+        k.Caja(cabina, Abs(Tam(2.3f, 0.52f, 1.62f)), color);
+        foreach (float s in new[] { -1f, 1f })
+        {
+            k.Etiqueta(cabina + lado * (0.811f * s), lado * s, 0.18f, 0.95f, vidrioOscuro);
+            k.Etiqueta(cabina + largo * (1.151f * s), largo * s, 0.18f, 0.7f, vidrioOscuro);
+        }
+        if (taxi)
+            k.Caja(cabina + Vector3.up * 0.34f, Abs(Tam(0.3f, 0.14f, 0.6f)), blanco);
+        foreach (float sl in new[] { -1.35f, 1.35f })
+            foreach (float sw in new[] { -0.82f, 0.82f })
+                k.Cilindro(piso + Vector3.up * 0.33f + largo * sl + lado * sw, 0.33f, 0.22f, lado, 8, new Color(0.15f, 0.15f, 0.17f));
+    }
+
+    static void Bus(KitMalla k, Vector3 piso)
+    {
+        Vector3 centro = piso + Vector3.up * 1.65f;
+        k.Caja(centro, new Vector3(11f, 2.7f, 2.5f), azulSitp);
+        foreach (float s in new[] { -1f, 1f })
+        {
+            k.Etiqueta(centro + new Vector3(0f, 0.45f, 1.251f * s), new Vector3(0f, 0f, s), 0.45f, 5f, vidrioOscuro);
+            k.Etiqueta(centro + new Vector3(0f, -0.85f, 1.252f * s), new Vector3(0f, 0f, s), 0.07f, 5.3f, blanco);
+        }
+        k.Etiqueta(centro + new Vector3(5.501f, 0.3f, 0f), Vector3.right, 0.6f, 1.05f, vidrioOscuro);
+        k.Etiqueta(centro + new Vector3(-5.501f, 0.45f, 0f), Vector3.left, 0.45f, 1.0f, vidrioOscuro);
+        foreach (float x in new[] { -3.6f, 3.4f })
+            foreach (float z in new[] { -1.15f, 1.15f })
+                k.Cilindro(piso + new Vector3(x, 0.5f, z), 0.5f, 0.3f, Vector3.forward, 10, new Color(0.15f, 0.15f, 0.17f));
+    }
+
+    static Vector3 Abs(Vector3 v) => new Vector3(Mathf.Abs(v.x), Mathf.Abs(v.y), Mathf.Abs(v.z));
+
+    static T Elegir<T>(System.Random rnd, T[] opciones) => opciones[rnd.Next(opciones.Length)];
+
+    static float Rango(System.Random rnd, float min, float max) => min + (float)rnd.NextDouble() * (max - min);
+}
+#endif
