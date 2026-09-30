@@ -108,6 +108,34 @@ public class JuegoManager : MonoBehaviour
 
         Transform punto = escondites.GetChild(indice);
         personaje.transform.SetPositionAndRotation(punto.position, punto.rotation);
+        ApoyarEnSuperficie();
+    }
+
+    // Baja (o sube) al personaje para que quede apoyado sobre lo que tenga debajo
+    // (piso, góndola, estante), sea del tamaño que sea.
+    void ApoyarEnSuperficie()
+    {
+        var colliders = personaje.GetComponentsInChildren<Collider>();
+        if (colliders.Length == 0)
+            return;
+
+        Physics.SyncTransforms();
+        Bounds limites = colliders[0].bounds;
+        foreach (var c in colliders)
+            limites.Encapsulate(c.bounds);
+
+        Vector3 origen = new Vector3(limites.center.x, limites.max.y + 0.05f, limites.center.z);
+        float superficie = float.NegativeInfinity;
+        foreach (var hit in Physics.RaycastAll(origen, Vector3.down, 3f, ~0, QueryTriggerInteraction.Ignore))
+        {
+            if (hit.collider.transform.IsChildOf(personaje.transform))
+                continue;
+            if (hit.point.y > superficie)
+                superficie = hit.point.y;
+        }
+
+        if (!float.IsNegativeInfinity(superficie))
+            personaje.transform.position += Vector3.up * (superficie - limites.min.y);
     }
 
     IEnumerator Pios()

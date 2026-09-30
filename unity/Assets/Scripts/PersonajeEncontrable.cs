@@ -1,10 +1,12 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
 using Debug = UnityEngine.Debug;
 
 // Va en el personaje escondido. Detecta cuando el jugador lo encuentra:
-// - mirándolo fijamente unos segundos, o
+// - mirándolo fijamente unos segundos (cambia de color mientras lo miras), o
 // - acercando la mano (tocándolo).
+// Al encontrarlo, salta hasta la mano derecha del jugador y queda flotando ahí para poder agarrarlo.
 // El personaje necesita un Collider (no trigger) para poder ser "mirado".
 public class PersonajeEncontrable : MonoBehaviour
 {
@@ -25,10 +27,15 @@ public class PersonajeEncontrable : MonoBehaviour
     public Color colorAlMirar = new Color(1f, 0.85f, 0.1f);
     [Tooltip("Qué tan rápido cambia de color")]
     public float velocidadColor = 8f;
-    [Tooltip("Cuánto crece mientras lo miran (0.25 = 25%)")]
-    public float crecimientoMaximo = 0.25f;
 
-    [Header("Evento")]
+    [Header("Al encontrarlo: salta a la mano derecha")]
+    public float duracionSalto = 0.8f;
+    [Tooltip("Altura extra (metros) del arco del salto")]
+    public float alturaSalto = 0.35f;
+    [Tooltip("Qué tan arriba de la mano queda flotando (metros)")]
+    public float alturaSobreMano = 0.1f;
+
+    [Header("Evento (se dispara cuando llega a la mano)")]
     public UnityEvent alSerEncontrado;
 
     // El JuegoManager lo activa solo mientras se está buscando.
@@ -36,10 +43,12 @@ public class PersonajeEncontrable : MonoBehaviour
 
     Transform cabeza, manoIzquierda, manoDerecha;
     Collider[] misColliders;
+    Rigidbody cuerpo;
     Vector3 escalaOriginal;
     float tiempoMirando;
+    Coroutine rutinaSalto;
 
-    static readonly int idBaseColor = Shader.PropertyToID("_BaseColor"); // URP
+    static readonly int idBaseColor = Shader.PropertyToID("_BaseColor"); // URP y shader toon
     static readonly int idColor = Shader.PropertyToID("_Color");         // Built-in
     Renderer[] misRenderers;
     Color[] coloresOriginales;
@@ -49,6 +58,7 @@ public class PersonajeEncontrable : MonoBehaviour
     void Awake()
     {
         escalaOriginal = transform.localScale;
+        cuerpo = GetComponentInChildren<Rigidbody>();
         misColliders = GetComponentsInChildren<Collider>();
         if (misColliders.Length == 0)
             Debug.LogWarning("PersonajeEncontrable: el personaje no tiene Collider, no se podrá encontrar mirándolo.", this);
@@ -98,14 +108,11 @@ public class PersonajeEncontrable : MonoBehaviour
         else
             tiempoMirando = Mathf.Max(0f, tiempoMirando - Time.deltaTime * 2f);
 
-        // Cambia de color apenas lo miras; el crecimiento va con el tiempo mirando.
+        // Cambia de color apenas lo miras.
         mezclaColor = Mathf.MoveTowards(mezclaColor, mirando ? 1f : 0f, Time.deltaTime * velocidadColor);
         AplicarColor(mezclaColor);
 
-        float progreso = Mathf.Clamp01(tiempoMirando / segundosMirando);
-        transform.localScale = escalaOriginal * (1f + crecimientoMaximo * progreso);
-
-        if (progreso >= 1f)
+        if (tiempoMirando >= segundosMirando)
             Encontrado();
     }
 
@@ -146,12 +153,64 @@ public class PersonajeEncontrable : MonoBehaviour
     {
         Activo = false;
         tiempoMirando = 0f;
+        if (rutinaSalto != null)
+            StopCoroutine(rutinaSalto);
+        rutinaSalto = StartCoroutine(SaltarALaMano());
+    }
+
+    IEnumerator SaltarALaMano()
+    {
+        Quieto();
+        Vector3 inicio = transform.position;
+        Quaternion rotacionInicio = transform.rotation;
+
+        float t = 0f;
+        while (t < 1f)
+        {
+            t = Mathf.Min(1f, t + Time.deltaTime / Mathf.Max(0.05f, duracionSalto));
+            float k = Mathf.SmoothStep(0f, 1f, t);
+            // El destino se recalcula cada cuadro: si mueves la mano, te sigue.
+            Vector3 destino = PuntoEnLaMano();
+            transform.position = Vector3.Lerp(inicio, destino, k) + Vector3.up * (Mathf.Sin(t * Mathf.PI) * alturaSalto);
+            transform.rotation = rotacionInicio * Quaternion.Euler(0f, 360f * k, 0f);
+            yield return null;
+        }
+
+        mezclaColor = 0f;
+        AplicarColor(0f);
+        rutinaSalto = null;
         alSerEncontrado.Invoke();
+    }
+
+    Vector3 PuntoEnLaMano()
+    {
+        bool manoVisible = OVRInput.GetControllerPositionTracked(OVRInput.Controller.RHand)
+                           || OVRInput.GetControllerPositionTracked(OVRInput.Controller.RTouch);
+        if (manoDerecha != null && manoVisible)
+            return manoDerecha.position + Vector3.up * alturaSobreMano;
+
+        // Si no se ve la mano derecha: frente al jugador, un poco a la derecha y abajo.
+        Vector3 frente = cabeza.forward; frente.y = 0f; frente.Normalize();
+        Vector3 derecha = Vector3.Cross(Vector3.up, frente);
+        return cabeza.position + frente * 0.4f + derecha * 0.15f + Vector3.down * 0.3f;
+    }
+
+    // Lo deja quieto (sin gravedad) mientras está escondido o saltando.
+    void Quieto()
+    {
+        if (cuerpo != null)
+            cuerpo.isKinematic = true;
     }
 
     // Deja el personaje como al principio para una nueva partida.
     public void Reiniciar()
     {
+        if (rutinaSalto != null)
+        {
+            StopCoroutine(rutinaSalto);
+            rutinaSalto = null;
+        }
+        Quieto();
         tiempoMirando = 0f;
         transform.localScale = escalaOriginal;
         mezclaColor = 0f;
