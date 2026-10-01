@@ -11,7 +11,12 @@ internal class KitMalla
     readonly List<Vector3> vertices = new List<Vector3>();
     readonly List<Vector3> normales = new List<Vector3>();
     readonly List<Color> colores = new List<Color>();
-    readonly List<Vector3> direcciones = new List<Vector3>();
+    readonly List<Vector4> direcciones = new List<Vector4>();
+
+    // Grosor relativo del contorno para las piezas que se agreguen (1 = normal, 0.5 = la mitad).
+    public float grosorContorno = 1f;
+
+    Vector4 Dir(Vector3 d, bool contorno) => contorno ? new Vector4(d.x, d.y, d.z, grosorContorno) : new Vector4(0f, 0f, 0f, grosorContorno);
     readonly List<int> triangulos = new List<int>();
 
     public int CantidadVertices => vertices.Count;
@@ -81,7 +86,7 @@ internal class KitMalla
             vertices.Add(p);
             normales.Add(normal);
             colores.Add(color);
-            direcciones.Add(contorno ? p - centroPieza : Vector3.zero);
+            direcciones.Add(Dir(p - centroPieza, contorno));
         }
         // Orden horario visto desde afuera (frente en Unity).
         triangulos.Add(i); triangulos.Add(i + 2); triangulos.Add(i + 1);
@@ -106,7 +111,7 @@ internal class KitMalla
             vertices.Add(p);
             normales.Add(n);
             colores.Add(color);
-            direcciones.Add(contorno ? p - centroPieza : Vector3.zero);
+            direcciones.Add(Dir(p - centroPieza, contorno));
         }
         triangulos.Add(i); triangulos.Add(i + 1); triangulos.Add(i + 2);
     }
@@ -152,7 +157,7 @@ internal class KitMalla
             vertices.Add(ps[k]);
             normales.Add(n);
             colores.Add(cs[k]);
-            direcciones.Add(Vector3.zero);
+            direcciones.Add(Dir(Vector3.zero, false));
         }
         triangulos.Add(i); triangulos.Add(i + 1); triangulos.Add(i + 2);
         triangulos.Add(i); triangulos.Add(i + 2); triangulos.Add(i + 3);

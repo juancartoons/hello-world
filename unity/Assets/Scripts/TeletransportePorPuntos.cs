@@ -94,7 +94,7 @@ public class TeletransportePorPuntos : MonoBehaviour
 
         PuntoTeletransporte punto = null;
         Vector3 fin = origen + direccion * 1.5f;
-        if (Physics.Raycast(origen, direccion, out RaycastHit hit, alcance, ~0, QueryTriggerInteraction.Ignore))
+        if (Physics.Raycast(origen, direccion, out RaycastHit hit, alcance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
         {
             punto = hit.collider.GetComponentInParent<PuntoTeletransporte>();
             fin = hit.point;

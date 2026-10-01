@@ -4,8 +4,12 @@ using TMPro;
 using Random = UnityEngine.Random;
 using Debug = UnityEngine.Debug;
 
-// El "director" del juego: esconde al personaje, cuenta el tiempo,
-// muestra el premio y reinicia solo para el siguiente jugador.
+// El "director" del juego:
+// 1. El jugador empieza AFUERA, frente a la entrada (ve el letrero y las instrucciones).
+// 2. Con una palmada entra a la farmacia y empieza a buscar.
+// 3. Al encontrar al personaje (o acabarse el tiempo) muestra el resultado.
+// 4. Con una palmada (en cualquier momento) vuelve a empezar desde afuera.
+// También ajusta la altura sola si el jugador está sentado.
 public class JuegoManager : MonoBehaviour
 {
     [Header("Referencias")]
@@ -22,11 +26,24 @@ public class JuegoManager : MonoBehaviour
     [Tooltip("Distancia (metros) a la que aparece el panel frente al jugador")]
     public float distanciaPanel = 1.2f;
 
+    [Header("Lugares")]
+    [Tooltip("Donde empieza el jugador: afuera, en el andén frente a la puerta")]
+    public Vector3 puntoAfuera = new Vector3(0f, 0f, -7.2f);
+    [Tooltip("Donde aparece al entrar a la farmacia")]
+    public Vector3 puntoAdentro = new Vector3(0f, 0f, -4f);
+
     [Header("Reglas")]
-    public float segundosIntro = 4f;
+    public float segundosIntro = 2.5f;
     public float segundosParaBuscar = 90f;
-    public float segundosAntesDeReiniciar = 20f;
+    [Tooltip("Si nadie da la palmada al terminar, vuelve solo a la entrada después de estos segundos")]
+    public float segundosParaVolverSolo = 60f;
     public string[] codigos = { "FARMA-7K2Q", "FARMA-3M8P", "FARMA-9T4X", "FARMA-5B1R", "FARMA-2H6W" };
+
+    [Header("Altura automática (sentado / de pie)")]
+    [Tooltip("Si los ojos están más abajo de esto (metros), se asume que la persona está sentada")]
+    public float alturaSentado = 1.25f;
+    [Tooltip("Altura de los ojos (metros) a la que se sube a quien está sentado")]
+    public float alturaObjetivo = 1.55f;
 
     [Header("Sonidos y efectos (opcionales)")]
     [Tooltip("Arrastra aquí el sonido del 'pío' (mp3/wav). Suena en 3D desde el personaje")]
@@ -36,15 +53,22 @@ public class JuegoManager : MonoBehaviour
     public AudioClip sonidoCelebracion;
     public ParticleSystem confeti;
 
+    enum Estado { Afuera, Entrando, Buscando, Terminado }
+
+    const string textoPalmada = "<size=45%>Da una palmada para empezar</size>";
+    const string textoOtraVez = "<size=40%>\nDa una palmada para jugar otra vez</size>";
+
+    OVRCameraRig rig;
     Transform cabeza;
     AudioSource fuentePersonaje;
     int ultimoEscondite = -1;
     float tiempoRestante;
-    bool buscando;
+    Estado estado;
+    Coroutine rutina;
 
     void Start()
     {
-        var rig = FindFirstObjectByType<OVRCameraRig>();
+        rig = FindFirstObjectByType<OVRCameraRig>();
         cabeza = rig != null ? rig.centerEyeAnchor : Camera.main != null ? Camera.main.transform : null;
 
         // El "pío" sale del personaje en 3D: se oye más fuerte al acercarse.
@@ -58,30 +82,62 @@ public class JuegoManager : MonoBehaviour
         fuentePersonaje.maxDistance = 15f;
 
         personaje.alSerEncontrado.AddListener(AlEncontrarlo);
-        StartCoroutine(NuevaPartida());
+
+        var palmadas = GetComponent<DetectorPalmadas>();
+        if (palmadas == null)
+            palmadas = gameObject.AddComponent<DetectorPalmadas>();
+        palmadas.AlAplaudir += AlAplaudir;
+
+        // Espera un momento a que el visor tenga la posición de la cabeza antes de ubicar al jugador.
+        Cambiar(EsperarYEmpezar());
     }
 
-    IEnumerator NuevaPartida()
+    IEnumerator EsperarYEmpezar()
     {
-        buscando = false;
+        yield return new WaitForSeconds(0.5f);
+        EmpezarAfuera();
+    }
+
+    // ---------- Flujo del juego ----------
+
+    void AlAplaudir()
+    {
+        if (estado == Estado.Afuera)
+            Cambiar(Entrar());
+        else if (estado != Estado.Entrando)
+            EmpezarAfuera();
+    }
+
+    void EmpezarAfuera()
+    {
+        Detener();
+        estado = Estado.Afuera;
         personaje.Activo = false;
         personaje.Reiniciar();
         EsconderPersonaje();
         if (textoTiempo != null) textoTiempo.text = "";
 
-        MostrarPanel("¡Encuentra al personaje escondido!", $"Tienes {Mathf.RoundToInt(segundosParaBuscar)} segundos");
+        MoverJugador(puntoAfuera);
+        MostrarPanel("¡Encuentra al personaje escondido!", textoPalmada);
+    }
+
+    IEnumerator Entrar()
+    {
+        estado = Estado.Entrando;
+        MoverJugador(puntoAdentro);
+        MostrarPanel("¡A buscar!", $"Tienes {Mathf.RoundToInt(segundosParaBuscar)} segundos");
         yield return new WaitForSeconds(segundosIntro);
         panel.SetActive(false);
 
         tiempoRestante = segundosParaBuscar;
-        buscando = true;
+        estado = Estado.Buscando;
         personaje.Activo = true;
         StartCoroutine(Pios());
     }
 
     void Update()
     {
-        if (!buscando)
+        if (estado != Estado.Buscando)
             return;
 
         tiempoRestante -= Time.deltaTime;
@@ -89,8 +145,82 @@ public class JuegoManager : MonoBehaviour
             textoTiempo.text = $"{Mathf.CeilToInt(Mathf.Max(0f, tiempoRestante))} s";
 
         if (tiempoRestante <= 0f)
-            SeAcaboElTiempo();
+            Terminar("¡Se acabó el tiempo!", "Inténtalo de nuevo" + textoOtraVez);
     }
+
+    void AlEncontrarlo()
+    {
+        string codigo = codigos.Length > 0 ? codigos[Random.Range(0, codigos.Length)] : "";
+        Terminar("¡Me encontraste!\nTu bono de descuento:", codigo + textoOtraVez);
+
+        if (confeti != null)
+        {
+            confeti.transform.position = personaje.transform.position;
+            confeti.Play();
+        }
+        if (sonidoCelebracion != null && cabeza != null)
+            AudioSource.PlayClipAtPoint(sonidoCelebracion, cabeza.position);
+    }
+
+    void Terminar(string titulo, string texto)
+    {
+        estado = Estado.Terminado;
+        personaje.Activo = false;
+        MostrarPanel(titulo, texto);
+        Cambiar(VolverSolo());
+    }
+
+    IEnumerator VolverSolo()
+    {
+        yield return new WaitForSeconds(segundosParaVolverSolo);
+        EmpezarAfuera();
+    }
+
+    void Cambiar(IEnumerator nueva)
+    {
+        Detener();
+        rutina = StartCoroutine(nueva);
+    }
+
+    void Detener()
+    {
+        if (rutina != null)
+            StopCoroutine(rutina);
+        rutina = null;
+    }
+
+    IEnumerator Pios()
+    {
+        while (estado == Estado.Buscando)
+        {
+            if (sonidoPio != null)
+                fuentePersonaje.PlayOneShot(sonidoPio);
+            yield return new WaitForSeconds(segundosEntrePios);
+        }
+    }
+
+    // ---------- Jugador ----------
+
+    // Mueve el rig para que la cabeza quede sobre "destino" y ajusta la altura (sentado / de pie).
+    void MoverJugador(Vector3 destino)
+    {
+        if (rig == null || cabeza == null)
+            return;
+        Vector3 delta = destino - cabeza.position;
+        delta.y = 0f;
+        rig.transform.position += delta;
+        AjustarAltura();
+    }
+
+    void AjustarAltura()
+    {
+        Vector3 p = rig.transform.position;
+        float alturaOjos = cabeza.position.y - p.y; // altura de los ojos sobre el piso real
+        p.y = alturaOjos < alturaSentado ? alturaObjetivo - alturaOjos : 0f;
+        rig.transform.position = p;
+    }
+
+    // ---------- Escondites ----------
 
     void EsconderPersonaje()
     {
@@ -112,7 +242,7 @@ public class JuegoManager : MonoBehaviour
     }
 
     // Baja (o sube) al personaje para que quede apoyado sobre lo que tenga debajo
-    // (piso, góndola, estante), sea del tamaño que sea.
+    // (piso o producto), sea del tamaño que sea.
     void ApoyarEnSuperficie()
     {
         var colliders = personaje.GetComponentsInChildren<Collider>();
@@ -126,7 +256,7 @@ public class JuegoManager : MonoBehaviour
 
         Vector3 origen = new Vector3(limites.center.x, limites.max.y + 0.05f, limites.center.z);
         float superficie = float.NegativeInfinity;
-        foreach (var hit in Physics.RaycastAll(origen, Vector3.down, 3f, ~0, QueryTriggerInteraction.Ignore))
+        foreach (var hit in Physics.RaycastAll(origen, Vector3.down, 3f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
         {
             if (hit.collider.transform.IsChildOf(personaje.transform))
                 continue;
@@ -138,46 +268,7 @@ public class JuegoManager : MonoBehaviour
             personaje.transform.position += Vector3.up * (superficie - limites.min.y);
     }
 
-    IEnumerator Pios()
-    {
-        while (buscando)
-        {
-            if (sonidoPio != null)
-                fuentePersonaje.PlayOneShot(sonidoPio);
-            yield return new WaitForSeconds(segundosEntrePios);
-        }
-    }
-
-    void AlEncontrarlo()
-    {
-        buscando = false;
-        string codigo = codigos.Length > 0 ? codigos[Random.Range(0, codigos.Length)] : "";
-
-        MostrarPanel("¡Me encontraste!\nTu bono de descuento:", codigo);
-        if (confeti != null)
-        {
-            confeti.transform.position = personaje.transform.position;
-            confeti.Play();
-        }
-        if (sonidoCelebracion != null && cabeza != null)
-            AudioSource.PlayClipAtPoint(sonidoCelebracion, cabeza.position);
-
-        StartCoroutine(ReiniciarDespues());
-    }
-
-    void SeAcaboElTiempo()
-    {
-        buscando = false;
-        personaje.Activo = false;
-        MostrarPanel("¡Se acabó el tiempo!", "Inténtalo de nuevo");
-        StartCoroutine(ReiniciarDespues());
-    }
-
-    IEnumerator ReiniciarDespues()
-    {
-        yield return new WaitForSeconds(segundosAntesDeReiniciar);
-        StartCoroutine(NuevaPartida());
-    }
+    // ---------- Panel ----------
 
     // Pone el panel frente al jugador, a la altura de sus ojos, mirándolo.
     void MostrarPanel(string titulo, string codigo)

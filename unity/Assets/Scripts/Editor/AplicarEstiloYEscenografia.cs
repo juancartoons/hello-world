@@ -32,8 +32,8 @@ public static class AplicarEstiloYEscenografia
         new Color(0.60f, 0.40f, 0.85f), new Color(0.95f, 0.50f, 0.70f), new Color(0.95f, 0.95f, 0.95f),
     };
 
-    // Sol: de dónde viene la luz (entra por la vitrina y las ventanas del lado este).
-    static readonly Vector3 rotacionSol = new Vector3(45f, -20f, 0f);
+    // Sol: viene del este (entra solo por la ventana de la derecha, cerca de la entrada).
+    static readonly Vector3 rotacionSol = new Vector3(40f, -80f, 0f);
 
     // Discos de teletransporte (40 cm): pasillos, frente y fondo.
     static readonly Vector3[] puntosTeletransporte = CrearPuntos();
@@ -194,11 +194,13 @@ public static class AplicarEstiloYEscenografia
         float baseAlto = 0.12f;
         float yBase = b.min.y + baseAlto;
 
-        // Zócalo del mueble, techo del mueble y tapas laterales
-        Estructura(new Vector3(b.center.x, b.min.y + baseAlto / 2f, b.center.z), new Vector3(b.size.x, baseAlto, b.size.z), azul);
+        // Zócalo del mueble un poco metido (como en los muebles reales): así ninguna cara coincide
+        // con las tapas laterales y no hay parpadeo. Las tapas van del piso hasta debajo del techo del mueble.
+        Estructura(new Vector3(b.center.x, b.min.y + baseAlto / 2f, b.center.z), new Vector3(b.size.x - 0.04f, baseAlto, b.size.z - 0.12f), azul);
         Estructura(new Vector3(b.center.x, b.max.y - 0.015f, b.center.z), new Vector3(b.size.x, 0.03f, b.size.z), blanco);
-        Estructura(new Vector3(b.center.x, b.center.y, b.min.z + 0.02f), new Vector3(b.size.x, b.size.y, 0.04f), blanco);
-        Estructura(new Vector3(b.center.x, b.center.y, b.max.z - 0.02f), new Vector3(b.size.x, b.size.y, 0.04f), blanco);
+        float altoTapa = b.size.y - 0.03f;
+        Estructura(new Vector3(b.center.x, b.min.y + altoTapa / 2f, b.min.z + 0.02f), new Vector3(b.size.x, altoTapa, 0.04f), blanco);
+        Estructura(new Vector3(b.center.x, b.min.y + altoTapa / 2f, b.max.z - 0.02f), new Vector3(b.size.x, altoTapa, 0.04f), blanco);
 
         // Panel trasero
         var lados = new List<int>();
@@ -253,7 +255,9 @@ public static class AplicarEstiloYEscenografia
                     float xCentro = xFrente - lado * (0.015f + fondo / 2f);
                     Vector3 centro = new Vector3(xCentro, ySuelo + alto / 2f, z + ancho / 2f);
                     Vector3 tam = new Vector3(fondo, alto, ancho);
+                    kit.grosorContorno = 0.5f; // contorno más delgado en los productos
                     kit.Caja(centro, tam, color);
+                    kit.grosorContorno = 1f;
 
                     Color etiqueta = color.r > 0.9f && color.g > 0.9f && color.b > 0.9f ? azul : blanco;
                     Vector3 cara = new Vector3(xCentro + lado * (fondo / 2f + 0.002f), ySuelo + alto * 0.55f, centro.z);
@@ -346,6 +350,15 @@ public static class AplicarEstiloYEscenografia
         kit.Caja(new Vector3(-1.35f, 2.35f, 4.83f), new Vector3(0.36f, 0.12f, 0.03f), verde);
         kit.Caja(new Vector3(-1.35f, 2.35f, 4.83f), new Vector3(0.12f, 0.36f, 0.03f), verde);
 
+        // Letrero exterior sobre la vitrina (con cruz verde) y tablero de instrucciones en el andén
+        kit.CajaMinMax(new Vector3(-3.2f, 2.55f, -5.23f), new Vector3(3.2f, 3.05f, -5.13f), azul);
+        kit.Caja(new Vector3(-2.75f, 2.8f, -5.245f), new Vector3(0.34f, 0.11f, 0.03f), verde);
+        kit.Caja(new Vector3(-2.75f, 2.8f, -5.245f), new Vector3(0.11f, 0.34f, 0.03f), verde);
+        kit.Caja(new Vector3(1.8f, 1.35f, -6.1f), new Vector3(1.0f, 0.72f, 0.04f), blanco);
+        kit.Caja(new Vector3(1.8f, 1.6f, -6.123f), new Vector3(0.98f, 0.18f, 0.006f), azul, false);
+        kit.Caja(new Vector3(1.4f, 0.5f, -6.1f), new Vector3(0.05f, 1.0f, 0.05f), grisOscuro);
+        kit.Caja(new Vector3(2.2f, 0.5f, -6.1f), new Vector3(0.05f, 1.0f, 0.05f), grisOscuro);
+
         // Letreros colgantes de pasillo
         float[] xs = { -3.6f, -1.25f, 1.25f, 3.6f };
         string[] textos = { "Cuidado personal", "Medicamentos", "Bebé y mamá", "Vitaminas" };
@@ -364,7 +377,12 @@ public static class AplicarEstiloYEscenografia
         }
         var contenedor = new GameObject("Letreros");
         contenedor.transform.SetParent(raiz, false);
-        Texto(contenedor.transform, "FARMACIA", new Vector3(0.25f, 2.35f, 4.835f), new Vector2(2.6f, 0.5f), azul);
+        Texto(contenedor.transform, "Farma-CIA Agencia", new Vector3(0.25f, 2.35f, 4.835f), new Vector2(2.6f, 0.5f), azul);
+
+        // Afuera: letrero grande sobre la entrada y tablero de instrucciones junto a la puerta.
+        Texto(contenedor.transform, "Farma-CIA Agencia", new Vector3(0.3f, 2.8f, -5.235f), new Vector2(5.0f, 0.4f), Color.white);
+        Texto(contenedor.transform, "¡Encuentra al personaje escondido!", new Vector3(1.8f, 1.6f, -6.13f), new Vector2(0.9f, 0.12f), Color.white);
+        Texto(contenedor.transform, "Da una palmada para empezar.\nAdentro, búscalo con la mirada.", new Vector3(1.8f, 1.28f, -6.128f), new Vector2(0.88f, 0.36f), azul);
         for (int i = 0; i < xs.Length; i++)
             Texto(contenedor.transform, textos[i], new Vector3(xs[i], 2.55f, -2.425f), new Vector2(1.1f, 0.24f), Color.white);
         return true;

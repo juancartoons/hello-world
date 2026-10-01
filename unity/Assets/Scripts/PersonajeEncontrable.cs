@@ -176,7 +176,7 @@ public class PersonajeEncontrable : MonoBehaviour
         Vector3 hacia = punto - cabeza.position;
         float distancia = hacia.magnitude;
         // Los triggers se ignoran para que las manos u otros objetos invisibles no bloqueen la mirada.
-        if (!Physics.Raycast(cabeza.position, hacia / distancia, out RaycastHit hit, distancia, ~0, QueryTriggerInteraction.Ignore))
+        if (!Physics.Raycast(cabeza.position, hacia / distancia, out RaycastHit hit, distancia, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
             return true;
         // Lo que esté pegado al personaje (el producto donde está apoyado) no cuenta como estorbo.
         return hit.transform == transform || hit.transform.IsChildOf(transform) || hit.distance > distancia - 0.2f;
@@ -256,8 +256,17 @@ public class PersonajeEncontrable : MonoBehaviour
         alSerEncontrado.Invoke();
     }
 
+    OVRSkeleton esqueletoDerecho;
+
     Vector3 PuntoEnLaMano()
     {
+        // Mejor caso: justo encima de la palma de la mano derecha.
+        if (esqueletoDerecho == null)
+            esqueletoDerecho = ManosUtil.BuscarEnAncla<OVRSkeleton>(manoDerecha);
+        var palma = ManosUtil.LeerPalma(esqueletoDerecho, false);
+        if (palma.valida && OVRInput.GetControllerPositionTracked(OVRInput.Controller.RHand))
+            return palma.centro + palma.normal * (Limites().extents.y + 0.03f);
+
         bool manoVisible = OVRInput.GetControllerPositionTracked(OVRInput.Controller.RHand)
                            || OVRInput.GetControllerPositionTracked(OVRInput.Controller.RTouch);
         if (manoDerecha != null && manoVisible)

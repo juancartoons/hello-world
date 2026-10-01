@@ -84,14 +84,9 @@ internal static class FachadaYExterior
         fachada.CajaMinMax(new Vector3(-5.25f, 3.1f, -5.25f), new Vector3(5.25f, 3.25f, 5.25f), grisClaro);
         fachada.CajaMinMax(new Vector3(-0.7f, -0.12f, -5.1f), new Vector3(0.7f, 0f, -4.9f), acera, false);
 
-        // Sol entrando por las ventanas que le dan a la luz.
-        foreach (var h in sur)
-            SolPorHueco(luz, false, -4.9f, h, dirLuz);
+        // Sol entrando solo por la ventana grande de la derecha (pared este, cerca de la entrada).
         foreach (var h in lados)
-        {
             SolPorHueco(luz, true, 4.9f, h, dirLuz);
-            SolPorHueco(luz, true, -4.9f, h, dirLuz);
-        }
 
         fachada.CrearObjeto("Kit_Fachada", raiz, matKit, carpeta);
         vidrio.CrearObjeto("Vidrios", raiz, matVidrio, carpeta);

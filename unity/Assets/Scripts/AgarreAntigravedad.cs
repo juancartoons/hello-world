@@ -1,67 +1,75 @@
 using UnityEngine;
 
-// El personaje como "juguete en gravedad cero", una vez que ya lo encontraste:
-// - Flota esperando cerca de ti, moviéndose suavecito.
-// - Lo agarras pellizcando (pulgar + índice) cerca de él, o con el botón de agarre del control.
-// - Al soltarlo sale con la velocidad de tu mano y flota como en el espacio: sin gravedad,
-//   frenando poco a poco, girando y rebotando en paredes y góndolas.
-// - A los pocos segundos regresa hacia ti haciendo una curva, como un bumerán.
+// El personaje como "juguete en gravedad cero", una vez que ya lo encontraste.
+// Se maneja como un objeto real, con las manos:
+// - Las manos son sólidas: si lo tocas o le das un manotazo, lo empujas (no lo traspasas).
+// - Para agarrarlo: cierra la mano alrededor de él, como agarrando una pelota.
+// - Para sostenerlo: pon la mano abierta con la palma hacia arriba debajo de él y se queda encima.
+// - Al soltarlo flota suave (sin gravedad), frena rápido y luego vuelve hacia ti como un bumerán.
 [RequireComponent(typeof(Rigidbody))]
 public class AgarreAntigravedad : MonoBehaviour
 {
-    [Header("Agarrar")]
-    [Tooltip("Distancia (metros) entre el pellizco y el personaje para poder agarrarlo")]
-    public float distanciaAgarre = 0.18f;
+    [Header("Agarrar como objeto real")]
+    [Tooltip("Qué tan cerrada debe estar la mano para agarrarlo (más bajo = más cerrada)")]
+    public float cierreParaAgarrar = 1.3f;
+    [Tooltip("Qué tan abierta debe estar la mano para soltarlo")]
+    public float cierreParaSoltar = 1.5f;
+    [Tooltip("Distancia extra (metros) entre la palma y el personaje para poder agarrarlo")]
+    public float margenAgarre = 0.07f;
 
-    [Header("Flotar como en el espacio")]
-    [Tooltip("Qué tanto frena al flotar. Poquito = se va lejos")]
-    public float frenoLineal = 0.35f;
-    public float frenoGiro = 0.2f;
+    [Header("Flotar (suave)")]
+    [Tooltip("Qué tanto frena al flotar. Más alto = no se va lejos")]
+    public float frenoLineal = 1.2f;
+    public float frenoGiro = 0.8f;
     [Tooltip("Multiplica la velocidad de tu mano al soltarlo")]
-    public float fuerzaLanzamiento = 1.2f;
-    public float velocidadMaxima = 6f;
+    public float fuerzaLanzamiento = 0.6f;
+    public float velocidadMaxima = 2.5f;
     [Tooltip("Qué tanto rebota al chocar (0 a 1)")]
-    public float rebote = 0.7f;
+    public float rebote = 0.5f;
 
     [Header("Regreso tipo bumerán")]
-    public float segundosAntesDeRegresar = 2.5f;
-    [Tooltip("Fuerza con la que vuelve hacia ti")]
-    public float fuerzaRegreso = 5f;
-    [Tooltip("Qué tanto se curva el regreso hacia un lado")]
-    public float curvaBumeran = 1.5f;
+    public float segundosAntesDeRegresar = 2f;
+    public float fuerzaRegreso = 4f;
+    public float curvaBumeran = 0.8f;
 
     [Header("Mientras flota esperando")]
+    [Tooltip("Qué tan firme se queda en su sitio cuando nadie lo toca")]
+    public float fuerzaEspera = 6f;
     public float amplitudFlote = 0.015f;
     public float velocidadFlote = 1.5f;
-    public float giroFlote = 25f;
+    public float giroFlote = 0.4f;
 
-    enum Estado { Apagado, Esperando, Agarrado, Libre, Regresando }
+    [Header("Manos sólidas")]
+    public float radioPalma = 0.04f;
+    public float radioDedo = 0.011f;
+
+    enum Estado { Apagado, Flotando, EnPalma, Agarrado, Libre, Regresando }
+
+    static readonly string[] puntas = { "ThumbTip", "IndexTip", "MiddleTip", "RingTip", "PinkyTip", "LittleTip" };
 
     class Mano
     {
-        public Transform ancla;
-        public Transform anclaControl;
+        public bool esIzquierda;
+        public Transform ancla, anclaControl;
         public OVRInput.Controller control;
         public OVRHand hand;
         public OVRSkeleton esqueleto;
-        public bool agarrandoAntes;
+        public ManosUtil.Palma palma;
+        public bool cerradaAntes;
+        public Vector3 posicionAnterior, velocidad;
+        public Rigidbody[] solidos;    // [0] = palma, [1..] = puntas de los dedos
+        public Collider[] colliders;
+        public float ignorarHasta;
     }
 
     Estado estado = Estado.Apagado;
     Rigidbody cuerpo;
     Collider[] misColliders;
     Transform cabeza;
-    Mano izquierda, derecha, manoQueAgarra;
-    Vector3 posicionAgarre;
+    Mano izquierda, derecha, manoActiva;
+    Vector3 offsetLocal, puntoEspera;
     Quaternion rotacionRelativa;
-    Vector3 puntoEspera;
-    float tiempoEstado, ladoCurva = 1f;
-
-    readonly Vector3[] historial = new Vector3[8];
-    readonly float[] tiempos = new float[8];
-    int indiceHistorial;
-
-    public bool Activo => estado != Estado.Apagado;
+    float tiempoEstado, ladoCurva = 1f, mitad = 0.05f;
 
     void Awake()
     {
@@ -75,122 +83,330 @@ public class AgarreAntigravedad : MonoBehaviour
         if (rig == null)
             return;
         cabeza = rig.centerEyeAnchor;
-        izquierda = CrearMano(rig.leftHandAnchor, rig.leftControllerAnchor, OVRInput.Controller.LTouch);
-        derecha = CrearMano(rig.rightHandAnchor, rig.rightControllerAnchor, OVRInput.Controller.RTouch);
+        izquierda = CrearMano(true, rig.leftHandAnchor, rig.leftControllerAnchor, OVRInput.Controller.LTouch);
+        derecha = CrearMano(false, rig.rightHandAnchor, rig.rightControllerAnchor, OVRInput.Controller.RTouch);
 
-        // Material físico rebotón y sin fricción, como en el espacio.
         var material = new PhysicsMaterial("Antigravedad")
         {
             bounciness = rebote,
-            dynamicFriction = 0.05f,
-            staticFriction = 0.05f,
+            dynamicFriction = 0.2f,
+            staticFriction = 0.2f,
             bounceCombine = PhysicsMaterialCombine.Maximum,
-            frictionCombine = PhysicsMaterialCombine.Minimum,
+            frictionCombine = PhysicsMaterialCombine.Average,
         };
         foreach (var c in misColliders)
             c.sharedMaterial = material;
+
+        Bounds b = misColliders.Length > 0 ? misColliders[0].bounds : new Bounds(transform.position, Vector3.one * 0.1f);
+        mitad = Mathf.Max(b.extents.x, Mathf.Max(b.extents.y, b.extents.z));
     }
 
-    Mano CrearMano(Transform ancla, Transform anclaControl, OVRInput.Controller control)
+    Mano CrearMano(bool esIzquierda, Transform ancla, Transform anclaControl, OVRInput.Controller control)
     {
-        return new Mano
+        var m = new Mano
         {
+            esIzquierda = esIzquierda,
             ancla = ancla,
             anclaControl = anclaControl,
             control = control,
             hand = ManosUtil.BuscarEnAncla<OVRHand>(ancla),
             esqueleto = ManosUtil.BuscarEnAncla<OVRSkeleton>(ancla),
+            solidos = new Rigidbody[6],
+            colliders = new Collider[6],
         };
+        // Esferas invisibles que siguen la palma y las puntas de los dedos, para que la mano empuje.
+        for (int i = 0; i < 6; i++)
+        {
+            var go = new GameObject($"ManoSolida_{(esIzquierda ? "I" : "D")}_{i}");
+            go.layer = 2; // "Ignore Raycast": empuja al personaje pero no tapa la mirada ni el dedo que señala
+            var rb = go.AddComponent<Rigidbody>();
+            rb.isKinematic = true;
+            rb.useGravity = false;
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+            var esfera = go.AddComponent<SphereCollider>();
+            esfera.radius = i == 0 ? radioPalma : radioDedo;
+            m.solidos[i] = rb;
+            m.colliders[i] = esfera;
+            go.transform.position = Vector3.down * 100f;
+        }
+        return m;
     }
 
     // Lo llama PersonajeEncontrable cuando llega a la mano.
     public void Activar()
     {
         puntoEspera = transform.position;
-        CambiarEstado(Estado.Esperando);
+        Cambiar(Estado.Flotando);
     }
 
     // Lo llama PersonajeEncontrable al reiniciar la partida.
     public void Desactivar()
     {
-        CambiarEstado(Estado.Apagado);
+        Cambiar(Estado.Apagado);
     }
 
-    void CambiarEstado(Estado nuevo)
+    void Cambiar(Estado nuevo)
     {
         estado = nuevo;
         tiempoEstado = 0f;
-        bool fisica = nuevo == Estado.Libre || nuevo == Estado.Regresando;
+        bool fisica = nuevo == Estado.Flotando || nuevo == Estado.Libre || nuevo == Estado.Regresando;
         cuerpo.isKinematic = !fisica;
         cuerpo.useGravity = false;
         cuerpo.interpolation = fisica ? RigidbodyInterpolation.Interpolate : RigidbodyInterpolation.None;
-        cuerpo.collisionDetectionMode = fisica ? CollisionDetectionMode.ContinuousDynamic : CollisionDetectionMode.Discrete;
+        cuerpo.collisionDetectionMode = fisica ? CollisionDetectionMode.ContinuousSpeculative : CollisionDetectionMode.Discrete;
         cuerpo.linearDamping = frenoLineal;
         cuerpo.angularDamping = frenoGiro;
-        if (nuevo != Estado.Agarrado)
-            manoQueAgarra = null;
+        if (nuevo != Estado.Agarrado && nuevo != Estado.EnPalma)
+            manoActiva = null;
     }
 
     void Update()
     {
-        if (estado == Estado.Apagado || cabeza == null)
+        if (cabeza == null)
+            return;
+        LeerMano(izquierda);
+        LeerMano(derecha);
+        if (estado == Estado.Apagado)
             return;
         tiempoEstado += Time.deltaTime;
 
-        if (estado == Estado.Agarrado)
+        switch (estado)
         {
-            SeguirMano();
-            if (!EstaAgarrando(manoQueAgarra))
-                Soltar();
-            ActualizarPellizcoAnterior();
-            return;
+            case Estado.Agarrado:
+                SeguirAgarre();
+                break;
+            case Estado.EnPalma:
+                SeguirPalma();
+                break;
+            default:
+                if (!IntentarTomar(izquierda) && !IntentarTomar(derecha) && estado == Estado.Libre && tiempoEstado > segundosAntesDeRegresar)
+                {
+                    ladoCurva = Random.value < 0.5f ? -1f : 1f;
+                    Cambiar(Estado.Regresando);
+                }
+                break;
         }
 
-        // Se puede agarrar mientras espera, flota o regresa.
-        var mano = ManoQueEmpiezaAAgarrar(izquierda) ?? ManoQueEmpiezaAAgarrar(derecha);
-        ActualizarPellizcoAnterior();
-        if (mano != null)
-        {
-            Agarrar(mano);
-            return;
-        }
-
-        if (estado == Estado.Esperando)
-        {
-            float y = Mathf.Sin(Time.time * velocidadFlote) * amplitudFlote;
-            transform.position = puntoEspera + Vector3.up * y;
-            transform.Rotate(Vector3.up, giroFlote * Time.deltaTime, Space.World);
-        }
-        else if (estado == Estado.Libre)
-        {
-            if (tiempoEstado > segundosAntesDeRegresar)
-            {
-                ladoCurva = Random.value < 0.5f ? -1f : 1f;
-                CambiarEstado(Estado.Regresando);
-            }
-        }
+        if (izquierda != null) izquierda.cerradaAntes = EstaCerrada(izquierda);
+        if (derecha != null) derecha.cerradaAntes = EstaCerrada(derecha);
     }
 
     void FixedUpdate()
     {
-        if (estado != Estado.Regresando || cabeza == null)
+        MoverSolidos(izquierda);
+        MoverSolidos(derecha);
+        if (cabeza == null)
             return;
 
-        Vector3 casa = PuntoCasa();
-        Vector3 hacia = casa - cuerpo.position;
-        float distancia = hacia.magnitude;
-
-        // Resorte hacia ti + curva lateral que se apaga al llegar (efecto bumerán).
-        Vector3 fuerza = hacia * fuerzaRegreso - cuerpo.linearVelocity * (2f * Mathf.Sqrt(fuerzaRegreso) * 0.8f);
-        if (distancia > 0.01f)
-            fuerza += Vector3.Cross(Vector3.up, hacia / distancia) * (curvaBumeran * ladoCurva * Mathf.Clamp01(distancia / 2f));
-        cuerpo.AddForce(fuerza, ForceMode.Acceleration);
-
-        if (distancia < 0.06f && cuerpo.linearVelocity.magnitude < 0.25f)
+        if (estado == Estado.Flotando)
         {
-            puntoEspera = cuerpo.position;
-            CambiarEstado(Estado.Esperando);
+            // Se queda en su sitio con un resorte suave (si lo empujan, cede y vuelve).
+            Vector3 objetivo = puntoEspera + Vector3.up * (Mathf.Sin(Time.time * velocidadFlote) * amplitudFlote);
+            Vector3 fuerza = (objetivo - cuerpo.position) * fuerzaEspera - cuerpo.linearVelocity * (2f * Mathf.Sqrt(fuerzaEspera));
+            cuerpo.AddForce(fuerza, ForceMode.Acceleration);
+            cuerpo.angularVelocity = Vector3.Lerp(cuerpo.angularVelocity, Vector3.up * giroFlote, Time.fixedDeltaTime * 2f);
         }
+        else if (estado == Estado.Regresando)
+        {
+            Vector3 hacia = PuntoCasa() - cuerpo.position;
+            float distancia = hacia.magnitude;
+            Vector3 fuerza = hacia * fuerzaRegreso - cuerpo.linearVelocity * (2f * Mathf.Sqrt(fuerzaRegreso) * 0.8f);
+            if (distancia > 0.01f)
+                fuerza += Vector3.Cross(Vector3.up, hacia / distancia) * (curvaBumeran * ladoCurva * Mathf.Clamp01(distancia / 2f));
+            cuerpo.AddForce(fuerza, ForceMode.Acceleration);
+            if (distancia < 0.06f && cuerpo.linearVelocity.magnitude < 0.25f)
+            {
+                puntoEspera = cuerpo.position;
+                Cambiar(Estado.Flotando);
+            }
+        }
+    }
+
+    // Un manotazo mientras flota lo suelta para que siga moviéndose y luego regrese.
+    void OnCollisionEnter(Collision choque)
+    {
+        if (estado == Estado.Flotando && EsDeUnaMano(choque.collider))
+            Cambiar(Estado.Libre);
+    }
+
+    // ---------- Manos ----------
+
+    void LeerMano(Mano m)
+    {
+        if (m == null)
+            return;
+        if (m.esqueleto == null)
+            m.esqueleto = ManosUtil.BuscarEnAncla<OVRSkeleton>(m.ancla);
+        bool rastreada = m.hand != null && m.hand.IsTracked;
+        m.palma = rastreada ? ManosUtil.LeerPalma(m.esqueleto, m.esIzquierda) : default;
+
+        Vector3 pos = PuntoDeMano(m);
+        if (Time.deltaTime > 0f)
+            m.velocidad = Vector3.Lerp(m.velocidad, (pos - m.posicionAnterior) / Time.deltaTime, 0.5f);
+        m.posicionAnterior = pos;
+    }
+
+    bool ConControl(Mano m) => (OVRInput.GetActiveController() & m.control) != 0 && m.anclaControl != null;
+
+    Vector3 PuntoDeMano(Mano m)
+    {
+        if (ConControl(m)) return m.anclaControl.position;
+        if (m.palma.valida) return m.palma.centro;
+        return m.ancla != null ? m.ancla.position : Vector3.zero;
+    }
+
+    bool EstaCerrada(Mano m)
+    {
+        if (m == null)
+            return false;
+        if (ConControl(m))
+            return OVRInput.Get(OVRInput.Button.PrimaryHandTrigger, m.control);
+        if (!m.palma.valida)
+            return false;
+        return m.palma.cierre < (m.cerradaAntes ? cierreParaSoltar : cierreParaAgarrar);
+    }
+
+    bool EsDeUnaMano(Collider c)
+    {
+        foreach (var m in new[] { izquierda, derecha })
+            if (m != null)
+                foreach (var col in m.colliders)
+                    if (col == c)
+                        return true;
+        return false;
+    }
+
+    void MoverSolidos(Mano m)
+    {
+        if (m == null)
+            return;
+        bool rastreada = (m.hand != null && m.hand.IsTracked) || ConControl(m);
+        for (int i = 0; i < m.solidos.Length; i++)
+        {
+            Vector3 destino = Vector3.down * 100f;
+            if (rastreada)
+            {
+                if (i == 0)
+                    destino = PuntoDeMano(m);
+                else if (!ConControl(m))
+                {
+                    var punta = ManosUtil.Hueso(m.esqueleto, puntas[i == 5 ? 4 : i - 1], i == 5 ? puntas[5] : puntas[i - 1]);
+                    if (punta != null) destino = punta.position;
+                }
+            }
+            m.solidos[i].MovePosition(destino);
+        }
+    }
+
+    void IgnorarMano(Mano m, bool ignorar)
+    {
+        if (m == null)
+            return;
+        foreach (var c in m.colliders)
+            foreach (var mio in misColliders)
+                if (c != null && mio != null)
+                    Physics.IgnoreCollision(c, mio, ignorar);
+    }
+
+    // ---------- Tomar, sostener y soltar ----------
+
+    bool IntentarTomar(Mano m)
+    {
+        if (m == null)
+            return false;
+        Vector3 punto = PuntoDeMano(m);
+        float distancia = Vector3.Distance(punto, cuerpo.position);
+
+        // Agarrar: la mano se cierra cerca de él (como una pelota).
+        bool cerrada = EstaCerrada(m);
+        if (cerrada && !m.cerradaAntes && distancia < mitad + margenAgarre)
+        {
+            Tomar(m, Estado.Agarrado);
+            return true;
+        }
+
+        // Sostener: mano abierta con la palma hacia arriba, justo debajo de él.
+        if (m.palma.valida && !cerrada && m.palma.normal.y > 0.75f && m.palma.cierre > 1.45f)
+        {
+            Vector3 rel = cuerpo.position - m.palma.centro;
+            float vertical = Vector3.Dot(rel, m.palma.normal);
+            float horizontal = (rel - m.palma.normal * vertical).magnitude;
+            if (vertical > 0f && vertical < mitad + 0.12f && horizontal < 0.08f)
+            {
+                Tomar(m, Estado.EnPalma);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void Tomar(Mano m, Estado nuevo)
+    {
+        Cambiar(nuevo);
+        manoActiva = m;
+        IgnorarMano(m, true);
+        Quaternion rotMano = RotacionMano(m);
+        offsetLocal = Quaternion.Inverse(rotMano) * (transform.position - PuntoDeMano(m));
+        rotacionRelativa = Quaternion.Inverse(rotMano) * transform.rotation;
+    }
+
+    Quaternion RotacionMano(Mano m)
+    {
+        if (ConControl(m)) return m.anclaControl.rotation;
+        return m.ancla != null ? m.ancla.rotation : Quaternion.identity;
+    }
+
+    void SeguirAgarre()
+    {
+        var m = manoActiva;
+        if (m == null || !EstaCerrada(m))
+        {
+            Soltar(fuerzaLanzamiento);
+            return;
+        }
+        Quaternion rotMano = RotacionMano(m);
+        transform.position = PuntoDeMano(m) + rotMano * offsetLocal;
+        transform.rotation = rotMano * rotacionRelativa;
+    }
+
+    void SeguirPalma()
+    {
+        var m = manoActiva;
+        if (m == null || !m.palma.valida || m.palma.normal.y < 0.45f)
+        {
+            Soltar(0.5f); // se resbala de la mano
+            return;
+        }
+        if (EstaCerrada(m) && !m.cerradaAntes)
+        {
+            Tomar(m, Estado.Agarrado); // cerró la mano con él encima
+            return;
+        }
+        Vector3 objetivo = m.palma.centro + m.palma.normal * (mitad + 0.012f);
+        transform.position = Vector3.Lerp(transform.position, objetivo, Time.deltaTime * 20f);
+    }
+
+    void Soltar(float factor)
+    {
+        var m = manoActiva;
+        Vector3 velocidad = m != null ? Vector3.ClampMagnitude(m.velocidad * factor, velocidadMaxima) : Vector3.zero;
+        Cambiar(Estado.Libre);
+        cuerpo.linearVelocity = velocidad;
+        cuerpo.angularVelocity = Random.onUnitSphere * Mathf.Lerp(0.5f, 3f, velocidad.magnitude / velocidadMaxima);
+        if (m != null)
+        {
+            m.ignorarHasta = Time.time + 0.4f;
+            StartCoroutine(VolverAChocar(m));
+        }
+    }
+
+    // Después de soltarlo, la mano vuelve a ser sólida para él (así no sale disparado al soltarlo).
+    System.Collections.IEnumerator VolverAChocar(Mano m)
+    {
+        while (Time.time < m.ignorarHasta)
+            yield return null;
+        if (manoActiva != m)
+            IgnorarMano(m, false);
     }
 
     // Donde vuelve a esperarte: al frente, un poco a la derecha y a la altura del pecho.
@@ -201,96 +417,12 @@ public class AgarreAntigravedad : MonoBehaviour
         return cabeza.position + frente * 0.45f + derechaPlana * 0.15f + Vector3.down * 0.25f;
     }
 
-    // ---------- Agarrar y soltar ----------
-
-    Mano ManoQueEmpiezaAAgarrar(Mano m)
+    void OnDestroy()
     {
-        if (m == null)
-            return null;
-        bool agarrando = EstaAgarrando(m);
-        if (!agarrando || m.agarrandoAntes)
-            return null; // solo cuenta el momento en que empieza a pellizcar
-        return DistanciaA(PuntoDeAgarre(m)) <= distanciaAgarre ? m : null;
-    }
-
-    void ActualizarPellizcoAnterior()
-    {
-        if (izquierda != null) izquierda.agarrandoAntes = EstaAgarrando(izquierda);
-        if (derecha != null) derecha.agarrandoAntes = EstaAgarrando(derecha);
-    }
-
-    bool EstaAgarrando(Mano m)
-    {
-        if (m == null)
-            return false;
-        if ((OVRInput.GetActiveController() & m.control) != 0)
-            return OVRInput.Get(OVRInput.Button.PrimaryHandTrigger, m.control);
-        if (m.hand == null || !m.hand.IsTracked)
-            return false;
-        float fuerza = m.hand.GetFingerPinchStrength(OVRHand.HandFinger.Index);
-        // Umbral distinto para empezar y para soltar, así no se suelta solo por temblor.
-        return m.agarrandoAntes ? fuerza > 0.4f : fuerza > 0.75f;
-    }
-
-    Vector3 PuntoDeAgarre(Mano m)
-    {
-        if ((OVRInput.GetActiveController() & m.control) != 0 && m.anclaControl != null)
-            return m.anclaControl.position;
-        if (m.esqueleto == null)
-            m.esqueleto = ManosUtil.BuscarEnAncla<OVRSkeleton>(m.ancla);
-        return ManosUtil.PuntoDePellizco(m.esqueleto, m.ancla);
-    }
-
-    Quaternion RotacionMano(Mano m)
-    {
-        if ((OVRInput.GetActiveController() & m.control) != 0 && m.anclaControl != null)
-            return m.anclaControl.rotation;
-        return m.ancla != null ? m.ancla.rotation : Quaternion.identity;
-    }
-
-    float DistanciaA(Vector3 punto)
-    {
-        float mejor = Vector3.Distance(punto, transform.position);
-        foreach (var c in misColliders)
-            if (c != null && c.enabled)
-                mejor = Mathf.Min(mejor, Vector3.Distance(c.ClosestPoint(punto), punto));
-        return mejor;
-    }
-
-    void Agarrar(Mano m)
-    {
-        CambiarEstado(Estado.Agarrado);
-        manoQueAgarra = m;
-        posicionAgarre = transform.position - PuntoDeAgarre(m);
-        rotacionRelativa = Quaternion.Inverse(RotacionMano(m)) * transform.rotation;
-        for (int i = 0; i < historial.Length; i++)
-        {
-            historial[i] = transform.position;
-            tiempos[i] = Time.time;
-        }
-    }
-
-    void SeguirMano()
-    {
-        transform.position = PuntoDeAgarre(manoQueAgarra) + posicionAgarre * 0.9f;
-        posicionAgarre *= 0.9f; // se va centrando en el pellizco
-        transform.rotation = RotacionMano(manoQueAgarra) * rotacionRelativa;
-
-        indiceHistorial = (indiceHistorial + 1) % historial.Length;
-        historial[indiceHistorial] = transform.position;
-        tiempos[indiceHistorial] = Time.time;
-    }
-
-    void Soltar()
-    {
-        // Velocidad de la mano en los últimos cuadros.
-        int masViejo = (indiceHistorial + 1) % historial.Length;
-        float dt = Mathf.Max(0.01f, tiempos[indiceHistorial] - tiempos[masViejo]);
-        Vector3 velocidad = (historial[indiceHistorial] - historial[masViejo]) / dt * fuerzaLanzamiento;
-        velocidad = Vector3.ClampMagnitude(velocidad, velocidadMaxima);
-
-        CambiarEstado(Estado.Libre);
-        cuerpo.linearVelocity = velocidad;
-        cuerpo.angularVelocity = Random.onUnitSphere * Mathf.Lerp(1f, 6f, velocidad.magnitude / velocidadMaxima);
+        foreach (var m in new[] { izquierda, derecha })
+            if (m != null)
+                foreach (var rb in m.solidos)
+                    if (rb != null)
+                        Destroy(rb.gameObject);
     }
 }

@@ -24,7 +24,7 @@ struct Attributes
     float4 positionOS : POSITION;
     float3 normalOS   : NORMAL;
     float4 color      : COLOR;
-    float3 outlineDir : TEXCOORD3; // dirección del contorno (mallas generadas por FarmaciaVR)
+    float4 outlineDir : TEXCOORD3; // xyz: dirección del contorno, w: grosor relativo (mallas generadas por FarmaciaVR)
     UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
@@ -73,8 +73,12 @@ VaryingsBorde BordeVert(Attributes v)
     // Modo 0: normales (formas suaves). Modo 1: caja (desde el centro del objeto).
     // Modo 2: dirección guardada en la malla (UV3), para las mallas generadas.
     float3 dirOS = v.normalOS;
+    float grosor = _OutlineWidth;
     if (_OutlineMode > 1.5)
-        dirOS = v.outlineDir;
+    {
+        dirOS = v.outlineDir.xyz;
+        grosor *= v.outlineDir.w;
+    }
     else if (_OutlineMode > 0.5)
         dirOS = sign(v.positionOS.xyz);
 
@@ -87,7 +91,7 @@ VaryingsBorde BordeVert(Attributes v)
     if (largo > 1e-5 && dot(dirOS, dirOS) > 1e-8)
     {
         // Grosor constante en pantalla (milésimas del alto de la vista): contorno uniforme tipo vector.
-        float2 desplazamiento = (dirCS / largo) * (_OutlineWidth * 0.002) * posCS.w;
+        float2 desplazamiento = (dirCS / largo) * (grosor * 0.002) * posCS.w;
         desplazamiento.x *= _ScreenParams.y / _ScreenParams.x;
         posCS.xy += desplazamiento;
     }
