@@ -21,8 +21,10 @@ public class JuegoManager : MonoBehaviour
     public GameObject panel;
     public TMP_Text textoTitulo;
     public TMP_Text textoCodigo;
-    [Tooltip("Opcional: texto con el tiempo restante (por ejemplo, como 'reloj' en la muñeca)")]
+    [Tooltip("Cronómetro que se ve siempre a un lado mientras buscas (lo crea el menú ★)")]
     public TMP_Text textoTiempo;
+    [Tooltip("Botones para elegir la navegación (aparecen afuera, antes de entrar)")]
+    public GameObject opcionesNavegacion;
     [Tooltip("Distancia (metros) a la que aparece el panel frente al jugador")]
     public float distanciaPanel = 1.2f;
 
@@ -115,15 +117,17 @@ public class JuegoManager : MonoBehaviour
         personaje.Activo = false;
         personaje.Reiniciar();
         EsconderPersonaje();
-        if (textoTiempo != null) textoTiempo.text = "";
+        MostrarCronometro(false);
 
         MoverJugador(puntoAfuera);
         MostrarPanel("¡Encuentra al personaje escondido!", textoPalmada);
+        MostrarOpciones(true);
     }
 
     IEnumerator Entrar()
     {
         estado = Estado.Entrando;
+        MostrarOpciones(false);
         MoverJugador(puntoAdentro);
         MostrarPanel("¡A buscar!", $"Tienes {Mathf.RoundToInt(segundosParaBuscar)} segundos");
         yield return new WaitForSeconds(segundosIntro);
@@ -132,6 +136,7 @@ public class JuegoManager : MonoBehaviour
         tiempoRestante = segundosParaBuscar;
         estado = Estado.Buscando;
         personaje.Activo = true;
+        MostrarCronometro(true);
         StartCoroutine(Pios());
     }
 
@@ -141,11 +146,47 @@ public class JuegoManager : MonoBehaviour
             return;
 
         tiempoRestante -= Time.deltaTime;
-        if (textoTiempo != null)
-            textoTiempo.text = $"{Mathf.CeilToInt(Mathf.Max(0f, tiempoRestante))} s";
+        ActualizarCronometro();
 
         if (tiempoRestante <= 0f)
-            Terminar("¡Se acabó el tiempo!", "Inténtalo de nuevo" + textoOtraVez);
+            Terminar("GAME OVER", "<size=40%>Da una palmada para jugar otra vez</size>");
+    }
+
+    // ---------- Cronómetro (como unas gafas XR: siempre visible a la derecha) ----------
+
+    void MostrarCronometro(bool visible)
+    {
+        if (textoTiempo == null)
+            return;
+        textoTiempo.gameObject.SetActive(visible);
+        if (visible)
+            ActualizarCronometro();
+    }
+
+    void ActualizarCronometro()
+    {
+        if (textoTiempo == null)
+            return;
+        int segundos = Mathf.CeilToInt(Mathf.Max(0f, tiempoRestante));
+        string color = segundos <= 10 ? "#FF5A4E" : "#FFFFFF";
+        textoTiempo.text = $"<mark=#00000099><color={color}> {segundos / 60}:{segundos % 60:00} </color></mark>";
+    }
+
+    void MostrarOpciones(bool visible)
+    {
+        if (opcionesNavegacion == null)
+            return;
+        if (visible && cabeza != null)
+        {
+            // Al alcance de la mano: un poco abajo y adelante.
+            Vector3 frente = cabeza.forward;
+            frente.y = 0f;
+            if (frente.sqrMagnitude < 0.001f) frente = Vector3.forward;
+            frente.Normalize();
+            opcionesNavegacion.transform.position = cabeza.position + frente * 0.45f + Vector3.down * 0.35f;
+            opcionesNavegacion.transform.rotation = Quaternion.LookRotation(frente, Vector3.up);
+        }
+        opcionesNavegacion.SetActive(visible);
     }
 
     void AlEncontrarlo()
@@ -166,6 +207,7 @@ public class JuegoManager : MonoBehaviour
     {
         estado = Estado.Terminado;
         personaje.Activo = false;
+        MostrarCronometro(false);
         MostrarPanel(titulo, texto);
         Cambiar(VolverSolo());
     }

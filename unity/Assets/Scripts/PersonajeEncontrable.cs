@@ -218,6 +218,9 @@ public class PersonajeEncontrable : MonoBehaviour
     {
         Activo = false;
         tiempoMirando = 0f;
+        var animacion = GetComponent<AnimacionPajaro>();
+        if (animacion != null)
+            animacion.Celebrar(); // ¡levanta las alas de alegría!
         if (rutinaSacudida != null)
         {
             StopCoroutine(rutinaSacudida);
@@ -301,6 +304,9 @@ public class PersonajeEncontrable : MonoBehaviour
         var agarre = GetComponent<AgarreAntigravedad>();
         if (agarre != null)
             agarre.Desactivar();
+        var animacion = GetComponent<AnimacionPajaro>();
+        if (animacion != null)
+            animacion.Reposo();
         Quieto();
         tiempoMirando = 0f;
         transform.localScale = escalaOriginal;

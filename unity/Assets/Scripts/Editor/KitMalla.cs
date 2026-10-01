@@ -16,6 +16,12 @@ internal class KitMalla
     // Grosor relativo del contorno para las piezas que se agreguen (1 = normal, 0.5 = la mitad).
     public float grosorContorno = 1f;
 
+    // Qué tanto brillan (reflejo del sol) las piezas que se agreguen, para el shader realista (0 a 1).
+    // Se guarda en el alfa del color; el shader toon no lo usa.
+    public float brillo = 1f;
+
+    Color ConBrillo(Color c) => new Color(c.r, c.g, c.b, c.a * brillo);
+
     Vector4 Dir(Vector3 d, bool contorno) => contorno ? new Vector4(d.x, d.y, d.z, grosorContorno) : new Vector4(0f, 0f, 0f, grosorContorno);
     readonly List<int> triangulos = new List<int>();
 
@@ -85,7 +91,7 @@ internal class KitMalla
         {
             vertices.Add(p);
             normales.Add(normal);
-            colores.Add(color);
+            colores.Add(ConBrillo(color));
             direcciones.Add(Dir(p - centroPieza, contorno));
         }
         // Orden horario visto desde afuera (frente en Unity).
@@ -110,7 +116,7 @@ internal class KitMalla
         {
             vertices.Add(p);
             normales.Add(n);
-            colores.Add(color);
+            colores.Add(ConBrillo(color));
             direcciones.Add(Dir(p - centroPieza, contorno));
         }
         triangulos.Add(i); triangulos.Add(i + 1); triangulos.Add(i + 2);

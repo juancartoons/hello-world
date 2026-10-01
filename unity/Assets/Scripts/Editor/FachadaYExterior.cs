@@ -217,14 +217,18 @@ internal static class FachadaYExterior
 
     // ================= Exterior =================
 
-    internal static void ConstruirExterior(Transform raiz, Material matKit, Material matCielo, Vector3 dirLuz, string carpeta)
+    // El exterior usa el shader "realista" (sin contorno, con brillo del sol). El cielo es el de Unity.
+    internal static void ConstruirExterior(Transform raiz, Material matExterior, string carpeta)
     {
         var ext = new KitMalla();
         var rnd = new System.Random(2026);
+        ext.brillo = 0.2f; // casi todo es mate; abajo se sube el brillo del asfalto, vidrios y carros
 
         // Suelo: pasto lejano, asfalto de las calles y las manzanas (andenes) 12 cm más arriba.
         ext.CajaMinMax(new Vector3(-400f, -0.5f, -400f), new Vector3(400f, -0.2f, 400f), pasto, false);
+        ext.brillo = 0.6f; // el asfalto refleja el sol
         ext.CajaMinMax(new Vector3(-70f, -0.25f, -70f), new Vector3(70f, -0.13f, 70f), asfalto, false);
+        ext.brillo = 0.35f;
         Manzana(ext, -7f, 70f, -8f, 70f);    // la de la farmacia
         Manzana(ext, -7f, 70f, -70f, -16f);  // al frente, cruzando la calle
         Manzana(ext, -70f, -13f, -8f, 70f);  // cruzando la carrera
@@ -244,7 +248,9 @@ internal static class FachadaYExterior
             ext.Piso(new Vector3(x, -0.124f, -5f), 0.22f, 1.5f, blanco);
 
         // Parqueadero al lado este de la farmacia.
+        ext.brillo = 0.55f;
         ext.CajaMinMax(new Vector3(5.4f, -0.02f, -7.4f), new Vector3(24f, 0.005f, 14f), asfaltoParqueo, false);
+        ext.brillo = 0.35f;
         float[] lineas = { -6f, -3.5f, -1f, 1.5f, 4f, 6.5f, 9f, 11.5f };
         foreach (float xFila in new[] { 10f, 18.5f })
         {
@@ -263,6 +269,8 @@ internal static class FachadaYExterior
             }
         }
 
+        ext.brillo = 0.2f;
+
         // Carros y bus en la calle.
         // En Colombia se maneja por la derecha: hacia +X por el carril sur, hacia -X por el carril norte.
         Taxi(ext, new Vector3(-2f, -0.13f, -10f), Vector3.left, raiz);
@@ -273,6 +281,7 @@ internal static class FachadaYExterior
         Familiar(ext, new Vector3(-9f, -0.13f, 6f), Vector3.forward, coloresFamiliar[3]);
         Familiar(ext, new Vector3(-11f, -0.13f, -24f), Vector3.back, coloresFamiliar[4]);
         Bus(ext, new Vector3(5f, -0.13f, -14f), raiz);
+        ext.brillo = 0.2f; // edificios, árboles y cerros: mate
 
         // Edificios cercanos (ladrillo bogotano, con ventanas y placas de concreto).
         Edificio(ext, rnd, new Vector3(-6.5f, 0f, 5.3f), new Vector3(6.5f, 15f, 17f), Elegir(rnd, ladrillos));  // vecino de atrás
@@ -322,7 +331,7 @@ internal static class FachadaYExterior
         foreach (float z in new[] { -5f, 3f, 11f }) Arbol(ext, rnd, new Vector3(14.25f, 0f, z));
         foreach (float x in new[] { -6.2f, 6.5f, 15f, 24f }) Poste(ext, new Vector3(x, 0f, -7.7f), -1f);
 
-        // Cerros orientales al fondo (al este), y nubes.
+        // Cerros orientales al fondo (al este).
         float[][] cerros =
         {
             new[] { 330f, -260f, 170f, 150f }, new[] { 360f, -90f, 200f, 190f }, new[] { 340f, 80f, 180f, 170f },
@@ -334,20 +343,8 @@ internal static class FachadaYExterior
             Color verde = Color.Lerp(new Color(0.34f, 0.52f, 0.36f), new Color(0.50f, 0.64f, 0.62f), lejania);
             ext.Esfera(new Vector3(c[0], -30f, c[1]), new Vector3(c[2], c[3], c[2] * 0.9f), 2, verde);
         }
-        for (int i = 0; i < 8; i++)
-        {
-            float ang = (float)rnd.NextDouble() * Mathf.PI * 2f;
-            float dist = Rango(rnd, 160f, 320f);
-            Vector3 c = new Vector3(Mathf.Cos(ang) * dist, Rango(rnd, 70f, 110f), Mathf.Sin(ang) * dist);
-            for (int k = 0; k < 3; k++)
-            {
-                Vector3 d = new Vector3(Rango(rnd, -14f, 14f), Rango(rnd, -2f, 3f), Rango(rnd, -6f, 6f));
-                float r = Rango(rnd, 9f, 16f);
-                ext.Esfera(c + d, new Vector3(r * 1.6f, r * 0.6f, r), 1, Color.white);
-            }
-        }
 
-        ext.CrearObjeto("Kit_Exterior", raiz, matKit, carpeta);
+        ext.CrearObjeto("Kit_Exterior", raiz, matExterior, carpeta);
 
         // Piso sólido afuera (el exterior es solo visual): sin esto el jugador se cae al vacío,
         // porque el sistema de movimiento de Meta le aplica gravedad.
@@ -356,12 +353,6 @@ internal static class FachadaYExterior
         var caja = pisoExterior.AddComponent<BoxCollider>();
         caja.center = new Vector3(0f, -0.26f, 0f); // la parte de arriba queda en y = -0.01 (nivel del andén)
         caja.size = new Vector3(140f, 0.5f, 140f);
-
-        // Cielo con degradado y el sol.
-        var cielo = new KitMalla();
-        cielo.Cielo(700f, new Color(0.86f, 0.93f, 0.99f), new Color(0.42f, 0.66f, 0.94f), pasto);
-        cielo.Esfera(-dirLuz.normalized * 650f, Vector3.one * 22f, 2, new Color(1f, 0.97f, 0.85f), false);
-        cielo.CrearObjeto("Cielo", raiz, matCielo, carpeta);
     }
 
     // ---------- Piezas del exterior ----------
@@ -399,7 +390,10 @@ internal static class FachadaYExterior
                     float a = -largo / 2f + paso * (c + 0.5f);
                     Vector3 p = centro + normal * (mitad + 0.02f) + (enX ? Vector3.forward : Vector3.right) * a;
                     p.y = y;
+                    float brilloAntes = k.brillo;
+                    k.brillo = 1f; // las ventanas reflejan el sol
                     k.Etiqueta(p, normal, 0.7f, Mathf.Min(0.65f, paso * 0.35f), vidrioOscuro);
+                    k.brillo = brilloAntes;
                 }
             }
         }
@@ -518,6 +512,7 @@ internal static class FachadaYExterior
         public ArmadorCarro(KitMalla k, Vector3 piso, Vector3 dir, float largo, float ancho)
         {
             this.k = k;
+            k.brillo = 0.8f; // pintura de carro brillante
             this.piso = piso;
             this.dir = dir.normalized;
             lado = Vector3.Cross(this.dir, Vector3.up);
@@ -603,7 +598,10 @@ internal static class FachadaYExterior
         {
             Vector3 P(float u, float v) => Vector3.Lerp(Vector3.Lerp(p0, p1, u), Vector3.Lerp(p3, p2, u), v);
             Vector3 n = afuera.normalized * 0.004f;
+            float brilloAntes = k.brillo;
+            k.brillo = 1f;
             k.CuadroLibre(P(u0, v0) + n, P(u1, v0) + n, P(u1, v1) + n, P(u0, v1) + n, afuera, vidrioCarro);
+            k.brillo = brilloAntes;
         }
 
         public void LineasDePuertas(float[] xs, float[] manijas)
@@ -658,6 +656,7 @@ internal static class FachadaYExterior
     // El frente mira hacia +X.
     static void Bus(KitMalla k, Vector3 piso, Transform raiz)
     {
+        k.brillo = 0.8f;
         Color azul = new Color(0.13f, 0.45f, 0.88f);
         Color negro = new Color(0.08f, 0.09f, 0.10f);
         Color vidrio = new Color(0.27f, 0.36f, 0.48f);

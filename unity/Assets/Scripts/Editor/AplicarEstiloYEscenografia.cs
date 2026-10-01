@@ -65,7 +65,7 @@ public static class AplicarEstiloYEscenografia
     [MenuItem("FarmaciaVR/★ Aplicar estilo toon y escenografía")]
     static void Aplicar()
     {
-        foreach (var nombre in new[] { "FarmaciaVR/Toon", "FarmaciaVR/Toon Sin Borde", "FarmaciaVR/Vidrio", "FarmaciaVR/Luz" })
+        foreach (var nombre in new[] { "FarmaciaVR/Toon", "FarmaciaVR/Toon Sin Borde", "FarmaciaVR/Vidrio", "FarmaciaVR/Luz", "FarmaciaVR/Realista" })
         {
             if (Shader.Find(nombre) != null)
                 continue;
@@ -84,9 +84,9 @@ public static class AplicarEstiloYEscenografia
         var matTecho = CrearMaterial("Toon_Techo", "FarmaciaVR/Toon Sin Borde", blanco, new Color(0.93f, 0.94f, 0.96f), 0, false);
         var matLampara = CrearMaterial("Toon_Lampara", "FarmaciaVR/Toon Sin Borde", Color.white, Color.white, 0, false);
         var matKit = CrearMaterial("Toon_Kit", "FarmaciaVR/Toon", Color.white, sombraSuave, 2, true);
-        var matPersonaje = CrearMaterial("Toon_Personaje", "FarmaciaVR/Toon", new Color(0.90f, 0.13f, 0.13f), new Color(0.75f, 0.70f, 0.80f), 1, false);
         var matPunto = CrearMaterial("Toon_Punto", "FarmaciaVR/Toon Sin Borde", new Color(0.2f, 0.8f, 1f), Color.white, 0, false);
-        var matCielo = CrearMaterial("Toon_Cielo", "FarmaciaVR/Toon Sin Borde", Color.white, Color.white, 0, true);
+        var matExterior = CrearMaterialSimple("Exterior_Realista", "FarmaciaVR/Realista", Color.white);
+        var matBoton = CrearMaterial("Toon_Boton", "FarmaciaVR/Toon Sin Borde", Color.white, new Color(0.85f, 0.87f, 0.9f), 0, false);
         var matPluma = CrearMaterial("Toon_Pluma", "FarmaciaVR/Toon Sin Borde", Color.white, new Color(0.85f, 0.80f, 0.85f), 0, true);
         var matVidrio = CrearMaterialSimple("Toon_Vidrio", "FarmaciaVR/Vidrio", new Color(0.75f, 0.9f, 1f, 0.18f));
         var matLuz = CrearMaterialSimple("Toon_Luz", "FarmaciaVR/Luz", new Color(1f, 0.93f, 0.72f, 1f));
@@ -124,13 +124,15 @@ public static class AplicarEstiloYEscenografia
         bool conTextos = ConstruirDecoracion(raiz.transform, matKit);
 
         // ---------- Exterior ----------
-        FachadaYExterior.ConstruirExterior(raiz.transform, matKit, matCielo, dirLuz, carpetaMallas);
+        FachadaYExterior.ConstruirExterior(raiz.transform, matExterior, carpetaMallas);
 
         // ---------- Teletransporte, escondites y personaje ----------
         ConstruirPuntosTeletransporte(matPunto, matLinea);
         ConstruirEscondites(escondites);
         var mallaPluma = CrearMallaPluma();
-        ConstruirPersonaje(matPersonaje, matPluma, mallaPluma, tamPersonaje);
+        ConstruirPajaro(matKit, matPluma, mallaPluma, tamPersonaje);
+        ConstruirCronometro();
+        ConstruirOpcionesNavegacion(raiz.transform, matBoton);
 
         // ---------- Luz y cámara ----------
         var luz = GameObject.Find("Directional Light");
@@ -138,13 +140,26 @@ public static class AplicarEstiloYEscenografia
         {
             Undo.RecordObject(luz.transform, "Luz");
             luz.transform.rotation = Quaternion.Euler(rotacionSol);
+            var componenteLuz = luz.GetComponent<Light>();
+            if (componenteLuz != null)
+            {
+                Undo.RecordObject(componenteLuz, "Luz");
+                componenteLuz.color = new Color(1f, 0.96f, 0.88f); // sol de la mañana
+                componenteLuz.intensity = 1.15f;
+                RenderSettings.sun = componenteLuz;
+            }
         }
+        // Cielo realista de Unity (el de la primera versión), con el sol en la misma dirección de la luz.
+        var cieloUnity = AssetDatabase.GetBuiltinExtraResource<Material>("Default-Skybox.mat");
+        if (cieloUnity != null)
+            RenderSettings.skybox = cieloUnity;
         var rig = Object.FindFirstObjectByType<OVRCameraRig>();
         var camara = rig != null && rig.centerEyeAnchor != null ? rig.centerEyeAnchor.GetComponent<Camera>() : null;
-        if (camara != null && camara.farClipPlane < 1000f)
+        if (camara != null)
         {
             Undo.RecordObject(camara, "Cámara");
-            camara.farClipPlane = 1000f; // para ver los cerros y el cielo
+            camara.farClipPlane = Mathf.Max(camara.farClipPlane, 1000f); // para ver los cerros
+            camara.clearFlags = CameraClearFlags.Skybox;
         }
 
         EditorSceneManager.MarkSceneDirty(raiz.scene);
@@ -467,7 +482,7 @@ public static class AplicarEstiloYEscenografia
             Undo.RegisterCreatedObjectUndo(e, "Escondites");
             e.transform.SetParent(padre.transform, false);
             e.transform.position = puntos[i];
-            e.transform.rotation = Quaternion.Euler(0f, (i * 47) % 360, 0f);
+            e.transform.rotation = Quaternion.LookRotation(DireccionDeEscondite(puntos[i]), Vector3.up);
         }
 
         var manager = Object.FindFirstObjectByType<JuegoManager>();
@@ -477,6 +492,19 @@ public static class AplicarEstiloYEscenografia
             manager.escondites = padre.transform;
             EditorUtility.SetDirty(manager);
         }
+    }
+
+    // El personaje mira hacia afuera del mueble (al pasillo) o, si está en el piso, hacia el centro.
+    static Vector3 DireccionDeEscondite(Vector3 punto)
+    {
+        if (punto.y >= 0.1f)
+        {
+            float[] centrosMuebles = { -4.6f, -2.5f, 0f, 2.5f, 4.6f };
+            float cercano = centrosMuebles.OrderBy(c => Mathf.Abs(c - punto.x)).First();
+            return new Vector3(Mathf.Sign(punto.x - cercano + 0.0001f), 0f, 0f);
+        }
+        Vector3 haciaCentro = new Vector3(-punto.x, 0f, -punto.z);
+        return haciaCentro.sqrMagnitude > 0.01f ? haciaCentro.normalized : Vector3.forward;
     }
 
     // ================= Personaje =================
@@ -497,23 +525,81 @@ public static class AplicarEstiloYEscenografia
         return Mathf.Clamp(Mathf.Max(b.size.x, Mathf.Max(b.size.y, b.size.z)), 0.06f, 0.3f);
     }
 
-    // Crea el personaje como un cubo propio (sin los scripts de agarre de Meta, porque usa el suyo).
-    static void ConstruirPersonaje(Material mat, Material matPluma, Mesh mallaPluma, float tam)
+    // Crea el personaje: un pájaro rojo low poly (inspirado en la referencia), del tamaño del cubo agarrable.
+    // Está hecho en una "unidad" de 1 de alto mirando hacia +Z y luego se escala.
+    static void ConstruirPajaro(Material mat, Material matPluma, Mesh mallaPluma, float tam)
     {
         var manager = Object.FindFirstObjectByType<JuegoManager>();
         var actual = Object.FindFirstObjectByType<PersonajeEncontrable>();
         Vector3 posicion = actual != null ? actual.transform.position : new Vector3(0.5f, 1.2f, 3.8f);
+        float escala = tam * 1.3f; // un poquito más grande que el cubo, para que se vea la cara
 
-        var nuevo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        Color rojo = new Color(0.86f, 0.11f, 0.11f);
+        Color barriga = new Color(0.98f, 0.74f, 0.68f);
+        Color blancoOjo = new Color(0.98f, 0.98f, 0.97f);
+        Color negro = new Color(0.08f, 0.07f, 0.07f);
+        Color naranja = new Color(1f, 0.62f, 0.12f);
+
+        // Cuerpo con cara, cejas, pico, copete y patas
+        var cuerpo = new KitMalla();
+        cuerpo.Esfera(new Vector3(0f, 0.5f, 0f), new Vector3(0.5f, 0.52f, 0.48f), 2, rojo);
+        cuerpo.Esfera(new Vector3(0f, 0.38f, 0.24f), new Vector3(0.34f, 0.3f, 0.26f), 2, barriga);
+        foreach (float s in new[] { -1f, 1f })
+        {
+            cuerpo.Esfera(new Vector3(s * 0.15f, 0.63f, 0.38f), new Vector3(0.13f, 0.15f, 0.09f), 2, blancoOjo);
+            cuerpo.Esfera(new Vector3(s * 0.12f, 0.62f, 0.46f), new Vector3(0.05f, 0.06f, 0.03f), 1, negro);
+            // Cejas gruesas, más bajas hacia el centro (cara de "concentrado")
+            float xi = s * 0.04f, xe = s * 0.31f;
+            cuerpo.Hexaedro(new[]
+            {
+                new Vector3(xi, 0.75f, 0.47f), new Vector3(xe, 0.81f, 0.40f), new Vector3(xe, 0.81f, 0.33f), new Vector3(xi, 0.75f, 0.41f),
+                new Vector3(xi, 0.83f, 0.47f), new Vector3(xe, 0.89f, 0.40f), new Vector3(xe, 0.89f, 0.33f), new Vector3(xi, 0.83f, 0.41f),
+            }, negro);
+            cuerpo.Esfera(new Vector3(s * 0.15f, 0.03f, 0.12f), new Vector3(0.09f, 0.035f, 0.13f), 1, naranja);
+        }
+        // Pico: pirámide hacia adelante
+        Vector3 punta = new Vector3(0f, 0.47f, 0.7f);
+        cuerpo.Hexaedro(new[]
+        {
+            new Vector3(-0.1f, 0.4f, 0.43f), new Vector3(0.1f, 0.4f, 0.43f), new Vector3(0.1f, 0.4f, 0.5f), new Vector3(-0.1f, 0.4f, 0.5f),
+            new Vector3(-0.09f, 0.55f, 0.43f), new Vector3(0.09f, 0.55f, 0.43f), punta, punta,
+        }, naranja);
+        // Copete
+        cuerpo.Esfera(new Vector3(0f, 1.04f, 0.02f), new Vector3(0.05f, 0.12f, 0.05f), 1, rojo);
+        cuerpo.Esfera(new Vector3(0.06f, 1.0f, -0.04f), new Vector3(0.04f, 0.09f, 0.04f), 1, rojo);
+
+        var ala = new KitMalla();
+        ala.Esfera(new Vector3(0f, -0.17f, 0f), new Vector3(0.07f, 0.2f, 0.15f), 2, rojo);
+
+        var nuevo = new GameObject("Personaje");
         Undo.RegisterCreatedObjectUndo(nuevo, "Personaje");
-        nuevo.name = "Personaje";
         nuevo.transform.position = posicion;
-        nuevo.transform.localScale = Vector3.one * tam;
-        nuevo.GetComponent<Renderer>().sharedMaterial = mat;
+        nuevo.transform.localScale = Vector3.one * escala;
+        var colision = nuevo.AddComponent<SphereCollider>();
+        colision.center = new Vector3(0f, 0.5f, 0f);
+        colision.radius = 0.5f;
 
-        var cuerpo = nuevo.AddComponent<Rigidbody>();
-        cuerpo.isKinematic = true;
-        cuerpo.useGravity = false;
+        var goCuerpo = cuerpo.CrearObjeto("PajaroCuerpo", nuevo.transform, mat, carpetaMallas);
+        goCuerpo.name = "Cuerpo";
+        var mallaAla = ala.GuardarComo($"{carpetaMallas}/PajaroAla.asset");
+        Transform CrearAla(string nombre, float lado)
+        {
+            var hombro = new GameObject(nombre).transform;
+            hombro.SetParent(nuevo.transform, false);
+            hombro.localPosition = new Vector3(lado * 0.44f, 0.62f, -0.02f);
+            var malla = new GameObject("Malla");
+            malla.transform.SetParent(hombro, false);
+            malla.AddComponent<MeshFilter>().sharedMesh = mallaAla;
+            malla.AddComponent<MeshRenderer>().sharedMaterial = mat;
+            return hombro;
+        }
+
+        var cuerpoFisico = nuevo.AddComponent<Rigidbody>();
+        cuerpoFisico.isKinematic = true;
+        cuerpoFisico.useGravity = false;
+        var animacion = nuevo.AddComponent<AnimacionPajaro>();
+        animacion.alaIzquierda = CrearAla("AlaIzquierda", -1f);
+        animacion.alaDerecha = CrearAla("AlaDerecha", 1f);
         var encontrable = nuevo.AddComponent<PersonajeEncontrable>();
         nuevo.AddComponent<AgarreAntigravedad>();
         var plumas = nuevo.AddComponent<PistaPlumas>();
@@ -528,6 +614,147 @@ public static class AplicarEstiloYEscenografia
         }
         if (actual != null)
             Undo.DestroyObjectImmediate(actual.gameObject);
+    }
+
+    // ================= Cronómetro y opciones =================
+
+    // Cronómetro pegado a la vista (como unas gafas XR), a la derecha. Se dibuja encima de todo.
+    static void ConstruirCronometro()
+    {
+        var manager = Object.FindFirstObjectByType<JuegoManager>();
+        var rig = Object.FindFirstObjectByType<OVRCameraRig>();
+        if (manager == null || rig == null || rig.centerEyeAnchor == null || Resources.Load<TMP_Settings>("TMP Settings") == null)
+            return;
+
+        var viejo = rig.centerEyeAnchor.Find("Cronometro");
+        if (viejo != null)
+            Undo.DestroyObjectImmediate(viejo.gameObject);
+
+        var go = new GameObject("Cronometro", typeof(RectTransform));
+        Undo.RegisterCreatedObjectUndo(go, "Cronómetro");
+        go.transform.SetParent(rig.centerEyeAnchor, false);
+        go.transform.localPosition = new Vector3(0.2f, -0.1f, 0.7f);
+        go.transform.localRotation = Quaternion.Euler(0f, 12f, 0f); // un poco girado hacia el centro de la vista
+        var tmp = go.AddComponent<TextMeshPro>();
+        tmp.text = "1:30";
+        tmp.enableAutoSizing = true;
+        tmp.fontSizeMin = 0.05f;
+        tmp.fontSizeMax = 20f;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.fontStyle = FontStyles.Bold;
+        tmp.color = Color.white;
+        tmp.rectTransform.sizeDelta = new Vector2(0.14f, 0.05f);
+
+        // Material que se dibuja por encima de paredes y muebles.
+        var overlay = Shader.Find("TextMeshPro/Distance Field Overlay");
+        if (overlay != null && tmp.fontSharedMaterial != null)
+        {
+            string ruta = $"{carpetaMateriales}/TMP_Cronometro.mat";
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(ruta);
+            if (mat == null)
+            {
+                mat = new Material(tmp.fontSharedMaterial) { shader = overlay };
+                AssetDatabase.CreateAsset(mat, ruta);
+            }
+            tmp.fontSharedMaterial = mat;
+        }
+
+        Undo.RecordObject(manager, "Cronómetro");
+        manager.textoTiempo = tmp;
+        EditorUtility.SetDirty(manager);
+        go.SetActive(false);
+    }
+
+    // Dos botones (se tocan con el dedo) para elegir la navegación antes de entrar.
+    static void ConstruirOpcionesNavegacion(Transform raiz, Material matBoton)
+    {
+        var manager = Object.FindFirstObjectByType<JuegoManager>();
+        if (manager == null)
+            return;
+
+        var opciones = new GameObject("OpcionesNavegacion");
+        opciones.transform.SetParent(raiz, false);
+        opciones.transform.position = new Vector3(0f, 1.2f, -6.8f);
+
+        Renderer CrearBoton(string nombre, string texto, float x)
+        {
+            var boton = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            boton.name = nombre;
+            boton.transform.SetParent(opciones.transform, false);
+            boton.transform.localPosition = new Vector3(x, 0f, 0f);
+            boton.transform.localScale = new Vector3(0.17f, 0.07f, 0.025f);
+            boton.GetComponent<Renderer>().sharedMaterial = matBoton;
+            boton.AddComponent<BotonTocable>();
+            Texto(opciones.transform, texto, Vector3.zero, new Vector2(0.15f, 0.05f), new Color(0.1f, 0.12f, 0.2f));
+            var etiqueta = opciones.transform.GetChild(opciones.transform.childCount - 1);
+            etiqueta.localPosition = new Vector3(x, 0f, -0.014f);
+            etiqueta.localRotation = Quaternion.identity;
+            return boton.GetComponent<Renderer>();
+        }
+
+        if (Resources.Load<TMP_Settings>("TMP Settings") != null)
+        {
+            Texto(opciones.transform, "¿Cómo te quieres mover?", Vector3.zero, new Vector2(0.4f, 0.05f), Color.white);
+            var titulo = opciones.transform.GetChild(opciones.transform.childCount - 1);
+            titulo.localPosition = new Vector3(0f, 0.075f, 0f);
+            titulo.localRotation = Quaternion.identity;
+        }
+        var botonPuntos = CrearBoton("BotonDedo", "Con el dedo", -0.1f);
+        var botonMeta = CrearBoton("BotonMeta", "Modo Meta", 0.1f);
+
+        // El que decide qué navegación está activa vive en el JuegoManager.
+        var modo = manager.GetComponent<ModoNavegacion>();
+        if (modo == null)
+            modo = Undo.AddComponent<ModoNavegacion>(manager.gameObject);
+        Undo.RecordObject(modo, "Navegación");
+        var puntos = GameObject.Find("PuntosTeletransporte");
+        modo.discos = puntos;
+        modo.teletransportePuntos = puntos != null ? puntos.GetComponent<TeletransportePorPuntos>() : null;
+        modo.teletransporteMeta = BuscarAunqueEsteApagado("ISDK_TeleportInteraction");
+        modo.botonPuntos = botonPuntos;
+        modo.botonMeta = botonMeta;
+        EditorUtility.SetDirty(modo);
+
+        UnityEditor.Events.UnityEventTools.AddPersistentListener(botonPuntos.GetComponent<BotonTocable>().alTocar, modo.ElegirPuntos);
+        UnityEditor.Events.UnityEventTools.AddPersistentListener(botonMeta.GetComponent<BotonTocable>().alTocar, modo.ElegirMeta);
+
+        ArreglarSuperficieTeletransporteMeta(modo.teletransporteMeta);
+
+        Undo.RecordObject(manager, "Opciones");
+        manager.opcionesNavegacion = opciones;
+        EditorUtility.SetDirty(manager);
+        opciones.SetActive(false);
+    }
+
+    static GameObject BuscarAunqueEsteApagado(string nombre)
+    {
+        foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            if (t.name == nombre)
+                return t.gameObject;
+        return null;
+    }
+
+    // El teletransporte de Meta apuntaba siempre al centro: su "superficie" no tenía collider asignado.
+    // Aquí se le asigna el collider del piso.
+    static void ArreglarSuperficieTeletransporteMeta(GameObject teleport)
+    {
+        var piso = GameObject.Find("Plane");
+        var colliderPiso = piso != null ? piso.GetComponent<Collider>() : null;
+        if (teleport == null || colliderPiso == null)
+            return;
+        foreach (var comp in teleport.GetComponentsInChildren<MonoBehaviour>(true))
+        {
+            if (comp == null || comp.GetType().Name != "ColliderSurface")
+                continue;
+            var so = new SerializedObject(comp);
+            var prop = so.FindProperty("_collider");
+            if (prop == null)
+                continue;
+            if (prop.objectReferenceValue != colliderPiso)
+                Debug.Log($"FarmaciaVR: superficie del teletransporte de Meta: '{(prop.objectReferenceValue != null ? prop.objectReferenceValue.name : "None")}' → piso.");
+            prop.objectReferenceValue = colliderPiso;
+            so.ApplyModifiedProperties();
+        }
     }
 
     static Mesh CrearMallaPluma()

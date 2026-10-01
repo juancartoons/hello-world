@@ -74,6 +74,20 @@ public class TeletransportePorPuntos : MonoBehaviour
         return m;
     }
 
+    void OnDisable()
+    {
+        foreach (var m in new[] { izquierda, derecha })
+        {
+            if (m == null)
+                continue;
+            m.linea.enabled = false;
+            if (m.apuntado != null)
+                m.apuntado.Resaltar(0f);
+            m.apuntado = null;
+            m.tiempo = 0f;
+        }
+    }
+
     void Update()
     {
         if (izquierda == null)
