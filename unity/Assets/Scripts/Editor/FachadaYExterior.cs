@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 // Construye (desde el menú ★) las paredes con ventanas, los vidrios, los rayos de sol que entran
@@ -261,7 +262,7 @@ internal static class FachadaYExterior
         Carro(ext, new Vector3(-2f, -0.13f, -10f), true, amarillo, true);   // taxi
         Carro(ext, new Vector3(16f, -0.13f, -14f), true, coloresCarro[0], false);
         Carro(ext, new Vector3(-9f, -0.13f, 6f), false, coloresCarro[3], false);
-        Bus(ext, new Vector3(5f, -0.13f, -14f));
+        Bus(ext, new Vector3(5f, -0.13f, -14f), raiz);
 
         // Edificios cercanos (ladrillo bogotano, con ventanas y placas de concreto).
         Edificio(ext, rnd, new Vector3(-6.5f, 0f, 5.3f), new Vector3(6.5f, 15f, 17f), Elegir(rnd, ladrillos));  // vecino de atrás
@@ -436,20 +437,104 @@ internal static class FachadaYExterior
                 k.Cilindro(piso + Vector3.up * 0.33f + largo * sl + lado * sw, 0.33f, 0.22f, lado, 8, new Color(0.15f, 0.15f, 0.17f));
     }
 
-    static void Bus(KitMalla k, Vector3 piso)
+    // Bus del SITP (estilo de la referencia): azul, puertas dobles de vidrio, ventanas con marco negro,
+    // letrero "SITP" arriba del parabrisas y en el costado, espejos, faros redondos y direccionales naranja.
+    // El frente mira hacia +X.
+    static void Bus(KitMalla k, Vector3 piso, Transform raiz)
     {
-        Vector3 centro = piso + Vector3.up * 1.65f;
-        k.Caja(centro, new Vector3(11f, 2.7f, 2.5f), azulSitp);
+        Color azul = new Color(0.13f, 0.45f, 0.88f);
+        Color negro = new Color(0.08f, 0.09f, 0.10f);
+        Color vidrio = new Color(0.27f, 0.36f, 0.48f);
+        Color naranja = new Color(1f, 0.55f, 0.1f);
+        Color gris = new Color(0.55f, 0.56f, 0.58f);
+        const float L = 11f, W = 2.5f, yBajo = 0.35f, yAlto = 3.15f;
+        float hx = L / 2f, hz = W / 2f;
+        Vector3 P(float x, float y, float z) => piso + new Vector3(x, y, z);
+
+        // Carrocería, ducto del techo y parachoques
+        k.CajaMinMax(P(-hx, yBajo, -hz), P(hx, yAlto, hz), azul);
+        k.CajaMinMax(P(-0.6f, yAlto, -0.6f), P(1.6f, yAlto + 0.16f, 0.6f), negro);
+        k.CajaMinMax(P(hx, 0.38f, -hz + 0.05f), P(hx + 0.12f, 0.72f, hz - 0.05f), azul);
+
+        // Costados: ventanas y puertas (en los dos lados)
+        float[][] ventanas = { new[] { -5.3f, -3.6f }, new[] { -2.4f, -0.4f }, new[] { 0.8f, 3.2f }, new[] { 4.7f, 5.3f } };
+        float[][] puertas = { new[] { -3.5f, -2.5f }, new[] { -0.3f, 0.7f }, new[] { 3.3f, 4.6f } };
         foreach (float s in new[] { -1f, 1f })
         {
-            k.Etiqueta(centro + new Vector3(0f, 0.45f, 1.251f * s), new Vector3(0f, 0f, s), 0.45f, 5f, vidrioOscuro);
-            k.Etiqueta(centro + new Vector3(0f, -0.85f, 1.252f * s), new Vector3(0f, 0f, s), 0.07f, 5.3f, blanco);
+            Vector3 n = new Vector3(0f, 0f, s);
+            float zMarco = s * (hz + 0.002f), zVidrio = s * (hz + 0.004f);
+            foreach (var v in ventanas)
+            {
+                float cx = (v[0] + v[1]) / 2f, mx = (v[1] - v[0]) / 2f;
+                k.Etiqueta(P(cx, 2.35f, zMarco), n, 0.58f, mx + 0.06f, negro);
+                k.Etiqueta(P(cx, 2.35f, zVidrio), n, 0.5f, mx - 0.02f, vidrio);
+            }
+            foreach (var d in puertas)
+            {
+                float cx = (d[0] + d[1]) / 2f, mx = (d[1] - d[0]) / 2f;
+                k.Etiqueta(P(cx, 1.68f, zMarco), n, 1.3f, mx + 0.06f, negro);
+                float hoja = mx / 2f - 0.04f;
+                k.Etiqueta(P(cx - mx / 2f, 1.68f, zVidrio), n, 1.22f, hoja, vidrio);
+                k.Etiqueta(P(cx + mx / 2f, 1.68f, zVidrio), n, 1.22f, hoja, vidrio);
+            }
+            // Pasos de rueda negros, llantas y rines
+            foreach (float x in new[] { -1.6f, 2.2f })
+            {
+                k.Etiqueta(P(x, 0.72f, zMarco), n, 0.38f, 0.72f, negro);
+                k.Cilindro(P(x, 0.5f, s * (hz - 0.165f)), 0.5f, 0.35f, Vector3.forward, 10, negro);
+                k.Cilindro(P(x, 0.5f, s * (hz + 0.03f)), 0.24f, 0.04f, Vector3.forward, 10, gris);
+            }
+            // Espejos: brazo hacia adelante, brazo hacia afuera y espejo
+            k.CajaMinMax(P(hx, 2.72f, s * (hz - 0.05f) - 0.03f), P(hx + 0.35f, 2.78f, s * (hz - 0.05f) + 0.03f), negro);
+            float zEsp = s * (hz + 0.28f);
+            k.CajaMinMax(P(hx + 0.32f, 2.72f, Mathf.Min(s * (hz - 0.05f), zEsp)), P(hx + 0.38f, 2.78f, Mathf.Max(s * (hz - 0.05f), zEsp)), negro);
+            k.CajaMinMax(P(hx + 0.28f, 2.05f, zEsp - 0.1f), P(hx + 0.42f, 2.75f, zEsp + 0.1f), negro);
         }
-        k.Etiqueta(centro + new Vector3(5.501f, 0.3f, 0f), Vector3.right, 0.6f, 1.05f, vidrioOscuro);
-        k.Etiqueta(centro + new Vector3(-5.501f, 0.45f, 0f), Vector3.left, 0.45f, 1.0f, vidrioOscuro);
-        foreach (float x in new[] { -3.6f, 3.4f })
-            foreach (float z in new[] { -1.15f, 1.15f })
-                k.Cilindro(piso + new Vector3(x, 0.5f, z), 0.5f, 0.3f, Vector3.forward, 10, new Color(0.15f, 0.15f, 0.17f));
+
+        // Frente: parabrisas partido, letrero, rejilla, placa, faros y direccionales
+        Vector3 fr = Vector3.right;
+        float xMarco = hx + 0.002f, xVidrio = hx + 0.004f;
+        k.Etiqueta(P(xMarco, 2.05f, 0f), fr, 0.72f, 1.17f, negro);
+        k.Etiqueta(P(xVidrio, 2.05f, -0.58f), fr, 0.66f, 0.54f, vidrio);
+        k.Etiqueta(P(xVidrio, 2.05f, 0.58f), fr, 0.66f, 0.54f, vidrio);
+        k.Etiqueta(P(xMarco, 2.96f, 0f), fr, 0.15f, 0.9f, negro);
+        k.Etiqueta(P(xMarco, 1.08f, 0f), fr, 0.03f, 0.4f, negro);
+        k.Etiqueta(P(hx + 0.122f, 0.52f, 0f), fr, 0.08f, 0.3f, blanco);
+        foreach (float s in new[] { -1f, 1f })
+        {
+            foreach (float z in new[] { 0.62f, 0.85f })
+                k.Cilindro(P(hx + 0.02f, 0.9f, s * z), 0.09f, 0.04f, Vector3.right, 10, blanco);
+            k.CajaMinMax(P(hx, 0.82f, s * 1.08f - 0.06f), P(hx + 0.03f, 0.98f, s * 1.08f + 0.06f), naranja);
+            k.CajaMinMax(P(hx + 0.12f, 0.5f, s * 1.0f - 0.1f), P(hx + 0.15f, 0.58f, s * 1.0f + 0.1f), naranja);
+        }
+
+        // Atrás: ventana trasera
+        k.Etiqueta(P(-hx - 0.002f, 2.4f, 0f), Vector3.left, 0.45f, 1.0f, negro);
+
+        // Textos "SITP" (frente y costados)
+        if (Resources.Load<TMP_Settings>("TMP Settings") == null)
+            return;
+        var textos = new GameObject("TextosBus");
+        textos.transform.SetParent(raiz, false);
+        TextoBus(textos.transform, P(hx + 0.006f, 2.96f, 0f), Quaternion.Euler(0f, -90f, 0f), new Vector2(1.6f, 0.26f));
+        TextoBus(textos.transform, P(2.0f, 1.25f, hz + 0.006f), Quaternion.Euler(0f, 180f, 0f), new Vector2(1.6f, 0.4f));
+        TextoBus(textos.transform, P(2.0f, 1.25f, -hz - 0.006f), Quaternion.identity, new Vector2(1.6f, 0.4f));
+    }
+
+    static void TextoBus(Transform padre, Vector3 posicion, Quaternion rotacion, Vector2 tamano)
+    {
+        var go = new GameObject("Texto_SITP", typeof(RectTransform));
+        go.transform.SetParent(padre, false);
+        var tmp = go.AddComponent<TextMeshPro>();
+        tmp.text = "SITP";
+        tmp.enableAutoSizing = true;
+        tmp.fontSizeMin = 0.1f;
+        tmp.fontSizeMax = 30f;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.fontStyle = FontStyles.Bold;
+        tmp.color = Color.white;
+        tmp.rectTransform.sizeDelta = tamano;
+        go.transform.SetPositionAndRotation(posicion, rotacion);
     }
 
     static Vector3 Abs(Vector3 v) => new Vector3(Mathf.Abs(v.x), Mathf.Abs(v.y), Mathf.Abs(v.z));
