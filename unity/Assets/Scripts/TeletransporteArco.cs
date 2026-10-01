@@ -97,7 +97,8 @@ public class TeletransporteArco : MonoBehaviour
         foreach (var m in activa != null ? new[] { activa } : new[] { izquierda, derecha })
         {
             bool estaba = m.apuntando;
-            bool apunta = Time.time >= bloqueadoHasta && Gesto(m, estaba, out Vector3 origen, out Vector3 direccion);
+            bool gesto = Gesto(m, estaba, out Vector3 origen, out Vector3 direccion);
+            bool apunta = gesto && Time.time >= bloqueadoHasta;
             if (apunta)
             {
                 float k = 1f - Mathf.Exp(-suavidad * Time.deltaTime);
