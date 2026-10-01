@@ -46,10 +46,11 @@ public static class AplicarEstiloYEscenografia
                 p.Add(new Vector3(x, 0.01f, z));
         foreach (float x in new[] { -3.6f, -1.8f, 0f, 1.8f, 3.6f })
             p.Add(new Vector3(x, 0.01f, -3.2f));
-        p.Add(new Vector3(-3.8f, 0.01f, 4.2f));
-        p.Add(new Vector3(-2.3f, 0.01f, 4.1f));
-        p.Add(new Vector3(2.3f, 0.01f, 4.1f));
-        p.Add(new Vector3(3.8f, 0.01f, 4.2f));
+        // Zona nueva del fondo (la farmacia se amplió 3 m): frente al mostrador y a sus lados.
+        foreach (float x in new[] { -3.6f, -1.8f, 0f, 1.8f, 3.6f })
+            p.Add(new Vector3(x, 0.01f, 4.4f));
+        foreach (float x in new[] { -3.6f, -2.4f, 2.4f, 3.6f })
+            p.Add(new Vector3(x, 0.01f, 6.0f));
         return p.ToArray();
     }
 
@@ -58,8 +59,8 @@ public static class AplicarEstiloYEscenografia
     {
         new Vector3(-3.05f, 0.05f, -0.2f), new Vector3(-1.7f, 0.05f, 2.2f), new Vector3(-0.8f, 0.05f, -1.6f),
         new Vector3(0.8f, 0.05f, 0.3f), new Vector3(1.9f, 0.05f, -0.4f), new Vector3(3.05f, 0.05f, 2.1f),
-        new Vector3(1.0f, 0.05f, 4.55f), new Vector3(-4.2f, 0.05f, 4.5f), new Vector3(4.2f, 0.05f, -4.4f),
-        new Vector3(-4.2f, 0.05f, -4.4f),
+        new Vector3(1.0f, 0.05f, 7.55f), new Vector3(-4.2f, 0.05f, 7.5f), new Vector3(4.2f, 0.05f, -4.4f),
+        new Vector3(-4.2f, 0.05f, -4.4f), new Vector3(3.0f, 0.05f, 5.3f), new Vector3(-2.6f, 0.05f, 6.9f),
     };
 
     [MenuItem("FarmaciaVR/★ Aplicar estilo toon y escenografía")]
@@ -102,6 +103,9 @@ public static class AplicarEstiloYEscenografia
             Undo.DestroyObjectImmediate(viejaRaiz);
         var raiz = new GameObject(nombreRaiz);
         Undo.RegisterCreatedObjectUndo(raiz, "Aplicar escenografía");
+
+        // ---------- Farmacia más grande hacia el fondo (para caminar alrededor del mostrador) ----------
+        AmpliarFarmacia();
 
         // ---------- Paredes y piso ----------
         PonerMaterial(GameObject.Find("Pared_Norte"), matPared);
@@ -167,6 +171,29 @@ public static class AplicarEstiloYEscenografia
         Debug.Log($"FarmaciaVR: listo ({escondites.Count} escondites, {puntosTeletransporte.Length} discos)" +
                   (conTextos ? "" : " — sin textos: falta TextMeshPro") + ". Guarda con Ctrl + S.");
         EditorUtility.DisplayDialog("FarmaciaVR", "¡Listo! Revisa la escena y guarda con Ctrl + S.", "OK");
+    }
+
+    // Mueve y estira los bloques originales de la maqueta para que la farmacia llegue hasta z = Fondo.
+    // Usa valores fijos, así se puede aplicar varias veces sin que siga creciendo.
+    static void AmpliarFarmacia()
+    {
+        float fondo = FachadaYExterior.Fondo;
+        float largo = fondo + 5f, centro = (fondo - 5f) / 2f;
+        void Poner(string nombre, Vector3 posicion, Vector3? escala = null)
+        {
+            var go = GameObject.Find(nombre);
+            if (go == null)
+                return;
+            Undo.RecordObject(go.transform, "Ampliar farmacia");
+            go.transform.position = posicion;
+            if (escala.HasValue)
+                go.transform.localScale = escala.Value;
+        }
+        Poner("Pared_Norte", new Vector3(0f, 1.5f, fondo), new Vector3(10f, 3f, 0.2f));
+        Poner("Pared_Este", new Vector3(5f, 1.5f, centro), new Vector3(0.2f, 3f, largo));
+        Poner("Pared_Oeste", new Vector3(-5f, 1.5f, centro), new Vector3(0.2f, 3f, largo));
+        Poner("Plane", new Vector3(0f, 0f, centro), new Vector3(1f, 1f, largo / 10f));
+        Poner("Mostrador", new Vector3(0f, 0.5f, fondo - 1.2f));
     }
 
     // ================= Muebles =================
@@ -334,13 +361,14 @@ public static class AplicarEstiloYEscenografia
         var techo = GameObject.CreatePrimitive(PrimitiveType.Cube);
         techo.name = "Techo";
         techo.transform.SetParent(raiz, false);
-        techo.transform.position = new Vector3(0f, 3.05f, 0f);
-        techo.transform.localScale = new Vector3(10f, 0.1f, 10f);
+        float fondo = FachadaYExterior.Fondo;
+        techo.transform.position = new Vector3(0f, 3.05f, (fondo - 5f) / 2f);
+        techo.transform.localScale = new Vector3(10f, 0.1f, fondo + 5f);
         techo.GetComponent<Renderer>().sharedMaterial = matTecho; // conserva su collider: el personaje no se escapa por arriba
 
         var lamparas = new KitMalla();
         foreach (float x in new[] { -3.6f, -1.25f, 1.25f, 3.6f })
-            foreach (float z in new[] { -1.2f, 2.0f })
+            foreach (float z in new[] { -1.2f, 2.0f, 5.2f })
                 lamparas.Caja(new Vector3(x, 2.985f, z), new Vector3(0.35f, 0.03f, 1.4f), Color.white, false);
         lamparas.CrearObjeto("Lamparas", raiz, matLampara, carpetaMallas);
     }
@@ -350,20 +378,23 @@ public static class AplicarEstiloYEscenografia
         var kit = new KitMalla();
 
         // Zócalo azul solo en la pared del fondo (en los lados peleaba con los estantes y parpadeaba).
-        kit.Caja(new Vector3(0f, 0.07f, 4.89f), new Vector3(9.6f, 0.14f, 0.02f), azul);
+        float zFondo = FachadaYExterior.Fondo - 0.11f;           // cara interior de la pared del fondo
+        float largoLados = FachadaYExterior.Fondo + 5f - 0.4f;    // largo de las paredes laterales por dentro
+        float centroLados = (FachadaYExterior.Fondo - 5f) / 2f;
+        kit.Caja(new Vector3(0f, 0.07f, zFondo), new Vector3(9.6f, 0.14f, 0.02f), azul);
         // Franja azul alta en las cuatro paredes.
-        kit.Caja(new Vector3(0f, 2.8f, 4.89f), new Vector3(9.6f, 0.12f, 0.02f), azul);
+        kit.Caja(new Vector3(0f, 2.8f, zFondo), new Vector3(9.6f, 0.12f, 0.02f), azul);
         kit.Caja(new Vector3(0f, 2.8f, -4.89f), new Vector3(9.6f, 0.12f, 0.02f), azul);
-        kit.Caja(new Vector3(4.89f, 2.8f, 0f), new Vector3(0.02f, 0.12f, 9.6f), azul);
-        kit.Caja(new Vector3(-4.89f, 2.8f, 0f), new Vector3(0.02f, 0.12f, 9.6f), azul);
+        kit.Caja(new Vector3(4.89f, 2.8f, centroLados), new Vector3(0.02f, 0.12f, largoLados), azul);
+        kit.Caja(new Vector3(-4.89f, 2.8f, centroLados), new Vector3(0.02f, 0.12f, largoLados), azul);
 
         // Tapete de entrada
         kit.Caja(new Vector3(0f, 0.006f, -4.3f), new Vector3(1.6f, 0.012f, 0.9f), azul);
 
         // Letrero principal sobre el mostrador
-        kit.Caja(new Vector3(0f, 2.35f, 4.87f), new Vector3(3.4f, 0.7f, 0.06f), blanco);
-        kit.Caja(new Vector3(-1.35f, 2.35f, 4.83f), new Vector3(0.36f, 0.12f, 0.03f), verde);
-        kit.Caja(new Vector3(-1.35f, 2.35f, 4.83f), new Vector3(0.12f, 0.36f, 0.03f), verde);
+        kit.Caja(new Vector3(0f, 2.35f, zFondo - 0.02f), new Vector3(3.4f, 0.7f, 0.06f), blanco);
+        kit.Caja(new Vector3(-1.35f, 2.35f, zFondo - 0.06f), new Vector3(0.36f, 0.12f, 0.03f), verde);
+        kit.Caja(new Vector3(-1.35f, 2.35f, zFondo - 0.06f), new Vector3(0.12f, 0.36f, 0.03f), verde);
 
         // Letrero exterior sobre la vitrina (con cruz verde) y tablero de instrucciones en el andén
         kit.CajaMinMax(new Vector3(-3.2f, 2.55f, -5.23f), new Vector3(3.2f, 3.05f, -5.13f), azul);
@@ -392,7 +423,7 @@ public static class AplicarEstiloYEscenografia
         }
         var contenedor = new GameObject("Letreros");
         contenedor.transform.SetParent(raiz, false);
-        Texto(contenedor.transform, "Farma-CIA Agencia", new Vector3(0.25f, 2.35f, 4.835f), new Vector2(2.6f, 0.5f), azul);
+        Texto(contenedor.transform, "Farma-CIA Agencia", new Vector3(0.25f, 2.35f, FachadaYExterior.Fondo - 0.165f), new Vector2(2.6f, 0.5f), azul);
 
         // Afuera: letrero grande sobre la entrada y tablero de instrucciones junto a la puerta.
         Texto(contenedor.transform, "Farma-CIA Agencia", new Vector3(0.3f, 2.8f, -5.235f), new Vector2(5.0f, 0.4f), Color.white);
@@ -538,35 +569,87 @@ public static class AplicarEstiloYEscenografia
         Color barriga = new Color(0.98f, 0.74f, 0.68f);
         Color blancoOjo = new Color(0.98f, 0.98f, 0.97f);
         Color negro = new Color(0.08f, 0.07f, 0.07f);
+        Color cafeIris = new Color(0.5f, 0.28f, 0.12f);
         Color naranja = new Color(1f, 0.62f, 0.12f);
+        Color naranjaOscuro = new Color(0.92f, 0.48f, 0.08f);
+        Color boca = new Color(0.55f, 0.12f, 0.12f);
+        Color overol = new Color(0.80f, 0.63f, 0.42f);
+        Color overolOscuro = new Color(0.64f, 0.47f, 0.30f);
+        Color azulPollito = new Color(0.35f, 0.65f, 0.95f);
+        Color azulClaro = new Color(0.58f, 0.82f, 1f);
+        Color amarilloGafas = new Color(1f, 0.85f, 0.1f);
 
-        // Cuerpo con cara, cejas, pico, copete y patas
         var cuerpo = new KitMalla();
-        cuerpo.Esfera(new Vector3(0f, 0.5f, 0f), new Vector3(0.5f, 0.52f, 0.48f), 2, rojo);
-        cuerpo.Esfera(new Vector3(0f, 0.38f, 0.24f), new Vector3(0.34f, 0.3f, 0.26f), 2, barriga);
+        // Cuerpo en forma de huevo y barriga clara
+        cuerpo.Esfera(new Vector3(0f, 0.5f, 0f), new Vector3(0.5f, 0.55f, 0.47f), 3, rojo);
+        cuerpo.Esfera(new Vector3(0f, 0.42f, 0.22f), new Vector3(0.36f, 0.33f, 0.27f), 3, barriga);
+        cuerpo.Esfera(new Vector3(0f, 0.36f, -0.45f), new Vector3(0.1f, 0.08f, 0.1f), 1, rojo); // colita
+
+        // Overol café: peto, tirantes con botones, estrella y bolsillo
+        cuerpo.Esfera(new Vector3(0f, 0.27f, 0.27f), new Vector3(0.38f, 0.22f, 0.24f), 2, overol);
         foreach (float s in new[] { -1f, 1f })
         {
-            cuerpo.Esfera(new Vector3(s * 0.15f, 0.63f, 0.38f), new Vector3(0.13f, 0.15f, 0.09f), 2, blancoOjo);
-            cuerpo.Esfera(new Vector3(s * 0.12f, 0.62f, 0.46f), new Vector3(0.05f, 0.06f, 0.03f), 1, negro);
-            // Cejas gruesas, más bajas hacia el centro (cara de "concentrado")
-            float xi = s * 0.04f, xe = s * 0.31f;
+            cuerpo.Caja(new Vector3(s * 0.2f, 0.6f, 0.43f), new Vector3(0.07f, 0.24f, 0.04f), overol);
+            cuerpo.grosorContorno = 0.5f;
+            cuerpo.Esfera(new Vector3(s * 0.2f, 0.49f, 0.45f), new Vector3(0.025f, 0.025f, 0.015f), 1, overolOscuro);
+            cuerpo.grosorContorno = 1f;
+        }
+        Estrella(cuerpo, new Vector3(0.2f, 0.31f, 0.478f), 0.05f, Color.white);
+        cuerpo.Caja(new Vector3(0f, 0.2f, 0.51f), new Vector3(0.26f, 0.12f, 0.04f), overolOscuro);
+
+        // Ojos grandes con iris café, pupila y brillo
+        foreach (float s in new[] { -1f, 1f })
+        {
+            cuerpo.Esfera(new Vector3(s * 0.15f, 0.64f, 0.37f), new Vector3(0.14f, 0.16f, 0.1f), 2, blancoOjo);
+            cuerpo.grosorContorno = 0.5f;
+            cuerpo.Esfera(new Vector3(s * 0.125f, 0.63f, 0.455f), new Vector3(0.065f, 0.075f, 0.03f), 1, cafeIris);
+            cuerpo.Esfera(new Vector3(s * 0.12f, 0.63f, 0.475f), new Vector3(0.035f, 0.04f, 0.02f), 1, negro);
+            cuerpo.Esfera(new Vector3(s * 0.1f, 0.665f, 0.49f), new Vector3(0.013f, 0.013f, 0.008f), 1, Color.white, false);
+            cuerpo.grosorContorno = 1f;
+            // Cejas gruesas, más bajas hacia el centro
+            float xi = s * 0.03f, xe = s * 0.32f;
             cuerpo.Hexaedro(new[]
             {
-                new Vector3(xi, 0.75f, 0.47f), new Vector3(xe, 0.81f, 0.40f), new Vector3(xe, 0.81f, 0.33f), new Vector3(xi, 0.75f, 0.41f),
-                new Vector3(xi, 0.83f, 0.47f), new Vector3(xe, 0.89f, 0.40f), new Vector3(xe, 0.89f, 0.33f), new Vector3(xi, 0.83f, 0.41f),
+                new Vector3(xi, 0.76f, 0.48f), new Vector3(xe, 0.82f, 0.40f), new Vector3(xe, 0.82f, 0.32f), new Vector3(xi, 0.76f, 0.41f),
+                new Vector3(xi, 0.86f, 0.48f), new Vector3(xe, 0.91f, 0.40f), new Vector3(xe, 0.91f, 0.32f), new Vector3(xi, 0.86f, 0.41f),
             }, negro);
-            cuerpo.Esfera(new Vector3(s * 0.15f, 0.03f, 0.12f), new Vector3(0.09f, 0.035f, 0.13f), 1, naranja);
+            cuerpo.Esfera(new Vector3(s * 0.16f, 0.03f, 0.13f), new Vector3(0.1f, 0.04f, 0.15f), 1, naranja); // patas
         }
-        // Pico: pirámide hacia adelante
-        Vector3 punta = new Vector3(0f, 0.47f, 0.7f);
+
+        // Pico abierto (de arriba y de abajo) con la boca adentro
+        Vector3 punta = new Vector3(0f, 0.5f, 0.73f);
         cuerpo.Hexaedro(new[]
         {
-            new Vector3(-0.1f, 0.4f, 0.43f), new Vector3(0.1f, 0.4f, 0.43f), new Vector3(0.1f, 0.4f, 0.5f), new Vector3(-0.1f, 0.4f, 0.5f),
-            new Vector3(-0.09f, 0.55f, 0.43f), new Vector3(0.09f, 0.55f, 0.43f), punta, punta,
+            new Vector3(-0.11f, 0.45f, 0.43f), new Vector3(0.11f, 0.45f, 0.43f), new Vector3(0.11f, 0.45f, 0.5f), new Vector3(-0.11f, 0.45f, 0.5f),
+            new Vector3(-0.1f, 0.58f, 0.43f), new Vector3(0.1f, 0.58f, 0.43f), punta, punta,
         }, naranja);
-        // Copete
-        cuerpo.Esfera(new Vector3(0f, 1.04f, 0.02f), new Vector3(0.05f, 0.12f, 0.05f), 1, rojo);
-        cuerpo.Esfera(new Vector3(0.06f, 1.0f, -0.04f), new Vector3(0.04f, 0.09f, 0.04f), 1, rojo);
+        Vector3 puntaAbajo = new Vector3(0f, 0.4f, 0.62f);
+        cuerpo.Hexaedro(new[]
+        {
+            new Vector3(-0.08f, 0.35f, 0.43f), new Vector3(0.08f, 0.35f, 0.43f), puntaAbajo, puntaAbajo,
+            new Vector3(-0.09f, 0.42f, 0.43f), new Vector3(0.09f, 0.42f, 0.43f), new Vector3(0.09f, 0.42f, 0.5f), new Vector3(-0.09f, 0.42f, 0.5f),
+        }, naranjaOscuro);
+        cuerpo.Esfera(new Vector3(0f, 0.435f, 0.47f), new Vector3(0.08f, 0.03f, 0.04f), 1, boca, false);
+
+        // Copete de plumas
+        cuerpo.Esfera(new Vector3(0f, 1.06f, 0.02f), new Vector3(0.05f, 0.13f, 0.05f), 1, rojo);
+        cuerpo.Esfera(new Vector3(0.07f, 1.02f, -0.03f), new Vector3(0.04f, 0.1f, 0.04f), 1, rojo);
+        cuerpo.Esfera(new Vector3(-0.06f, 1.0f, -0.05f), new Vector3(0.035f, 0.08f, 0.035f), 1, rojo);
+
+        // El hijo: pollito azul con gafas amarillas, asomado en el bolsillo
+        cuerpo.grosorContorno = 0.4f;
+        cuerpo.Esfera(new Vector3(0f, 0.31f, 0.5f), new Vector3(0.085f, 0.085f, 0.08f), 2, azulPollito);
+        foreach (float x in new[] { -0.03f, 0f, 0.03f })
+            cuerpo.Esfera(new Vector3(x, 0.4f + (x == 0f ? 0.01f : 0f), 0.5f), new Vector3(0.015f, 0.04f, 0.015f), 1, azulClaro);
+        foreach (float s in new[] { -1f, 1f })
+        {
+            cuerpo.Cilindro(new Vector3(s * 0.033f, 0.33f, 0.572f), 0.036f, 0.01f, Vector3.forward, 12, amarilloGafas);
+            cuerpo.Esfera(new Vector3(s * 0.033f, 0.33f, 0.578f), new Vector3(0.028f, 0.03f, 0.014f), 1, blancoOjo, false);
+            cuerpo.Esfera(new Vector3(s * 0.03f, 0.33f, 0.59f), new Vector3(0.012f, 0.013f, 0.006f), 1, negro, false);
+        }
+        cuerpo.Caja(new Vector3(0f, 0.335f, 0.578f), new Vector3(0.02f, 0.008f, 0.006f), amarilloGafas, false);
+        cuerpo.Esfera(new Vector3(0f, 0.302f, 0.585f), new Vector3(0.013f, 0.01f, 0.016f), 1, naranja, false);
+        cuerpo.grosorContorno = 1f;
 
         var ala = new KitMalla();
         ala.Esfera(new Vector3(0f, -0.17f, 0f), new Vector3(0.07f, 0.2f, 0.15f), 2, rojo);
@@ -614,6 +697,20 @@ public static class AplicarEstiloYEscenografia
         }
         if (actual != null)
             Undo.DestroyObjectImmediate(actual.gameObject);
+    }
+
+    // Estrella plana de 5 puntas (mirando hacia +Z), para el parche del overol.
+    static void Estrella(KitMalla k, Vector3 centro, float radio, Color color)
+    {
+        var puntas = new Vector3[10];
+        for (int i = 0; i < 10; i++)
+        {
+            float r = i % 2 == 0 ? radio : radio * 0.45f;
+            float a = Mathf.PI / 2f + i * Mathf.PI / 5f;
+            puntas[i] = centro + new Vector3(Mathf.Cos(a) * r, Mathf.Sin(a) * r, 0f);
+        }
+        for (int i = 0; i < 10; i++)
+            k.Triangulo(centro, puntas[i], puntas[(i + 1) % 10], Vector3.forward, color, centro, false);
     }
 
     // ================= Cronómetro y opciones =================
@@ -711,6 +808,14 @@ public static class AplicarEstiloYEscenografia
         modo.discos = puntos;
         modo.teletransportePuntos = puntos != null ? puntos.GetComponent<TeletransportePorPuntos>() : null;
         modo.teletransporteMeta = BuscarAunqueEsteApagado("ISDK_TeleportInteraction");
+        // Nuestro teletransporte con arco (estilo Meta)
+        var arcoGo = new GameObject("TeletransporteArco");
+        arcoGo.transform.SetParent(raiz, false);
+        var arco = arcoGo.AddComponent<TeletransporteArco>();
+        arco.materialLinea = AssetDatabase.LoadAssetAtPath<Material>($"{carpetaMateriales}/Mat_LineaTeleport.mat");
+        arco.zonaPermitida = new Vector4(-4.8f, 4.8f, -4.8f, FachadaYExterior.Fondo - 0.2f);
+        arco.enabled = false;
+        modo.teletransporteArco = arco;
         modo.botonPuntos = botonPuntos;
         modo.botonMeta = botonMeta;
         EditorUtility.SetDirty(modo);

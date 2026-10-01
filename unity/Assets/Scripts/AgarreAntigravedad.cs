@@ -60,6 +60,7 @@ public class AgarreAntigravedad : MonoBehaviour
         public Rigidbody[] solidos;    // [0] = palma, [1..] = puntas de los dedos
         public Collider[] colliders;
         public float ignorarHasta;
+        public bool ignorada;          // la mano está "atravesando" al personaje a propósito (mientras lo sostiene)
     }
 
     Estado estado = Estado.Apagado;
@@ -135,6 +136,8 @@ public class AgarreAntigravedad : MonoBehaviour
     // Lo llama PersonajeEncontrable cuando llega a la mano.
     public void Activar()
     {
+        IgnorarMano(izquierda, false);
+        IgnorarMano(derecha, false);
         puntoEspera = transform.position;
         Cambiar(Estado.Flotando);
     }
@@ -143,6 +146,9 @@ public class AgarreAntigravedad : MonoBehaviour
     public void Desactivar()
     {
         Cambiar(Estado.Apagado);
+        // Importante: si la partida se reinicia con el personaje en una mano, esa mano vuelve a ser sólida.
+        IgnorarMano(izquierda, false);
+        IgnorarMano(derecha, false);
     }
 
     void Cambiar(Estado nuevo)
@@ -166,6 +172,10 @@ public class AgarreAntigravedad : MonoBehaviour
             return;
         LeerMano(izquierda);
         LeerMano(derecha);
+        // Las manos que ya no lo sostienen vuelven a ser sólidas (revisado cada cuadro, para que nunca se queden "fantasma").
+        foreach (var m in new[] { izquierda, derecha })
+            if (m != null && m.ignorada && m != manoActiva && Time.time > m.ignorarHasta)
+                IgnorarMano(m, false);
         if (estado == Estado.Apagado)
             return;
         tiempoEstado += Time.deltaTime;
@@ -173,10 +183,19 @@ public class AgarreAntigravedad : MonoBehaviour
         switch (estado)
         {
             case Estado.Agarrado:
-                SeguirAgarre();
-                break;
             case Estado.EnPalma:
-                SeguirPalma();
+                // Pasarlo de una mano a la otra: si la otra mano lo agarra, se lo queda.
+                var otra = manoActiva == izquierda ? derecha : izquierda;
+                if (otra != null && EstaCerrada(otra) && !otra.cerradaAntes
+                    && Vector3.Distance(PuntoDeMano(otra), cuerpo.position) < mitad + margenAgarre)
+                {
+                    var anterior = manoActiva;
+                    Tomar(otra, Estado.Agarrado);
+                    if (anterior != null) anterior.ignorarHasta = Time.time + 0.4f;
+                    break;
+                }
+                if (estado == Estado.Agarrado) SeguirAgarre();
+                else SeguirPalma();
                 break;
             default:
                 if (!IntentarTomar(izquierda) && !IntentarTomar(derecha) && estado == Estado.Libre && tiempoEstado > segundosAntesDeRegresar)
@@ -302,6 +321,7 @@ public class AgarreAntigravedad : MonoBehaviour
     {
         if (m == null)
             return;
+        m.ignorada = ignorar;
         foreach (var c in m.colliders)
             foreach (var mio in misColliders)
                 if (c != null && mio != null)
@@ -393,20 +413,9 @@ public class AgarreAntigravedad : MonoBehaviour
         Cambiar(Estado.Libre);
         cuerpo.linearVelocity = velocidad;
         cuerpo.angularVelocity = Random.onUnitSphere * Mathf.Lerp(0.5f, 3f, velocidad.magnitude / velocidadMaxima);
+        // La mano vuelve a ser sólida 0.4 s después de soltarlo (así no sale disparado al soltarlo).
         if (m != null)
-        {
             m.ignorarHasta = Time.time + 0.4f;
-            StartCoroutine(VolverAChocar(m));
-        }
-    }
-
-    // Después de soltarlo, la mano vuelve a ser sólida para él (así no sale disparado al soltarlo).
-    System.Collections.IEnumerator VolverAChocar(Mano m)
-    {
-        while (Time.time < m.ignorarHasta)
-            yield return null;
-        if (manoActiva != m)
-            IgnorarMano(m, false);
     }
 
     // Donde vuelve a esperarte: al frente, un poco a la derecha y a la altura del pecho.

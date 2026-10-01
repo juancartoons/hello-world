@@ -15,6 +15,10 @@ public class TeletransportePorPuntos : MonoBehaviour
     [Tooltip("Pausa (segundos) después de teletransportarte, para no saltar dos veces seguidas")]
     public float pausaDespues = 0.8f;
     public float anchoLinea = 0.005f;
+    [Tooltip("Qué tan suave se mueve la línea (más alto = responde más rápido, más bajo = más estable)")]
+    public float suavidad = 12f;
+    [Tooltip("Ayuda de puntería: si apuntas a menos de estos grados de un disco, se 'pega' a él")]
+    public float anguloIman = 8f;
     public Color colorLinea = new Color(1f, 1f, 1f, 0.5f);
     public Color colorLineaApuntando = new Color(1f, 0.85f, 0.1f, 1f);
 
@@ -29,7 +33,12 @@ public class TeletransportePorPuntos : MonoBehaviour
         public LineRenderer linea;
         public PuntoTeletransporte apuntado;
         public float tiempo;
+        public Vector3 origenSuave, direccionSuave;
+        public bool haySuave;
+        public float perdido; // segundos desde que el rayo dejó de tocar el disco (pequeño margen antes de reiniciar)
     }
+
+    PuntoTeletransporte[] discos = new PuntoTeletransporte[0];
 
     OVRCameraRig rig;
     Transform cabeza;
@@ -46,6 +55,7 @@ public class TeletransportePorPuntos : MonoBehaviour
             return;
         }
         cabeza = rig.centerEyeAnchor;
+        discos = FindObjectsByType<PuntoTeletransporte>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         izquierda = CrearMano(true, rig.leftHandAnchor, rig.leftControllerAnchor, OVRInput.Controller.LTouch);
         derecha = CrearMano(false, rig.rightHandAnchor, rig.rightControllerAnchor, OVRInput.Controller.RTouch);
     }
@@ -102,9 +112,26 @@ public class TeletransportePorPuntos : MonoBehaviour
         if (bloqueado || !ObtenerRayo(m, out Vector3 origen, out Vector3 direccion, out bool gatillo))
         {
             m.linea.enabled = false;
+            m.haySuave = false;
             CambiarApuntado(m, null);
             return;
         }
+
+        // Suaviza el rayo para que no tiemble.
+        float k = 1f - Mathf.Exp(-suavidad * Time.deltaTime);
+        if (!m.haySuave)
+        {
+            m.origenSuave = origen;
+            m.direccionSuave = direccion;
+            m.haySuave = true;
+        }
+        else
+        {
+            m.origenSuave = Vector3.Lerp(m.origenSuave, origen, k);
+            m.direccionSuave = Vector3.Slerp(m.direccionSuave, direccion, k).normalized;
+        }
+        origen = m.origenSuave;
+        direccion = m.direccionSuave;
 
         PuntoTeletransporte punto = null;
         Vector3 fin = origen + direccion * 1.5f;
@@ -115,6 +142,21 @@ public class TeletransportePorPuntos : MonoBehaviour
         }
         if (punto != null && EstoyEncima(punto))
             punto = null; // el disco donde ya estás parado no cuenta
+        if (punto == null)
+            punto = Iman(origen, direccion, ref fin); // ayuda de puntería
+
+        // Si el rayo se sale del disco un instante, no se pierde el progreso.
+        bool avanzar = true;
+        if (punto == null && m.apuntado != null && m.perdido < 0.25f)
+        {
+            m.perdido += Time.deltaTime;
+            punto = m.apuntado;
+            avanzar = false;
+        }
+        else if (punto != null)
+        {
+            m.perdido = 0f;
+        }
 
         m.linea.enabled = true;
         m.linea.SetPosition(0, origen);
@@ -127,7 +169,8 @@ public class TeletransportePorPuntos : MonoBehaviour
         if (punto == null)
             return;
 
-        m.tiempo += Time.deltaTime;
+        if (avanzar)
+            m.tiempo += Time.deltaTime;
         float progreso = m.tiempo / Mathf.Max(0.05f, segundosApuntando);
         punto.Resaltar(progreso);
         if (progreso >= 1f || gatillo)
@@ -190,6 +233,30 @@ public class TeletransportePorPuntos : MonoBehaviour
         return true;
     }
 
+    // Busca el disco más cercano a donde apuntas (dentro de "anguloIman") que se vea sin obstáculos.
+    PuntoTeletransporte Iman(Vector3 origen, Vector3 direccion, ref Vector3 fin)
+    {
+        PuntoTeletransporte mejor = null;
+        float mejorAngulo = anguloIman;
+        foreach (var d in discos)
+        {
+            if (d == null || !d.isActiveAndEnabled || EstoyEncima(d))
+                continue;
+            Vector3 hacia = d.transform.position - origen;
+            float angulo = Vector3.Angle(direccion, hacia);
+            if (angulo >= mejorAngulo || hacia.magnitude > alcance)
+                continue;
+            if (Physics.Raycast(origen, hacia.normalized, out RaycastHit hit, hacia.magnitude - 0.05f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)
+                && hit.collider.GetComponentInParent<PuntoTeletransporte>() != d)
+                continue; // hay algo en medio
+            mejor = d;
+            mejorAngulo = angulo;
+        }
+        if (mejor != null)
+            fin = mejor.transform.position;
+        return mejor;
+    }
+
     bool EstoyEncima(PuntoTeletransporte punto)
     {
         Vector3 d = punto.transform.position - cabeza.position;
@@ -206,6 +273,7 @@ public class TeletransportePorPuntos : MonoBehaviour
             m.apuntado.Resaltar(0f);
         m.apuntado = nuevo;
         m.tiempo = 0f;
+        m.perdido = 0f;
     }
 
     void Teletransportar(PuntoTeletransporte punto)

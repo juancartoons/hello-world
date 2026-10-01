@@ -1,8 +1,9 @@
 using UnityEngine;
 
 // Elige cómo se mueve el jugador adentro de la farmacia:
-// - Puntos: señalar con el dedo los discos del piso (el sistema nuestro).
-// - Meta: el teletransporte normal de Meta Quest (arco con la mano).
+// - Puntos: señalar con el dedo los discos del piso.
+// - Meta: arco curvo como el de Meta Quest (palma abajo + pellizco, soltar para ir), a cualquier parte del piso.
+// El arco original de Meta se apaga siempre (apuntaba mal y se veía encima del nuestro).
 // Se elige con los botones que aparecen afuera, antes de entrar.
 public class ModoNavegacion : MonoBehaviour
 {
@@ -13,7 +14,9 @@ public class ModoNavegacion : MonoBehaviour
     public TeletransportePorPuntos teletransportePuntos;
     [Tooltip("Contenedor de los discos del piso")]
     public GameObject discos;
-    [Tooltip("El teletransporte de Meta (ISDK_TeleportInteraction)")]
+    [Tooltip("Nuestro teletransporte con arco, estilo Meta")]
+    public TeletransporteArco teletransporteArco;
+    [Tooltip("El teletransporte original de Meta (ISDK_TeleportInteraction): se mantiene apagado")]
     public GameObject teletransporteMeta;
     [Tooltip("Botones para resaltar el modo elegido")]
     public Renderer botonPuntos, botonMeta;
@@ -26,7 +29,16 @@ public class ModoNavegacion : MonoBehaviour
 
     void Start()
     {
+        ApagarArcoOriginalDeMeta();
         Aplicar(modo);
+    }
+
+    // Apaga los "lanzadores" del arco de teletransporte del kit de manos de Meta (el giro con el pulgar sigue funcionando).
+    void ApagarArcoOriginalDeMeta()
+    {
+        foreach (var comp in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+            if (comp != null && comp.GetType().Name == "TeleportInteractor")
+                comp.gameObject.SetActive(false);
     }
 
     public void ElegirPuntos() => Aplicar(Modo.Puntos);
@@ -41,8 +53,10 @@ public class ModoNavegacion : MonoBehaviour
         if (discos != null)
             foreach (Transform disco in discos.transform)
                 disco.gameObject.SetActive(puntos);
+        if (teletransporteArco != null)
+            teletransporteArco.enabled = !puntos;
         if (teletransporteMeta != null)
-            teletransporteMeta.SetActive(!puntos);
+            teletransporteMeta.SetActive(false);
         Pintar(botonPuntos, puntos);
         Pintar(botonMeta, !puntos);
     }

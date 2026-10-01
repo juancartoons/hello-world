@@ -8,6 +8,9 @@ using UnityEngine;
 // cerros orientales, nubes y cielo. Todo en pocas mallas para que la Quest 2 lo mueva sin problema.
 internal static class FachadaYExterior
 {
+    // Fondo de la farmacia: la pared del fondo está en z = Fondo (se amplió 3 m para poder caminar alrededor del mostrador).
+    internal const float Fondo = 8f;
+
     struct Hueco
     {
         public float a0, a1, y0, y1;
@@ -64,27 +67,31 @@ internal static class FachadaYExterior
             new Hueco(-0.7f, 0.7f, 0f, 2.3f, true),
             new Hueco(1.0f, 4.5f, 0.5f, 2.5f),
         };
-        // Este y oeste: ventana grande cerca de la entrada y ventanas altas sobre los estantes.
+        // Este y oeste: ventana grande cerca de la entrada, ventanas altas sobre los estantes
+        // y otra ventana grande en la parte del fondo (la zona nueva).
         var lados = new List<Hueco>
         {
             new Hueco(-4.6f, -2.8f, 0.5f, 2.5f),
             new Hueco(-2.2f, -0.4f, 2.15f, 2.7f),
             new Hueco(0.2f, 2.0f, 2.15f, 2.7f),
-            new Hueco(2.6f, 4.4f, 2.15f, 2.7f),
+            new Hueco(2.6f, 3.6f, 2.15f, 2.7f),
+            new Hueco(4.4f, 7.2f, 0.5f, 2.5f),
         };
 
-        Pared(fachada, vidrio, false, -5.0f, sur);
-        Pared(fachada, vidrio, true, 5.0f, lados);
-        Pared(fachada, vidrio, true, -5.0f, lados);
+        Pared(fachada, vidrio, false, -5.0f, sur, -5.1f, 5.1f);
+        Pared(fachada, vidrio, true, 5.0f, lados, -5.1f, Fondo + 0.1f);
+        Pared(fachada, vidrio, true, -5.0f, lados, -5.1f, Fondo + 0.1f);
 
         // Esquinas, losa del techo y umbral de la puerta.
         foreach (float x in new[] { -5.05f, 5.05f })
-            foreach (float z in new[] { -5.05f, 5.05f })
+            foreach (float z in new[] { -5.05f, Fondo + 0.05f })
                 fachada.Caja(new Vector3(x, 1.625f, z), new Vector3(0.3f, 3.25f, 0.3f), pared);
-        fachada.CajaMinMax(new Vector3(-5.25f, 3.1f, -5.25f), new Vector3(5.25f, 3.25f, 5.25f), grisClaro);
+        fachada.CajaMinMax(new Vector3(-5.25f, 3.1f, -5.25f), new Vector3(5.25f, 3.25f, Fondo + 0.25f), grisClaro);
         fachada.CajaMinMax(new Vector3(-0.7f, -0.12f, -5.1f), new Vector3(0.7f, 0f, -4.9f), acera, false);
 
-        // Sol entrando solo por la ventana grande de la derecha (pared este, cerca de la entrada).
+        // Sol: entra por la vitrina de la entrada y por las ventanas grandes de la derecha (pared este).
+        foreach (var h in sur)
+            SolPorHueco(luz, false, -4.9f, h, dirLuz);
         foreach (var h in lados)
             SolPorHueco(luz, true, 4.9f, h, dirLuz);
 
@@ -95,9 +102,9 @@ internal static class FachadaYExterior
 
     // Pared de 0.2 m de grosor con huecos. Si "enX" es true, la pared va a lo largo de Z en x = fijo;
     // si no, va a lo largo de X en z = fijo.
-    static void Pared(KitMalla kit, KitMalla vidrio, bool enX, float fijo, List<Hueco> huecos)
+    static void Pared(KitMalla kit, KitMalla vidrio, bool enX, float fijo, List<Hueco> huecos, float inicio, float fin)
     {
-        const float mitadGrosor = 0.1f, alto = 3.0f, inicio = -5.1f, fin = 5.1f;
+        const float mitadGrosor = 0.1f, alto = 3.0f;
 
         Vector3 P(float a, float y, float p) => enX ? new Vector3(p, y, a) : new Vector3(a, y, p);
         void Bloque(float a0, float a1, float y0, float y1, float p0, float p1, Color color, bool contorno, KitMalla destino)
@@ -284,7 +291,7 @@ internal static class FachadaYExterior
         ext.brillo = 0.2f; // edificios, árboles y cerros: mate
 
         // Edificios cercanos (ladrillo bogotano, con ventanas y placas de concreto).
-        Edificio(ext, rnd, new Vector3(-6.5f, 0f, 5.3f), new Vector3(6.5f, 15f, 17f), Elegir(rnd, ladrillos));  // vecino de atrás
+        Edificio(ext, rnd, new Vector3(-6.5f, 0f, Fondo + 0.3f), new Vector3(6.5f, 15f, Fondo + 12f), Elegir(rnd, ladrillos));  // vecino de atrás
         Edificio(ext, rnd, new Vector3(8f, 0f, 15f), new Vector3(24f, 18f, 26f), Elegir(rnd, ladrillos));       // detrás del parqueadero
         Edificio(ext, rnd, new Vector3(25f, 0f, -6f), new Vector3(36f, 12f, 14f), concreto);                   // al este del parqueadero
         float[][] frente = { new[] { -6.5f, 2f, 15f }, new[] { 2.5f, 11f, 18f }, new[] { 11.5f, 20f, 12f }, new[] { 20.5f, 30f, 15f } };

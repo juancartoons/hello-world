@@ -102,18 +102,32 @@ public class JuegoManager : MonoBehaviour
 
     // ---------- Flujo del juego ----------
 
+    float ultimaPalmada = -10f;
+    float ignorarPalmadasHasta;
+
     void AlAplaudir()
     {
+        // Justo después de cambiar de etapa no se escuchan palmadas (para que una sola no cuente dos veces).
+        if (Time.time < ignorarPalmadasHasta)
+            return;
         if (estado == Estado.Afuera)
             Cambiar(Entrar());
-        else if (estado != Estado.Entrando)
+        else if (estado == Estado.Terminado)
             EmpezarAfuera();
+        else if (estado == Estado.Buscando)
+        {
+            // Mientras buscas hay que dar DOS palmadas seguidas para reiniciar (evita reinicios por accidente).
+            if (Time.time - ultimaPalmada < 1.5f)
+                EmpezarAfuera();
+            ultimaPalmada = Time.time;
+        }
     }
 
     void EmpezarAfuera()
     {
         Detener();
         estado = Estado.Afuera;
+        ignorarPalmadasHasta = Time.time + 1f;
         personaje.Activo = false;
         personaje.Reiniciar();
         EsconderPersonaje();
@@ -206,6 +220,7 @@ public class JuegoManager : MonoBehaviour
     void Terminar(string titulo, string texto)
     {
         estado = Estado.Terminado;
+        ignorarPalmadasHasta = Time.time + 1f;
         personaje.Activo = false;
         MostrarCronometro(false);
         MostrarPanel(titulo, texto);
