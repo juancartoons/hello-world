@@ -41,10 +41,12 @@ internal static class FachadaYExterior
     {
         new Color(0.30f, 0.58f, 0.32f), new Color(0.24f, 0.50f, 0.28f), new Color(0.38f, 0.64f, 0.34f),
     };
-    static readonly Color[] coloresCarro =
+    // Colores del carro familiar (el beige de la referencia primero).
+    static readonly Color[] coloresFamiliar =
     {
-        new Color(0.85f, 0.18f, 0.16f), new Color(0.92f, 0.92f, 0.90f), new Color(0.62f, 0.64f, 0.68f),
-        new Color(0.20f, 0.40f, 0.75f), new Color(0.15f, 0.16f, 0.18f),
+        new Color(0.92f, 0.86f, 0.74f), new Color(0.82f, 0.20f, 0.18f), new Color(0.45f, 0.65f, 0.85f),
+        new Color(0.95f, 0.95f, 0.93f), new Color(0.35f, 0.60f, 0.42f), new Color(0.65f, 0.66f, 0.70f),
+        new Color(0.18f, 0.28f, 0.55f), new Color(0.50f, 0.15f, 0.20f),
     };
 
     // ================= Fachada: paredes con ventanas, vidrios y sol =================
@@ -254,14 +256,27 @@ internal static class FachadaYExterior
             foreach (float z in lineas)
                 ext.Piso(new Vector3(xFila, 0.01f, z), 2.5f, 0.05f, blanco);
             for (int i = 0; i < lineas.Length - 1; i++)
-                if (rnd.NextDouble() < 0.6)
-                    Carro(ext, new Vector3(xFila, 0.005f, (lineas[i] + lineas[i + 1]) / 2f), true, Elegir(rnd, coloresCarro), false);
+            {
+                if (rnd.NextDouble() > 0.65)
+                    continue;
+                Vector3 puesto = new Vector3(xFila, 0.005f, (lineas[i] + lineas[i + 1]) / 2f);
+                Vector3 dir = rnd.NextDouble() < 0.5 ? Vector3.right : Vector3.left;
+                if (rnd.NextDouble() < 0.15)
+                    Taxi(ext, puesto, dir, raiz);
+                else
+                    Familiar(ext, puesto, dir, Elegir(rnd, coloresFamiliar));
+            }
         }
 
         // Carros y bus en la calle.
-        Carro(ext, new Vector3(-2f, -0.13f, -10f), true, amarillo, true);   // taxi
-        Carro(ext, new Vector3(16f, -0.13f, -14f), true, coloresCarro[0], false);
-        Carro(ext, new Vector3(-9f, -0.13f, 6f), false, coloresCarro[3], false);
+        // En Colombia se maneja por la derecha: hacia +X por el carril sur, hacia -X por el carril norte.
+        Taxi(ext, new Vector3(-2f, -0.13f, -10f), Vector3.left, raiz);
+        Taxi(ext, new Vector3(-25f, -0.13f, -14f), Vector3.right, raiz);
+        Familiar(ext, new Vector3(16f, -0.13f, -14f), Vector3.right, coloresFamiliar[1]);
+        Familiar(ext, new Vector3(-18f, -0.13f, -10f), Vector3.left, coloresFamiliar[0]);
+        Familiar(ext, new Vector3(24f, -0.13f, -10f), Vector3.left, coloresFamiliar[2]);
+        Familiar(ext, new Vector3(-9f, -0.13f, 6f), Vector3.forward, coloresFamiliar[3]);
+        Familiar(ext, new Vector3(-11f, -0.13f, -24f), Vector3.back, coloresFamiliar[4]);
         Bus(ext, new Vector3(5f, -0.13f, -14f), raiz);
 
         // Edificios cercanos (ladrillo bogotano, con ventanas y placas de concreto).
@@ -416,25 +431,223 @@ internal static class FachadaYExterior
         k.Caja(base0 + new Vector3(0f, 4.88f, haciaZ * 1.0f), new Vector3(0.25f, 0.1f, 0.45f), grisClaro);
     }
 
-    static void Carro(KitMalla k, Vector3 piso, bool enX, Color color, bool taxi)
-    {
-        Vector3 largo = enX ? Vector3.right : Vector3.forward;
-        Vector3 lado = enX ? Vector3.forward : Vector3.right;
-        Vector3 Tam(float l, float a, float w) => largo * l + Vector3.up * a + lado * w;
+    // ---------- Carros (estilo de las referencias: low poly, cabina en trapecio) ----------
 
-        k.Caja(piso + Vector3.up * 0.62f, Abs(Tam(4.2f, 0.62f, 1.8f)), color);
-        Vector3 cabina = piso + Vector3.up * 1.18f - largo * 0.2f;
-        k.Caja(cabina, Abs(Tam(2.3f, 0.52f, 1.62f)), color);
-        foreach (float s in new[] { -1f, 1f })
+    static readonly Color vidrioCarro = new Color(0.27f, 0.33f, 0.42f);
+    static readonly Color negroCarro = new Color(0.12f, 0.13f, 0.15f);
+    static readonly Color parachoques = new Color(0.20f, 0.21f, 0.24f);
+    static readonly Color amarilloTaxi = new Color(0.99f, 0.80f, 0.12f);
+
+    // Taxi amarillo de 4 puertas (sedán) con letrero "TAXI" y antena.
+    static void Taxi(KitMalla k, Vector3 piso, Vector3 dir, Transform raiz)
+    {
+        var a = new ArmadorCarro(k, piso, dir, 4.4f, 1.75f);
+        a.Carroceria(amarilloTaxi, 0.80f, 0.86f);
+        // Cabina: parabrisas inclinado adelante, vidrio trasero inclinado atrás (sedán).
+        a.Cabina(amarilloTaxi, -1.05f, 1.0f, -0.75f, 0.35f, 0.84f, 1.42f, 0.82f, 0.70f);
+        a.VentanasLaterales(new[] { new Vector2(0.10f, 0.48f), new Vector2(0.52f, 0.88f) });
+        a.LineasDePuertas(new[] { 0.95f, 0.0f, -1.0f }, new[] { 0.55f, -0.42f });
+        a.Frente();
+        a.Atras();
+        a.Ruedas();
+
+        // Letrero de techo con cuadros negros, y antena.
+        a.CajaLocal(-0.32f, -0.02f, 1.42f, 1.62f, -0.42f, 0.42f, amarilloTaxi);
+        foreach (float lado in new[] { -1f, 1f })
+            for (int fila = 0; fila < 2; fila++)
+                for (int col = 0; col < 2; col++)
+                {
+                    if ((fila + col) % 2 == 1)
+                        continue;
+                    float z0 = lado * (0.29f + col * 0.05f), z1 = z0 + lado * 0.05f;
+                    float y0 = 1.47f + fila * 0.05f, y1 = y0 + 0.05f;
+                    a.CuadroFrontal(-0.02f + 0.003f, Mathf.Min(z0, z1), Mathf.Max(z0, z1), y0, y1, negroCarro);
+                }
+        a.CajaLocal(-0.66f, -0.63f, 1.40f, 1.88f, -0.62f, -0.59f, negroCarro);
+
+        if (Resources.Load<TMP_Settings>("TMP Settings") == null)
+            return;
+        var textos = new GameObject("TextosTaxi");
+        textos.transform.SetParent(raiz, false);
+        TextoCarro(textos.transform, "TAXI", a.Mundo(-0.02f + 0.006f, 1.53f, 0f), Quaternion.LookRotation(-dir, Vector3.up), new Vector2(0.42f, 0.15f));
+        TextoCarro(textos.transform, "TAXI", a.Mundo(-0.32f - 0.006f, 1.53f, 0f), Quaternion.LookRotation(dir, Vector3.up), new Vector2(0.42f, 0.15f));
+    }
+
+    // Carro familiar (station wagon): techo largo hasta atrás y portón trasero casi vertical.
+    static void Familiar(KitMalla k, Vector3 piso, Vector3 dir, Color color)
+    {
+        var a = new ArmadorCarro(k, piso, dir, 4.5f, 1.75f);
+        a.Carroceria(color, 0.80f, 0.86f);
+        a.Cabina(color, -2.15f, 0.95f, -2.08f, 0.2f, 0.84f, 1.45f, 0.82f, 0.72f);
+        a.VentanasLaterales(new[] { new Vector2(0.04f, 0.32f), new Vector2(0.36f, 0.62f), new Vector2(0.66f, 0.92f) });
+        a.LineasDePuertas(new[] { 0.9f, -0.15f, -1.2f }, new[] { 0.5f, -0.55f });
+        a.Frente();
+        a.Atras();
+        a.Ruedas();
+    }
+
+    static void TextoCarro(Transform padre, string texto, Vector3 posicion, Quaternion rotacion, Vector2 tamano)
+    {
+        var go = new GameObject("Texto_" + texto, typeof(RectTransform));
+        go.transform.SetParent(padre, false);
+        var tmp = go.AddComponent<TextMeshPro>();
+        tmp.text = texto;
+        tmp.enableAutoSizing = true;
+        tmp.fontSizeMin = 0.05f;
+        tmp.fontSizeMax = 30f;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.fontStyle = FontStyles.Bold;
+        tmp.color = new Color(0.1f, 0.1f, 0.12f);
+        tmp.rectTransform.sizeDelta = tamano;
+        go.transform.SetPositionAndRotation(posicion, rotacion);
+    }
+
+    // Arma un carro en coordenadas "del carro": X = hacia adelante, Y = arriba, Z = hacia un lado.
+    // Funciona en cualquier dirección (dir).
+    class ArmadorCarro
+    {
+        readonly KitMalla k;
+        readonly Vector3 piso, dir, lado;
+        readonly float hx, hz;
+        float xr0, xf0, xr1, xf1, yb, yt, wb, wt;
+        Color color;
+
+        public ArmadorCarro(KitMalla k, Vector3 piso, Vector3 dir, float largo, float ancho)
         {
-            k.Etiqueta(cabina + lado * (0.811f * s), lado * s, 0.18f, 0.95f, vidrioOscuro);
-            k.Etiqueta(cabina + largo * (1.151f * s), largo * s, 0.18f, 0.7f, vidrioOscuro);
+            this.k = k;
+            this.piso = piso;
+            this.dir = dir.normalized;
+            lado = Vector3.Cross(this.dir, Vector3.up);
+            hx = largo / 2f;
+            hz = ancho / 2f;
         }
-        if (taxi)
-            k.Caja(cabina + Vector3.up * 0.34f, Abs(Tam(0.3f, 0.14f, 0.6f)), blanco);
-        foreach (float sl in new[] { -1.35f, 1.35f })
-            foreach (float sw in new[] { -0.82f, 0.82f })
-                k.Cilindro(piso + Vector3.up * 0.33f + largo * sl + lado * sw, 0.33f, 0.22f, lado, 8, new Color(0.15f, 0.15f, 0.17f));
+
+        public Vector3 Mundo(float x, float y, float z) => piso + dir * x + Vector3.up * y + lado * z;
+
+        public void CajaLocal(float x0, float x1, float y0, float y1, float z0, float z1, Color c, bool contorno = true)
+        {
+            k.Hexaedro(new[]
+            {
+                Mundo(x0, y0, z0), Mundo(x1, y0, z0), Mundo(x1, y0, z1), Mundo(x0, y0, z1),
+                Mundo(x0, y1, z0), Mundo(x1, y1, z0), Mundo(x1, y1, z1), Mundo(x0, y1, z1),
+            }, c, contorno);
+        }
+
+        // Rectángulo en un plano frontal (mirando hacia adelante) en x.
+        public void CuadroFrontal(float x, float z0, float z1, float y0, float y1, Color c)
+        {
+            k.CuadroLibre(Mundo(x, y0, z0), Mundo(x, y0, z1), Mundo(x, y1, z1), Mundo(x, y1, z0), dir, c);
+        }
+
+        void CuadroTrasero(float x, float z0, float z1, float y0, float y1, Color c)
+        {
+            k.CuadroLibre(Mundo(x, y0, z0), Mundo(x, y0, z1), Mundo(x, y1, z1), Mundo(x, y1, z0), -dir, c);
+        }
+
+        // Rectángulo en el costado (s = -1 o 1).
+        // "capa" separa un poquito las piezas que se enciman (líneas de puertas sobre los pasos de rueda).
+        void CuadroLateral(float s, float x0, float x1, float y0, float y1, Color c, float capa = 0.003f)
+        {
+            float z = s * (hz + capa);
+            k.CuadroLibre(Mundo(x0, y0, z), Mundo(x1, y0, z), Mundo(x1, y1, z), Mundo(x0, y1, z), lado * s, c);
+        }
+
+        // Parte de abajo: caja con el capó un poco más bajo adelante.
+        public void Carroceria(Color c, float altoFrente, float altoAtras)
+        {
+            color = c;
+            k.Hexaedro(new[]
+            {
+                Mundo(-hx, 0.30f, -hz), Mundo(hx, 0.30f, -hz), Mundo(hx, 0.30f, hz), Mundo(-hx, 0.30f, hz),
+                Mundo(-hx, altoAtras, -hz), Mundo(hx, altoFrente, -hz), Mundo(hx, altoFrente, hz), Mundo(-hx, altoAtras, hz),
+            }, c);
+        }
+
+        // Cabina en trapecio: más angosta y corta arriba que abajo.
+        public void Cabina(Color c, float atrasAbajo, float frenteAbajo, float atrasArriba, float frenteArriba,
+            float altoBase, float altoTecho, float anchoBase, float anchoTecho)
+        {
+            xr0 = atrasAbajo; xf0 = frenteAbajo; xr1 = atrasArriba; xf1 = frenteArriba;
+            yb = altoBase; yt = altoTecho; wb = anchoBase; wt = anchoTecho;
+            k.Hexaedro(new[]
+            {
+                Mundo(xr0, yb, -wb), Mundo(xf0, yb, -wb), Mundo(xf0, yb, wb), Mundo(xr0, yb, wb),
+                Mundo(xr1, yt, -wt), Mundo(xf1, yt, -wt), Mundo(xf1, yt, wt), Mundo(xr1, yt, wt),
+            }, c);
+
+            // Parabrisas y vidrio trasero
+            CaraVentana(Mundo(xf0, yb, -wb), Mundo(xf0, yb, wb), Mundo(xf1, yt, wt), Mundo(xf1, yt, -wt), 0.06f, 0.94f, 0.08f, 0.9f, dir + Vector3.up);
+            CaraVentana(Mundo(xr0, yb, wb), Mundo(xr0, yb, -wb), Mundo(xr1, yt, -wt), Mundo(xr1, yt, wt), 0.08f, 0.92f, 0.12f, 0.88f, -dir + Vector3.up);
+            // Espejos
+            foreach (float s in new[] { -1f, 1f })
+                CajaLocal(xf0 - 0.18f, xf0 - 0.04f, yb + 0.06f, yb + 0.16f, s * (wb + 0.02f), s * (wb + 0.12f), c);
+        }
+
+        // Ventanas en los costados de la cabina; cada Vector2 es (inicio, fin) de 0 (atrás) a 1 (adelante).
+        public void VentanasLaterales(Vector2[] tramos)
+        {
+            foreach (float s in new[] { -1f, 1f })
+            {
+                Vector3 p0 = Mundo(xr0, yb, s * wb), p1 = Mundo(xf0, yb, s * wb);
+                Vector3 p2 = Mundo(xf1, yt, s * wt), p3 = Mundo(xr1, yt, s * wt);
+                foreach (var t in tramos)
+                    CaraVentana(p0, p1, p2, p3, t.x, t.y, 0.12f, 0.9f, lado * s);
+            }
+        }
+
+        // Ventana dentro de una cara de 4 esquinas (u = a lo ancho, v = de abajo hacia arriba).
+        void CaraVentana(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float u0, float u1, float v0, float v1, Vector3 afuera)
+        {
+            Vector3 P(float u, float v) => Vector3.Lerp(Vector3.Lerp(p0, p1, u), Vector3.Lerp(p3, p2, u), v);
+            Vector3 n = afuera.normalized * 0.004f;
+            k.CuadroLibre(P(u0, v0) + n, P(u1, v0) + n, P(u1, v1) + n, P(u0, v1) + n, afuera, vidrioCarro);
+        }
+
+        public void LineasDePuertas(float[] xs, float[] manijas)
+        {
+            foreach (float s in new[] { -1f, 1f })
+            {
+                foreach (float x in xs)
+                    CuadroLateral(s, x - 0.008f, x + 0.008f, 0.38f, 0.82f, negroCarro, 0.006f);
+                foreach (float x in manijas)
+                    CuadroLateral(s, x - 0.07f, x + 0.07f, 0.70f, 0.73f, negroCarro, 0.006f);
+                // Direccional lateral naranja adelante
+                CuadroLateral(s, hx - 0.22f, hx - 0.08f, 0.64f, 0.70f, new Color(1f, 0.55f, 0.1f));
+            }
+        }
+
+        public void Frente()
+        {
+            float x = hx + 0.003f;
+            CuadroFrontal(x, -0.36f, 0.36f, 0.56f, 0.74f, negroCarro);           // rejilla
+            foreach (float s in new[] { -1f, 1f })
+            {
+                CuadroFrontal(x, Mathf.Min(s * 0.42f, s * 0.72f), Mathf.Max(s * 0.42f, s * 0.72f), 0.58f, 0.73f, new Color(0.95f, 0.95f, 0.9f));
+                CuadroFrontal(x, Mathf.Min(s * 0.74f, s * 0.85f), Mathf.Max(s * 0.74f, s * 0.85f), 0.58f, 0.73f, new Color(1f, 0.55f, 0.1f));
+            }
+            CajaLocal(hx, hx + 0.12f, 0.30f, 0.48f, -hz - 0.03f, hz + 0.03f, parachoques);
+            CuadroFrontal(hx + 0.123f, -0.22f, 0.22f, 0.33f, 0.45f, new Color(0.95f, 0.95f, 0.95f)); // placa
+        }
+
+        public void Atras()
+        {
+            float x = -hx - 0.003f;
+            foreach (float s in new[] { -1f, 1f })
+                CuadroTrasero(x, Mathf.Min(s * 0.52f, s * 0.84f), Mathf.Max(s * 0.52f, s * 0.84f), 0.6f, 0.76f, new Color(0.85f, 0.22f, 0.15f));
+            CajaLocal(-hx - 0.12f, -hx, 0.30f, 0.48f, -hz - 0.03f, hz + 0.03f, parachoques);
+            CuadroTrasero(-hx - 0.123f, -0.22f, 0.22f, 0.33f, 0.45f, new Color(0.95f, 0.95f, 0.95f));
+        }
+
+        public void Ruedas()
+        {
+            foreach (float x in new[] { -hx * 0.62f, hx * 0.62f })
+                foreach (float s in new[] { -1f, 1f })
+                {
+                    CuadroLateral(s, x - 0.42f, x + 0.42f, 0.30f, 0.66f, negroCarro);   // paso de rueda
+                    k.Cilindro(Mundo(x, 0.31f, s * (hz - 0.07f)), 0.31f, 0.2f, lado, 10, negroCarro);
+                    k.Cilindro(Mundo(x, 0.31f, s * (hz + 0.045f)), 0.14f, 0.03f, lado, 10, new Color(0.55f, 0.56f, 0.58f));
+                }
+        }
     }
 
     // Bus del SITP (estilo de la referencia): azul, puertas dobles de vidrio, ventanas con marco negro,

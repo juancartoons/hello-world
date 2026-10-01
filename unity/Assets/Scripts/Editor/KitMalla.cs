@@ -111,6 +111,35 @@ internal class KitMalla
         triangulos.Add(i); triangulos.Add(i + 1); triangulos.Add(i + 2);
     }
 
+    // Bloque de 8 esquinas libres (para formas inclinadas, como la cabina de un carro).
+    // c[0..3] = esquinas de abajo en orden alrededor; c[4..7] = las de arriba en el mismo orden.
+    public void Hexaedro(Vector3[] c, Color color, bool contorno = true)
+    {
+        Vector3 centro = Vector3.zero;
+        foreach (var p in c)
+            centro += p;
+        centro /= 8f;
+        int[][] caras =
+        {
+            new[] { 0, 1, 2, 3 }, new[] { 4, 5, 6, 7 }, new[] { 0, 1, 5, 4 },
+            new[] { 1, 2, 6, 5 }, new[] { 2, 3, 7, 6 }, new[] { 3, 0, 4, 7 },
+        };
+        foreach (var f in caras)
+        {
+            Vector3 a = c[f[0]], b = c[f[1]], d = c[f[2]], e = c[f[3]];
+            Vector3 afuera = (a + b + d + e) / 4f - centro;
+            Triangulo(a, b, d, afuera, color, centro, contorno);
+            Triangulo(a, d, e, afuera, color, centro, contorno);
+        }
+    }
+
+    // Cuadrilátero plano en cualquier orientación (ventanas, faros), sin contorno.
+    public void CuadroLibre(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Vector3 haciaAfuera, Color color)
+    {
+        Triangulo(a, b, c, haciaAfuera, color, a, false);
+        Triangulo(a, c, d, haciaAfuera, color, a, false);
+    }
+
     // Cuadrilátero con un color por esquina (con transparencia), para rayos de luz. Sin contorno.
     public void CuadroColores(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, Color c0, Color c1, Color c2, Color c3)
     {
