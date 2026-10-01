@@ -38,6 +38,13 @@ public static class ArmarEscenaTrazo
                 "No encontré el shader TrazoVR/Linea.\n\nCopia la carpeta Shaders dentro de Assets y espera a que Unity termine de cargar.", "OK");
             return;
         }
+        var shaderRelleno = Shader.Find("TrazoVR/Relleno");
+        if (shaderRelleno == null)
+        {
+            EditorUtility.DisplayDialog("TrazoVR",
+                "No encontré el shader TrazoVR/Relleno.\n\nCopia otra vez la carpeta Shaders dentro de Assets (elige Reemplazar) y espera a que Unity cargue.", "OK");
+            return;
+        }
         var unlit = Shader.Find("Universal Render Pipeline/Unlit");
         if (unlit == null)
             unlit = Shader.Find("Unlit/Color");
@@ -55,9 +62,11 @@ public static class ArmarEscenaTrazo
         var matNodo = Mat("Nodo", unlit, new Color(0.15f, 0.45f, 1f));
         var matNodoActivo = Mat("NodoActivo", unlit, new Color(1f, 0.5f, 0.1f));
         var matCursor = Mat("Cursor", unlit, new Color(0.3f, 0.3f, 0.32f));
-        var matCaja = Mat("Caja", unlit, new Color(0.15f, 0.45f, 1f));
-        var matEsquina = Mat("Esquina", unlit, new Color(0.15f, 0.45f, 1f));
-        var matEsquinaActiva = Mat("EsquinaActiva", unlit, new Color(1f, 0.5f, 0.1f));
+        var matRelleno = Mat("Relleno", shaderRelleno, Color.white);
+        var matAsa = Mat("Asa", unlit, new Color(0.2f, 0.8f, 0.3f));
+        var matIman = Mat("Iman", unlit, new Color(0.1f, 0.95f, 0.35f));
+        var matCaja = Mat("Caja", unlit, new Color(0.65f, 0.78f, 1f));
+        var matGuia = Mat("Guia", unlit, new Color(0.7f, 0.8f, 0.95f));
         var matPanel = Mat("Panel", unlit, new Color(0.97f, 0.97f, 0.98f));
         var matBoton = Mat("Boton", unlit, new Color(0.86f, 0.87f, 0.9f));
         var matBotonMarcado = Mat("BotonMarcado", unlit, new Color(0.08f, 0.08f, 0.1f));
@@ -78,6 +87,8 @@ public static class ArmarEscenaTrazo
         goDibujo.transform.SetParent(raiz.transform, false);
         var dibujo = goDibujo.AddComponent<Dibujo>();
         dibujo.materialLinea = matLinea;
+        dibujo.materialRelleno = matRelleno;
+        dibujo.materialGuia = matGuia;
         dibujo.escenario = escenario;
 
         var goControl = new GameObject("ControlManos");
@@ -89,12 +100,16 @@ public static class ArmarEscenaTrazo
         control.materialNodo = matNodo;
         control.materialNodoActivo = matNodoActivo;
         control.materialCursor = matCursor;
+        control.materialAsa = matAsa;
+        control.materialIman = matIman;
         caja.dibujo = dibujo;
         caja.materialCaja = matCaja;
-        caja.materialEsquina = matEsquina;
-        caja.materialEsquinaActiva = matEsquinaActiva;
 
-        CrearPanel(raiz.transform, control, dibujo, escenario, matPanel, matBoton, matBotonMarcado);
+        var panel = CrearPanel(raiz.transform, control, dibujo, escenario, matPanel, matBoton, matBotonMarcado);
+        var aviso = Texto(raiz.transform, "", new Vector3(0f, 1.4f, 0.6f), new Vector2(0.4f, 0.05f), new Color(0.1f, 0.1f, 0.12f));
+        aviso.gameObject.name = "Aviso";
+        aviso.fontSizeMax = 0.3f;
+        panel.textoAviso = aviso;
 
         // ---------- Cámara: fondo blanco ----------
         var camara = rig.centerEyeAnchor != null ? rig.centerEyeAnchor.GetComponent<Camera>() : null;
@@ -124,10 +139,43 @@ public static class ArmarEscenaTrazo
             {
                 int idx = System.Array.IndexOf(prop.enumNames, "FloorLevel");
                 if (idx >= 0)
-                {
                     prop.enumValueIndex = idx;
-                    so.ApplyModifiedProperties();
-                }
+            }
+            // Passthrough (ver tu cuarto real) disponible en el modo de fondo "Realidad".
+            var pt = so.FindProperty("isInsightPassthroughEnabled");
+            if (pt != null && pt.propertyType == SerializedPropertyType.Boolean)
+                pt.boolValue = true;
+            so.ApplyModifiedProperties();
+        }
+
+        // ---------- Capa de passthrough (apagada; el botón "Fondo" la enciende) ----------
+        var capa = Object.FindFirstObjectByType<OVRPassthroughLayer>(FindObjectsInactive.Include);
+        if (capa == null)
+            capa = rig.gameObject.AddComponent<OVRPassthroughLayer>();
+        var soCapa = new SerializedObject(capa);
+        PonerEnum(soCapa.FindProperty("overlayType"), "Underlay");
+        soCapa.ApplyModifiedProperties();
+        capa.enabled = false;
+        EditorUtility.SetDirty(capa);
+        escenario.passthrough = capa;
+
+        bool passthroughConfigurado = false;
+        foreach (var guid in AssetDatabase.FindAssets("t:OVRProjectConfig"))
+        {
+            var cfg = AssetDatabase.LoadMainAssetAtPath(AssetDatabase.GUIDToAssetPath(guid));
+            if (cfg == null)
+                continue;
+            var soCfg = new SerializedObject(cfg);
+            var soporte = soCfg.FindProperty("insightPassthroughSupport");
+            if (soporte == null)
+                soporte = soCfg.FindProperty("_insightPassthroughSupport");
+            var actual = soporte != null && soporte.propertyType == SerializedPropertyType.Enum && soporte.enumValueIndex >= 0
+                ? soporte.enumNames[soporte.enumValueIndex] : "";
+            if (actual == "Required" || PonerEnum(soporte, "Supported"))
+            {
+                soCfg.ApplyModifiedProperties();
+                EditorUtility.SetDirty(cfg);
+                passthroughConfigurado = true;
             }
         }
 
@@ -169,18 +217,20 @@ public static class ArmarEscenaTrazo
         EditorSceneManager.MarkSceneDirty(escena);
         Selection.activeGameObject = raiz;
 
-        string aviso = "¡Listo! Guarda la escena con Ctrl + S y luego haz Build And Run.";
+        string avisoFinal = "¡Listo! Guarda la escena con Ctrl + S y luego haz Build And Run.";
         if (!hayManos)
-            aviso += "\n\nOJO: no encontré manos (OVRHand). Agrega el Building Block 'Hand Tracking'.";
+            avisoFinal += "\n\nOJO: no encontré manos (OVRHand). Agrega el Building Block 'Hand Tracking'.";
+        if (!passthroughConfigurado)
+            avisoFinal += "\n\nPara el fondo 'Realidad': Edit > Project Settings > Meta XR > Passthrough Support = Supported (o agrega el Building Block 'Passthrough').";
         if (!escenaGuardada)
-            aviso += "\n\nOJO: la escena aún no tiene nombre. Guárdala con Ctrl + S y vuelve a usar este menú para agregarla al Build.";
-        Debug.Log("TrazoVR: " + aviso);
-        EditorUtility.DisplayDialog("TrazoVR", aviso, "OK");
+            avisoFinal += "\n\nOJO: la escena aún no tiene nombre. Guárdala con Ctrl + S y vuelve a usar este menú para agregarla al Build.";
+        Debug.Log("TrazoVR: " + avisoFinal);
+        EditorUtility.DisplayDialog("TrazoVR", avisoFinal, "OK");
     }
 
     // ---------- Panel de la muñeca ----------
 
-    static void CrearPanel(Transform raiz, ControlManos control, Dibujo dibujo, Escenario escenario,
+    static PanelMuneca CrearPanel(Transform raiz, ControlManos control, Dibujo dibujo, Escenario escenario,
                            Material matPanel, Material matBoton, Material matBotonMarcado)
     {
         var goPanel = new GameObject("PanelMuneca");
@@ -206,22 +256,34 @@ public static class ArmarEscenaTrazo
         Texto(contenido.transform, "TrazoVR", new Vector3(0f, 0.062f, -0.001f), new Vector2(0.09f, 0.014f), Color.black);
         panel.textoEstado = Texto(contenido.transform, "", new Vector3(0f, -0.062f, -0.001f), new Vector2(0.098f, 0.02f), new Color(0.2f, 0.2f, 0.25f));
 
-        string[] nombres = { "Deshacer", "Borrar", "Guardar", "Cargar", "Cinta", "Tubo", "Por línea: No", "Fondo: cuadrícula" };
+        // Fila 1: Línea / Por línea · Fila 2: Plano / Fondo · Fila 3: Guardar / Cargar · Fila 4: Borrar todo.
+        string[] nombres = { "Línea: Cinta", "Por línea: No", "Libre (3D)", "Fondo: Cuadrícula", "Guardar", "Cargar", "Borrar todo" };
         var botones = new BotonTocable[nombres.Length];
         for (int i = 0; i < nombres.Length; i++)
         {
-            float x = i % 2 == 0 ? -0.025f : 0.025f;
+            float x = i == nombres.Length - 1 ? 0f : (i % 2 == 0 ? -0.025f : 0.025f);
             float y = 0.036f - (i / 2) * 0.026f;
             botones[i] = Boton(contenido.transform, nombres[i], new Vector3(x, y, 0f), matBoton, matBotonMarcado);
         }
-        panel.btnDeshacer = botones[0];
-        panel.btnBorrar = botones[1];
-        panel.btnGuardar = botones[2];
-        panel.btnCargar = botones[3];
-        panel.btnCinta = botones[4];
-        panel.btnTubo = botones[5];
-        panel.btnPorLinea = botones[6];
-        panel.btnFondo = botones[7];
+        panel.btnEstilo = botones[0];
+        panel.btnPorLinea = botones[1];
+        panel.btnPlano = botones[2];
+        panel.btnFondo = botones[3];
+        panel.btnGuardar = botones[4];
+        panel.btnCargar = botones[5];
+        panel.btnBorrar = botones[6];
+        return panel;
+    }
+
+    static bool PonerEnum(SerializedProperty prop, string nombre)
+    {
+        if (prop == null || prop.propertyType != SerializedPropertyType.Enum)
+            return false;
+        int idx = System.Array.IndexOf(prop.enumNames, nombre);
+        if (idx < 0)
+            return false;
+        prop.enumValueIndex = idx;
+        return true;
     }
 
     static BotonTocable Boton(Transform padre, string texto, Vector3 posicion, Material normal, Material marcado)

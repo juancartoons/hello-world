@@ -13,6 +13,7 @@ public class ManoSeguida
 
     // Pellizco índice + pulgar (con histéresis: entra con poca distancia, sale con más).
     public bool pellizco, empezoPellizco, soltoPellizco;
+    public float pellizcoDesde;  // Time.time cuando empezó el pellizco
 
     bool teniaDatos;
     float proximaBusqueda;
@@ -23,6 +24,8 @@ public class ManoSeguida
     }
 
     public Vector3 PuntoPellizco => (indice + pulgar) * 0.5f;
+
+    public float TiempoPellizco => pellizco ? Time.time - pellizcoDesde : 0f;
 
     public void Actualizar(Transform ancla, float suavizado, float entra, float sale)
     {
@@ -70,6 +73,7 @@ public class ManoSeguida
         {
             pellizco = true;
             empezoPellizco = true;
+            pellizcoDesde = Time.time;
         }
         else if (pellizco && d > sale)
         {

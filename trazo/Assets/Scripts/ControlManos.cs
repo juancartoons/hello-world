@@ -2,11 +2,16 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Los gestos de TrazoVR (todo con las manos):
-//  Mano izquierda, pulgar + ÍNDICE (sostener)  -> dibujar con la punta del índice derecho.
-//  Mano izquierda, pulgar + MEDIO  (sostener)  -> ver los nodos; pellizca un nodo con la derecha y arrástralo.
-//  Mano izquierda, pulgar + ANULAR (sostener)  -> sube o baja la mano izquierda: líneas más gruesas o delgadas.
-//  Rombo con las dos manos (índices juntos y pulgares juntos) -> caja para escalar/mover todo el dibujo.
-//  Palma izquierda mirándote -> aparece el panel de botones.
+//  Izquierda pulgar + ÍNDICE (sostener)  -> dibujar con la punta del índice derecho.
+//  Izquierda pulgar + MEDIO  (sostener)  -> modo nodos: pellizca con la derecha para mover nodos y asas.
+//       Doble pellizco sobre un nodo = borrar nodo; sobre la línea = borrar línea;
+//       sobre el relleno = quitar color; sobre un asa = asa automática.
+//       Arrastra la punta de una línea sobre otra punta: se unen como imán (o se cierra la figura).
+//  Izquierda pulgar + ANULAR (sostener)  -> sube/baja la mano izquierda: más grueso o más delgado.
+//  LAS DOS manos pellizcando (índice + pulgar) -> escalar, girar (como volante) y mover todo.
+//  Izquierda: puño con el pulgar apuntando a tu izquierda -> deshacer.
+//  Tocar un relleno con el índice derecho -> cambiar su color.
+//  Palma izquierda mirándote -> panel de botones.
 [DefaultExecutionOrder(-50)]
 public class ControlManos : MonoBehaviour
 {
@@ -16,6 +21,8 @@ public class ControlManos : MonoBehaviour
     public CajaTransformar caja;
     public Material materialNodo;
     public Material materialNodoActivo;
+    public Material materialAsa;
+    public Material materialIman;
     public Material materialCursor;
 
     [Header("Gestos (en metros)")]
@@ -26,33 +33,71 @@ public class ControlManos : MonoBehaviour
     [Tooltip("Más alto = sigue más rápido al dedo; más bajo = más suave")]
     public float suavizado = 16f;
     public float radioAgarreNodo = 0.025f;
+    public float radioAgarreLinea = 0.015f;
     public float tamanoNodo = 0.012f;
     [Tooltip("Cuánto cambia el grosor al subir/bajar la mano izquierda")]
     public float sensibilidadGrosor = 4f;
-    public float distanciaRombo = 0.035f;
+    [Tooltip("Segundos máximos entre los dos pellizcos de un doble pellizco")]
+    public float tiempoDoblePellizco = 0.45f;
 
-    public enum Gesto { Ninguno, Dibujar, Nodos, Grosor }
+    public enum Gesto { Ninguno, Dibujar, Nodos, Grosor, Transformar }
     public Gesto GestoIzq { get; private set; }
 
     public ManoSeguida Izq { get; } = new ManoSeguida(true);
     public ManoSeguida Der { get; } = new ManoSeguida(false);
     public Transform Cabeza { get; private set; }
 
+    enum Objetivo { Nada, Nodo, Asa, Linea, Relleno }
+
     OVRCameraRig rig;
     Gesto candidato;
     float candidatoDesde;
+    bool esperarSoltarIzq;
     Trazo trazoActual;
+    float inicioTrazo;
 
+    // Modo nodos
     readonly List<Transform> nodosVisibles = new List<Transform>();
     readonly List<Renderer> nodosRender = new List<Renderer>();
-    Trazo nodoTrazo;
-    int nodoIndice = -1;
-    bool arrastrando;
-    Vector3 desfaseNodo;
+    readonly Transform[] asasVisibles = new Transform[2];
+    GameObject lineasAsas;
+    Mesh mallaLineasAsas;
+    readonly List<Vector3> puntosAsas = new List<Vector3>();
+    readonly List<int> indicesAsas = new List<int>();
 
+    Objetivo arrastre = Objetivo.Nada;
+    Trazo arrTrazo;
+    int arrIndice = -1;
+    bool arrSalida;
+    Vector3 desfase;
+    bool deshacerPendiente;
+
+    Trazo selTrazo;
+    int selIndice = -1;
+    Objetivo hoverTipo;
+    Trazo hoverTrazo;
+    int hoverIndice = -1;
+    bool hoverSalida;
+
+    Trazo imanTrazo;
+    int imanExtremo;
+
+    Vector3 pellizcoInicio;
+    Objetivo pellizcoTipo;
+    Trazo pellizcoTrazo;
+    int pellizcoIndice;
+    float finUltimoPellizco = -10f;
+    bool ultimoSinMover;
+    Objetivo tipoUltimo;
+    Trazo trazoUltimo;
+    int indiceUltimo;
+
+    // Grosor, deshacer y rellenos
     float alturaInicialGrosor;
-    float tiempoRombo;
-    bool esperarSoltarRombo;
+    float tiempoDeshacer;
+    bool esperarSoltarDeshacer;
+    bool tocandoRelleno;
+    float proximoToque;
 
     Transform cursor;
     static Mesh mallaNodo;
@@ -87,6 +132,22 @@ public class ControlManos : MonoBehaviour
         r.receiveShadows = false;
         cursor = esfera.transform;
         cursor.gameObject.SetActive(false);
+
+        for (int i = 0; i < 2; i++)
+        {
+            asasVisibles[i] = CrearRombo("Asa", materialAsa).transform;
+            asasVisibles[i].gameObject.SetActive(false);
+        }
+        lineasAsas = new GameObject("LineasAsas");
+        lineasAsas.transform.SetParent(transform, false);
+        mallaLineasAsas = new Mesh { name = "LineasAsas" };
+        mallaLineasAsas.MarkDynamic();
+        lineasAsas.AddComponent<MeshFilter>().sharedMesh = mallaLineasAsas;
+        var mr = lineasAsas.AddComponent<MeshRenderer>();
+        mr.sharedMaterial = materialAsa;
+        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        mr.receiveShadows = false;
+        lineasAsas.SetActive(false);
     }
 
     void Update()
@@ -104,28 +165,22 @@ public class ControlManos : MonoBehaviour
         Izq.Actualizar(rig.leftHandAnchor, suavizado, pellizcoEntra, pellizcoSale);
         Der.Actualizar(rig.rightHandAnchor, suavizado, pellizcoEntra, pellizcoSale);
 
-        RevisarRombo();
+        ActualizarGestoIzquierdo();
 
-        if (caja != null && caja.Activa)
+        switch (GestoIzq)
         {
-            if (GestoIzq != Gesto.Ninguno)
-                SalirDeGesto();
-            caja.Actualizar(Izq, Der);
+            case Gesto.Dibujar: Dibujar(); break;
+            case Gesto.Nodos: EditarNodos(); break;
+            case Gesto.Grosor: CambiarGrosor(); break;
+            case Gesto.Transformar: if (caja != null) caja.Actualizar(Izq, Der); break;
+            default:
+                RevisarDeshacer();
+                RevisarToqueRelleno();
+                break;
         }
-        else
-        {
-            ActualizarGestoIzquierdo();
-        }
-
-        if (GestoIzq == Gesto.Dibujar)
-            Dibujar();
-        else if (GestoIzq == Gesto.Nodos)
-            EditarNodos();
-        else if (GestoIzq == Gesto.Grosor)
-            CambiarGrosor();
 
         if (GestoIzq != Gesto.Nodos)
-            OcultarNodosDesde(0);
+            OcultarModoNodos();
         ActualizarCursor();
     }
 
@@ -133,6 +188,22 @@ public class ControlManos : MonoBehaviour
 
     void ActualizarGestoIzquierdo()
     {
+        // Las dos manos pellizcando = girar/escalar. Tiene prioridad sobre dibujar.
+        if (GestoIzq == Gesto.Transformar)
+        {
+            if (!Izq.pellizco || !Der.pellizco)
+            {
+                SalirDeGesto();
+                esperarSoltarIzq = true;
+            }
+            return;
+        }
+        if (GestoIzq == Gesto.Dibujar && Der.pellizco && Der.TiempoPellizco > 0.1f && Izq.pellizco)
+        {
+            PasarATransformar();
+            return;
+        }
+
         if (!Izq.valida)
         {
             // Si la mano se pierde un instante, seguimos; si se pierde más, soltamos.
@@ -154,6 +225,13 @@ public class ControlManos : MonoBehaviour
             return;
         }
 
+        if (esperarSoltarIzq)
+        {
+            if (dIndice > pellizcoSale && dMedio > pellizcoSale && dAnular > pellizcoSale)
+                esperarSoltarIzq = false;
+            return;
+        }
+
         Gesto nuevo = Gesto.Ninguno;
         float menor = pellizcoEntra;
         if (dIndice < menor) { menor = dIndice; nuevo = Gesto.Dibujar; }
@@ -165,8 +243,28 @@ public class ControlManos : MonoBehaviour
             candidato = nuevo;
             candidatoDesde = Time.time;
         }
-        if (nuevo != Gesto.Ninguno && Time.time - candidatoDesde >= confirmarGesto)
+        if (nuevo == Gesto.Ninguno || Time.time - candidatoDesde < confirmarGesto)
+            return;
+
+        if (nuevo == Gesto.Dibujar && Der.pellizco && Izq.pellizco)
+            EntrarEnGesto(Gesto.Transformar);
+        else
             EntrarEnGesto(nuevo);
+    }
+
+    void PasarATransformar()
+    {
+        if (trazoActual != null)
+        {
+            // Si apenas empezaba la línea, se descarta; si ya era larga, se conserva.
+            if (trazoActual.LargoCrudo * dibujo.EscalaMundo < 0.05f || Time.time - inicioTrazo < 0.4f)
+                dibujo.CancelarTrazo(trazoActual);
+            else
+                dibujo.TerminarTrazo(trazoActual);
+            trazoActual = null;
+        }
+        GestoIzq = Gesto.Ninguno;
+        EntrarEnGesto(Gesto.Transformar);
     }
 
     void EntrarEnGesto(Gesto g)
@@ -176,6 +274,11 @@ public class ControlManos : MonoBehaviour
         {
             alturaInicialGrosor = Izq.pulgar.y;
             dibujo.EmpezarGrosor();
+        }
+        else if (g == Gesto.Transformar)
+        {
+            if (caja != null)
+                caja.Empezar(Izq, Der);
         }
     }
 
@@ -188,9 +291,12 @@ public class ControlManos : MonoBehaviour
         }
         if (GestoIzq == Gesto.Grosor)
             dibujo.TerminarGrosor();
-        arrastrando = false;
-        nodoTrazo = null;
-        nodoIndice = -1;
+        if (GestoIzq == Gesto.Transformar && caja != null)
+            caja.Terminar();
+        if (arrastre != Objetivo.Nada)
+            TerminarArrastre();
+        selTrazo = null;
+        selIndice = -1;
         GestoIzq = Gesto.Ninguno;
         candidato = Gesto.Ninguno;
     }
@@ -201,53 +307,136 @@ public class ControlManos : MonoBehaviour
     {
         if (!Der.valida)
             return;
+        Vector3 local = dibujo.transform.InverseTransformPoint(Der.indice);
         if (trazoActual == null)
+        {
+            if (dibujo.plano && !dibujo.HayPlano && Cabeza != null)
+                dibujo.DefinirPlano(local, Cabeza.forward);
             trazoActual = dibujo.NuevoTrazo();
-        trazoActual.AgregarPuntoCrudo(dibujo.transform.InverseTransformPoint(Der.indice));
+            inicioTrazo = Time.time;
+        }
+        trazoActual.AgregarPuntoCrudo(dibujo.ProyectarEnPlano(local));
     }
 
-    // ---------- Editar nodos ----------
+    // ---------- Modo nodos ----------
 
     void EditarNodos()
     {
         if (!Der.valida)
         {
-            arrastrando = false;
+            if (arrastre != Objetivo.Nada)
+                TerminarArrastre();
+            MostrarModoNodos();
+            return;
         }
-        else if (arrastrando)
+        Vector3 pinza = Der.PuntoPellizco;
+
+        if (arrastre != Objetivo.Nada && !Der.pellizco)
+            TerminarArrastre();
+        if (Der.soltoPellizco)
         {
-            if (!Der.pellizco || nodoTrazo == null)
-            {
-                arrastrando = false;
-            }
-            else
-            {
-                Vector3 mundo = Der.PuntoPellizco + desfaseNodo;
-                dibujo.MoverNodo(nodoTrazo, nodoIndice, dibujo.transform.InverseTransformPoint(mundo));
-            }
+            finUltimoPellizco = Time.time;
+            ultimoSinMover = Vector3.Distance(pinza, pellizcoInicio) < 0.02f;
+            tipoUltimo = pellizcoTipo;
+            trazoUltimo = pellizcoTrazo;
+            indiceUltimo = pellizcoIndice;
         }
-        else
+
+        if (arrastre != Objetivo.Nada)
         {
-            Trazo t;
-            int i;
-            if (BuscarNodoCercano(Der.indice, Der.PuntoPellizco, out t, out i))
+            ContinuarArrastre(pinza);
+            MostrarModoNodos();
+            return;
+        }
+
+        Objetivo tipo;
+        Trazo t;
+        int i;
+        bool salida;
+        DetectarObjetivo(pinza, Der.indice, out tipo, out t, out i, out salida);
+        hoverTipo = tipo;
+        hoverTrazo = t;
+        hoverIndice = i;
+        hoverSalida = salida;
+
+        if (Der.empezoPellizco)
+        {
+            bool doble = tipo != Objetivo.Nada
+                         && Time.time - finUltimoPellizco < tiempoDoblePellizco
+                         && ultimoSinMover
+                         && tipo == tipoUltimo
+                         && t == trazoUltimo
+                         && (tipo != Objetivo.Nodo || i == indiceUltimo);
+            pellizcoInicio = pinza;
+            pellizcoTipo = tipo;
+            pellizcoTrazo = t;
+            pellizcoIndice = i;
+            if (doble)
             {
-                nodoTrazo = t;
-                nodoIndice = i;
-                if (Der.empezoPellizco)
-                {
-                    dibujo.GuardarParaDeshacer();
-                    desfaseNodo = dibujo.transform.TransformPoint(t.nodos[i]) - Der.PuntoPellizco;
-                    arrastrando = true;
-                }
+                finUltimoPellizco = -10f;
+                pellizcoTipo = Objetivo.Nada;
+                BorrarObjetivo(tipo, t, i);
             }
-            else
+            else if (tipo == Objetivo.Nodo || tipo == Objetivo.Asa)
             {
-                nodoTrazo = null;
-                nodoIndice = -1;
+                EmpezarArrastre(tipo, t, i, salida, pinza);
             }
         }
-        MostrarNodos();
+        MostrarModoNodos();
+    }
+
+    void DetectarObjetivo(Vector3 pinza, Vector3 punta, out Objetivo tipo, out Trazo trazo, out int indice, out bool salida)
+    {
+        tipo = Objetivo.Nada;
+        trazo = null;
+        indice = -1;
+        salida = false;
+
+        Trazo t;
+        int i;
+        if (BuscarNodoCercano(punta, pinza, out t, out i))
+        {
+            tipo = Objetivo.Nodo;
+            trazo = t;
+            indice = i;
+            return;
+        }
+        bool s;
+        if (BuscarAsaCercana(punta, pinza, out s))
+        {
+            tipo = Objetivo.Asa;
+            trazo = selTrazo;
+            indice = selIndice;
+            salida = s;
+            return;
+        }
+
+        Vector3 local = dibujo.transform.InverseTransformPoint(pinza);
+        float escala = dibujo.EscalaMundo;
+        float mejor = radioAgarreLinea / escala;
+        foreach (var o in dibujo.trazos)
+        {
+            if (o == null)
+                continue;
+            float d = o.DistanciaACurva(local);
+            if (d < mejor)
+            {
+                mejor = d;
+                trazo = o;
+                tipo = Objetivo.Linea;
+            }
+        }
+        if (tipo == Objetivo.Linea)
+            return;
+        foreach (var o in dibujo.trazos)
+        {
+            if (o != null && o.relleno && o.DentroDeRelleno(local, 0.03f / escala))
+            {
+                tipo = Objetivo.Relleno;
+                trazo = o;
+                return;
+            }
+        }
     }
 
     bool BuscarNodoCercano(Vector3 a, Vector3 b, out Trazo trazo, out int indice)
@@ -274,9 +463,166 @@ public class ControlManos : MonoBehaviour
         return trazo != null;
     }
 
-    void MostrarNodos()
+    bool SeleccionValida => selTrazo != null && selIndice >= 0 && selIndice < selTrazo.nodos.Count;
+
+    Vector3 PuntaAsaMundo(Trazo t, int i, bool salida)
     {
+        t.AsegurarAsas();
+        Vector3 local = t.nodos[i] + (salida ? t.asaSalida[i] : t.asaEntrada[i]);
+        return dibujo.transform.TransformPoint(local);
+    }
+
+    bool BuscarAsaCercana(Vector3 a, Vector3 b, out bool salida)
+    {
+        salida = false;
+        if (!SeleccionValida)
+            return false;
+        float mejor = radioAgarreNodo * 0.8f;
+        bool hay = false;
+        for (int k = 0; k < 2; k++)
+        {
+            bool esSalida = k == 1;
+            if (!selTrazo.AsaUsada(selIndice, esSalida))
+                continue;
+            Vector3 p = PuntaAsaMundo(selTrazo, selIndice, esSalida);
+            float d = Mathf.Min(Vector3.Distance(p, a), Vector3.Distance(p, b));
+            if (d < mejor)
+            {
+                mejor = d;
+                salida = esSalida;
+                hay = true;
+            }
+        }
+        return hay;
+    }
+
+    void EmpezarArrastre(Objetivo tipo, Trazo t, int i, bool salida, Vector3 pinza)
+    {
+        arrastre = tipo;
+        arrTrazo = t;
+        arrIndice = i;
+        arrSalida = salida;
+        deshacerPendiente = true;
+        imanTrazo = null;
+        selTrazo = t;
+        selIndice = i;
+        Vector3 objetivo = tipo == Objetivo.Nodo
+            ? dibujo.transform.TransformPoint(t.nodos[i])
+            : PuntaAsaMundo(t, i, salida);
+        desfase = objetivo - pinza;
+    }
+
+    void ContinuarArrastre(Vector3 pinza)
+    {
+        if (arrTrazo == null || arrIndice < 0 || arrIndice >= arrTrazo.nodos.Count)
+        {
+            arrastre = Objetivo.Nada;
+            return;
+        }
+        Vector3 local = dibujo.ProyectarEnPlano(dibujo.transform.InverseTransformPoint(pinza + desfase));
+
+        if (deshacerPendiente)
+        {
+            // Guardamos para "deshacer" solo cuando de verdad se mueve algo.
+            Vector3 actual = arrastre == Objetivo.Nodo
+                ? arrTrazo.nodos[arrIndice]
+                : arrTrazo.nodos[arrIndice] + (arrSalida ? arrTrazo.asaSalida[arrIndice] : arrTrazo.asaEntrada[arrIndice]);
+            if (Vector3.Distance(local, actual) * dibujo.EscalaMundo < 0.003f)
+                return;
+            dibujo.GuardarParaDeshacer();
+            deshacerPendiente = false;
+        }
+
+        if (arrastre == Objetivo.Asa)
+        {
+            arrTrazo.MoverAsa(arrIndice, arrSalida, local - arrTrazo.nodos[arrIndice]);
+            return;
+        }
+
+        // Nodo: si es una punta y llega cerca de otra punta, se pega como imán.
+        imanTrazo = null;
+        int ultimo = arrTrazo.nodos.Count - 1;
+        bool esPunta = !arrTrazo.cerrado && (arrIndice == 0 || arrIndice == ultimo);
+        if (esPunta)
+        {
+            int otro = arrIndice == 0 ? ultimo : 0;
+            if (arrTrazo.nodos.Count >= 4 && Vector3.Distance(local, arrTrazo.nodos[otro]) < dibujo.RadioImanLocal)
+            {
+                local = arrTrazo.nodos[otro];
+                imanTrazo = arrTrazo;
+                imanExtremo = otro == 0 ? 0 : 1;
+            }
+            else
+            {
+                Trazo o;
+                int e;
+                if (dibujo.BuscarExtremo(local, arrTrazo, out o, out e))
+                {
+                    local = e == 0 ? o.nodos[0] : o.nodos[o.nodos.Count - 1];
+                    imanTrazo = o;
+                    imanExtremo = e;
+                }
+            }
+        }
+        dibujo.MoverNodo(arrTrazo, arrIndice, local);
+    }
+
+    void TerminarArrastre()
+    {
+        if (arrastre == Objetivo.Nodo && imanTrazo != null && arrTrazo != null)
+        {
+            int extremoArrastrado = arrIndice == 0 ? 0 : 1;
+            if (imanTrazo == arrTrazo)
+                dibujo.CerrarTrazo(arrTrazo, extremoArrastrado == 1);
+            else
+                dibujo.Unir(arrTrazo, extremoArrastrado, imanTrazo, imanExtremo);
+            selTrazo = null;
+            selIndice = -1;
+        }
+        arrastre = Objetivo.Nada;
+        arrTrazo = null;
+        arrIndice = -1;
+        imanTrazo = null;
+    }
+
+    void BorrarObjetivo(Objetivo tipo, Trazo t, int i)
+    {
+        if (t == null)
+            return;
+        dibujo.GuardarParaDeshacer();
+        switch (tipo)
+        {
+            case Objetivo.Nodo:
+                dibujo.QuitarNodo(t, i);
+                dibujo.Mensaje("Nodo borrado");
+                break;
+            case Objetivo.Asa:
+                t.ReiniciarAsa(i);
+                dibujo.Mensaje("Asa automática");
+                break;
+            case Objetivo.Linea:
+                dibujo.BorrarTrazo(t);
+                dibujo.Mensaje("Línea borrada");
+                break;
+            case Objetivo.Relleno:
+                dibujo.QuitarRelleno(t);
+                dibujo.Mensaje("Color quitado");
+                break;
+        }
+        selTrazo = null;
+        selIndice = -1;
+    }
+
+    void MostrarModoNodos()
+    {
+        if (!SeleccionValida)
+        {
+            selTrazo = null;
+            selIndice = -1;
+        }
+
         int n = 0;
+        int imanIndice = imanTrazo != null ? (imanExtremo == 0 ? 0 : imanTrazo.nodos.Count - 1) : -1;
         foreach (var t in dibujo.trazos)
         {
             if (t == null)
@@ -284,21 +630,83 @@ public class ControlManos : MonoBehaviour
             for (int i = 0; i < t.nodos.Count; i++)
             {
                 if (n >= nodosVisibles.Count)
-                    CrearNodoVisible();
+                {
+                    var go = CrearRombo("Nodo", materialNodo);
+                    nodosVisibles.Add(go.transform);
+                    nodosRender.Add(go.GetComponent<Renderer>());
+                }
                 var nodo = nodosVisibles[n];
                 if (!nodo.gameObject.activeSelf)
                     nodo.gameObject.SetActive(true);
                 nodo.position = dibujo.transform.TransformPoint(t.nodos[i]);
                 nodo.rotation = Quaternion.identity;
-                bool activo = t == nodoTrazo && i == nodoIndice;
-                nodo.localScale = Vector3.one * (activo ? tamanoNodo * 1.4f : tamanoNodo);
-                var mat = activo ? materialNodoActivo : materialNodo;
+
+                bool activo = (t == arrTrazo && i == arrIndice)
+                              || (arrastre == Objetivo.Nada && hoverTipo == Objetivo.Nodo && t == hoverTrazo && i == hoverIndice)
+                              || (t == selTrazo && i == selIndice);
+                bool iman = t == imanTrazo && i == imanIndice;
+                bool punta = !t.cerrado && (i == 0 || i == t.nodos.Count - 1);
+                float tam = tamanoNodo * (punta ? 1.25f : 1f) * (activo || iman ? 1.4f : 1f);
+                nodo.localScale = Vector3.one * tam;
+                var mat = iman ? materialIman : activo ? materialNodoActivo : materialNodo;
                 if (mat != null && nodosRender[n].sharedMaterial != mat)
                     nodosRender[n].sharedMaterial = mat;
                 n++;
             }
         }
         OcultarNodosDesde(n);
+        MostrarAsas();
+    }
+
+    // Las asas (como en Illustrator) se ven solo en el nodo seleccionado.
+    void MostrarAsas()
+    {
+        puntosAsas.Clear();
+        indicesAsas.Clear();
+        bool hay = false;
+        for (int k = 0; k < 2; k++)
+        {
+            bool esSalida = k == 1;
+            bool ver = SeleccionValida && selTrazo.AsaUsada(selIndice, esSalida);
+            var asa = asasVisibles[k];
+            if (asa == null)
+                continue;
+            if (asa.gameObject.activeSelf != ver)
+                asa.gameObject.SetActive(ver);
+            if (!ver)
+                continue;
+            Vector3 punta = PuntaAsaMundo(selTrazo, selIndice, esSalida);
+            asa.position = punta;
+            asa.rotation = Quaternion.identity;
+            bool activa = (arrastre == Objetivo.Asa && arrSalida == esSalida)
+                          || (arrastre == Objetivo.Nada && hoverTipo == Objetivo.Asa && hoverSalida == esSalida);
+            asa.localScale = Vector3.one * tamanoNodo * (activa ? 1.1f : 0.75f);
+            indicesAsas.Add(puntosAsas.Count);
+            puntosAsas.Add(dibujo.transform.TransformPoint(selTrazo.nodos[selIndice]));
+            indicesAsas.Add(puntosAsas.Count);
+            puntosAsas.Add(punta);
+            hay = true;
+        }
+        if (lineasAsas == null)
+            return;
+        if (lineasAsas.activeSelf != hay)
+            lineasAsas.SetActive(hay);
+        if (!hay)
+            return;
+        mallaLineasAsas.Clear();
+        mallaLineasAsas.SetVertices(puntosAsas);
+        mallaLineasAsas.SetIndices(indicesAsas, MeshTopology.Lines, 0);
+        mallaLineasAsas.RecalculateBounds();
+    }
+
+    void OcultarModoNodos()
+    {
+        OcultarNodosDesde(0);
+        foreach (var asa in asasVisibles)
+            if (asa != null && asa.gameObject.activeSelf)
+                asa.gameObject.SetActive(false);
+        if (lineasAsas != null && lineasAsas.activeSelf)
+            lineasAsas.SetActive(false);
     }
 
     void OcultarNodosDesde(int desde)
@@ -308,17 +716,16 @@ public class ControlManos : MonoBehaviour
                 nodosVisibles[i].gameObject.SetActive(false);
     }
 
-    void CrearNodoVisible()
+    GameObject CrearRombo(string nombre, Material mat)
     {
-        var go = new GameObject("Nodo");
+        var go = new GameObject(nombre);
         go.transform.SetParent(transform, false);
         go.AddComponent<MeshFilter>().sharedMesh = MallaNodo();
         var r = go.AddComponent<MeshRenderer>();
-        r.sharedMaterial = materialNodo;
+        r.sharedMaterial = mat;
         r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         r.receiveShadows = false;
-        nodosVisibles.Add(go.transform);
-        nodosRender.Add(r);
+        return go;
     }
 
     // Rombo 3D (octaedro): pocos triángulos y se ve limpio, tipo vector.
@@ -349,38 +756,74 @@ public class ControlManos : MonoBehaviour
         dibujo.AplicarFactorGrosor(factor);
     }
 
-    // ---------- Rombo con las dos manos: caja de transformar ----------
+    // ---------- Deshacer: puño izquierdo con el pulgar hacia tu izquierda ----------
 
-    void RevisarRombo()
+    void RevisarDeshacer()
     {
-        if (caja == null || !Izq.valida || !Der.valida)
+        if (!PoseDeshacer())
         {
-            tiempoRombo = 0f;
+            tiempoDeshacer = 0f;
+            esperarSoltarDeshacer = false;
             return;
         }
-        float dIndices = Vector3.Distance(Izq.indice, Der.indice);
-        float dPulgares = Vector3.Distance(Izq.pulgar, Der.pulgar);
-        if (esperarSoltarRombo)
+        if (esperarSoltarDeshacer)
+            return;
+        tiempoDeshacer += Time.deltaTime;
+        if (tiempoDeshacer < 0.25f)
+            return;
+        esperarSoltarDeshacer = true;
+        dibujo.Deshacer();
+    }
+
+    bool PoseDeshacer()
+    {
+        if (!Izq.valida || Cabeza == null)
+            return false;
+        var esqueleto = Izq.esqueleto;
+        var palma = ManosUtil.LeerPalma(esqueleto, true);
+        if (!palma.valida || palma.cierre > 1.2f)
+            return false; // los dedos deben estar cerrados (puño)
+        Transform basePulgar = ManosUtil.Hueso(esqueleto, "Thumb1", "ThumbMetacarpal");
+        Transform nudillo = ManosUtil.Hueso(esqueleto, "Index1", "IndexProximal");
+        if (basePulgar == null || nudillo == null)
+            return false;
+        Vector3 dir = Izq.pulgar - basePulgar.position;
+        if (dir.magnitude < 0.05f || Vector3.Distance(Izq.pulgar, nudillo.position) < 0.055f)
+            return false; // el pulgar debe estar estirado
+        Vector3 izquierda = -Cabeza.right;
+        izquierda.y = 0f;
+        if (izquierda.sqrMagnitude < 1e-4f)
+            return false;
+        izquierda.Normalize();
+        return Vector3.Dot(dir.normalized, izquierda) > 0.6f;
+    }
+
+    // ---------- Tocar un relleno para cambiar su color ----------
+
+    void RevisarToqueRelleno()
+    {
+        if (!Der.valida)
         {
-            if (dIndices > distanciaRombo * 2f || dPulgares > distanciaRombo * 2f)
-                esperarSoltarRombo = false;
-            tiempoRombo = 0f;
+            tocandoRelleno = false;
             return;
         }
-        bool manosAbiertas = Vector3.Distance(Izq.indice, Izq.pulgar) > 0.05f && Vector3.Distance(Der.indice, Der.pulgar) > 0.05f;
-        if (!manosAbiertas || dIndices > distanciaRombo || dPulgares > distanciaRombo)
+        Vector3 local = dibujo.transform.InverseTransformPoint(Der.indice);
+        float grosor = 0.01f / dibujo.EscalaMundo;
+        Trazo tocado = null;
+        foreach (var t in dibujo.trazos)
         {
-            tiempoRombo = 0f;
-            return;
+            if (t != null && t.cerrado && t.DentroDeRelleno(local, grosor))
+            {
+                tocado = t;
+                break;
+            }
         }
-        tiempoRombo += Time.deltaTime;
-        if (tiempoRombo < 0.35f)
-            return;
-        tiempoRombo = 0f;
-        esperarSoltarRombo = true;
-        if (GestoIzq != Gesto.Ninguno)
-            SalirDeGesto();
-        caja.Alternar();
+        if (tocado != null && !tocandoRelleno && Time.time >= proximoToque)
+        {
+            dibujo.CambiarColorRelleno(tocado);
+            proximoToque = Time.time + 0.5f;
+        }
+        tocandoRelleno = tocado != null;
     }
 
     // ---------- Cursor y panel ----------
@@ -389,7 +832,7 @@ public class ControlManos : MonoBehaviour
     {
         if (cursor == null)
             return;
-        bool ver = Der.valida && !(caja != null && caja.Activa);
+        bool ver = Der.valida && GestoIzq != Gesto.Transformar;
         if (cursor.gameObject.activeSelf != ver)
             cursor.gameObject.SetActive(ver);
         if (!ver)
@@ -404,8 +847,6 @@ public class ControlManos : MonoBehaviour
         posicion = Vector3.zero;
         rotacion = Quaternion.identity;
         if (GestoIzq != Gesto.Ninguno || !Izq.valida || Cabeza == null)
-            return false;
-        if (caja != null && caja.Agarrando)
             return false;
         var palma = ManosUtil.LeerPalma(Izq.esqueleto, true);
         if (!palma.valida)

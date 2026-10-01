@@ -1,19 +1,25 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// Fondo blanco con un piso de cuadrícula suave (o todo blanco, opcional).
+// Fondo de TrazoVR. Tres modos:
+//  0 = blanco con piso de cuadrícula, 1 = todo blanco, 2 = realidad (passthrough: ves tu cuarto).
 public class Escenario : MonoBehaviour
 {
     public Material materialCuadricula;
-    [Tooltip("Sí: todo blanco, sin cuadrícula")]
-    public bool soloBlanco;
+    [Tooltip("0 cuadrícula, 1 blanco, 2 realidad (passthrough)")]
+    public int modo;
     public Color fondo = Color.white;
     [Tooltip("Tamaño del piso en metros")]
     public float tamano = 10f;
     [Tooltip("Distancia entre líneas de la cuadrícula en metros")]
     public float paso = 0.5f;
+    [Tooltip("Capa de passthrough (la crea el menú TrazoVR)")]
+    public OVRPassthroughLayer passthrough;
+
+    public static readonly string[] Nombres = { "Cuadrícula", "Blanco", "Realidad" };
 
     GameObject cuadricula;
+    Camera camara;
 
     void Awake()
     {
@@ -25,7 +31,6 @@ public class Escenario : MonoBehaviour
         mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         mr.receiveShadows = false;
         mf.sharedMesh = CrearMallaCuadricula();
-        PonerSoloBlanco(soloBlanco);
     }
 
     void Start()
@@ -35,24 +40,30 @@ public class Escenario : MonoBehaviour
             OVRManager.instance.trackingOriginType = OVRManager.TrackingOrigin.FloorLevel;
 
         var rig = FindFirstObjectByType<OVRCameraRig>();
-        Camera cam = rig != null && rig.centerEyeAnchor != null ? rig.centerEyeAnchor.GetComponent<Camera>() : Camera.main;
-        if (cam != null)
-        {
-            cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = fondo;
-        }
+        camara = rig != null && rig.centerEyeAnchor != null ? rig.centerEyeAnchor.GetComponent<Camera>() : Camera.main;
+        if (passthrough == null)
+            passthrough = FindFirstObjectByType<OVRPassthroughLayer>(FindObjectsInactive.Include);
+        PonerModo(modo);
     }
 
-    public void PonerSoloBlanco(bool valor)
+    public void SiguienteModo()
     {
-        soloBlanco = valor;
+        PonerModo((modo + 1) % 3);
+    }
+
+    public void PonerModo(int nuevo)
+    {
+        modo = Mathf.Clamp(nuevo, 0, 2);
+        bool realidad = modo == 2;
         if (cuadricula != null)
-            cuadricula.SetActive(!valor);
-    }
-
-    public void AlternarFondo()
-    {
-        PonerSoloBlanco(!soloBlanco);
+            cuadricula.SetActive(modo == 0);
+        if (passthrough != null)
+            passthrough.enabled = realidad;
+        if (camara != null)
+        {
+            camara.clearFlags = CameraClearFlags.SolidColor;
+            camara.backgroundColor = realidad ? new Color(0f, 0f, 0f, 0f) : fondo;
+        }
     }
 
     Mesh CrearMallaCuadricula()

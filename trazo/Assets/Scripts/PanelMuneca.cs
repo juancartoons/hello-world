@@ -4,20 +4,23 @@ using UnityEngine.Events;
 
 // Panel de botones que flota frente a la palma izquierda cuando la giras hacia ti.
 // Los botones se tocan con la punta del índice derecho.
+// También muestra avisos cortos frente a tus ojos ("Deshecho", "Líneas unidas"...).
 public class PanelMuneca : MonoBehaviour
 {
     public ControlManos control;
     public Dibujo dibujo;
     public Escenario escenario;
     public GameObject contenido;
-    public BotonTocable btnDeshacer, btnBorrar, btnGuardar, btnCargar, btnCinta, btnTubo, btnPorLinea, btnFondo;
+    public BotonTocable btnEstilo, btnPorLinea, btnPlano, btnFondo, btnGuardar, btnCargar, btnBorrar;
     public TMP_Text textoEstado;
+    public TMP_Text textoAviso;
     public float suavizado = 20f;
 
-    const string textoAyuda = "Izq + pulgar: índice dibuja · medio nodos · anular grosor\nRombo con 2 manos: caja";
+    const string textoAyuda = "Izq + pulgar: índice dibuja · medio nodos · anular grosor\nDos pellizcos: girar/escalar · Pulgar a la izq: deshacer";
 
     bool visible;
     float ocultarMensajeEn;
+    float ocultarAvisoEn;
 
     void Start()
     {
@@ -27,20 +30,21 @@ public class PanelMuneca : MonoBehaviour
 
         if (dibujo != null)
         {
-            Conectar(btnDeshacer, dibujo.Deshacer);
-            Conectar(btnBorrar, dibujo.BorrarTodo);
+            Conectar(btnEstilo, dibujo.AlternarEstilo);
+            Conectar(btnPorLinea, dibujo.AlternarPorLinea);
+            Conectar(btnPlano, dibujo.AlternarPlano);
             Conectar(btnGuardar, dibujo.Guardar);
             Conectar(btnCargar, dibujo.Cargar);
-            Conectar(btnCinta, dibujo.PonerCinta);
-            Conectar(btnTubo, dibujo.PonerTubo);
-            Conectar(btnPorLinea, dibujo.AlternarPorLinea);
+            Conectar(btnBorrar, dibujo.BorrarTodo);
             dibujo.alCambiar += Refrescar;
             dibujo.alMensaje += Mensaje;
         }
-        Conectar(btnFondo, AlternarFondo);
+        Conectar(btnFondo, SiguienteFondo);
 
         if (textoEstado != null)
             textoEstado.text = textoAyuda;
+        if (textoAviso != null)
+            textoAviso.gameObject.SetActive(false);
         Refrescar();
         if (contenido != null)
             contenido.SetActive(false);
@@ -61,11 +65,13 @@ public class PanelMuneca : MonoBehaviour
             boton.alTocar.AddListener(accion);
     }
 
-    void AlternarFondo()
+    void SiguienteFondo()
     {
-        if (escenario != null)
-            escenario.AlternarFondo();
+        if (escenario == null)
+            return;
+        escenario.SiguienteModo();
         Refrescar();
+        Mensaje("Fondo: " + Escenario.Nombres[escenario.modo]);
     }
 
     void Update()
@@ -95,22 +101,45 @@ public class PanelMuneca : MonoBehaviour
             if (textoEstado != null)
                 textoEstado.text = textoAyuda;
         }
+        ActualizarAviso();
+    }
+
+    // El aviso flota un poco abajo y al frente de tu vista.
+    void ActualizarAviso()
+    {
+        if (textoAviso == null || !textoAviso.gameObject.activeSelf)
+            return;
+        if (Time.time > ocultarAvisoEn)
+        {
+            textoAviso.gameObject.SetActive(false);
+            return;
+        }
+        var cabeza = control != null ? control.Cabeza : null;
+        if (cabeza == null)
+            return;
+        Vector3 pos = cabeza.position + cabeza.forward * 0.6f - cabeza.up * 0.15f;
+        textoAviso.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(pos - cabeza.position, cabeza.up));
     }
 
     void Refrescar()
     {
         if (dibujo != null)
         {
-            if (btnCinta != null) btnCinta.Marcar(dibujo.estilo == EstiloLinea.Cinta);
-            if (btnTubo != null) btnTubo.Marcar(dibujo.estilo == EstiloLinea.Tubo);
+            if (btnEstilo != null)
+                btnEstilo.PonerTexto(dibujo.estilo == EstiloLinea.Tubo ? "Línea: Tubo" : "Línea: Cinta");
             if (btnPorLinea != null)
             {
                 btnPorLinea.PonerTexto(dibujo.porLinea ? "Por línea: Sí" : "Por línea: No");
                 btnPorLinea.Marcar(dibujo.porLinea);
             }
+            if (btnPlano != null)
+            {
+                btnPlano.PonerTexto(dibujo.plano ? "Plano (2D)" : "Libre (3D)");
+                btnPlano.Marcar(dibujo.plano);
+            }
         }
         if (btnFondo != null && escenario != null)
-            btnFondo.PonerTexto(escenario.soloBlanco ? "Fondo: blanco" : "Fondo: cuadrícula");
+            btnFondo.PonerTexto("Fondo: " + Escenario.Nombres[escenario.modo]);
     }
 
     public void Mensaje(string texto)
@@ -118,5 +147,12 @@ public class PanelMuneca : MonoBehaviour
         if (textoEstado != null)
             textoEstado.text = texto;
         ocultarMensajeEn = Time.time + 2.5f;
+        if (textoAviso != null)
+        {
+            textoAviso.text = texto;
+            textoAviso.gameObject.SetActive(true);
+            ocultarAvisoEn = Time.time + 1.6f;
+            ActualizarAviso();
+        }
     }
 }
