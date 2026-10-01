@@ -212,12 +212,16 @@ public class JuegoManager : MonoBehaviour
         AjustarAltura();
     }
 
+    // Sube la vista (no el cuerpo) si la persona está sentada. Se mueve el "tracking space" del rig
+    // y no el rig completo, porque el sistema de movimiento de Meta mantiene el rig pegado al piso.
     void AjustarAltura()
     {
-        Vector3 p = rig.transform.position;
-        float alturaOjos = cabeza.position.y - p.y; // altura de los ojos sobre el piso real
-        p.y = alturaOjos < alturaSentado ? alturaObjetivo - alturaOjos : 0f;
-        rig.transform.position = p;
+        var espacio = rig.trackingSpace;
+        if (espacio == null)
+            return;
+        float alturaOjos = cabeza.localPosition.y; // altura de los ojos sobre el piso real
+        float extra = alturaOjos < alturaSentado ? alturaObjetivo - alturaOjos : 0f;
+        espacio.localPosition = new Vector3(espacio.localPosition.x, extra, espacio.localPosition.z);
     }
 
     // ---------- Escondites ----------

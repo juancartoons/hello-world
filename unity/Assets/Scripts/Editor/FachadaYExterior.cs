@@ -349,6 +349,14 @@ internal static class FachadaYExterior
 
         ext.CrearObjeto("Kit_Exterior", raiz, matKit, carpeta);
 
+        // Piso sólido afuera (el exterior es solo visual): sin esto el jugador se cae al vacío,
+        // porque el sistema de movimiento de Meta le aplica gravedad.
+        var pisoExterior = new GameObject("PisoExterior");
+        pisoExterior.transform.SetParent(raiz, false);
+        var caja = pisoExterior.AddComponent<BoxCollider>();
+        caja.center = new Vector3(0f, -0.26f, 0f); // la parte de arriba queda en y = -0.01 (nivel del andén)
+        caja.size = new Vector3(140f, 0.5f, 140f);
+
         // Cielo con degradado y el sol.
         var cielo = new KitMalla();
         cielo.Cielo(700f, new Color(0.86f, 0.93f, 0.99f), new Color(0.42f, 0.66f, 0.94f), pasto);
