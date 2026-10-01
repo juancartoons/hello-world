@@ -715,8 +715,13 @@ public static class AplicarEstiloYEscenografia
         modo.botonMeta = botonMeta;
         EditorUtility.SetDirty(modo);
 
-        UnityEditor.Events.UnityEventTools.AddPersistentListener(botonPuntos.GetComponent<BotonTocable>().alTocar, modo.ElegirPuntos);
-        UnityEditor.Events.UnityEventTools.AddPersistentListener(botonMeta.GetComponent<BotonTocable>().alTocar, modo.ElegirMeta);
+        // Un componente recién agregado desde el editor puede traer su evento vacío (null): se crea antes de conectarlo.
+        var tocarPuntos = botonPuntos.GetComponent<BotonTocable>();
+        var tocarMeta = botonMeta.GetComponent<BotonTocable>();
+        if (tocarPuntos.alTocar == null) tocarPuntos.alTocar = new UnityEngine.Events.UnityEvent();
+        if (tocarMeta.alTocar == null) tocarMeta.alTocar = new UnityEngine.Events.UnityEvent();
+        UnityEditor.Events.UnityEventTools.AddPersistentListener(tocarPuntos.alTocar, modo.ElegirPuntos);
+        UnityEditor.Events.UnityEventTools.AddPersistentListener(tocarMeta.alTocar, modo.ElegirMeta);
 
         ArreglarSuperficieTeletransporteMeta(modo.teletransporteMeta);
 

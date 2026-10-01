@@ -7,7 +7,7 @@ using UnityEngine.Events;
 [RequireComponent(typeof(Collider))]
 public class BotonTocable : MonoBehaviour
 {
-    public UnityEvent alTocar;
+    public UnityEvent alTocar = new UnityEvent();
     [Tooltip("Distancia (metros) entre la punta del dedo y el botón para presionarlo")]
     public float distancia = 0.025f;
     [Tooltip("Segundos de espera entre toques")]

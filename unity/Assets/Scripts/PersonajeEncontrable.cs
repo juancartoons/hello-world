@@ -43,7 +43,7 @@ public class PersonajeEncontrable : MonoBehaviour
     public float segundosEntreSacudidas = 2.5f;
 
     [Header("Evento (se dispara cuando llega a la mano)")]
-    public UnityEvent alSerEncontrado;
+    public UnityEvent alSerEncontrado = new UnityEvent();
 
     // El JuegoManager lo activa solo mientras se está buscando.
     public bool Activo { get; set; }
