@@ -9,6 +9,7 @@ using UnityEngine;
 public class Animacion : MonoBehaviour
 {
     public const int TotalFotogramas = 200;
+    public static readonly float[] OpcionesFps = { 12f, 24f, 30f, 60f };
 
     public Dibujo dibujo;
     public float fotogramasPorSegundo = 12f;
@@ -151,6 +152,38 @@ public class Animacion : MonoBehaviour
             return;
         Reproduciendo = false;
         Avisar();
+    }
+
+    // Cambia la velocidad: 12 → 24 → 30 → 60 cuadros por segundo.
+    public void CambiarFps()
+    {
+        int i = 0;
+        for (int k = 0; k < OpcionesFps.Length; k++)
+            if (Mathf.Approximately(OpcionesFps[k], fotogramasPorSegundo))
+                i = k;
+        fotogramasPorSegundo = OpcionesFps[(i + 1) % OpcionesFps.Length];
+        Avisar();
+        dibujo.Mensaje(fotogramasPorSegundo + " cuadros por segundo");
+    }
+
+    // Arrastrar una clave a otro fotograma.
+    public void MoverClave(int desde, int hasta)
+    {
+        hasta = Mathf.Clamp(hasta, 0, TotalFotogramas - 1);
+        var c = BuscarClave(desde);
+        if (c == null || desde == hasta)
+            return;
+        dibujo.GuardarParaDeshacer();
+        var otra = BuscarClave(hasta);
+        if (otra != null)
+            claves.Remove(otra);
+        c.fotograma = hasta;
+        claves.Sort((a, b) => a.fotograma.CompareTo(b.fotograma));
+        Fotograma = hasta;
+        MostrarFotograma();
+        Trazo.huboCambio = false;
+        Avisar();
+        dibujo.Mensaje("Clave movida al fotograma " + (hasta + 1));
     }
 
     public void Inicio() { IrA(0); }

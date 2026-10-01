@@ -55,6 +55,7 @@ public class DatosDibujo
     public int siguienteId = 1;
     public List<Clave> claves = new List<Clave>();
     public int fotograma;
+    public float fps = 12f;
 }
 
 // El dibujo completo: crea las líneas, une, cierra, borra, deshace, guarda y carga.
@@ -66,6 +67,8 @@ public class Dibujo : MonoBehaviour
     public Material materialLinea;
     public Material materialRelleno;
     public Material materialGuia;
+    [Tooltip("Color de la línea seleccionada")]
+    public Material materialSeleccion;
     [Tooltip("Rojo del borrador")]
     public Material materialBorrado;
     public Animacion animacion;
@@ -90,6 +93,9 @@ public class Dibujo : MonoBehaviour
     Vector3 planoNormal = Vector3.forward;
     GameObject guia;
     int siguienteId = 1;
+    Trazo seleccion;
+    Trazo grosorSolo;
+    float anchoSoloInicio;
 
     const int maxHistorial = 40;
     readonly List<string> historial = new List<string>();
@@ -213,6 +219,22 @@ public class Dibujo : MonoBehaviour
     public static bool Editable(Trazo t)
     {
         return t != null && t.gameObject.activeSelf;
+    }
+
+    // ---------- Selección ----------
+
+    // La línea seleccionada (null = ninguna: los cambios afectan a todo el dibujo).
+    public Trazo Seleccion => Editable(seleccion) ? seleccion : null;
+
+    public void Seleccionar(Trazo t)
+    {
+        if (seleccion == t)
+            return;
+        if (seleccion != null)
+            seleccion.PonerMaterialLinea(materialLinea);
+        seleccion = t;
+        if (seleccion != null)
+            seleccion.PonerMaterialLinea(materialSeleccion != null ? materialSeleccion : materialLinea);
     }
 
     // ---------- Dibujar ----------
@@ -509,6 +531,13 @@ public class Dibujo : MonoBehaviour
         ActualizarGuia();
     }
 
+    public Vector3 ProyectarVectorEnPlano(Vector3 vectorLocal)
+    {
+        if (!PlanoActivo)
+            return vectorLocal;
+        return vectorLocal - planoNormal * Vector3.Dot(vectorLocal, planoNormal);
+    }
+
     public Vector3 ProyectarEnPlano(Vector3 local)
     {
         if (!PlanoActivo)
@@ -570,9 +599,13 @@ public class Dibujo : MonoBehaviour
 
     // ---------- Grosor proporcional ----------
 
+    // Con una línea seleccionada, el grosor cambia solo en ella; sin selección, en todo el dibujo.
     public void EmpezarGrosor()
     {
         GuardarParaDeshacer();
+        grosorSolo = Seleccion;
+        if (grosorSolo != null)
+            anchoSoloInicio = grosorSolo.ancho;
         anchosInicio.Clear();
         foreach (var t in trazos)
             anchosInicio.Add(t != null ? t.ancho : 0f);
@@ -582,6 +615,16 @@ public class Dibujo : MonoBehaviour
     public void AplicarFactorGrosor(float factor)
     {
         factor = Mathf.Clamp(factor, 0.1f, 10f);
+        if (grosorSolo != null)
+        {
+            float solo = Mathf.Clamp(anchoSoloInicio * factor, 0.0005f, 0.5f);
+            if (Mathf.Abs(solo - grosorSolo.ancho) > 1e-6f)
+            {
+                grosorSolo.ancho = solo;
+                grosorSolo.Reconstruir(true);
+            }
+            return;
+        }
         anchoPincel = Mathf.Clamp(pincelInicio * factor, 0.001f, 0.06f);
         for (int i = 0; i < trazos.Count && i < anchosInicio.Count; i++)
         {
@@ -598,6 +641,7 @@ public class Dibujo : MonoBehaviour
 
     public void TerminarGrosor()
     {
+        grosorSolo = null;
         Avisar();
     }
 
@@ -709,7 +753,8 @@ public class Dibujo : MonoBehaviour
             planoNormal = planoNormal,
             capaActual = capaActual,
             siguienteId = siguienteId,
-            fotograma = animacion != null ? animacion.Fotograma : 0
+            fotograma = animacion != null ? animacion.Fotograma : 0,
+            fps = animacion != null ? animacion.fotogramasPorSegundo : 12f
         };
         foreach (var c in capas)
             d.capas.Add(new DatosCapa { nombre = c.nombre, visible = c.visible });
@@ -759,8 +804,13 @@ public class Dibujo : MonoBehaviour
                 trazos.Add(t);
             }
         }
+        seleccion = null;
         if (animacion != null)
+        {
+            if (d.fps > 0f)
+                animacion.fotogramasPorSegundo = d.fps;
             animacion.Restaurar(d.claves, d.fotograma);
+        }
         Trazo.silenciar = false;
         Trazo.huboCambio = false;
         if (incluirFondo && escenario != null)

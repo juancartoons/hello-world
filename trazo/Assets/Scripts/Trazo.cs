@@ -301,6 +301,44 @@ public class Trazo : MonoBehaviour
         return true;
     }
 
+    // Mueve toda la línea (los nodos parten de "baseNodos" y se suman "delta").
+    public void Desplazar(List<Vector3> baseNodos, Vector3 delta)
+    {
+        int n = Mathf.Min(nodos.Count, baseNodos.Count);
+        for (int i = 0; i < n; i++)
+            nodos[i] = baseNodos[i] + delta;
+        Reconstruir();
+    }
+
+    // Gira/escala/mueve solo esta línea, partiendo de su forma "origen" (m: de local a local).
+    public void TransformarDesde(DatosTrazo origen, Matrix4x4 m, float escala)
+    {
+        if (origen == null || origen.nodos == null || origen.nodos.Count != nodos.Count)
+            return;
+        AsegurarAsas();
+        int n = nodos.Count;
+        bool asas = Completa(origen.asaEntrada, n) && Completa(origen.asaSalida, n);
+        for (int i = 0; i < n; i++)
+        {
+            nodos[i] = m.MultiplyPoint3x4(origen.nodos[i]);
+            if (asas)
+            {
+                asaEntrada[i] = m.MultiplyVector(origen.asaEntrada[i]);
+                asaSalida[i] = m.MultiplyVector(origen.asaSalida[i]);
+            }
+        }
+        ancho = Mathf.Clamp(origen.ancho * escala, 0.0005f, 0.5f);
+        Reconstruir();
+    }
+
+    // Cambia el material de la línea (para mostrarla seleccionada).
+    public void PonerMaterialLinea(Material material)
+    {
+        var mr = GetComponent<MeshRenderer>();
+        if (material != null && mr.sharedMaterial != material)
+            mr.sharedMaterial = material;
+    }
+
     public void PonerGrosorNodo(int i, float multiplicador)
     {
         AsegurarAsas();

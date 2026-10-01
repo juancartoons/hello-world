@@ -10,11 +10,12 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 | Izquierda: **pulgar + índice** (sostener) | Dibujas con la punta del **índice derecho** |
 | Izquierda: **pulgar + medio** (sostener) | **Modo nodos**: pellizca un nodo con la derecha y arrástralo. El nodo tocado muestra sus **asas** (verdes): pellízcalas para curvar |
 | Modo nodos: arrastrar una **punta** sobre otra punta | Imán: se unen en una sola línea, o se **cierra la figura** y se rellena |
-| Izquierda: **pulgar + anular** (sostener) | **Grosor**: sube/baja la mano izquierda = todo más grueso/delgado. Pellizca un **nodo** con la derecha y súbela/bájala = grosor solo de ese nodo |
-| Izquierda: **puño** (pulgar escondido) | **Borrador**: lo que toques con el índice derecho se borra (nodo, línea o relleno) |
+| Izquierda: **pulgar + anular** (sostener) | **Grosor**: sube/baja la mano izquierda = más grueso/delgado (solo la línea seleccionada, o todo si no hay selección). Pellizca un **nodo** con la derecha y súbela/bájala = grosor solo de ese nodo |
+| Izquierda: **puño** (pulgar sobre los dedos o al lado) | **Borrador** (la mano se pone roja): lo que toques con el índice derecho se borra (nodo, línea o relleno) |
+| **Pellizcar una línea** con la derecha (sin gesto izquierdo) | La **selecciona** (se pone azul) y la **mueves**. Pellizcar en el aire = quitar la selección |
 | Izquierda: **puño con el pulgar hacia tu izquierda** | **Deshacer** (la mano destella en azul) |
-| Izquierda abierta, **punta del pulgar en la base de los dedos** | **Menú**: Libre 3D / Plano 2D, Fondo, Guardar, Cargar, Borrar todo |
-| **Las dos manos pellizcando** (índice + pulgar) | Separar/juntar = escalar · girar como un volante = rotar · mover = trasladar |
+| Izquierda abierta, **punta del pulgar en la base de los dedos** (sobre la palma) | **Menú**: Libre 3D / Plano 2D, Fondo, Guardar, Cargar, Borrar todo |
+| **Las dos manos pellizcando** (índice + pulgar) | Separar/juntar = escalar · girar como un volante = rotar · mover = trasladar (solo la línea seleccionada, o todo si no hay selección) |
 | Tocar un **relleno** con el índice derecho | Cambia su color |
 | **Mirar hacia arriba** | Línea de tiempo (200 fotogramas) y capas |
 
@@ -25,6 +26,8 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 3. **Play**: las líneas se transforman suavemente entre las claves.
 
 - "+ Clave" copia la forma actual en el fotograma; "- Clave" la quita.
+- **Pellizca una clave** (marca naranja) y arrástrala para moverla a otro fotograma.
+- El botón **fps** cambia la velocidad: 12, 24, 30 o 60 cuadros por segundo.
 - Una línea dibujada en el fotograma 40 aparece desde ahí.
 
 ## Capas

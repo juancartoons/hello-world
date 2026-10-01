@@ -73,6 +73,10 @@ public static class ArmarEscenaTrazo
         var matBorrado = Mat("Borrado", unlit, new Color(0.95f, 0.15f, 0.15f));
         var matCursorBorrar = Mat("CursorBorrar", unlit, new Color(0.95f, 0.2f, 0.2f));
         var matDestelloMano = Mat("DestelloMano", unlit, new Color(0.35f, 0.7f, 1f));
+        var matBorrarMano = Mat("BorrarMano", unlit, new Color(1f, 0.35f, 0.35f));
+        var matSeleccion = Mat("LineaSeleccion", shaderLinea, new Color(0.1f, 0.35f, 0.95f));
+        if (matSeleccion.HasProperty("_ColorLuz"))
+            matSeleccion.SetColor("_ColorLuz", new Color(0.5f, 0.7f, 1f));
         var matClave = Mat("Clave", unlit, new Color(1f, 0.55f, 0.1f));
         var matCabezal = Mat("Cabezal", unlit, new Color(0.9f, 0.15f, 0.15f));
         var matBarra = Mat("Barra", unlit, new Color(0.55f, 0.57f, 0.62f));
@@ -100,6 +104,7 @@ public static class ArmarEscenaTrazo
         animacion.dibujo = dibujo;
         dibujo.animacion = animacion;
         dibujo.materialBorrado = matBorrado;
+        dibujo.materialSeleccion = matSeleccion;
         dibujo.materialLinea = matLinea;
         dibujo.materialRelleno = matRelleno;
         dibujo.materialGuia = matGuia;
@@ -118,6 +123,7 @@ public static class ArmarEscenaTrazo
         control.materialIman = matIman;
         control.materialCursorBorrar = matCursorBorrar;
         control.materialDestelloMano = matDestelloMano;
+        control.materialBorrarMano = matBorrarMano;
         caja.dibujo = dibujo;
         caja.materialCaja = matCaja;
 
@@ -340,11 +346,11 @@ public static class ArmarEscenaTrazo
         panel.cabezal = cabezal.transform;
 
         // Controles de la animación
-        string[] controles = { "Inicio", "<", "Play", ">", "+ Clave", "- Clave" };
+        string[] controles = { "Inicio", "<", "Play", ">", "+ Clave", "- Clave", "12 fps" };
         var b = new BotonTocable[controles.Length];
         for (int i = 0; i < controles.Length; i++)
         {
-            float x = -0.2f + i * 0.08f;
+            float x = -0.192f + i * 0.064f;
             b[i] = Boton(contenido.transform, controles[i], new Vector3(x, 0.02f, 0f), matBoton, matBotonMarcado);
         }
         panel.btnInicio = b[0];
@@ -353,6 +359,7 @@ public static class ArmarEscenaTrazo
         panel.btnSiguiente = b[3];
         panel.btnClave = b[4];
         panel.btnQuitarClave = b[5];
+        panel.btnFps = b[6];
 
         // Capas
         panel.btnCapas = new BotonTocable[Dibujo.NumeroDeCapas];
@@ -363,7 +370,7 @@ public static class ArmarEscenaTrazo
             panel.btnCapas[i] = Boton(contenido.transform, "Capa " + (i + 1), new Vector3(x, -0.03f, 0f), matBoton, matBotonMarcado);
             panel.btnVer[i] = Boton(contenido.transform, "Ver", new Vector3(x, -0.058f, 0f), matBoton, matBotonMarcado);
         }
-        Texto(contenido.transform, "Toca la barra para ir a un fotograma · si editas, se guarda una clave", new Vector3(0f, -0.095f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.3f, 0.3f, 0.35f));
+        Texto(contenido.transform, "Toca la barra = ir a un fotograma · pellizca una clave = moverla · si editas, se guarda una clave", new Vector3(0f, -0.095f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.3f, 0.3f, 0.35f));
     }
 
     static bool PonerEnum(SerializedProperty prop, string nombre)

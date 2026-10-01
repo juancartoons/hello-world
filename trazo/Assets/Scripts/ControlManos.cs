@@ -7,11 +7,13 @@ using UnityEngine;
 //       Arrastra la punta de una línea sobre otra punta: se unen como imán (o se cierra la figura).
 //  Izquierda pulgar + ANULAR (sostener)  -> grosor: sube/baja la mano izquierda = todo más grueso/delgado;
 //       pellizca un nodo con la derecha y súbela/bájala = grosor solo de ese nodo.
-//  Izquierda PUÑO (pulgar escondido)      -> borrador: lo que toques con el índice derecho se borra.
+//  Izquierda PUÑO (pulgar sobre los dedos o al lado) -> borrador: lo que toques con el índice derecho se borra.
 //  Izquierda puño con el PULGAR hacia tu izquierda -> deshacer (la mano destella).
 //  Izquierda abierta con el pulgar tocando la base de los dedos -> menú.
 //  LAS DOS manos pellizcando (índice + pulgar) -> escalar, girar (como volante) y mover todo.
 //  Tocar un relleno con el índice derecho -> cambiar su color.
+//  Pellizcar una línea con la derecha (sin gesto izquierdo) -> seleccionarla y moverla.
+//  Pellizcar en el aire -> quitar la selección (los cambios vuelven a afectar a todo el dibujo).
 [DefaultExecutionOrder(-50)]
 public class ControlManos : MonoBehaviour
 {
@@ -27,6 +29,8 @@ public class ControlManos : MonoBehaviour
     public Material materialCursorBorrar;
     [Tooltip("Color con el que destella la mano al deshacer")]
     public Material materialDestelloMano;
+    [Tooltip("Color de la mano izquierda mientras está en modo borrador")]
+    public Material materialBorrarMano;
 
     [Header("Gestos (en metros)")]
     public float pellizcoEntra = 0.02f;
@@ -63,7 +67,7 @@ public class ControlManos : MonoBehaviour
     float curvaIndice, curvaMedio, curvaAnular;  // ~0.5-1 doblado, ~1.5+ estirado
     float pulgarANudillo;                         // punta del pulgar al nudillo del índice
     Vector3 basePulgar;
-    Vector3 baseDedos;                            // donde toca el pulgar para abrir el menú
+    float distanciaMenu;                          // del pulgar a la base de los dedos (pose del menú)
 
     // Nodos y asas visibles
     readonly List<Transform> nodosVisibles = new List<Transform>();
@@ -106,6 +110,12 @@ public class ControlManos : MonoBehaviour
     bool esperarSoltarDeshacer;
     bool tocandoRelleno;
     float proximoToque;
+
+    // Mover una línea con el pellizco derecho
+    Trazo lineaMovida;
+    readonly List<Vector3> baseLinea = new List<Vector3>();
+    Vector3 inicioLinea;
+    bool deshacerLineaPendiente;
 
     // Destello de la mano
     Renderer[] rendsMano;
@@ -190,6 +200,7 @@ public class ControlManos : MonoBehaviour
             case Gesto.Transformar: if (caja != null) caja.Actualizar(Izq, Der); break;
             default:
                 RevisarDeshacer();
+                RevisarAgarreLinea();
                 RevisarToqueRelleno();
                 break;
         }
@@ -214,7 +225,8 @@ public class ControlManos : MonoBehaviour
         Transform nudilloMedio = ManosUtil.Hueso(esq, "Middle1", "MiddleProximal");
         Transform muneca = ManosUtil.Hueso(esq, "WristRoot", "Wrist");
         Transform pulgar = ManosUtil.Hueso(esq, "Thumb1", "ThumbMetacarpal");
-        if (!palmaIzq.valida || nudilloIndice == null || nudilloMedio == null || muneca == null || pulgar == null)
+        Transform nudilloMenique = ManosUtil.Hueso(esq, "Pinky1", "LittleProximal");
+        if (!palmaIzq.valida || nudilloIndice == null || nudilloMedio == null || muneca == null || pulgar == null || nudilloMenique == null)
             return;
         float tam = palmaIzq.tamano;
         curvaIndice = Vector3.Distance(Izq.indice, palmaIzq.centro) / tam;
@@ -222,19 +234,40 @@ public class ControlManos : MonoBehaviour
         curvaAnular = Vector3.Distance(Izq.anular, palmaIzq.centro) / tam;
         pulgarANudillo = Vector3.Distance(Izq.pulgar, nudilloIndice.position);
         basePulgar = pulgar.position;
-        baseDedos = Vector3.Lerp(Vector3.Lerp(nudilloIndice.position, nudilloMedio.position, 0.35f), muneca.position, 0.2f);
+        // La "base de los dedos": una franja desde el nudillo del índice hasta el del meñique,
+        // un poco hacia la muñeca. Sirve aunque el pulgar toque un poco más abajo.
+        Vector3 a = Vector3.Lerp(nudilloIndice.position, muneca.position, 0.2f);
+        Vector3 b = Vector3.Lerp(nudilloMenique.position, muneca.position, 0.2f);
+        distanciaMenu = DistanciaASegmento(Izq.pulgar, a, b);
         poseValida = true;
     }
 
-    // Puño: los tres dedos doblados y el pulgar escondido cerca del índice.
-    bool EsPuno()
+    static float DistanciaASegmento(Vector3 p, Vector3 a, Vector3 b)
     {
-        return poseValida && curvaIndice < 1.05f && curvaMedio < 1.05f && curvaAnular < 1.05f && pulgarANudillo < 0.05f;
+        Vector3 ab = b - a;
+        float l2 = ab.sqrMagnitude;
+        if (l2 < 1e-10f)
+            return Vector3.Distance(p, a);
+        float t = Mathf.Clamp01(Vector3.Dot(p - a, ab) / l2);
+        return Vector3.Distance(p, a + ab * t);
+    }
+
+    // Puño (de frente o de lado, sin importar la muñeca): dedos doblados y el pulgar
+    // sobre los dedos o pegado al índice. Si el pulgar se estira lejos, ya es "deshacer".
+    bool EsPuno(bool yaEnPuno)
+    {
+        if (!poseValida)
+            return false;
+        float promedio = (curvaIndice + curvaMedio + curvaAnular) / 3f;
+        float maximo = Mathf.Max(curvaIndice, Mathf.Max(curvaMedio, curvaAnular));
+        if (yaEnPuno)
+            return promedio < 1.3f && maximo < 1.45f && pulgarANudillo < 0.075f;
+        return promedio < 1.15f && maximo < 1.3f && pulgarANudillo < 0.065f;
     }
 
     bool DedosAbiertos()
     {
-        return poseValida && curvaIndice > 1.25f && curvaMedio > 1.25f && curvaAnular > 1.2f;
+        return poseValida && curvaIndice > 1.1f && curvaMedio > 1.1f;
     }
 
     // ---------- Mano izquierda: qué gesto hace ----------
@@ -273,8 +306,7 @@ public class ControlManos : MonoBehaviour
         if (GestoIzq == Gesto.Borrar)
         {
             // Se sale del borrador al abrir la mano o sacar el pulgar.
-            bool sigue = poseValida && curvaIndice < 1.2f && curvaMedio < 1.2f && curvaAnular < 1.2f && pulgarANudillo < 0.06f;
-            if (!sigue && poseValida)
+            if (poseValida && !EsPuno(true))
                 SalirDeGesto();
             return;
         }
@@ -293,17 +325,23 @@ public class ControlManos : MonoBehaviour
             return;
         }
 
+        // Prioridad: pellizco de índice (dibujar) > puño (borrar) > pellizco de medio/anular.
         Gesto nuevo = Gesto.Ninguno;
-        if (EsPuno())
+        if (dIndice < pellizcoEntra && dIndice <= dMedio && dIndice <= dAnular)
+        {
+            nuevo = Gesto.Dibujar;
+        }
+        else if (EsPuno(false))
         {
             nuevo = Gesto.Borrar;
         }
-        else
+        else if (!poseValida || curvaIndice > 1.15f)
         {
-            float menor = pellizcoEntra;
-            if (dIndice < menor) { menor = dIndice; nuevo = Gesto.Dibujar; }
-            if (dMedio < menor) { menor = dMedio; nuevo = Gesto.Nodos; }
-            if (dAnular < menor) { nuevo = Gesto.Grosor; }
+            // Medio o anular con el índice estirado (así no se confunde con el puño).
+            if (dMedio < pellizcoEntra && dMedio <= dAnular)
+                nuevo = Gesto.Nodos;
+            else if (dAnular < pellizcoEntra)
+                nuevo = Gesto.Grosor;
         }
 
         if (nuevo != candidato)
@@ -338,6 +376,7 @@ public class ControlManos : MonoBehaviour
     void EntrarEnGesto(Gesto g)
     {
         GestoIzq = g;
+        lineaMovida = null;
         if (dibujo.animacion != null)
             dibujo.animacion.Pausar();
         if (g == Gesto.Grosor)
@@ -350,11 +389,12 @@ public class ControlManos : MonoBehaviour
         else if (g == Gesto.Transformar)
         {
             if (caja != null)
-                caja.Empezar(Izq, Der);
+                caja.Empezar(Izq, Der, dibujo.Seleccion);
         }
         else if (g == Gesto.Borrar)
         {
             tocandoBorrar = true; // no borra lo que ya estaba tocando al cerrar el puño
+            PintarMano(Izq, materialBorrarMano, 0f); // mano roja mientras dure el borrador
         }
     }
 
@@ -369,6 +409,8 @@ public class ControlManos : MonoBehaviour
             dibujo.TerminarGrosor();
         if (GestoIzq == Gesto.Transformar && caja != null)
             caja.Terminar();
+        if (GestoIzq == Gesto.Borrar)
+            RestaurarMano();
         if (arrastre != Objetivo.Nada)
             TerminarArrastre();
         selTrazo = null;
@@ -390,6 +432,7 @@ public class ControlManos : MonoBehaviour
         {
             if (dibujo.plano && !dibujo.HayPlano && Cabeza != null)
                 dibujo.DefinirPlano(local, Cabeza.forward);
+            dibujo.Seleccionar(null);
             trazoActual = dibujo.NuevoTrazo();
             inicioTrazo = Time.time;
         }
@@ -404,7 +447,7 @@ public class ControlManos : MonoBehaviour
         {
             if (arrastre != Objetivo.Nada)
                 TerminarArrastre();
-            MostrarModoNodos(true);
+            MostrarModoNodos(true, dibujo.Seleccion);
             return;
         }
         Vector3 pinza = Der.PuntoPellizco;
@@ -412,10 +455,11 @@ public class ControlManos : MonoBehaviour
         if (arrastre != Objetivo.Nada && !Der.pellizco)
             TerminarArrastre();
 
+        Trazo solo = dibujo.Seleccion;
         if (arrastre != Objetivo.Nada)
         {
             ContinuarArrastre(pinza);
-            MostrarModoNodos(true);
+            MostrarModoNodos(true, solo);
             return;
         }
 
@@ -423,7 +467,7 @@ public class ControlManos : MonoBehaviour
         Trazo t;
         int i;
         bool salida = false;
-        if (BuscarNodoCercano(Der.indice, pinza, radioAgarreNodo, out t, out i))
+        if (BuscarNodoCercano(Der.indice, pinza, radioAgarreNodo, solo, out t, out i))
             tipo = Objetivo.Nodo;
         else if (BuscarAsaCercana(Der.indice, pinza, out salida))
         {
@@ -436,19 +480,32 @@ public class ControlManos : MonoBehaviour
         hoverIndice = i;
         hoverSalida = salida;
 
-        if (Der.empezoPellizco && (tipo == Objetivo.Nodo || tipo == Objetivo.Asa))
-            EmpezarArrastre(tipo, t, i, salida, pinza);
-        MostrarModoNodos(true);
+        if (Der.empezoPellizco)
+        {
+            if (tipo == Objetivo.Nodo || tipo == Objetivo.Asa)
+            {
+                dibujo.Seleccionar(t);
+                EmpezarArrastre(tipo, t, i, salida, pinza);
+            }
+            else
+            {
+                // Pellizcar otra línea la selecciona (y muestra solo sus nodos).
+                var otra = LineaBajo(pinza, Der.indice);
+                if (otra != null)
+                    dibujo.Seleccionar(otra);
+            }
+        }
+        MostrarModoNodos(true, dibujo.Seleccion);
     }
 
-    bool BuscarNodoCercano(Vector3 a, Vector3 b, float radio, out Trazo trazo, out int indice)
+    bool BuscarNodoCercano(Vector3 a, Vector3 b, float radio, Trazo solo, out Trazo trazo, out int indice)
     {
         trazo = null;
         indice = -1;
         float mejor = radio;
         foreach (var t in dibujo.trazos)
         {
-            if (!Dibujo.Editable(t))
+            if (!Dibujo.Editable(t) || (solo != null && t != solo))
                 continue;
             for (int i = 0; i < t.nodos.Count; i++)
             {
@@ -609,7 +666,7 @@ public class ControlManos : MonoBehaviour
         {
             Trazo t = null;
             int i = -1;
-            bool cerca = Der.valida && BuscarNodoCercano(Der.indice, Der.PuntoPellizco, radioAgarreNodo, out t, out i);
+            bool cerca = Der.valida && BuscarNodoCercano(Der.indice, Der.PuntoPellizco, radioAgarreNodo, dibujo.Seleccion, out t, out i);
             hoverTipo = cerca ? Objetivo.Nodo : Objetivo.Nada;
             hoverTrazo = t;
             hoverIndice = i;
@@ -626,7 +683,7 @@ public class ControlManos : MonoBehaviour
                 dibujo.AplicarFactorGrosor(factorGlobal);
             }
         }
-        MostrarModoNodos(false);
+        MostrarModoNodos(false, dibujo.Seleccion);
     }
 
     // ---------- Borrador: puño izquierdo + tocar con el índice derecho ----------
@@ -637,7 +694,7 @@ public class ControlManos : MonoBehaviour
         if (!Der.valida)
         {
             tocandoBorrar = false;
-            MostrarModoNodos(false);
+            MostrarModoNodos(false, null);
             return;
         }
         Vector3 punta = Der.indice;
@@ -647,7 +704,7 @@ public class ControlManos : MonoBehaviour
         Objetivo tipo = Objetivo.Nada;
         Trazo t;
         int i;
-        if (BuscarNodoCercano(punta, punta, radioBorrarNodo, out t, out i))
+        if (BuscarNodoCercano(punta, punta, radioBorrarNodo, null, out t, out i))
         {
             tipo = Objetivo.Nodo;
         }
@@ -706,12 +763,12 @@ public class ControlManos : MonoBehaviour
             hoverTipo = Objetivo.Nada;
         }
         tocandoBorrar = toca;
-        MostrarModoNodos(false);
+        MostrarModoNodos(false, null);
     }
 
     // ---------- Ver nodos y asas ----------
 
-    void MostrarModoNodos(bool conAsas)
+    void MostrarModoNodos(bool conAsas, Trazo solo)
     {
         if (!SeleccionValida)
         {
@@ -724,7 +781,7 @@ public class ControlManos : MonoBehaviour
         Vector3 cabeza = Cabeza != null ? Cabeza.position : Vector3.zero;
         foreach (var t in dibujo.trazos)
         {
-            if (!Dibujo.Editable(t))
+            if (!Dibujo.Editable(t) || (solo != null && t != solo))
                 continue;
             for (int i = 0; i < t.nodos.Count; i++)
             {
@@ -909,11 +966,11 @@ public class ControlManos : MonoBehaviour
         if (esperarSoltarDeshacer)
             return;
         tiempoDeshacer += Time.deltaTime;
-        if (tiempoDeshacer < 0.12f)
+        if (tiempoDeshacer < 0.2f)
             return;
         esperarSoltarDeshacer = true;
         if (dibujo.Deshacer())
-            DestellarMano(Izq);
+            PintarMano(Izq, materialDestelloMano, 0.3f);
     }
 
     bool PoseDeshacer()
@@ -923,22 +980,22 @@ public class ControlManos : MonoBehaviour
         // Dedos doblados (no hace falta un puño perfecto).
         if (curvaIndice > 1.3f || curvaMedio > 1.3f || curvaAnular > 1.3f)
             return false;
-        // Pulgar estirado y lejos del índice.
+        // Pulgar bien estirado y lejos del índice (así no se confunde con el puño del borrador).
         Vector3 dir = Izq.pulgar - basePulgar;
-        if (dir.magnitude < 0.04f || pulgarANudillo < 0.05f)
+        if (dir.magnitude < 0.05f || pulgarANudillo < 0.07f)
             return false;
         Vector3 izquierda = -Cabeza.right;
         izquierda.y = 0f;
         if (izquierda.sqrMagnitude < 1e-4f)
             return false;
         izquierda.Normalize();
-        return Vector3.Dot(dir.normalized, izquierda) > 0.5f;
+        return Vector3.Dot(dir.normalized, izquierda) > 0.55f;
     }
 
-    // La mano cambia de color un instante para confirmar la acción.
-    void DestellarMano(ManoSeguida mano)
+    // La mano cambia de color: un instante (duración > 0) o hasta que se restaure (duración 0).
+    void PintarMano(ManoSeguida mano, Material material, float duracion)
     {
-        if (mano == null || mano.hand == null || materialDestelloMano == null)
+        if (mano == null || mano.hand == null || material == null)
             return;
         RestaurarMano();
         rendsMano = mano.hand.GetComponentsInChildren<Renderer>(true);
@@ -948,10 +1005,10 @@ public class ControlManos : MonoBehaviour
             materialesMano[i] = rendsMano[i].sharedMaterials;
             var nuevos = new Material[materialesMano[i].Length];
             for (int k = 0; k < nuevos.Length; k++)
-                nuevos[k] = materialDestelloMano;
+                nuevos[k] = material;
             rendsMano[i].sharedMaterials = nuevos;
         }
-        finDestelloMano = Time.time + 0.3f;
+        finDestelloMano = duracion > 0f ? Time.time + duracion : float.MaxValue;
     }
 
     void RestaurarMano()
@@ -963,6 +1020,72 @@ public class ControlManos : MonoBehaviour
         rendsMano = null;
         materialesMano = null;
         finDestelloMano = 0f;
+    }
+
+    // ---------- Pellizcar una línea: seleccionar y mover ----------
+
+    void RevisarAgarreLinea()
+    {
+        if (lineaMovida != null)
+        {
+            if (!Der.valida || !Der.pellizco || !Dibujo.Editable(lineaMovida))
+            {
+                lineaMovida = null;
+                return;
+            }
+            Transform raiz = dibujo.transform;
+            Vector3 delta = raiz.InverseTransformPoint(Der.PuntoPellizco) - raiz.InverseTransformPoint(inicioLinea);
+            delta = dibujo.ProyectarVectorEnPlano(delta);
+            if (deshacerLineaPendiente)
+            {
+                if (delta.magnitude * dibujo.EscalaMundo < 0.003f)
+                    return;
+                dibujo.GuardarParaDeshacer();
+                deshacerLineaPendiente = false;
+            }
+            lineaMovida.Desplazar(baseLinea, delta);
+            return;
+        }
+        if (!Der.valida || !Der.empezoPellizco)
+            return;
+        var t = LineaBajo(Der.PuntoPellizco, Der.indice);
+        dibujo.Seleccionar(t);
+        if (t == null)
+            return;
+        lineaMovida = t;
+        baseLinea.Clear();
+        baseLinea.AddRange(t.nodos);
+        inicioLinea = Der.PuntoPellizco;
+        deshacerLineaPendiente = true;
+    }
+
+    // La línea (o figura rellena) más cercana a la pinza, si está lo bastante cerca.
+    Trazo LineaBajo(Vector3 pinza, Vector3 punta)
+    {
+        Transform raiz = dibujo.transform;
+        Vector3 localPinza = raiz.InverseTransformPoint(pinza);
+        Vector3 localPunta = raiz.InverseTransformPoint(punta);
+        float escala = dibujo.EscalaMundo;
+        Trazo mejor = null;
+        float mejorDistancia = float.MaxValue;
+        foreach (var t in dibujo.trazos)
+        {
+            if (!Dibujo.Editable(t))
+                continue;
+            float d = Mathf.Min(t.DistanciaACurva(localPinza), t.DistanciaACurva(localPunta)) * escala;
+            float limite = Mathf.Max(0.02f, t.ancho * escala * 0.5f + 0.012f);
+            if (d < limite && d < mejorDistancia)
+            {
+                mejorDistancia = d;
+                mejor = t;
+            }
+        }
+        if (mejor != null)
+            return mejor;
+        foreach (var t in dibujo.trazos)
+            if (Dibujo.Editable(t) && t.relleno && t.DentroDeRelleno(localPinza, 0.03f / escala))
+                return t;
+        return null;
     }
 
     // ---------- Tocar un relleno para cambiar su color ----------
@@ -1022,8 +1145,7 @@ public class ControlManos : MonoBehaviour
             return false;
         if (!DedosAbiertos())
             return false;
-        float d = Vector3.Distance(Izq.pulgar, baseDedos);
-        if (d > (yaVisible ? 0.05f : 0.035f))
+        if (distanciaMenu > (yaVisible ? 0.06f : 0.045f))
             return false;
         Vector3 haciaCabeza = Cabeza.position - palmaIzq.centro;
         if (haciaCabeza.sqrMagnitude < 1e-6f)

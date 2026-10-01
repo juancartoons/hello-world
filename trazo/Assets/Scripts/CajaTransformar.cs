@@ -4,6 +4,7 @@ using UnityEngine;
 //  - Separar o juntar las manos: más grande o más pequeño.
 //  - Mover las manos como un volante (en cualquier dirección): gira el dibujo.
 //  - Mover las dos manos juntas: lo traslada.
+// Si hay una línea seleccionada, solo se transforma esa línea.
 // Mientras dura, se ve una caja suave alrededor del dibujo y una línea entre las manos.
 public class CajaTransformar : MonoBehaviour
 {
@@ -17,6 +18,8 @@ public class CajaTransformar : MonoBehaviour
     float escalaInicio;
     Vector3 medioInicio;
     Vector3 vectorInicio;
+    Trazo solo;
+    DatosTrazo origenSolo;
 
     GameObject lineas;
     Mesh mallaLineas;
@@ -31,11 +34,13 @@ public class CajaTransformar : MonoBehaviour
             dibujo = FindFirstObjectByType<Dibujo>();
     }
 
-    public void Empezar(ManoSeguida izq, ManoSeguida der)
+    public void Empezar(ManoSeguida izq, ManoSeguida der, Trazo seleccion)
     {
         if (dibujo == null)
             return;
         dibujo.GuardarParaDeshacer();
+        solo = seleccion;
+        origenSolo = solo != null ? solo.CrearDatos() : null;
         Transform raiz = dibujo.transform;
         posicionInicio = raiz.position;
         rotacionInicio = raiz.rotation;
@@ -45,8 +50,8 @@ public class CajaTransformar : MonoBehaviour
         Activa = true;
 
         CrearPiezas();
-        Bounds caja;
-        bool hay = dibujo.Caja(out caja);
+        Bounds caja = new Bounds();
+        bool hay = solo == null && dibujo.Caja(out caja);
         if (hay)
             ConstruirLineas(caja);
         lineas.SetActive(hay);
@@ -69,6 +74,18 @@ public class CajaTransformar : MonoBehaviour
         if (vectorInicio.magnitude < 0.02f || v.magnitude < 0.02f)
             return;
         float s = v.magnitude / vectorInicio.magnitude;
+        Quaternion giroSolo = Quaternion.FromToRotation(vectorInicio, v);
+        Vector3 medioSolo = (a + b) * 0.5f;
+        if (solo != null)
+        {
+            if (!Dibujo.Editable(solo))
+                return;
+            s = Mathf.Clamp(s, 0.05f, 20f);
+            Transform r = dibujo.transform;
+            Matrix4x4 mundo = Matrix4x4.TRS(medioSolo, giroSolo, Vector3.one * s) * Matrix4x4.Translate(-medioInicio);
+            solo.TransformarDesde(origenSolo, r.worldToLocalMatrix * mundo * r.localToWorldMatrix, s);
+            return;
+        }
         float nueva = Mathf.Clamp(escalaInicio * s, 0.02f, 50f);
         s = nueva / escalaInicio;
         Quaternion giro = Quaternion.FromToRotation(vectorInicio, v);
@@ -85,6 +102,8 @@ public class CajaTransformar : MonoBehaviour
         if (!Activa)
             return;
         Activa = false;
+        solo = null;
+        origenSolo = null;
         if (lineas != null)
             lineas.SetActive(false);
         if (volante != null)

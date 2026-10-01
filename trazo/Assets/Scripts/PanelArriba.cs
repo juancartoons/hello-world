@@ -5,7 +5,8 @@ using UnityEngine.Events;
 
 // Panel de animación y capas. Aparece cuando miras hacia arriba, siempre en el mismo lugar respecto a ti.
 //  - Línea de tiempo (200 fotogramas): toca la barra con el índice derecho para ir a un fotograma.
-//  - Botones: Inicio, <, Play/Pausa, >, + Clave, - Clave.
+//  - Pellizca una clave (marca naranja) y arrástrala para moverla a otro fotograma.
+//  - Botones: Inicio, <, Play/Pausa, >, + Clave, - Clave, fps (12/24/30/60).
 //  - Capas 1 a 4: tocar el nombre = dibujar en esa capa; "Ver/Oculta" = mostrar u ocultar.
 public class PanelArriba : MonoBehaviour
 {
@@ -18,19 +19,21 @@ public class PanelArriba : MonoBehaviour
     public Transform cabezal;
     public Material materialClave;
     public TMP_Text textoFotograma;
-    public BotonTocable btnInicio, btnAnterior, btnPlay, btnSiguiente, btnClave, btnQuitarClave;
+    public BotonTocable btnInicio, btnAnterior, btnPlay, btnSiguiente, btnClave, btnQuitarClave, btnFps;
     public BotonTocable[] btnCapas = new BotonTocable[0];
     public BotonTocable[] btnVer = new BotonTocable[0];
     [Tooltip("Qué tanto hay que mirar hacia arriba para que aparezca (0 a 1)")]
     public float mirarArribaEntra = 0.35f;
     public float mirarArribaSale = 0.15f;
-    public float distancia = 0.45f;
-    public float altura = 0.32f;
+    public float distancia = 0.32f;
+    public float altura = 0.2f;
     public float suavizado = 12f;
 
     bool visible;
     Quaternion giro = Quaternion.identity;
     readonly List<Transform> marcas = new List<Transform>();
+    int claveArrastrada = -1;
+    int destinoClave;
 
     void Start()
     {
@@ -46,6 +49,7 @@ public class PanelArriba : MonoBehaviour
             Conectar(btnSiguiente, animacion.Siguiente);
             Conectar(btnClave, animacion.AgregarClave);
             Conectar(btnQuitarClave, animacion.QuitarClave);
+            Conectar(btnFps, animacion.CambiarFps);
         }
         if (dibujo != null)
         {
@@ -111,17 +115,68 @@ public class PanelArriba : MonoBehaviour
     }
 
     // Tocar la barra con el índice derecho = ir a ese fotograma (se puede arrastrar).
+    // Pellizcar una clave = arrastrarla a otro fotograma.
     void RevisarBarra()
     {
-        if (barra == null || animacion == null || control == null || !control.Der.valida)
+        if (barra == null || animacion == null || control == null)
             return;
-        Vector3 local = barra.InverseTransformPoint(control.Der.indice);
+        var der = control.Der;
+
+        if (claveArrastrada >= 0)
+        {
+            if (!der.valida || !der.pellizco)
+            {
+                animacion.MoverClave(claveArrastrada, destinoClave);
+                claveArrastrada = -1;
+                return;
+            }
+            destinoClave = FotogramaEn(barra.InverseTransformPoint(der.PuntoPellizco).x);
+            return;
+        }
+        if (!der.valida)
+            return;
+
+        if (der.empezoPellizco)
+        {
+            Vector3 lp = barra.InverseTransformPoint(der.PuntoPellizco);
+            bool cerca = Mathf.Abs(lp.y) < 3f && Mathf.Abs(lp.z) < 4f && lp.x > -0.56f && lp.x < 0.56f;
+            if (cerca)
+            {
+                int f = FotogramaEn(lp.x);
+                int mejor = -1;
+                int tolerancia = 6; // tolerancia en fotogramas (~1.3 cm)
+                foreach (var c in animacion.claves)
+                {
+                    int d = Mathf.Abs(c.fotograma - f);
+                    if (d < tolerancia)
+                    {
+                        tolerancia = d;
+                        mejor = c.fotograma;
+                    }
+                }
+                if (mejor >= 0)
+                {
+                    claveArrastrada = mejor;
+                    destinoClave = mejor;
+                    return;
+                }
+            }
+        }
+        if (der.pellizco)
+            return; // mientras pellizcas no se mueve el cabezal
+
+        Vector3 local = barra.InverseTransformPoint(der.indice);
         bool encima = Mathf.Abs(local.y) < 1.2f && Mathf.Abs(local.z) < 2.5f && local.x > -0.55f && local.x < 0.55f;
         if (!encima)
             return;
-        int f = Mathf.RoundToInt(Mathf.Clamp01(local.x + 0.5f) * (Animacion.TotalFotogramas - 1));
-        if (f != animacion.Fotograma)
-            animacion.IrA(f);
+        int fotograma = FotogramaEn(local.x);
+        if (fotograma != animacion.Fotograma)
+            animacion.IrA(fotograma);
+    }
+
+    static int FotogramaEn(float xLocal)
+    {
+        return Mathf.RoundToInt(Mathf.Clamp01(xLocal + 0.5f) * (Animacion.TotalFotogramas - 1));
     }
 
     Vector3 PosicionEnBarra(int f, float z)
@@ -160,7 +215,9 @@ public class PanelArriba : MonoBehaviour
             var m = marcas[n++];
             if (!m.gameObject.activeSelf)
                 m.gameObject.SetActive(true);
-            m.localPosition = PosicionEnBarra(c.fotograma, -0.005f);
+            int fm = c.fotograma == claveArrastrada ? destinoClave : c.fotograma;
+            m.localPosition = PosicionEnBarra(fm, -0.005f);
+            m.localScale = new Vector3(0.004f, c.fotograma == claveArrastrada ? 0.045f : 0.03f, 0.004f);
         }
         for (int i = n; i < marcas.Count; i++)
             if (marcas[i].gameObject.activeSelf)
@@ -175,6 +232,8 @@ public class PanelArriba : MonoBehaviour
         }
         if (btnPlay != null)
             btnPlay.PonerTexto(animacion.Reproduciendo ? "Pausa" : "Play");
+        if (btnFps != null)
+            btnFps.PonerTexto(animacion.fotogramasPorSegundo + " fps");
 
         if (dibujo != null)
         {
