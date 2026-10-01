@@ -2,8 +2,8 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 
-// Panel de botones que flota frente a la palma izquierda cuando la giras hacia ti.
-// Los botones se tocan con la punta del índice derecho.
+// Menú: aparece con la mano izquierda abierta y la punta del pulgar en la base de los dedos.
+// Flota unos centímetros hacia ti y sigue a la mano. Los botones se tocan con el índice derecho.
 // También muestra avisos cortos frente a tus ojos ("Deshecho", "Líneas unidas"...).
 public class PanelMuneca : MonoBehaviour
 {
@@ -11,14 +11,15 @@ public class PanelMuneca : MonoBehaviour
     public Dibujo dibujo;
     public Escenario escenario;
     public GameObject contenido;
-    public BotonTocable btnEstilo, btnPorLinea, btnPlano, btnFondo, btnGuardar, btnCargar, btnBorrar;
+    public BotonTocable btnPlano, btnFondo, btnGuardar, btnCargar, btnBorrar;
     public TMP_Text textoEstado;
     public TMP_Text textoAviso;
     public float suavizado = 20f;
 
-    const string textoAyuda = "Izq + pulgar: índice dibuja · medio nodos · anular grosor\nDos pellizcos: girar/escalar · Pulgar a la izq: deshacer";
+    const string textoAyuda = "Izq + pulgar: índice dibuja · medio nodos · anular grosor\nPuño: borrar · Pulgar a la izq: deshacer · Mira arriba: animar";
 
     bool visible;
+    float ultimaVezVisto;
     float ocultarMensajeEn;
     float ocultarAvisoEn;
 
@@ -30,8 +31,6 @@ public class PanelMuneca : MonoBehaviour
 
         if (dibujo != null)
         {
-            Conectar(btnEstilo, dibujo.AlternarEstilo);
-            Conectar(btnPorLinea, dibujo.AlternarPorLinea);
             Conectar(btnPlano, dibujo.AlternarPlano);
             Conectar(btnGuardar, dibujo.Guardar);
             Conectar(btnCargar, dibujo.Cargar);
@@ -78,7 +77,11 @@ public class PanelMuneca : MonoBehaviour
     {
         Vector3 pos = Vector3.zero;
         Quaternion rot = Quaternion.identity;
-        bool ver = control != null && control.PuedeVerPanel(visible ? 0.35f : 0.6f, out pos, out rot);
+        bool pose = control != null && control.PuedeVerPanel(visible, out pos, out rot);
+        if (pose)
+            ultimaVezVisto = Time.time;
+        // Pequeña espera antes de esconderlo, para que no parpadee.
+        bool ver = pose || (visible && Time.time - ultimaVezVisto < 0.2f);
 
         if (ver != visible)
         {
@@ -88,7 +91,7 @@ public class PanelMuneca : MonoBehaviour
             if (ver)
                 transform.SetPositionAndRotation(pos, rot);
         }
-        if (ver)
+        if (pose)
         {
             float a = 1f - Mathf.Exp(-suavizado * Time.deltaTime);
             transform.position = Vector3.Lerp(transform.position, pos, a);
@@ -125,13 +128,6 @@ public class PanelMuneca : MonoBehaviour
     {
         if (dibujo != null)
         {
-            if (btnEstilo != null)
-                btnEstilo.PonerTexto(dibujo.estilo == EstiloLinea.Tubo ? "Línea: Tubo" : "Línea: Cinta");
-            if (btnPorLinea != null)
-            {
-                btnPorLinea.PonerTexto(dibujo.porLinea ? "Por línea: Sí" : "Por línea: No");
-                btnPorLinea.Marcar(dibujo.porLinea);
-            }
             if (btnPlano != null)
             {
                 btnPlano.PonerTexto(dibujo.plano ? "Plano (2D)" : "Libre (3D)");

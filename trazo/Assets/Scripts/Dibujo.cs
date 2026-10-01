@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
@@ -5,10 +6,13 @@ using UnityEngine;
 [System.Serializable]
 public class DatosTrazo
 {
+    public int id;
+    public int capa;
     public List<Vector3> nodos = new List<Vector3>();
     public List<Vector3> asaEntrada = new List<Vector3>();
     public List<Vector3> asaSalida = new List<Vector3>();
     public List<bool> asaManual = new List<bool>();
+    public List<float> grosorNodo = new List<float>();
     public bool cerrado;
     public bool relleno;
     public int colorRelleno;
@@ -16,14 +20,27 @@ public class DatosTrazo
     public int estilo;
 }
 
+[System.Serializable]
+public class DatosCapa
+{
+    public string nombre = "Capa";
+    public bool visible = true;
+}
+
+// Una clave de animación: la forma de todas las líneas en un fotograma.
+[System.Serializable]
+public class Clave
+{
+    public int fotograma;
+    public List<DatosTrazo> trazos = new List<DatosTrazo>();
+}
+
 // Todo lo que se guarda de un dibujo (archivo .json). También sirve para "Deshacer".
 [System.Serializable]
 public class DatosDibujo
 {
-    public int version = 2;
+    public int version = 3;
     public List<DatosTrazo> trazos = new List<DatosTrazo>();
-    public int estilo;
-    public bool porLinea;
     public int fondo;
     public float anchoPincel = 0.008f;
     public Vector3 posicion;
@@ -33,20 +50,27 @@ public class DatosDibujo
     public bool hayPlano;
     public Vector3 planoPunto;
     public Vector3 planoNormal = Vector3.forward;
+    public List<DatosCapa> capas = new List<DatosCapa>();
+    public int capaActual;
+    public int siguienteId = 1;
+    public List<Clave> claves = new List<Clave>();
+    public int fotograma;
 }
 
-// El dibujo completo: crea las líneas, une, cierra, deshace, guarda y carga.
+// El dibujo completo: crea las líneas, une, cierra, borra, deshace, guarda y carga.
 // Las líneas son hijas de este objeto, así se puede mover, girar y escalar todo junto.
 public class Dibujo : MonoBehaviour
 {
+    public const int NumeroDeCapas = 4;
+
     public Material materialLinea;
     public Material materialRelleno;
     public Material materialGuia;
+    [Tooltip("Rojo del borrador")]
+    public Material materialBorrado;
+    public Animacion animacion;
     [Tooltip("Grosor máximo (en el centro) de las líneas nuevas, en metros")]
     public float anchoPincel = 0.008f;
-    public EstiloLinea estilo = EstiloLinea.Cinta;
-    [Tooltip("Sí: cada línea conserva su estilo. No: Cinta/Tubo cambia todas las líneas")]
-    public bool porLinea;
     [Tooltip("Dibujar sobre un plano (2D) en vez de libre en 3D")]
     public bool plano;
     [Tooltip("Distancia (metros) a la que las puntas se pegan como imán")]
@@ -56,6 +80,8 @@ public class Dibujo : MonoBehaviour
     public bool cargarAlIniciar = true;
 
     public readonly List<Trazo> trazos = new List<Trazo>();
+    public readonly List<DatosCapa> capas = new List<DatosCapa>();
+    public int capaActual;
     public event System.Action alCambiar;
     public event System.Action<string> alMensaje;
 
@@ -63,11 +89,17 @@ public class Dibujo : MonoBehaviour
     Vector3 planoPunto;
     Vector3 planoNormal = Vector3.forward;
     GameObject guia;
+    int siguienteId = 1;
 
     const int maxHistorial = 40;
     readonly List<string> historial = new List<string>();
     readonly List<float> anchosInicio = new List<float>();
     float pincelInicio;
+
+    // Destellos rojos del borrador
+    readonly List<Transform> destellos = new List<Transform>();
+    readonly List<float> destellosFin = new List<float>();
+    readonly List<float> destellosTam = new List<float>();
 
     string Carpeta => Path.Combine(Application.persistentDataPath, "Dibujos");
     string RutaAuto => Path.Combine(Carpeta, "autoguardado.json");
@@ -76,6 +108,14 @@ public class Dibujo : MonoBehaviour
     public float EscalaMundo => Mathf.Max(0.0001f, transform.lossyScale.x);
     public float RadioImanLocal => radioIman / EscalaMundo;
     public bool PlanoActivo => plano && HayPlano;
+    bool AnimacionActiva => animacion != null && animacion.Activa;
+
+    void Awake()
+    {
+        AsegurarCapas();
+        if (animacion == null)
+            animacion = GetComponent<Animacion>();
+    }
 
     void Start()
     {
@@ -89,6 +129,24 @@ public class Dibujo : MonoBehaviour
         Avisar();
     }
 
+    void Update()
+    {
+        // Los destellos rojos se encogen y desaparecen.
+        for (int i = 0; i < destellos.Count; i++)
+        {
+            var d = destellos[i];
+            if (d == null || !d.gameObject.activeSelf)
+                continue;
+            float resto = destellosFin[i] - Time.time;
+            if (resto <= 0f)
+            {
+                d.gameObject.SetActive(false);
+                continue;
+            }
+            d.localScale = Vector3.one * destellosTam[i] * Mathf.Clamp01(resto / 0.25f);
+        }
+    }
+
     void OnApplicationPause(bool pausa)
     {
         if (pausa)
@@ -100,12 +158,77 @@ public class Dibujo : MonoBehaviour
         Escribir(RutaAuto, JsonUtility.ToJson(CrearDatos()));
     }
 
+    // ---------- Capas ----------
+
+    void AsegurarCapas()
+    {
+        while (capas.Count < NumeroDeCapas)
+            capas.Add(new DatosCapa { nombre = "Capa " + (capas.Count + 1), visible = true });
+        capaActual = Mathf.Clamp(capaActual, 0, capas.Count - 1);
+    }
+
+    public bool CapaVisible(int capa)
+    {
+        return capa < 0 || capa >= capas.Count || capas[capa].visible;
+    }
+
+    public void SeleccionarCapa(int capa)
+    {
+        AsegurarCapas();
+        capaActual = Mathf.Clamp(capa, 0, capas.Count - 1);
+        if (!capas[capaActual].visible)
+        {
+            capas[capaActual].visible = true;
+            ActualizarVisibilidad();
+        }
+        Avisar();
+        Mensaje("Dibujas en " + capas[capaActual].nombre);
+    }
+
+    public void AlternarVerCapa(int capa)
+    {
+        AsegurarCapas();
+        if (capa < 0 || capa >= capas.Count)
+            return;
+        capas[capa].visible = !capas[capa].visible;
+        ActualizarVisibilidad();
+        Avisar();
+        Mensaje(capas[capa].nombre + (capas[capa].visible ? " visible" : " oculta"));
+    }
+
+    // Una línea se ve si su capa está visible y si existe en el fotograma actual.
+    public void ActualizarVisibilidad()
+    {
+        foreach (var t in trazos)
+        {
+            if (t == null)
+                continue;
+            bool ver = t.visibleAnim && CapaVisible(t.capa);
+            if (t.gameObject.activeSelf != ver)
+                t.gameObject.SetActive(ver);
+        }
+    }
+
+    // Solo se pueden tocar/editar las líneas que se ven.
+    public static bool Editable(Trazo t)
+    {
+        return t != null && t.gameObject.activeSelf;
+    }
+
     // ---------- Dibujar ----------
 
     public Trazo NuevoTrazo()
     {
         GuardarParaDeshacer();
-        var t = CrearTrazo(anchoPincel / EscalaMundo, estilo);
+        AsegurarCapas();
+        if (!capas[capaActual].visible)
+        {
+            capas[capaActual].visible = true;
+            ActualizarVisibilidad();
+        }
+        var t = CrearTrazo(anchoPincel / EscalaMundo);
+        t.id = siguienteId++;
+        t.capa = capaActual;
         trazos.Add(t);
         return t;
     }
@@ -147,14 +270,15 @@ public class Dibujo : MonoBehaviour
             return;
         QuitarDeLaLista(t);
         DescartarUltimoDeshacer();
+        Trazo.huboCambio = false;
     }
 
-    Trazo CrearTrazo(float ancho, EstiloLinea estiloTrazo)
+    Trazo CrearTrazo(float ancho)
     {
         var go = new GameObject("Trazo");
         go.transform.SetParent(transform, false);
         var t = go.AddComponent<Trazo>();
-        t.Configurar(materialLinea, materialRelleno, ancho, estiloTrazo);
+        t.Configurar(materialLinea, materialRelleno, ancho, EstiloLinea.Cinta);
         return t;
     }
 
@@ -180,16 +304,97 @@ public class Dibujo : MonoBehaviour
             return;
         t.QuitarNodo(indice);
         if (t.nodos.Count < 2)
-            QuitarDeLaLista(t);
+            Desaparecer(t, false);
         Avisar();
     }
 
-    public void BorrarTrazo(Trazo t)
+    public void BorrarTrazo(Trazo t, bool conDestello)
     {
         if (t == null)
             return;
-        QuitarDeLaLista(t);
+        Desaparecer(t, conDestello);
         Avisar();
+    }
+
+    // Con animación, la línea solo se esconde desde este fotograma; sin animación, se elimina.
+    void Desaparecer(Trazo t, bool conDestello)
+    {
+        bool esconder = AnimacionActiva;
+        if (esconder)
+        {
+            t.visibleAnim = false;
+            Trazo.huboCambio = true;
+        }
+        else
+        {
+            trazos.Remove(t);
+        }
+        if (conDestello && materialBorrado != null && t.gameObject.activeSelf)
+        {
+            StartCoroutine(DestelloRojo(t, !esconder));
+            return;
+        }
+        if (esconder)
+            ActualizarVisibilidad();
+        else
+            Destroy(t.gameObject);
+    }
+
+    IEnumerator DestelloRojo(Trazo t, bool destruir)
+    {
+        var renderers = t.GetComponentsInChildren<MeshRenderer>();
+        var originales = new Material[renderers.Length];
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            originales[i] = renderers[i].sharedMaterial;
+            renderers[i].sharedMaterial = materialBorrado;
+        }
+        yield return new WaitForSeconds(0.12f);
+        if (t == null)
+            yield break;
+        if (destruir)
+        {
+            Destroy(t.gameObject);
+            yield break;
+        }
+        for (int i = 0; i < renderers.Length; i++)
+            if (renderers[i] != null)
+                renderers[i].sharedMaterial = originales[i];
+        ActualizarVisibilidad();
+    }
+
+    // Pequeño destello rojo (al borrar un nodo o un relleno).
+    public void Destello(Vector3 mundo, float tamano)
+    {
+        if (materialBorrado == null)
+            return;
+        int libre = -1;
+        for (int i = 0; i < destellos.Count; i++)
+            if (destellos[i] != null && !destellos[i].gameObject.activeSelf)
+            {
+                libre = i;
+                break;
+            }
+        if (libre < 0)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            go.name = "Destello";
+            Destroy(go.GetComponent<Collider>());
+            var r = go.GetComponent<Renderer>();
+            r.sharedMaterial = materialBorrado;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            r.receiveShadows = false;
+            destellos.Add(go.transform);
+            destellosFin.Add(0f);
+            destellosTam.Add(0f);
+            libre = destellos.Count - 1;
+        }
+        var d = destellos[libre];
+        d.gameObject.SetActive(true);
+        d.position = mundo;
+        d.localScale = Vector3.one * tamano;
+        destellosFin[libre] = Time.time + 0.25f;
+        destellosTam[libre] = tamano;
     }
 
     public void CerrarTrazo(Trazo t, bool quitarUltimo)
@@ -199,7 +404,7 @@ public class Dibujo : MonoBehaviour
         Avisar();
     }
 
-    // Busca la punta de otra línea abierta cerca de un punto (local).
+    // Busca la punta de otra línea abierta (y visible) cerca de un punto (local).
     public bool BuscarExtremo(Vector3 local, Trazo excluir, out Trazo encontrado, out int extremo)
     {
         encontrado = null;
@@ -207,7 +412,7 @@ public class Dibujo : MonoBehaviour
         float mejor = RadioImanLocal;
         foreach (var o in trazos)
         {
-            if (o == null || o == excluir || o.cerrado || o.nodos.Count < 2)
+            if (!Editable(o) || o == excluir || o.cerrado || o.nodos.Count < 2)
                 continue;
             float d0 = Vector3.Distance(local, o.nodos[0]);
             if (d0 < mejor)
@@ -242,12 +447,14 @@ public class Dibujo : MonoBehaviour
         a.nodos[u] = b.nodos[0];
         a.asaSalida[u] = b.asaSalida[0];
         a.asaManual[u] = false;
+        a.grosorNodo[u] = Mathf.Max(a.grosorNodo[u], b.grosorNodo[0]);
         for (int i = 1; i < b.nodos.Count; i++)
         {
             a.nodos.Add(b.nodos[i]);
             a.asaEntrada.Add(b.asaEntrada[i]);
             a.asaSalida.Add(b.asaSalida[i]);
             a.asaManual.Add(b.asaManual[i]);
+            a.grosorNodo.Add(b.grosorNodo[i]);
         }
         a.ancho = Mathf.Max(a.ancho, b.ancho);
         QuitarDeLaLista(b);
@@ -368,7 +575,7 @@ public class Dibujo : MonoBehaviour
         GuardarParaDeshacer();
         anchosInicio.Clear();
         foreach (var t in trazos)
-            anchosInicio.Add(t.ancho);
+            anchosInicio.Add(t != null ? t.ancho : 0f);
         pincelInicio = anchoPincel;
     }
 
@@ -378,6 +585,8 @@ public class Dibujo : MonoBehaviour
         anchoPincel = Mathf.Clamp(pincelInicio * factor, 0.001f, 0.06f);
         for (int i = 0; i < trazos.Count && i < anchosInicio.Count; i++)
         {
+            if (trazos[i] == null)
+                continue;
             float nuevo = Mathf.Clamp(anchosInicio[i] * factor, 0.0005f, 0.5f);
             if (Mathf.Abs(nuevo - trazos[i].ancho) > 1e-6f)
             {
@@ -392,39 +601,6 @@ public class Dibujo : MonoBehaviour
         Avisar();
     }
 
-    // ---------- Estilo ----------
-
-    public void AlternarEstilo()
-    {
-        CambiarEstilo(estilo == EstiloLinea.Cinta ? EstiloLinea.Tubo : EstiloLinea.Cinta);
-    }
-
-    public void CambiarEstilo(EstiloLinea nuevo)
-    {
-        if (!porLinea)
-        {
-            GuardarParaDeshacer();
-            foreach (var t in trazos)
-            {
-                if (t.estilo == nuevo)
-                    continue;
-                t.estilo = nuevo;
-                t.Reconstruir(true);
-            }
-        }
-        estilo = nuevo;
-        Avisar();
-        string nombre = nuevo == EstiloLinea.Tubo ? "Tubo" : "Cinta";
-        Mensaje(porLinea ? "Próximas líneas: " + nombre : "Todo en " + nombre);
-    }
-
-    public void AlternarPorLinea()
-    {
-        porLinea = !porLinea;
-        Avisar();
-        Mensaje(porLinea ? "Cada línea con su estilo" : "Un estilo para todo");
-    }
-
     // ---------- Deshacer y borrar ----------
 
     public void GuardarParaDeshacer()
@@ -432,6 +608,8 @@ public class Dibujo : MonoBehaviour
         historial.Add(JsonUtility.ToJson(CrearDatos()));
         if (historial.Count > maxHistorial)
             historial.RemoveAt(0);
+        if (animacion != null)
+            animacion.AntesDeEditar();
     }
 
     public void DescartarUltimoDeshacer()
@@ -440,12 +618,12 @@ public class Dibujo : MonoBehaviour
             historial.RemoveAt(historial.Count - 1);
     }
 
-    public void Deshacer()
+    public bool Deshacer()
     {
         if (historial.Count == 0)
         {
             Mensaje("Nada que deshacer");
-            return;
+            return false;
         }
         string json = historial[historial.Count - 1];
         historial.RemoveAt(historial.Count - 1);
@@ -453,6 +631,7 @@ public class Dibujo : MonoBehaviour
         if (d != null)
             Aplicar(d, false);
         Mensaje("Deshecho");
+        return true;
     }
 
     public void BorrarTodo()
@@ -464,11 +643,14 @@ public class Dibujo : MonoBehaviour
         }
         GuardarParaDeshacer();
         LimpiarTrazos();
+        if (animacion != null)
+            animacion.Restaurar(null, 0);
         transform.localPosition = Vector3.zero;
         transform.localRotation = Quaternion.identity;
         transform.localScale = Vector3.one;
         HayPlano = false;
         ActualizarGuia();
+        Trazo.huboCambio = false;
         Avisar();
         Mensaje("Borrado (el pulgar a la izquierda lo recupera)");
     }
@@ -513,10 +695,9 @@ public class Dibujo : MonoBehaviour
 
     DatosDibujo CrearDatos()
     {
+        AsegurarCapas();
         var d = new DatosDibujo
         {
-            estilo = (int)estilo,
-            porLinea = porLinea,
             fondo = escenario != null ? escenario.modo : 0,
             anchoPincel = anchoPincel,
             posicion = transform.localPosition,
@@ -525,34 +706,25 @@ public class Dibujo : MonoBehaviour
             plano = plano,
             hayPlano = HayPlano,
             planoPunto = planoPunto,
-            planoNormal = planoNormal
+            planoNormal = planoNormal,
+            capaActual = capaActual,
+            siguienteId = siguienteId,
+            fotograma = animacion != null ? animacion.Fotograma : 0
         };
+        foreach (var c in capas)
+            d.capas.Add(new DatosCapa { nombre = c.nombre, visible = c.visible });
         foreach (var t in trazos)
-        {
-            if (t == null || t.nodos.Count < 2)
-                continue;
-            t.AsegurarAsas();
-            d.trazos.Add(new DatosTrazo
-            {
-                nodos = new List<Vector3>(t.nodos),
-                asaEntrada = new List<Vector3>(t.asaEntrada),
-                asaSalida = new List<Vector3>(t.asaSalida),
-                asaManual = new List<bool>(t.asaManual),
-                cerrado = t.cerrado,
-                relleno = t.relleno,
-                colorRelleno = t.colorRelleno,
-                ancho = t.ancho,
-                estilo = (int)t.estilo
-            });
-        }
+            if (t != null && t.nodos.Count >= 2)
+                d.trazos.Add(t.CrearDatos());
+        if (animacion != null)
+            d.claves.AddRange(animacion.claves);
         return d;
     }
 
     void Aplicar(DatosDibujo d, bool incluirFondo)
     {
+        Trazo.silenciar = true;
         LimpiarTrazos();
-        estilo = (EstiloLinea)Mathf.Clamp(d.estilo, 0, 1);
-        porLinea = d.porLinea;
         anchoPincel = d.anchoPincel > 0f ? d.anchoPincel : 0.008f;
         transform.localPosition = d.posicion;
         var q = d.rotacion;
@@ -563,32 +735,37 @@ public class Dibujo : MonoBehaviour
         HayPlano = d.hayPlano && d.planoNormal.sqrMagnitude > 1e-6f;
         planoPunto = d.planoPunto;
         planoNormal = HayPlano ? d.planoNormal.normalized : Vector3.forward;
+
+        capas.Clear();
+        if (d.capas != null)
+            foreach (var c in d.capas)
+                if (c != null)
+                    capas.Add(new DatosCapa { nombre = c.nombre, visible = c.visible });
+        AsegurarCapas();
+        capaActual = Mathf.Clamp(d.capaActual, 0, capas.Count - 1);
+
+        siguienteId = Mathf.Max(1, d.siguienteId);
         if (d.trazos != null)
         {
             foreach (var dt in d.trazos)
             {
                 if (dt == null || dt.nodos == null || dt.nodos.Count < 2)
                     continue;
-                var t = CrearTrazo(dt.ancho > 0f ? dt.ancho : 0.008f, (EstiloLinea)Mathf.Clamp(dt.estilo, 0, 1));
-                t.nodos.AddRange(dt.nodos);
-                int n = dt.nodos.Count;
-                bool asasCompletas = dt.asaEntrada != null && dt.asaSalida != null && dt.asaManual != null
-                                     && dt.asaEntrada.Count == n && dt.asaSalida.Count == n && dt.asaManual.Count == n;
-                if (asasCompletas)
-                {
-                    t.asaEntrada.AddRange(dt.asaEntrada);
-                    t.asaSalida.AddRange(dt.asaSalida);
-                    t.asaManual.AddRange(dt.asaManual);
-                }
-                t.cerrado = dt.cerrado && n >= 3;
-                t.relleno = dt.relleno && t.cerrado;
-                t.colorRelleno = dt.colorRelleno;
-                t.Reconstruir();
+                var t = CrearTrazo(dt.ancho > 0f ? dt.ancho : 0.008f);
+                t.id = dt.id > 0 ? dt.id : siguienteId++;
+                t.capa = Mathf.Clamp(dt.capa, 0, capas.Count - 1);
+                siguienteId = Mathf.Max(siguienteId, t.id + 1);
+                t.AplicarPose(dt, null, 0f);
                 trazos.Add(t);
             }
         }
+        if (animacion != null)
+            animacion.Restaurar(d.claves, d.fotograma);
+        Trazo.silenciar = false;
+        Trazo.huboCambio = false;
         if (incluirFondo && escenario != null)
             escenario.PonerModo(d.fondo);
+        ActualizarVisibilidad();
         ActualizarGuia();
         Avisar();
     }
@@ -625,7 +802,7 @@ public class Dibujo : MonoBehaviour
 
     // ---------- Utilidades ----------
 
-    // Caja que envuelve todos los nodos, en coordenadas locales del Dibujo.
+    // Caja que envuelve todos los nodos visibles, en coordenadas locales del Dibujo.
     public bool Caja(out Bounds caja)
     {
         caja = new Bounds();
@@ -633,7 +810,7 @@ public class Dibujo : MonoBehaviour
         float margen = 0f;
         foreach (var t in trazos)
         {
-            if (t == null)
+            if (!Editable(t))
                 continue;
             foreach (var p in t.nodos)
             {

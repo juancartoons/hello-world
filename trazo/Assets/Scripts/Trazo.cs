@@ -28,6 +28,10 @@ public class Trazo : MonoBehaviour
     public List<Vector3> asaEntrada = new List<Vector3>();  // asas Bézier (desplazamiento desde el nodo)
     public List<Vector3> asaSalida = new List<Vector3>();
     public List<bool> asaManual = new List<bool>();         // false: el asa se calcula sola (curva suave)
+    public List<float> grosorNodo = new List<float>();      // grosor propio de cada nodo (1 = normal)
+    public int id;
+    public int capa;
+    public bool visibleAnim = true;                         // false: no existe en este fotograma de la animación
     public bool cerrado;
     public bool relleno;
     public int colorRelleno;
@@ -38,6 +42,10 @@ public class Trazo : MonoBehaviour
     // La curva ya calculada (local), para tocarla y medirla.
     public readonly List<Vector3> curva = new List<Vector3>();
     public bool PoligonoValido { get; private set; }
+
+    // La animación aplica poses sin que cuenten como "cambios del usuario".
+    public static bool silenciar;
+    public static bool huboCambio;
 
     const float separacionCrudos = 0.003f;       // metros entre puntos al dibujar
     const float toleranciaSimplificar = 0.003f;  // cuánto puede alejarse la curva al simplificar
@@ -58,6 +66,7 @@ public class Trazo : MonoBehaviour
 
     static readonly List<Vector3> muestras = new List<Vector3>();
     static readonly List<float> largos = new List<float>();
+    static readonly List<float> multiplicadores = new List<float>();
     static readonly List<Vector3> vertices = new List<Vector3>();
     static readonly List<Vector3> normales = new List<Vector3>();
     static readonly List<Vector2> uvs = new List<Vector2>();
@@ -135,6 +144,7 @@ public class Trazo : MonoBehaviour
         asaEntrada.Clear();
         asaSalida.Clear();
         asaManual.Clear();
+        grosorNodo.Clear();
         cerrado = false;
         relleno = false;
         Simplificar(crudos, toleranciaSimplificar / Escala, nodos);
@@ -151,6 +161,8 @@ public class Trazo : MonoBehaviour
         if (asaEntrada == null) asaEntrada = new List<Vector3>();
         if (asaSalida == null) asaSalida = new List<Vector3>();
         if (asaManual == null) asaManual = new List<bool>();
+        if (grosorNodo == null) grosorNodo = new List<float>();
+        Ajustar(grosorNodo, n, 1f);
         Ajustar(asaEntrada, n, Vector3.zero);
         Ajustar(asaSalida, n, Vector3.zero);
         Ajustar(asaManual, n, false);
@@ -246,6 +258,7 @@ public class Trazo : MonoBehaviour
         asaEntrada.RemoveAt(i);
         asaSalida.RemoveAt(i);
         asaManual.RemoveAt(i);
+        grosorNodo.RemoveAt(i);
         if (cerrado && nodos.Count < 3)
         {
             cerrado = false;
@@ -260,6 +273,7 @@ public class Trazo : MonoBehaviour
         AsegurarAsas();
         nodos.Reverse();
         asaManual.Reverse();
+        grosorNodo.Reverse();
         asaEntrada.Reverse();
         asaSalida.Reverse();
         var temporal = asaEntrada;
@@ -278,12 +292,95 @@ public class Trazo : MonoBehaviour
         asaEntrada.RemoveAt(q);
         asaSalida.RemoveAt(q);
         asaManual.RemoveAt(q);
+        grosorNodo.RemoveAt(q);
         asaManual[0] = false;
         asaManual[nodos.Count - 1] = false;
         cerrado = true;
         relleno = true;
         Reconstruir();
         return true;
+    }
+
+    public void PonerGrosorNodo(int i, float multiplicador)
+    {
+        AsegurarAsas();
+        if (i < 0 || i >= nodos.Count)
+            return;
+        grosorNodo[i] = Mathf.Clamp(multiplicador, 0.1f, 6f);
+        Reconstruir(true);
+    }
+
+    public float GrosorDeNodo(int i)
+    {
+        AsegurarAsas();
+        return i >= 0 && i < grosorNodo.Count ? grosorNodo[i] : 1f;
+    }
+
+    // ---------- Poses (para guardar y para la animación) ----------
+
+    public DatosTrazo CrearDatos()
+    {
+        AsegurarAsas();
+        return new DatosTrazo
+        {
+            id = id,
+            capa = capa,
+            nodos = new List<Vector3>(nodos),
+            asaEntrada = new List<Vector3>(asaEntrada),
+            asaSalida = new List<Vector3>(asaSalida),
+            asaManual = new List<bool>(asaManual),
+            grosorNodo = new List<float>(grosorNodo),
+            cerrado = cerrado,
+            relleno = relleno,
+            colorRelleno = colorRelleno,
+            ancho = ancho,
+            estilo = (int)estilo
+        };
+    }
+
+    static bool Completa<T>(List<T> lista, int n)
+    {
+        return lista != null && lista.Count == n;
+    }
+
+    // Pone la forma "a", o una mezcla entre "a" y "b" (u = 0..1) si tienen los mismos nodos (morph).
+    public void AplicarPose(DatosTrazo a, DatosTrazo b, float u)
+    {
+        if (a == null || a.nodos == null || a.nodos.Count < 2)
+            return;
+        int n = a.nodos.Count;
+        bool mezclar = b != null && u > 0f && Completa(b.nodos, n) && b.cerrado == a.cerrado;
+        bool asasA = Completa(a.asaEntrada, n) && Completa(a.asaSalida, n) && Completa(a.asaManual, n);
+        bool asasB = mezclar && Completa(b.asaEntrada, n) && Completa(b.asaSalida, n);
+        bool grosA = Completa(a.grosorNodo, n);
+        bool grosB = mezclar && Completa(b.grosorNodo, n);
+
+        nodos.Clear();
+        asaEntrada.Clear();
+        asaSalida.Clear();
+        asaManual.Clear();
+        grosorNodo.Clear();
+        for (int i = 0; i < n; i++)
+        {
+            nodos.Add(mezclar ? Vector3.Lerp(a.nodos[i], b.nodos[i], u) : a.nodos[i]);
+            if (asasA)
+            {
+                asaEntrada.Add(asasB ? Vector3.Lerp(a.asaEntrada[i], b.asaEntrada[i], u) : a.asaEntrada[i]);
+                asaSalida.Add(asasB ? Vector3.Lerp(a.asaSalida[i], b.asaSalida[i], u) : a.asaSalida[i]);
+                asaManual.Add(a.asaManual[i]);
+            }
+            float g = grosA ? a.grosorNodo[i] : 1f;
+            if (grosB)
+                g = Mathf.Lerp(g, b.grosorNodo[i], u);
+            grosorNodo.Add(g);
+        }
+        cerrado = a.cerrado && n >= 3;
+        relleno = a.relleno && cerrado;
+        colorRelleno = a.colorRelleno;
+        ancho = mezclar ? Mathf.Lerp(a.ancho, b.ancho, u) : a.ancho;
+        if (ancho <= 0f)
+            ancho = 0.008f;
+        Reconstruir();
     }
 
     // ---------- Tocar ----------
@@ -319,10 +416,15 @@ public class Trazo : MonoBehaviour
     public void Reconstruir(bool soloLinea)
     {
         AsegurarMalla();
+        if (!silenciar)
+            huboCambio = true;
         muestras.Clear();
+        multiplicadores.Clear();
         if (crudos.Count > 0)
         {
             muestras.AddRange(crudos);
+            for (int i = 0; i < crudos.Count; i++)
+                multiplicadores.Add(1f);
         }
         else
         {
@@ -373,14 +475,16 @@ public class Trazo : MonoBehaviour
     bool CerradoAhora => cerrado && crudos.Count == 0;
 
     // Medio grosor en un punto del trazo: grueso en el centro, en punta en los extremos.
-    float MedioGrosor(float recorrido, float total)
+    float MedioGrosor(int i, float total)
     {
+        float recorrido = largos[i];
+        float m = i < multiplicadores.Count ? multiplicadores[i] : 1f;
         if (CerradoAhora)
-            return ancho * 0.5f * 0.85f;
+            return ancho * 0.5f * 0.85f * m;
         float t = Mathf.Clamp01(recorrido / total);
         float seno = Mathf.Max(0f, Mathf.Sin(Mathf.PI * t));
         float perfil = Mathf.Max(puntaMinima, Mathf.Pow(seno, 0.55f));
-        return ancho * 0.5f * perfil;
+        return ancho * 0.5f * perfil * m;
     }
 
     Vector3 Tangente(int i)
@@ -406,7 +510,7 @@ public class Trazo : MonoBehaviour
         {
             Vector3 p = muestras[i];
             Vector3 t = Tangente(i);
-            float h = MedioGrosor(largos[i], total);
+            float h = MedioGrosor(i, total);
             vertices.Add(p); normales.Add(t); uvs.Add(new Vector2(-h, 0f));
             vertices.Add(p); normales.Add(t); uvs.Add(new Vector2(h, 0f));
             if (i > 0)
@@ -438,7 +542,7 @@ public class Trazo : MonoBehaviour
                 n.Normalize();
             }
             Vector3 b = Vector3.Cross(t, n);
-            float h = MedioGrosor(largos[i], total);
+            float h = MedioGrosor(i, total);
             for (int k = 0; k < ladosTubo; k++)
             {
                 float ang = k * Mathf.PI * 2f / ladosTubo;
@@ -659,6 +763,7 @@ public class Trazo : MonoBehaviour
         if (n == 1)
         {
             salida.Add(nodos[0]);
+            multiplicadores.Add(1f);
             return;
         }
         float paso = pasoMuestras / Escala;
@@ -674,9 +779,13 @@ public class Trazo : MonoBehaviour
             float largo = Vector3.Distance(p0, p1) + Vector3.Distance(p1, p2) + Vector3.Distance(p2, p3);
             int pasos = Mathf.Clamp(Mathf.CeilToInt(largo / paso), 1, 48);
             for (int k = 0; k < pasos; k++)
+            {
                 salida.Add(Bezier(p0, p1, p2, p3, k / (float)pasos));
+                multiplicadores.Add(Mathf.Lerp(grosorNodo[a], grosorNodo[b], k / (float)pasos));
+            }
         }
         salida.Add(cerrado ? nodos[0] : nodos[n - 1]);
+        multiplicadores.Add(cerrado ? grosorNodo[0] : grosorNodo[n - 1]);
     }
 
     static Vector3 Bezier(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t)
