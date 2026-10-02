@@ -49,6 +49,9 @@ public class Trazo : MonoBehaviour
     public static bool silenciar;
     public static bool huboCambio;
 
+    // Líneas vivas: cuántas hebras finas forman cada línea (1 = una sola línea normal).
+    public static int hebras = 1;
+
     // Para grabar el proceso: qué líneas cambiaron desde la última muestra.
     public static bool registrarCambios;
     public static readonly HashSet<Trazo> modificados = new HashSet<Trazo>();
@@ -76,6 +79,7 @@ public class Trazo : MonoBehaviour
     static readonly List<Vector3> vertices = new List<Vector3>();
     static readonly List<Vector3> normales = new List<Vector3>();
     static readonly List<Vector2> uvs = new List<Vector2>();
+    static readonly List<Vector2> uvs2 = new List<Vector2>(); // x: número de hebra, y: lugar a lo largo (0 a 1)
     static readonly List<int> indices = new List<int>();
     static readonly List<int> restantes = new List<int>();
     static readonly List<Color> colores = new List<Color>();
@@ -570,6 +574,7 @@ public class Trazo : MonoBehaviour
         vertices.Clear();
         normales.Clear();
         uvs.Clear();
+        uvs2.Clear();
         indices.Clear();
         if (estilo == EstiloLinea.Tubo)
             ConstruirTubo(total);
@@ -580,6 +585,8 @@ public class Trazo : MonoBehaviour
         malla.SetVertices(vertices);
         malla.SetNormals(normales);
         malla.SetUVs(0, uvs);
+        if (uvs2.Count == vertices.Count)
+            malla.SetUVs(1, uvs2);
         malla.SetTriangles(indices, 0);
         malla.RecalculateBounds();
         var caja = malla.bounds;
@@ -619,20 +626,28 @@ public class Trazo : MonoBehaviour
     }
 
     // Cinta: dos vértices por punto en el mismo lugar; el shader los abre mirando a la cámara.
+    // Con varias hebras, la cinta se repite (más delgada); el shader mueve cada hebra por su lado.
     void ConstruirCinta(float total)
     {
-        for (int i = 0; i < muestras.Count; i++)
+        int n = Mathf.Max(1, hebras);
+        float delgada = n > 1 ? 0.5f : 1f;
+        for (int hebra = 0; hebra < n; hebra++)
         {
-            Vector3 p = muestras[i];
-            Vector3 t = Tangente(i);
-            float h = MedioGrosor(i, total);
-            vertices.Add(p); normales.Add(t); uvs.Add(new Vector2(-h, 0f));
-            vertices.Add(p); normales.Add(t); uvs.Add(new Vector2(h, 0f));
-            if (i > 0)
+            int inicio = vertices.Count;
+            for (int i = 0; i < muestras.Count; i++)
             {
-                int a = (i - 1) * 2;
-                indices.Add(a); indices.Add(a + 2); indices.Add(a + 1);
-                indices.Add(a + 1); indices.Add(a + 2); indices.Add(a + 3);
+                Vector3 p = muestras[i];
+                Vector3 t = Tangente(i);
+                float h = MedioGrosor(i, total) * delgada;
+                float a = total > 0f ? largos[i] / total : 0f;
+                vertices.Add(p); normales.Add(t); uvs.Add(new Vector2(-h, 0f)); uvs2.Add(new Vector2(hebra, a));
+                vertices.Add(p); normales.Add(t); uvs.Add(new Vector2(h, 0f)); uvs2.Add(new Vector2(hebra, a));
+                if (i > 0)
+                {
+                    int b = inicio + (i - 1) * 2;
+                    indices.Add(b); indices.Add(b + 2); indices.Add(b + 1);
+                    indices.Add(b + 1); indices.Add(b + 2); indices.Add(b + 3);
+                }
             }
         }
     }

@@ -13,7 +13,7 @@ using UnityEngine;
 //  Izquierda PUÑO (pulgar sobre los dedos o al lado) -> borrador: tocar un nodo lo borra;
 //       la línea entera solo se borra si la FROTAS (ida y vuelta) lejos de sus nodos.
 //  Izquierda puño con el PULGAR hacia tu izquierda -> la mano se vuelve una FLECHA: toca la diana roja = deshacer.
-//  Izquierda puño con el PULGAR hacia tu derecha   -> flecha hacia la derecha: toca la diana verde = rehacer.
+//  DERECHA puño con el PULGAR hacia tu derecha     -> flecha hacia la derecha: toca la diana verde = rehacer.
 //  Izquierda: DOBLE TOQUE rápido de pulgar + índice -> bloquear / desbloquear el dibujo (candado arriba a la derecha).
 //  Izquierda pulgar + ANULAR y el índice derecho girando en círculos pequeños -> grosor de las líneas nuevas
 //       (a la derecha = más grueso, a la izquierda = más delgado).
@@ -158,16 +158,32 @@ public class ControlManos : MonoBehaviour
     // Mano izquierda: dirección de los dedos (para orientar el borrador)
     Vector3 dirDedosIzq = Vector3.forward;
 
-    // Flecha y diana (deshacer = -1, rehacer = +1)
-    int flechaModo;
-    int candidatoFlecha;
-    float flechaPoseDesde;
-    float flechaFueraDesde = -1f;
-    Vector3 posDiana;
-    bool dianaArmada;
+    // Flecha y diana: mano izquierda = deshacer, mano derecha = rehacer
+    class EstadoFlecha
+    {
+        public bool activa;
+        public float candidatoDesde = -1f;
+        public float fueraDesde = -1f;
+        public Vector3 ultimaPos;
+        public Vector3 punta;
+        public Vector3 dir;
+        public Vector3 posDiana;
+        public Vector3 dirDiana;
+        public bool armada;
+    }
+    readonly EstadoFlecha flechaIzq = new EstadoFlecha();
+    readonly EstadoFlecha flechaDer = new EstadoFlecha();
+    float finGestoIzq = -10f;
+    float finGestoDer = -10f;
     const float largoFlecha = 0.12f;
-    const float distanciaDiana = 0.22f;
+    const float distanciaDiana = 0.09f;
     const float diametroDiana = 0.06f;
+
+    // Manos escondidas (cuando se vuelven borrador o flecha)
+    bool ocultarIzq, ocultarDer;
+    readonly List<Renderer> rendsIzq = new List<Renderer>();
+    readonly List<Renderer> rendsDer = new List<Renderer>();
+    float proximaBusquedaManos;
 
     // Doble toque para el candado
     float toqueInicio = -1f;
@@ -197,10 +213,6 @@ public class ControlManos : MonoBehaviour
     Vector3 inicioLinea;
     bool deshacerLineaPendiente;
 
-    // Destello de la mano
-    Renderer[] rendsMano;
-    Material[][] materialesMano;
-    float finDestelloMano;
 
     Transform cursor;
     Renderer cursorRender;
@@ -275,7 +287,8 @@ public class ControlManos : MonoBehaviour
 
         if (Ocupado || ExportadorVideo.Exportando || Titere.Activo)
         {
-            SalirFlecha();
+            SalirFlecha(flechaIzq, true);
+            SalirFlecha(flechaDer, false);
             // Otro objeto está usando las manos: no se dibuja ni se edita nada.
             if (GestoIzq != Gesto.Ninguno)
                 SalirDeGesto();
@@ -303,7 +316,6 @@ public class ControlManos : MonoBehaviour
             case Gesto.Borrar: Borrar(); break;
             case Gesto.Transformar: if (caja != null) caja.Actualizar(Izq, Der); break;
             default:
-                RevisarDeshacer();
                 if (!menuAbierto)
                 {
                     RevisarAgarreLinea();
@@ -314,16 +326,15 @@ public class ControlManos : MonoBehaviour
 
         if (GestoIzq != Gesto.Nodos && GestoIzq != Gesto.Grosor && GestoIzq != Gesto.Borrar)
             OcultarModoNodos();
-        if (GestoIzq != Gesto.Ninguno || menuAbierto)
-            SalirFlecha();
+        ActualizarFlechas();
+        if (Der.soltoPellizco)
+            finGestoDer = Time.time;
         ActualizarCursor();
-        if (finDestelloMano > 0f && Time.time > finDestelloMano)
-            RestaurarMano();
         ActualizarEtiqueta();
         ActualizarSimbolos();
     }
 
-    // Borrador, candado y dial (la flecha y la diana las maneja RevisarDeshacer).
+    // Borrador, candado y dial (la flecha y la diana las maneja ActualizarFlecha).
     void ActualizarSimbolos()
     {
         if (simbolos == null)
@@ -560,7 +571,7 @@ public class ControlManos : MonoBehaviour
             posUltimoBorrado = Der.indice;
             froteTrazo = null;
             // La mano se esconde y en su lugar aparece un borrador (solo es un símbolo).
-            PintarMano(Izq, materialInvisible != null ? materialInvisible : materialBorrarMano, 0f);
+            OcultarMano(true, true);
         }
     }
 
@@ -586,9 +597,11 @@ public class ControlManos : MonoBehaviour
         }
         if (GestoIzq == Gesto.Borrar)
         {
-            RestaurarMano();
+            OcultarMano(true, false);
             CancelarFrote();
         }
+        if (GestoIzq != Gesto.Ninguno)
+            finGestoIzq = Time.time;
         if (arrastre != Objetivo.Nada)
             TerminarArrastre();
         selTrazo = null;
@@ -1325,90 +1338,127 @@ public class ControlManos : MonoBehaviour
     }
 
     // ---------- Deshacer y rehacer: la mano se vuelve una flecha y hay que tocar la diana ----------
-    // Puño izquierdo con el pulgar hacia tu izquierda = deshacer (diana roja a tu izquierda).
-    // Puño izquierdo con el pulgar hacia tu derecha = rehacer (diana verde a tu derecha).
-    // Para repetir, retira un poco la flecha y vuelve a tocar la diana.
+    // Mano IZQUIERDA en puño con el pulgar hacia tu izquierda = deshacer (diana roja).
+    // Mano DERECHA en puño con el pulgar hacia tu derecha = rehacer (diana verde).
+    // La punta de la flecha va pegada a la punta del pulgar. Para repetir, retira la flecha y vuelve a tocar.
+    // La flecha solo aparece si sostienes la pose 0.3 s con la mano quieta (y no justo después de otro gesto).
 
-    void RevisarDeshacer()
+    void ActualizarFlechas()
     {
-        int pose = PoseFlecha(flechaModo);
-        if (flechaModo == 0)
+        bool libre = GestoIzq == Gesto.Ninguno && !menuAbierto && lineaMovida == null && imagenMovida == null;
+        ActualizarFlecha(flechaIzq, Izq, true, libre && !flechaDer.activa);
+        ActualizarFlecha(flechaDer, Der, false, libre && !flechaIzq.activa && !Der.pellizco);
+    }
+
+    void ActualizarFlecha(EstadoFlecha e, ManoSeguida mano, bool izquierda, bool permitido)
+    {
+        float dt = Mathf.Max(1e-4f, Time.deltaTime);
+        Vector3 dirPulgar = Vector3.zero;
+        bool pose = permitido && PoseFlecha(mano, izquierda, e.activa, out dirPulgar);
+        float velocidad = mano.valida ? (mano.pulgar - e.ultimaPos).magnitude / dt : 0f;
+        if (mano.valida)
+            e.ultimaPos = mano.pulgar;
+
+        if (!e.activa)
         {
-            if (pose == 0)
+            float finGesto = izquierda ? finGestoIzq : finGestoDer;
+            if (!pose || Time.time - finGesto < 0.4f || velocidad > 0.35f)
             {
-                candidatoFlecha = 0;
+                e.candidatoDesde = -1f;
                 return;
             }
-            if (pose != candidatoFlecha)
-            {
-                candidatoFlecha = pose;
-                flechaPoseDesde = Time.time;
+            if (e.candidatoDesde < 0f)
+                e.candidatoDesde = Time.time;
+            if (Time.time - e.candidatoDesde < 0.3f)
                 return;
-            }
-            if (Time.time - flechaPoseDesde < 0.15f)
-                return;
-            flechaModo = pose;
-            posDiana = palmaIzq.centro + LadoHorizontal(pose) * distanciaDiana;
-            dianaArmada = true;
-            flechaFueraDesde = -1f;
-            PintarMano(Izq, materialInvisible != null ? materialInvisible : materialDestelloMano, 0f);
+            // Aparece la flecha y la diana queda fija delante de su punta.
+            e.activa = true;
+            e.armada = true;
+            e.fueraDesde = -1f;
+            e.dir = DirFlecha(dirPulgar, izquierda);
+            e.punta = PuntaFlecha(mano);
+            e.dirDiana = e.dir;
+            e.posDiana = e.punta + e.dirDiana * distanciaDiana;
+            OcultarMano(izquierda, true);
         }
-        if (pose != flechaModo)
+
+        if (!permitido)
+        {
+            SalirFlecha(e, izquierda);
+            return;
+        }
+        if (!pose)
         {
             // Si la pose se pierde un momento, la flecha espera un poquito antes de irse.
-            if (flechaFueraDesde < 0f)
-                flechaFueraDesde = Time.time;
-            if (Time.time - flechaFueraDesde > 0.35f)
-                SalirFlecha();
+            if (e.fueraDesde < 0f)
+                e.fueraDesde = Time.time;
+            if (Time.time - e.fueraDesde > 0.35f)
+                SalirFlecha(e, izquierda);
             return;
         }
-        flechaFueraDesde = -1f;
-        Vector3 dir = Izq.pulgar - basePulgar;
-        if (dir.sqrMagnitude < 1e-6f)
-            return;
-        dir.Normalize();
-        Vector3 cola = palmaIzq.centro;
-        Vector3 punta = cola + dir * largoFlecha;
-        float distancia = Vector3.Distance(punta, posDiana);
+        e.fueraDesde = -1f;
+
+        // Suave, para que no tiemble.
+        float a = 1f - Mathf.Exp(-14f * dt);
+        e.dir = Vector3.Slerp(e.dir, DirFlecha(dirPulgar, izquierda), a).normalized;
+        e.punta = Vector3.Lerp(e.punta, PuntaFlecha(mano), a);
+
+        // ¿La punta tocó (o atravesó) la diana?
+        Vector3 rel = e.punta - e.posDiana;
+        float adelanteDiana = Vector3.Dot(rel, e.dirDiana);
+        float aLado = (rel - e.dirDiana * adelanteDiana).magnitude;
         float radio = diametroDiana * 0.5f;
-        if (dianaArmada && distancia < radio + 0.008f)
+        if (e.armada && adelanteDiana > -0.01f && aLado < radio + 0.012f)
         {
-            dianaArmada = false;
-            bool rehacer = flechaModo > 0;
+            e.armada = false;
+            bool rehacer = !izquierda;
             bool hecho = rehacer ? dibujo.Rehacer() : dibujo.Deshacer();
             if (hecho)
                 MostrarEtiqueta(rehacer ? "Rehacer" : "Deshacer");
             if (simbolos != null)
                 simbolos.Acertar(rehacer);
         }
-        else if (!dianaArmada && distancia > radio + 0.04f)
+        else if (!e.armada && adelanteDiana < -0.04f)
         {
-            dianaArmada = true;
+            e.armada = true;
         }
-        if (simbolos != null && Cabeza != null)
+        if (simbolos != null)
         {
-            simbolos.Flecha(true, cola, dir, largoFlecha);
-            simbolos.Diana(flechaModo > 0, true, posDiana, Cabeza.position, diametroDiana);
-            simbolos.Diana(flechaModo < 0, false, Vector3.zero, Vector3.zero, 0f);
+            simbolos.Flecha(true, e.punta - e.dir * largoFlecha, e.dir, largoFlecha);
+            simbolos.Diana(!izquierda, true, e.posDiana, e.posDiana - e.dirDiana, diametroDiana);
         }
     }
 
-    void SalirFlecha()
+    void SalirFlecha(EstadoFlecha e, bool izquierda)
     {
-        if (flechaModo == 0 && candidatoFlecha == 0)
+        e.candidatoDesde = -1f;
+        if (!e.activa)
             return;
-        bool estaba = flechaModo != 0;
-        flechaModo = 0;
-        candidatoFlecha = 0;
-        flechaFueraDesde = -1f;
-        if (estaba)
-            RestaurarMano();
+        e.activa = false;
+        e.fueraDesde = -1f;
+        OcultarMano(izquierda, false);
         if (simbolos != null)
         {
             simbolos.Flecha(false, Vector3.zero, Vector3.forward, 0f);
-            simbolos.Diana(false, false, Vector3.zero, Vector3.zero, 0f);
-            simbolos.Diana(true, false, Vector3.zero, Vector3.zero, 0f);
+            simbolos.Diana(!izquierda, false, Vector3.zero, Vector3.zero, 0f);
         }
+    }
+
+    // La punta de la flecha: en la punta del pulgar, un poquito más abajo.
+    static Vector3 PuntaFlecha(ManoSeguida mano)
+    {
+        return mano.pulgar - Vector3.up * 0.008f;
+    }
+
+    // Dirección de la flecha: como el pulgar, pero nunca más arriba de lo horizontal (y como mucho 35° abajo).
+    Vector3 DirFlecha(Vector3 dirPulgar, bool izquierda)
+    {
+        Vector3 h = new Vector3(dirPulgar.x, 0f, dirPulgar.z);
+        if (h.sqrMagnitude < 1e-4f)
+            h = LadoHorizontal(izquierda ? -1 : 1);
+        h.Normalize();
+        float inclinacion = Mathf.Clamp(Mathf.Asin(Mathf.Clamp(dirPulgar.normalized.y, -1f, 1f)), -35f * Mathf.Deg2Rad, 0f);
+        return (h * Mathf.Cos(inclinacion) + Vector3.up * Mathf.Sin(inclinacion)).normalized;
     }
 
     // Izquierda (lado = -1) o derecha (+1) de tu cabeza, en horizontal.
@@ -1421,25 +1471,33 @@ public class ControlManos : MonoBehaviour
         return derecha.normalized * lado;
     }
 
-    // -1 = pose de deshacer, +1 = pose de rehacer, 0 = ninguna. Ya en una pose, es más tolerante.
-    int PoseFlecha(int actual)
+    // Puño (índice, medio y anular doblados) con el pulgar estirado hacia afuera:
+    // izquierda → pulgar hacia tu izquierda; derecha → pulgar hacia tu derecha. Ya en la pose, es más tolerante.
+    bool PoseFlecha(ManoSeguida mano, bool izquierda, bool yaActiva, out Vector3 dirPulgar)
     {
-        if (!poseValida || Cabeza == null)
-            return 0;
-        float curva = actual != 0 ? 1.45f : 1.3f;
-        if (curvaIndice > curva || curvaMedio > curva || curvaAnular > curva)
-            return 0;
-        // Pulgar bien estirado y lejos del índice (así no se confunde con el puño del borrador).
-        Vector3 dir = Izq.pulgar - basePulgar;
-        if (dir.magnitude < 0.045f || pulgarANudillo < (actual != 0 ? 0.06f : 0.07f))
-            return 0;
-        float lado = Vector3.Dot(dir.normalized, LadoHorizontal(1));
-        float minimo = actual != 0 ? 0.35f : 0.55f;
-        if (lado < -minimo && actual != 1)
-            return -1;
-        if (lado > minimo && actual != -1)
-            return 1;
-        return 0;
+        dirPulgar = Vector3.zero;
+        if (!mano.valida || Cabeza == null)
+            return false;
+        var esq = mano.esqueleto;
+        var palma = ManosUtil.LeerPalma(esq, izquierda);
+        Transform nudillo = ManosUtil.Hueso(esq, "Index1", "IndexProximal");
+        Transform basePul = ManosUtil.Hueso(esq, "Thumb1", "ThumbMetacarpal");
+        if (!palma.valida || nudillo == null || basePul == null)
+            return false;
+        float tam = palma.tamano;
+        float curva = yaActiva ? 1.45f : 1.3f;
+        if (Vector3.Distance(mano.indice, palma.centro) / tam > curva
+            || Vector3.Distance(mano.medio, palma.centro) / tam > curva
+            || Vector3.Distance(mano.anular, palma.centro) / tam > curva)
+            return false;
+        Vector3 d = mano.pulgar - basePul.position;
+        if (d.magnitude < 0.045f || Vector3.Distance(mano.pulgar, nudillo.position) < (yaActiva ? 0.06f : 0.07f))
+            return false;
+        float lado = Vector3.Dot(d.normalized, LadoHorizontal(izquierda ? -1 : 1));
+        if (lado < (yaActiva ? 0.35f : 0.55f))
+            return false;
+        dirPulgar = d.normalized;
+        return true;
     }
 
     // ---------- Candado: doble toque rápido de pulgar + índice izquierdos ----------
@@ -1486,34 +1544,89 @@ public class ControlManos : MonoBehaviour
         dibujo.Mensaje(DibujoBloqueado ? "Dibujo bloqueado (doble toque para desbloquear)" : "Dibujo desbloqueado");
     }
 
-    // La mano cambia de color: un instante (duración > 0) o hasta que se restaure (duración 0).
-    void PintarMano(ManoSeguida mano, Material material, float duracion)
+    // ---------- Esconder una mano (cuando se vuelve borrador o flecha) ----------
+    // Se esconden TODAS las partes visibles de esa mano (aunque estén en otro lugar del rig).
+
+    void OcultarMano(bool izquierda, bool ocultar)
     {
-        if (mano == null || mano.hand == null || material == null)
-            return;
-        RestaurarMano();
-        rendsMano = mano.hand.GetComponentsInChildren<Renderer>(true);
-        materialesMano = new Material[rendsMano.Length][];
-        for (int i = 0; i < rendsMano.Length; i++)
+        if (izquierda)
+            ocultarIzq = ocultar;
+        else
+            ocultarDer = ocultar;
+        if (ocultar)
         {
-            materialesMano[i] = rendsMano[i].sharedMaterials;
-            var nuevos = new Material[materialesMano[i].Length];
-            for (int k = 0; k < nuevos.Length; k++)
-                nuevos[k] = material;
-            rendsMano[i].sharedMaterials = nuevos;
+            BuscarRenderersMano();
+            Forzar(izquierda ? rendsIzq : rendsDer, true);
         }
-        finDestelloMano = duracion > 0f ? Time.time + duracion : float.MaxValue;
+        else
+        {
+            Forzar(izquierda ? rendsIzq : rendsDer, false);
+        }
     }
 
-    void RestaurarMano()
+    static void Forzar(List<Renderer> lista, bool apagar)
     {
-        if (rendsMano != null && materialesMano != null)
-            for (int i = 0; i < rendsMano.Length; i++)
-                if (rendsMano[i] != null)
-                    rendsMano[i].sharedMaterials = materialesMano[i];
-        rendsMano = null;
-        materialesMano = null;
-        finDestelloMano = 0f;
+        foreach (var r in lista)
+            if (r != null)
+                r.forceRenderingOff = apagar;
+    }
+
+    void LateUpdate()
+    {
+        if (!ocultarIzq && !ocultarDer)
+            return;
+        if (Time.time >= proximaBusquedaManos)
+            BuscarRenderersMano();
+        if (ocultarIzq)
+            Forzar(rendsIzq, true);
+        if (ocultarDer)
+            Forzar(rendsDer, true);
+    }
+
+    void BuscarRenderersMano()
+    {
+        proximaBusquedaManos = Time.time + 1f;
+        Juntar(rendsIzq, Izq, rig != null ? rig.leftHandAnchor : null, true);
+        Juntar(rendsDer, Der, rig != null ? rig.rightHandAnchor : null, false);
+    }
+
+    void Juntar(List<Renderer> lista, ManoSeguida mano, Transform ancla, bool izquierda)
+    {
+        // Las que estaban escondidas y ya no son de la mano, se vuelven a mostrar.
+        bool escondida = izquierda ? ocultarIzq : ocultarDer;
+        var nuevas = new List<Renderer>();
+        if (mano.hand != null)
+            nuevas.AddRange(mano.hand.GetComponentsInChildren<Renderer>(true));
+        if (mano.esqueleto != null)
+            nuevas.AddRange(mano.esqueleto.GetComponentsInChildren<Renderer>(true));
+        if (ancla != null)
+            nuevas.AddRange(ancla.GetComponentsInChildren<Renderer>(true));
+        // Manos dibujadas en otro lugar (por ejemplo "HandVisualLeft"): se reconocen por el nombre.
+        foreach (var r in Object.FindObjectsByType<SkinnedMeshRenderer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            if (EsDeLaMano(r.transform, izquierda))
+                nuevas.Add(r);
+        foreach (var r in lista)
+            if (r != null && !nuevas.Contains(r) && escondida)
+                r.forceRenderingOff = false;
+        lista.Clear();
+        foreach (var r in nuevas)
+            if (r != null && !r.transform.IsChildOf(transform) && !lista.Contains(r))
+                lista.Add(r);
+    }
+
+    static bool EsDeLaMano(Transform t, bool izquierda)
+    {
+        bool mano = false, lado = false;
+        for (int k = 0; t != null && k < 8; k++, t = t.parent)
+        {
+            string n = t.name.ToLowerInvariant();
+            if (n.Contains("hand") || n.Contains("mano"))
+                mano = true;
+            if (izquierda ? (n.Contains("left") || n.StartsWith("l_") || n.Contains("_l_"))
+                          : (n.Contains("right") || n.StartsWith("r_") || n.Contains("_r_")))
+                lado = true;
+        }
+        return mano && lado;
     }
 
     // ---------- Pellizcar una línea: seleccionar y mover ----------
@@ -1653,7 +1766,7 @@ public class ControlManos : MonoBehaviour
     {
         if (cursor == null)
             return;
-        bool ver = Der.valida && GestoIzq != Gesto.Transformar;
+        bool ver = Der.valida && GestoIzq != Gesto.Transformar && !flechaDer.activa;
         if (cursor.gameObject.activeSelf != ver)
             cursor.gameObject.SetActive(ver);
         if (!ver)

@@ -38,6 +38,7 @@ Shader "TrazoVR/Linea"
                 float4 positionOS : POSITION;
                 float3 normalOS   : NORMAL;    // cinta: dirección de la línea / tubo: normal
                 float2 uv         : TEXCOORD0; // x: medio grosor con signo (cinta), y: 0 cinta / 1 tubo
+                float2 uv2        : TEXCOORD1; // x: número de hebra, y: lugar a lo largo de la línea (0 a 1)
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -55,7 +56,8 @@ Shader "TrazoVR/Linea"
                 UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
 
-                float3 posWS = TrazoTemblar(TransformObjectToWorld(v.positionOS.xyz));
+                float3 original = TransformObjectToWorld(v.positionOS.xyz);
+                float3 posWS = TrazoTemblar(original);
                 float3 nWS = float3(0, 1, 0);
                 if (v.uv.y < 0.5)
                 {
@@ -69,7 +71,9 @@ Shader "TrazoVR/Linea"
                         lado = normalize(cross(dirWS, float3(0, 1, 0)) + float3(1e-3, 0, 0));
                     float3x3 m = (float3x3)GetObjectToWorldMatrix();
                     float escala = length(float3(m[0][0], m[1][0], m[2][0]));
-                    posWS += lado * (v.uv.x * escala);
+                    float medio = abs(v.uv.x) * escala;
+                    posWS += TrazoHebra(original, v.uv2.x, v.uv2.y, medio);
+                    posWS += lado * (v.uv.x * escala * TrazoGrosorVivo(original, v.uv2.x));
                 }
                 else
                 {

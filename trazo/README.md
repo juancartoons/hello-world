@@ -14,8 +14,8 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 | Izquierda: **pulgar + anular** (sostener) | **Grosor**: sube/baja la mano izquierda = más grueso/delgado (solo la línea seleccionada, o todo si no hay selección). Pellizca un **nodo** con la derecha y súbela/bájala = grosor solo de ese nodo. **Gira el índice derecho en un círculo pequeño** (como un teléfono de disco) = grosor de las **líneas nuevas**: hacia la derecha más grueso, hacia la izquierda más delgado |
 | Izquierda: **puño** (pulgar sobre los dedos o al lado) | **Borrador** (la mano se vuelve una goma de borrar; se borra con el índice derecho): tocar un **nodo** o un **relleno** lo borra. La **línea entera** solo se borra si la **frotas** (ida y vuelta, ~6 cm) lejos de sus nodos; se pone roja mientras |
 | **Pellizcar una línea** con la derecha (sin gesto izquierdo) | La **selecciona** (se pone azul) y la **mueves**. Pellizcar en el aire = quitar la selección |
-| Izquierda: **puño con el pulgar hacia tu izquierda** | La mano se vuelve una **flecha**: toca la **diana roja** con la punta = **Deshacer** (retírala y vuelve a tocar para deshacer otra vez) |
-| Izquierda: **puño con el pulgar hacia tu derecha** | Flecha hacia la derecha: toca la **diana verde** = **Rehacer** |
+| Izquierda: **puño con el pulgar hacia tu izquierda** (sostener 0.3 s, quieta) | La mano se vuelve una **flecha** (la punta en tu pulgar): toca la **diana roja** = **Deshacer** (retírala y vuelve a tocar para deshacer otra vez) |
+| **Derecha**: **puño con el pulgar hacia tu derecha** | La mano derecha se vuelve una flecha: toca la **diana verde** = **Rehacer** |
 | Izquierda: **doble toque rápido** de pulgar + índice | **Bloquear / desbloquear** el dibujo (no se dibuja por accidente). Se ve un candado arriba a la derecha |
 | Izquierda abierta, **punta del pulgar en la base de los dedos** (sobre la palma) | **Menú**: Libre 3D / Plano 2D, Fondo, Guardar, Cargar, Borrar todo |
 | **Las dos manos pellizcando** (índice + pulgar) | Separar/juntar = escalar · girar como un volante = rotar · mover = trasladar (solo la línea seleccionada, o todo si no hay selección) |
@@ -51,17 +51,21 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
   **Video proceso** lo convierte en MP4 (líneas + manos en gris). **Vel** = x1, x2, x4 u x8.
 - Si el MP4 falla, se guarda una carpeta con imágenes PNG y un `hacer_video.bat` (necesita ffmpeg en el PC).
 - Ni los paneles, ni los nodos, ni las imágenes de referencia salen en fotos ni videos.
-- **Temblor** (página Medios): las líneas vibran como dibujadas a mano (No, Suave, Medio, Fuerte). Sale en los videos y se guarda con el dibujo.
+- **Líneas vivas** (página Medios): **Temblor** (No, Suave, Medio, Fuerte), **Hebras** (1, 3 o 5 hebras finas por línea),
+  **Grosor vivo** (el grosor cambia a lo largo de la línea) y **Ciclo de 3** (3 dibujos que se repiten) o **Libre**.
+  Sale en los videos y se guarda con el dibujo.
 - Se guardan en las gafas, en `Android/data/<tu app>/files/Dibujos` (con Meta Quest Developer Hub → File Manager).
 
-## Títere con los dedos (caminar)
+## Títere que camina
 
-1. Panel de arriba → página **Títere** → **Muñeco prueba**: aparece un muñeco listo frente a ti.
-2. **Títere**: pon el índice y el medio derechos "parados", como dos piernas, 2 segundos.
-3. Camina con los dedos (como sobre una mesa): el nudillo es la cadera, el medio del dedo la rodilla, la punta el pie.
-   El cuerpo sigue a la cadera. **Pellizco izquierdo** = apagar.
-4. **Grabar**: cuenta 3 segundos y guarda una clave por fotograma. **Pellizco izquierdo** = parar. Luego **Play**.
-5. Con tus dibujos: pellizca una línea y toca **Pierna 1**, **Pierna 2** o **Cuerpo +/-**. **Voltear** = rodillas al otro lado.
+1. Panel de arriba → página **Títere** → **Muñeco prueba**: aparece un muñeco listo (piernas, brazos, torso y cabeza).
+2. **Títere**: pon la mano derecha frente a ti 1 segundo. Luego muévela: el muñeco va donde la llevas y **camina solo**
+   (piernas, brazos y cabeza). Hacia atrás, se voltea. Arriba/abajo = sube o se agacha. **Pellizco izquierdo** = apagar.
+3. **Grabar**: cuenta 3 segundos y guarda una clave por fotograma. **Pellizco izquierdo** = parar. Luego **Play**.
+4. **Ciclo**: elige el caminado: **Manual** (hecho por la app) o los tuyos.
+5. **Guardar ciclo**: anima un paso con claves (la última pose igual a la primera) y guárdalo como ciclo propio.
+6. **Posar dedos**: el índice y el medio derechos acomodan las piernas (sin prisa). **Pellizco izquierdo** = guardar una clave.
+7. Con tus dibujos: pellizca una línea y toca **Pierna 1/2**, **Brazo 1/2** o **Cuerpo +/-**. **Voltear** = mira al otro lado.
 
 ## Imágenes de referencia
 
@@ -70,7 +74,8 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 3. Pellízcala con la derecha para moverla; con las dos manos, escálala y gírala. Se queda donde la dejes.
 4. **Imagen -** quita la imagen seleccionada (la que tiene tono azul).
 5. **Para calcar**: en modo Plano (2D), suelta la imagen cerca del plano y **se pega detrás** como imán.
-   Si mueves, giras o escalas el dibujo, la imagen lo sigue. Botón **Despegar** arriba a la derecha de la imagen.
+   Si mueves, giras o escalas el dibujo, la imagen lo sigue. Arriba a la derecha de la imagen: **Despegar** y
+   **Ver** (100%, 50%, 20%, oculta). En Medios, **Imágenes: ver / ocultas** las esconde todas a la vez.
 
 ## Bocas automáticas (lipsync)
 

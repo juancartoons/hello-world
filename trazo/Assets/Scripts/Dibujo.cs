@@ -73,6 +73,13 @@ public class DatosDibujo
     public int titerePierna2;
     public List<int> titereCuerpo = new List<int>();
     public bool titereVoltear;
+    public int titereBrazo1;
+    public int titereBrazo2;
+    public int titereCabeza;
+    public int titereCiclo;
+    public int temblorHebras = 1;
+    public bool temblorGrosor;
+    public bool temblorCiclo = true;
 }
 
 // El dibujo completo: crea las líneas, une, cierra, borra, deshace, guarda y carga.
@@ -917,11 +924,12 @@ public class Dibujo : MonoBehaviour
             pincelElegido = pincelElegido
         };
         if (titere != null)
+            titere.GuardarEn(d);
+        if (temblor != null)
         {
-            d.titerePierna1 = titere.pierna1;
-            d.titerePierna2 = titere.pierna2;
-            d.titereCuerpo.AddRange(titere.cuerpo);
-            d.titereVoltear = titere.voltear;
+            d.temblorHebras = temblor.hebras;
+            d.temblorGrosor = temblor.grosorVivo;
+            d.temblorCiclo = temblor.ciclo3;
         }
         foreach (var c in capas)
             d.capas.Add(new DatosCapa { nombre = c.nombre, visible = c.visible });
@@ -988,10 +996,15 @@ public class Dibujo : MonoBehaviour
         if (lipsync != null)
             lipsync.Restaurar(d.bocas, d.audio, incluirFondo);
         if (temblor != null)
+        {
             temblor.nivel = Mathf.Clamp(d.temblor, 0, Temblor.Nombres.Length - 1);
+            temblor.grosorVivo = d.temblorGrosor;
+            temblor.ciclo3 = d.temblorCiclo;
+            temblor.PonerHebras(d.temblorHebras);
+        }
         pincelElegido = d.pincelElegido;
         if (titere != null)
-            titere.Restaurar(d.titerePierna1, d.titerePierna2, d.titereCuerpo, d.titereVoltear);
+            titere.Restaurar(d);
         if (incluirFondo && escenario != null)
             escenario.PonerModo(d.fondo);
         ActualizarVisibilidad();

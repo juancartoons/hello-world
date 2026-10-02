@@ -14,12 +14,14 @@ public class DatosImagen
     public Vector3 posicionLocal;  // respecto al dibujo, si está pegada
     public Quaternion rotacionLocal = Quaternion.identity;
     public float escalaLocal = 0.4f;
+    public int vista;              // 0 = 100%, 1 = 50%, 2 = 20%, 3 = oculta
 }
 
 [System.Serializable]
 public class DatosReferencias
 {
     public List<DatosImagen> imagenes = new List<DatosImagen>();
+    public bool ocultas;           // "Imágenes: ocultar" (todas)
 }
 
 // Imágenes de referencia: se ven en las gafas pero NO salen en las fotos ni en los videos exportados.
@@ -30,14 +32,17 @@ public class DatosReferencias
 //  - "Imagen -" quita la imagen seleccionada. Todo queda guardado donde lo dejes.
 //  - En modo Plano (2D): si sueltas una imagen cerca del plano, se PEGA detrás de él como imán
 //    (para calcar). Si mueves, giras o escalas el dibujo, la imagen lo sigue.
-//    Arriba a la derecha de una imagen pegada aparece el botón "Despegar".
+//    Arriba a la derecha de una imagen pegada aparecen los botones "Ver" (100%, 50%, 20%, oculta) y "Despegar".
+//  - "Imágenes: ver / ocultar" (página Medios) las muestra o esconde todas a la vez.
 public class Referencias : MonoBehaviour
 {
     public Dibujo dibujo;
     [Tooltip("Material base (URP Unlit) para las imágenes")]
     public Material materialImagen;
     public Color colorSeleccion = new Color(0.7f, 0.82f, 1f);
-    [Tooltip("Material del botón Despegar")]
+    [Tooltip("Material base transparente (para ver las imágenes al 50% o 20%)")]
+    public Material materialImagenTransparente;
+    [Tooltip("Material de los botones Despegar y Ver")]
     public Material materialBoton;
     [Tooltip("Qué tan cerca del plano (metros) hay que soltar la imagen para que se pegue")]
     public float distanciaIman = 0.08f;
@@ -51,10 +56,19 @@ public class Referencias : MonoBehaviour
         public Material material;
         public Texture2D textura;
         public float aspecto = 1f;
-        public Transform boton;   // "Despegar" (solo si está pegada)
+        public Transform boton;   // botones "Ver" y "Despegar" (solo si está pegada)
+        public BotonTocable botonVer;
+        public Material transparente;
+        public Renderer render;
+        public Color tinte = Color.white;
     }
 
+    static readonly float[] Opacidades = { 1f, 0.5f, 0.2f, 0f };
+    static readonly string[] NombresVista = { "Ver 100%", "Ver 50%", "Ver 20%", "Oculta" };
+
     readonly List<Imagen> imagenes = new List<Imagen>();
+    bool ocultas;
+    public bool Ocultas => ocultas;
     Imagen seleccionada;
     int siguienteArchivo;
 
@@ -77,7 +91,7 @@ public class Referencias : MonoBehaviour
         {
             if (img.boton == null || img.raiz == null)
                 continue;
-            bool ver = img.datos.pegada;
+            bool ver = img.datos.pegada && !ocultas;
             if (img.boton.gameObject.activeSelf != ver)
                 img.boton.gameObject.SetActive(ver);
             if (!ver)
@@ -179,16 +193,27 @@ public class Referencias : MonoBehaviour
         Mensaje("Imagen despegada");
     }
 
-    // Botón "Despegar" (se toca con el índice derecho).
+    // Botones "Ver" y "Despegar" (se tocan con el índice derecho).
     void AsegurarBoton(Imagen img)
     {
         if (img.boton != null)
             return;
-        var contenedor = new GameObject("BotonDespegar").transform;
+        var contenedor = new GameObject("BotonesImagen").transform;
         contenedor.SetParent(transform, false);
+        var esta = img;
+        var despegar = CrearBoton(contenedor, "Despegar", 0f);
+        despegar.alTocar.AddListener(() => Despegar(esta));
+        img.botonVer = CrearBoton(contenedor, NombresVista[Mathf.Clamp(img.datos.vista, 0, 3)], -0.06f);
+        img.botonVer.alTocar.AddListener(() => SiguienteVista(esta));
+        img.boton = contenedor;
+    }
+
+    BotonTocable CrearBoton(Transform contenedor, string nombre, float x)
+    {
         var cubo = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        cubo.name = "Boton";
+        cubo.name = "Boton_" + nombre;
         cubo.transform.SetParent(contenedor, false);
+        cubo.transform.localPosition = new Vector3(x, 0f, 0f);
         cubo.transform.localScale = new Vector3(0.055f, 0.02f, 0.006f);
         var r = cubo.GetComponent<Renderer>();
         r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -200,9 +225,9 @@ public class Referencias : MonoBehaviour
         boton.materialMarcado = materialBoton;
         var texto = new GameObject("Texto", typeof(RectTransform));
         texto.transform.SetParent(contenedor, false);
-        texto.transform.localPosition = new Vector3(0f, 0f, -0.0035f);
+        texto.transform.localPosition = new Vector3(x, 0f, -0.0035f);
         var tmp = texto.AddComponent<TextMeshPro>();
-        tmp.text = "Despegar";
+        tmp.text = nombre;
         tmp.enableAutoSizing = true;
         tmp.fontSizeMin = 0.01f;
         tmp.fontSizeMax = 0.2f;
@@ -211,9 +236,61 @@ public class Referencias : MonoBehaviour
         tmp.color = Color.black;
         tmp.rectTransform.sizeDelta = new Vector2(0.05f, 0.016f);
         boton.etiqueta = tmp;
-        var esta = img;
-        boton.alTocar.AddListener(() => Despegar(esta));
-        img.boton = contenedor;
+        return boton;
+    }
+
+    // 100% → 50% → 20% → oculta → 100%
+    void SiguienteVista(Imagen img)
+    {
+        if (img == null)
+            return;
+        img.datos.vista = (Mathf.Clamp(img.datos.vista, 0, 3) + 1) % 4;
+        AplicarVista(img);
+        Guardar();
+    }
+
+    // Todas las imágenes: ver u ocultar.
+    public void AlternarTodas()
+    {
+        ocultas = !ocultas;
+        foreach (var img in imagenes)
+            AplicarVista(img);
+        Guardar();
+        Mensaje(ocultas ? "Imágenes ocultas" : "Imágenes visibles");
+    }
+
+    void AplicarVista(Imagen img)
+    {
+        if (img == null)
+            return;
+        int vista = Mathf.Clamp(img.datos.vista, 0, 3);
+        float alfa = Opacidades[vista];
+        if (img.render != null)
+        {
+            img.render.enabled = !ocultas && alfa > 0f;
+            Material m = img.material;
+            if (alfa < 1f && materialImagenTransparente != null)
+            {
+                if (img.transparente == null)
+                {
+                    img.transparente = new Material(materialImagenTransparente);
+                    if (img.transparente.HasProperty("_BaseMap")) img.transparente.SetTexture("_BaseMap", img.textura);
+                    if (img.transparente.HasProperty("_MainTex")) img.transparente.SetTexture("_MainTex", img.textura);
+                }
+                m = img.transparente;
+            }
+            if (m != null)
+            {
+                Color c = img.tinte;
+                c.a = alfa;
+                if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
+                if (m.HasProperty("_Color")) m.SetColor("_Color", c);
+                if (img.render.sharedMaterial != m)
+                    img.render.sharedMaterial = m;
+            }
+        }
+        if (img.botonVer != null)
+            img.botonVer.PonerTexto(NombresVista[vista]);
     }
 
     void Mensaje(string texto)
@@ -254,6 +331,12 @@ public class Referencias : MonoBehaviour
         }
         string ruta = archivos[siguienteArchivo % archivos.Count];
         siguienteArchivo++;
+        if (ocultas)
+        {
+            ocultas = false;
+            foreach (var otra in imagenes)
+                AplicarVista(otra);
+        }
         Vector3 adelante = cabeza != null ? cabeza.forward : Vector3.forward;
         adelante.y = 0f;
         if (adelante.sqrMagnitude < 1e-4f)
@@ -300,7 +383,7 @@ public class Referencias : MonoBehaviour
         float mejorZ = float.MaxValue;
         foreach (var img in imagenes)
         {
-            if (img.raiz == null)
+            if (img.raiz == null || img.render == null || !img.render.enabled)
                 continue;
             Vector3 l = img.raiz.InverseTransformPoint(mundo);
             float z = Mathf.Abs(l.z) * img.raiz.lossyScale.x;
@@ -328,12 +411,10 @@ public class Referencias : MonoBehaviour
             Tenir(seleccionada, colorSeleccion);
     }
 
-    static void Tenir(Imagen img, Color c)
+    void Tenir(Imagen img, Color c)
     {
-        if (img.material == null)
-            return;
-        if (img.material.HasProperty("_BaseColor")) img.material.SetColor("_BaseColor", c);
-        if (img.material.HasProperty("_Color")) img.material.SetColor("_Color", c);
+        img.tinte = c;
+        AplicarVista(img);
     }
 
     Imagen Crear(DatosImagen d)
@@ -385,6 +466,7 @@ public class Referencias : MonoBehaviour
         quad.transform.SetParent(raiz.transform, false);
         quad.transform.localScale = new Vector3(img.aspecto, 1f, 1f);
         var r = quad.GetComponent<Renderer>();
+        img.render = r;
         r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         r.receiveShadows = false;
         if (materialImagen != null)
@@ -393,11 +475,11 @@ public class Referencias : MonoBehaviour
             if (img.material.HasProperty("_BaseMap")) img.material.SetTexture("_BaseMap", tex);
             if (img.material.HasProperty("_MainTex")) img.material.SetTexture("_MainTex", tex);
             r.sharedMaterial = img.material;
-            Tenir(img, Color.white);
         }
         imagenes.Add(img);
         if (d.pegada)
             AsegurarBoton(img);
+        Tenir(img, Color.white);
         return img;
     }
 
@@ -409,6 +491,8 @@ public class Referencias : MonoBehaviour
             Destroy(img.boton.gameObject);
         if (img.material != null)
             Destroy(img.material);
+        if (img.transparente != null)
+            Destroy(img.transparente);
         if (img.textura != null)
             Destroy(img.textura);
     }
@@ -416,7 +500,7 @@ public class Referencias : MonoBehaviour
     // Guarda dónde quedó cada imagen (se llama al soltarlas).
     public void Guardar()
     {
-        var estado = new DatosReferencias();
+        var estado = new DatosReferencias { ocultas = ocultas };
         foreach (var img in imagenes)
         {
             if (img.raiz == null)
@@ -454,6 +538,7 @@ public class Referencias : MonoBehaviour
         }
         if (estado == null || estado.imagenes == null)
             return;
+        ocultas = estado.ocultas;
         foreach (var d in estado.imagenes)
         {
             if (d == null)

@@ -46,6 +46,7 @@ public class PanelArriba : MonoBehaviour
 
     [Header("Medios")]
     public BotonTocable btnGrabar, btnVideoProceso, btnVelocidad, btnVideoAnim, btnImagenMas, btnImagenMenos, btnTemblor;
+    public BotonTocable btnHebras, btnGrosorVivo, btnCicloTemblor, btnImagenesVer;
     public TMP_Text textoMedios;
 
     [Header("Bocas")]
@@ -55,6 +56,7 @@ public class PanelArriba : MonoBehaviour
 
     [Header("Títere")]
     public BotonTocable btnMuneco, btnTitere, btnGrabarTitere, btnPierna1, btnPierna2, btnCuerpo, btnVoltear;
+    public BotonTocable btnPosar, btnCiclo, btnGuardarCiclo, btnBrazo1, btnBrazo2;
     public TMP_Text textoTitere;
 
     [Tooltip("Qué tanto hay que mirar hacia arriba para que aparezca (0 a 1)")]
@@ -141,11 +143,17 @@ public class PanelArriba : MonoBehaviour
             Conectar(btnVideoAnim, exportador.ExportarAnimacion);
         }
         if (dibujo != null && dibujo.temblor != null)
+        {
             Conectar(btnTemblor, dibujo.temblor.Siguiente);
+            Conectar(btnHebras, dibujo.temblor.SiguienteHebras);
+            Conectar(btnGrosorVivo, dibujo.temblor.AlternarGrosor);
+            Conectar(btnCicloTemblor, dibujo.temblor.AlternarCiclo);
+        }
         if (referencias != null)
         {
             Conectar(btnImagenMas, () => referencias.AgregarSiguiente(control != null ? control.Cabeza : null));
             Conectar(btnImagenMenos, referencias.QuitarSeleccionada);
+            Conectar(btnImagenesVer, referencias.AlternarTodas);
         }
 
         if (lipsync != null)
@@ -171,6 +179,11 @@ public class PanelArriba : MonoBehaviour
             Conectar(btnPierna2, () => titere.AsignarPierna(2));
             Conectar(btnCuerpo, titere.AlternarCuerpo);
             Conectar(btnVoltear, titere.Voltear);
+            Conectar(btnPosar, titere.AlternarPosar);
+            Conectar(btnCiclo, titere.CambiarCiclo);
+            Conectar(btnGuardarCiclo, titere.GuardarCiclo);
+            Conectar(btnBrazo1, () => titere.AsignarBrazo(1));
+            Conectar(btnBrazo2, () => titere.AsignarBrazo(2));
         }
 
         PonerPagina(0);
@@ -558,9 +571,21 @@ public class PanelArriba : MonoBehaviour
             return;
         if (btnTitere != null)
         {
-            btnTitere.PonerTexto(titere.Encendido && !titere.Grabando ? "Apagar" : "Títere");
-            btnTitere.Marcar(titere.Encendido);
+            bool vivo = titere.Encendido && !titere.Grabando && !titere.Posando;
+            btnTitere.PonerTexto(vivo ? "Apagar" : "Títere");
+            btnTitere.Marcar(vivo);
         }
+        if (btnPosar != null)
+        {
+            btnPosar.PonerTexto(titere.Posando ? "Terminar" : "Posar dedos");
+            btnPosar.Marcar(titere.Posando);
+        }
+        if (btnCiclo != null)
+            btnCiclo.PonerTexto("Ciclo: " + titere.NombreCiclo);
+        if (btnBrazo1 != null)
+            btnBrazo1.Marcar(dibujo != null && dibujo.BuscarPorId(titere.brazo1) != null);
+        if (btnBrazo2 != null)
+            btnBrazo2.Marcar(dibujo != null && dibujo.BuscarPorId(titere.brazo2) != null);
         if (btnGrabarTitere != null)
         {
             btnGrabarTitere.PonerTexto(titere.Grabando ? "Parar" : "Grabar");
@@ -573,9 +598,11 @@ public class PanelArriba : MonoBehaviour
         if (btnPierna2 != null)
             btnPierna2.Marcar(dibujo != null && dibujo.BuscarPorId(titere.pierna2) != null);
         if (textoTitere != null)
-            textoTitere.text = titere.Encendido
-                ? "Índice y medio derechos = piernas · pellizco IZQUIERDO = parar"
-                : "Cuerpo: " + titere.cuerpo.Count + " líneas · para tus dibujos: pellizca una línea y toca Pierna 1, Pierna 2 o Cuerpo";
+            textoTitere.text = titere.Posando
+                ? "Acomoda las piernas con el índice y el medio · pellizco IZQUIERDO = guardar clave"
+                : titere.Encendido
+                ? "Mueve la mano derecha: el muñeco camina · pellizco IZQUIERDO = parar"
+                : "Cuerpo: " + titere.cuerpo.Count + " líneas · tus dibujos: pellizca una línea y toca Pierna, Brazo o Cuerpo";
     }
 
     void RefrescarAnimar()
@@ -613,10 +640,31 @@ public class PanelArriba : MonoBehaviour
         }
         if (btnVelocidad != null && exportador != null)
             btnVelocidad.PonerTexto("Vel x" + exportador.velocidad);
-        if (btnTemblor != null && dibujo != null && dibujo.temblor != null)
+        if (dibujo != null && dibujo.temblor != null)
         {
-            btnTemblor.PonerTexto("Temblor: " + dibujo.temblor.NombreNivel);
-            btnTemblor.Marcar(dibujo.temblor.nivel > 0);
+            var tb = dibujo.temblor;
+            if (btnTemblor != null)
+            {
+                btnTemblor.PonerTexto("Temblor: " + tb.NombreNivel);
+                btnTemblor.Marcar(tb.nivel > 0);
+            }
+            if (btnHebras != null)
+            {
+                btnHebras.PonerTexto("Hebras: " + tb.hebras);
+                btnHebras.Marcar(tb.hebras > 1);
+            }
+            if (btnGrosorVivo != null)
+                btnGrosorVivo.Marcar(tb.grosorVivo);
+            if (btnCicloTemblor != null)
+            {
+                btnCicloTemblor.PonerTexto(tb.ciclo3 ? "Ciclo de 3" : "Libre");
+                btnCicloTemblor.Marcar(tb.ciclo3);
+            }
+        }
+        if (btnImagenesVer != null && referencias != null)
+        {
+            btnImagenesVer.PonerTexto(referencias.Ocultas ? "Imágenes: ocultas" : "Imágenes: ver");
+            btnImagenesVer.Marcar(referencias.Ocultas);
         }
         if (textoMedios == null)
             return;

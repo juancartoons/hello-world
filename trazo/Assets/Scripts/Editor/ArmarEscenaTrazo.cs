@@ -90,6 +90,8 @@ public static class ArmarEscenaTrazo
         var matBarra = Mat("Barra", unlit, new Color(0.55f, 0.57f, 0.62f));
         var matAsaPanel = Mat("AsaPanel", unlit, new Color(0.3f, 0.55f, 0.95f));
         var matImagen = Mat("Imagen", unlit, Color.white);
+        var matImagenTransparente = Mat("ImagenTransparente", unlit, new Color(1f, 1f, 1f, 0.5f));
+        Transparente(matImagenTransparente);
         var matManoFantasma = Mat("ManoFantasma", shaderLinea, new Color(0.6f, 0.6f, 0.63f));
         if (matManoFantasma.HasProperty("_ColorLuz"))
             matManoFantasma.SetColor("_ColorLuz", new Color(0.8f, 0.8f, 0.82f));
@@ -103,7 +105,7 @@ public static class ArmarEscenaTrazo
         var matCandado = Mat("Candado", unlit, new Color(0.95f, 0.6f, 0.1f));
         var matDial = Mat("Dial", unlit, new Color(0.2f, 0.5f, 1f));
         // Los círculos de los nodos (y las imágenes, dianas, flecha y dial) se ven por ambos lados.
-        foreach (var m in new[] { matNodo, matNodoActivo, matAsa, matIman, matImagen, matFlecha, matDianaRoja, matDianaVerde, matBlanco, matDial })
+        foreach (var m in new[] { matNodo, matNodoActivo, matAsa, matIman, matImagen, matImagenTransparente, matFlecha, matDianaRoja, matDianaVerde, matBlanco, matDial })
             if (m.HasProperty("_Cull"))
                 m.SetFloat("_Cull", 0f);
         AssetDatabase.SaveAssets();
@@ -175,6 +177,7 @@ public static class ArmarEscenaTrazo
         referencias.dibujo = dibujo;
         referencias.materialImagen = matImagen;
         referencias.materialBoton = matBoton;
+        referencias.materialImagenTransparente = matImagenTransparente;
         control.referencias = referencias;
 
         // Bocas automáticas (lipsync) + el audio que suena con la animación
@@ -514,8 +517,16 @@ public static class ArmarEscenaTrazo
         panel.btnVideoAnim = f2[0];
         panel.btnImagenMas = f2[1];
         panel.btnImagenMenos = f2[2];
-        panel.btnTemblor = BotonAncho(medios, "Temblor: No", new Vector3(-0.13f, -0.03f, 0f), matBoton, matBotonMarcado);
-        panel.textoMedios = Texto(medios, "", new Vector3(0.065f, -0.03f, -0.001f), new Vector2(0.3f, 0.03f), new Color(0.2f, 0.2f, 0.25f));
+        string[] fila3 = { "Temblor: No", "Hebras: 1", "Grosor vivo", "Ciclo de 3", "Imágenes: ver" };
+        var f3 = new BotonTocable[fila3.Length];
+        for (int i = 0; i < fila3.Length; i++)
+            f3[i] = Boton(medios, fila3[i], new Vector3(-0.2f + i * 0.1f, -0.03f, 0f), matBoton, matBotonMarcado);
+        panel.btnTemblor = f3[0];
+        panel.btnHebras = f3[1];
+        panel.btnGrosorVivo = f3[2];
+        panel.btnCicloTemblor = f3[3];
+        panel.btnImagenesVer = f3[4];
+        panel.textoMedios = Texto(medios, "", new Vector3(0f, -0.062f, -0.001f), new Vector2(0.46f, 0.02f), new Color(0.2f, 0.2f, 0.25f));
         Texto(medios, "Los videos y fotos se guardan en Dibujos · las imágenes no salen en los videos", new Vector3(0f, -0.09f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.3f, 0.3f, 0.35f));
 
         // ----- Página Bocas -----
@@ -546,16 +557,25 @@ public static class ArmarEscenaTrazo
         panel.btnMuneco = t1[0];
         panel.btnTitere = t1[1];
         panel.btnGrabarTitere = t1[2];
-        string[] filaT2 = { "Pierna 1", "Pierna 2", "Cuerpo +/-", "Voltear" };
-        var t2 = new BotonTocable[4];
-        for (int i = 0; i < 4; i++)
-            t2[i] = Boton(tit, filaT2[i], new Vector3(-0.15f + i * 0.1f, 0.012f, 0f), matBoton, matBotonMarcado);
-        panel.btnPierna1 = t2[0];
-        panel.btnPierna2 = t2[1];
-        panel.btnCuerpo = t2[2];
+        string[] filaT2 = { "Posar dedos", "Ciclo: Manual", "Guardar ciclo", "Voltear" };
+        var t2 = new BotonTocable[filaT2.Length];
+        for (int i = 0; i < filaT2.Length; i++)
+            t2[i] = Boton(tit, filaT2[i], new Vector3(-0.15f + i * 0.1f, 0.016f, 0f), matBoton, matBotonMarcado);
+        panel.btnPosar = t2[0];
+        panel.btnCiclo = t2[1];
+        panel.btnGuardarCiclo = t2[2];
         panel.btnVoltear = t2[3];
-        panel.textoTitere = Texto(tit, "", new Vector3(0f, -0.035f, -0.001f), new Vector2(0.46f, 0.03f), new Color(0.2f, 0.2f, 0.25f));
-        Texto(tit, "Camina con el índice y el medio derechos · Grabar = una clave por fotograma · pellizco izquierdo = parar", new Vector3(0f, -0.09f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.3f, 0.3f, 0.35f));
+        string[] filaT3 = { "Pierna 1", "Pierna 2", "Brazo 1", "Brazo 2", "Cuerpo +/-" };
+        var t3 = new BotonTocable[filaT3.Length];
+        for (int i = 0; i < filaT3.Length; i++)
+            t3[i] = Boton(tit, filaT3[i], new Vector3(-0.2f + i * 0.1f, -0.016f, 0f), matBoton, matBotonMarcado);
+        panel.btnPierna1 = t3[0];
+        panel.btnPierna2 = t3[1];
+        panel.btnBrazo1 = t3[2];
+        panel.btnBrazo2 = t3[3];
+        panel.btnCuerpo = t3[4];
+        panel.textoTitere = Texto(tit, "", new Vector3(0f, -0.052f, -0.001f), new Vector2(0.46f, 0.02f), new Color(0.2f, 0.2f, 0.25f));
+        Texto(tit, "Títere: mueve la mano derecha y el muñeco camina · Grabar = una clave por fotograma · pellizco izquierdo = parar", new Vector3(0f, -0.09f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.3f, 0.3f, 0.35f));
         return panel;
     }
 
@@ -627,6 +647,22 @@ public static class ArmarEscenaTrazo
         r.sharedMaterial = m;
         r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         r.receiveShadows = false;
+    }
+
+    // Material URP Unlit transparente (para ver las imágenes al 50% o 20%).
+    static void Transparente(Material m)
+    {
+        if (m.HasProperty("_Surface")) m.SetFloat("_Surface", 1f);
+        if (m.HasProperty("_Blend")) m.SetFloat("_Blend", 0f);
+        if (m.HasProperty("_SrcBlend")) m.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        if (m.HasProperty("_DstBlend")) m.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        if (m.HasProperty("_SrcBlendAlpha")) m.SetFloat("_SrcBlendAlpha", (float)UnityEngine.Rendering.BlendMode.One);
+        if (m.HasProperty("_DstBlendAlpha")) m.SetFloat("_DstBlendAlpha", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        if (m.HasProperty("_ZWrite")) m.SetFloat("_ZWrite", 0f);
+        m.SetOverrideTag("RenderType", "Transparent");
+        m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+        EditorUtility.SetDirty(m);
     }
 
     static Material Mat(string nombre, Shader shader, Color color)
