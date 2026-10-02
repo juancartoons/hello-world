@@ -20,6 +20,10 @@ public class CajaTransformar : MonoBehaviour
     Vector3 vectorInicio;
     Trazo solo;
     DatosTrazo origenSolo;
+    Transform objeto;          // una imagen de referencia (en vez del dibujo)
+    Vector3 objetoPosicion;
+    Quaternion objetoRotacion;
+    float objetoEscala;
 
     GameObject lineas;
     Mesh mallaLineas;
@@ -36,9 +40,25 @@ public class CajaTransformar : MonoBehaviour
 
     public void Empezar(ManoSeguida izq, ManoSeguida der, Trazo seleccion)
     {
+        Empezar(izq, der, seleccion, null);
+    }
+
+    // Con "imagen" (y sin línea seleccionada) se transforma esa imagen de referencia.
+    public void Empezar(ManoSeguida izq, ManoSeguida der, Trazo seleccion, Transform imagen)
+    {
         if (dibujo == null)
             return;
-        dibujo.GuardarParaDeshacer();
+        objeto = seleccion == null ? imagen : null;
+        if (objeto != null)
+        {
+            objetoPosicion = objeto.position;
+            objetoRotacion = objeto.rotation;
+            objetoEscala = Mathf.Max(0.0001f, objeto.localScale.x);
+        }
+        else
+        {
+            dibujo.GuardarParaDeshacer();
+        }
         solo = seleccion;
         origenSolo = solo != null ? solo.CrearDatos() : null;
         Transform raiz = dibujo.transform;
@@ -51,7 +71,7 @@ public class CajaTransformar : MonoBehaviour
 
         CrearPiezas();
         Bounds caja = new Bounds();
-        bool hay = solo == null && dibujo.Caja(out caja);
+        bool hay = solo == null && objeto == null && dibujo.Caja(out caja);
         if (hay)
             ConstruirLineas(caja);
         lineas.SetActive(hay);
@@ -76,6 +96,15 @@ public class CajaTransformar : MonoBehaviour
         float s = v.magnitude / vectorInicio.magnitude;
         Quaternion giroSolo = Quaternion.FromToRotation(vectorInicio, v);
         Vector3 medioSolo = (a + b) * 0.5f;
+        if (objeto != null)
+        {
+            float escalaObjeto = Mathf.Clamp(objetoEscala * s, 0.05f, 10f);
+            float so = escalaObjeto / objetoEscala;
+            objeto.position = medioSolo + giroSolo * ((objetoPosicion - medioInicio) * so);
+            objeto.rotation = giroSolo * objetoRotacion;
+            objeto.localScale = Vector3.one * escalaObjeto;
+            return;
+        }
         if (solo != null)
         {
             if (!Dibujo.Editable(solo))
@@ -103,6 +132,7 @@ public class CajaTransformar : MonoBehaviour
             return;
         Activa = false;
         solo = null;
+        objeto = null;
         origenSolo = null;
         if (lineas != null)
             lineas.SetActive(false);

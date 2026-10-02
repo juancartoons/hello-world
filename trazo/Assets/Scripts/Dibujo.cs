@@ -18,6 +18,7 @@ public class DatosTrazo
     public int colorRelleno;
     public float ancho = 0.008f;
     public int estilo;
+    public bool crudo; // solo para la repetición: la línea aún se estaba dibujando
 }
 
 [System.Serializable]
@@ -25,6 +26,14 @@ public class DatosCapa
 {
     public string nombre = "Capa";
     public bool visible = true;
+}
+
+// Una forma de boca de la biblioteca (para el lipsync): la forma de las líneas de la boca.
+[System.Serializable]
+public class PoseBoca
+{
+    public string nombre;
+    public List<DatosTrazo> trazos = new List<DatosTrazo>();
 }
 
 // Una clave de animación: la forma de todas las líneas en un fotograma.
@@ -56,6 +65,8 @@ public class DatosDibujo
     public List<Clave> claves = new List<Clave>();
     public int fotograma;
     public float fps = 12f;
+    public List<PoseBoca> bocas = new List<PoseBoca>();
+    public string audio = "";
 }
 
 // El dibujo completo: crea las líneas, une, cierra, borra, deshace, guarda y carga.
@@ -72,6 +83,7 @@ public class Dibujo : MonoBehaviour
     [Tooltip("Rojo del borrador")]
     public Material materialBorrado;
     public Animacion animacion;
+    public Lipsync lipsync;
     [Tooltip("Grosor máximo (en el centro) de las líneas nuevas, en metros")]
     public float anchoPincel = 0.008f;
     [Tooltip("Dibujar sobre un plano (2D) en vez de libre en 3D")]
@@ -323,6 +335,7 @@ public class Dibujo : MonoBehaviour
     Trazo CrearTrazo(float ancho)
     {
         var go = new GameObject("Trazo");
+        go.layer = gameObject.layer; // la capa del dibujo: es lo que ven las fotos y los videos
         go.transform.SetParent(transform, false);
         var t = go.AddComponent<Trazo>();
         t.Configurar(materialLinea, materialRelleno, ancho, EstiloLinea.Cinta);
@@ -585,6 +598,14 @@ public class Dibujo : MonoBehaviour
         return vectorLocal - planoNormal * Vector3.Dot(vectorLocal, planoNormal);
     }
 
+    // Qué tan lejos (en metros) está un punto del plano de dibujo 2D.
+    public float DistanciaAlPlanoMundo(Vector3 local)
+    {
+        if (!PlanoActivo)
+            return 0f;
+        return Mathf.Abs(Vector3.Dot(local - planoPunto, planoNormal)) * EscalaMundo;
+    }
+
     public Vector3 ProyectarEnPlano(Vector3 local)
     {
         if (!PlanoActivo)
@@ -810,6 +831,11 @@ public class Dibujo : MonoBehaviour
                 d.trazos.Add(t.CrearDatos());
         if (animacion != null)
             d.claves.AddRange(animacion.claves);
+        if (lipsync != null)
+        {
+            d.bocas.AddRange(lipsync.CopiarPoses());
+            d.audio = lipsync.ArchivoAudio;
+        }
         return d;
     }
 
@@ -860,6 +886,8 @@ public class Dibujo : MonoBehaviour
         }
         Trazo.silenciar = false;
         Trazo.huboCambio = false;
+        if (lipsync != null)
+            lipsync.Restaurar(d.bocas, d.audio, incluirFondo);
         if (incluirFondo && escenario != null)
             escenario.PonerModo(d.fondo);
         ActualizarVisibilidad();
@@ -932,29 +960,36 @@ public class Dibujo : MonoBehaviour
         Mensaje(Escribir(Path.Combine(Carpeta, nombre), svg) ? "SVG guardado: " + nombre : "No se pudo guardar el SVG");
     }
 
-    public void TomarFoto()
+    // Capas que ven las fotos y los videos: solo la del dibujo (sin paneles, nodos ni imágenes de referencia).
+    public int MascaraExportar => gameObject.layer != 0 ? (1 << gameObject.layer) : ~0;
+
+    // Desde dónde se toma la foto o el video: tu cabeza mirando al dibujo, con el ángulo justo para que quepa.
+    public void EncuadreExportar(float margen, out Vector3 posicion, out Quaternion rotacion, out float campoVision)
     {
-        var control = ControlManos.Instancia;
-        Transform cabeza = control != null ? control.Cabeza : null;
-        Camera origen = cabeza != null ? cabeza.GetComponent<Camera>() : Camera.main;
-        if (origen == null)
-        {
-            Mensaje("No encontré la cámara");
-            return;
-        }
-        Vector3 adelante, posicion;
+        Vector3 adelante;
         VistaExportar(out adelante, out posicion);
-        float fov = 60f;
+        campoVision = 60f;
         Bounds caja;
         if (Caja(out caja))
         {
             float distancia = Vector3.Distance(transform.TransformPoint(caja.center), posicion);
             float radio = caja.extents.magnitude * EscalaMundo;
             if (distancia > 0.05f)
-                fov = Mathf.Clamp(2f * Mathf.Atan(radio / distancia) * Mathf.Rad2Deg * 1.15f, 20f, 100f);
+                campoVision = Mathf.Clamp(2f * Mathf.Atan(radio / distancia) * Mathf.Rad2Deg * margen, 20f, 100f);
         }
         Vector3 arriba = Mathf.Abs(Vector3.Dot(adelante, Vector3.up)) > 0.95f ? Vector3.forward : Vector3.up;
-        byte[] png = Exportar.Foto(origen, posicion, Quaternion.LookRotation(adelante, arriba), fov, 2560, 1440, Color.white);
+        rotacion = Quaternion.LookRotation(adelante, arriba);
+    }
+
+    public string CarpetaDibujos => Carpeta;
+
+    public void TomarFoto()
+    {
+        Vector3 posicion;
+        Quaternion rotacion;
+        float campoVision;
+        EncuadreExportar(1.15f, out posicion, out rotacion, out campoVision);
+        byte[] png = Exportar.Foto(posicion, rotacion, campoVision, 2560, 1440, Color.white, MascaraExportar);
         if (png == null)
         {
             Mensaje("No se pudo tomar la foto");

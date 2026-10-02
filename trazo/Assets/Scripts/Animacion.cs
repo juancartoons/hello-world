@@ -1,18 +1,20 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// Animación por "morph" (como las interpolaciones de forma de Flash), hasta 200 fotogramas.
+// Animación por "morph" (como las interpolaciones de forma de Flash), hasta 2000 fotogramas.
 // - Una CLAVE guarda la forma de todas las líneas en un fotograma.
 // - Entre dos claves, cada línea con los mismos nodos se transforma suavemente de una forma a otra.
 // - Si estás en un fotograma y editas algo, se crea/actualiza la clave de ese fotograma (automático).
 // - Si nunca tocas la línea de tiempo, el dibujo es normal (sin animación).
 public class Animacion : MonoBehaviour
 {
-    public const int TotalFotogramas = 200;
+    public const int TotalFotogramas = 2000;
     public static readonly float[] OpcionesFps = { 12f, 24f, 30f, 60f };
 
     public Dibujo dibujo;
     public float fotogramasPorSegundo = 12f;
+    [Tooltip("Audio que suena junto con la animación (voz para el lipsync)")]
+    public AudioSource fuenteAudio;
 
     public readonly List<Clave> claves = new List<Clave>(); // ordenadas por fotograma
     public int Fotograma { get; private set; }
@@ -38,7 +40,10 @@ public class Animacion : MonoBehaviour
                 int pasos = Mathf.FloorToInt(acumulado);
                 acumulado -= pasos;
                 int fin = UltimoFotograma();
-                Fotograma = fin > 0 ? (Fotograma + pasos) % (fin + 1) : 0;
+                int nuevo = fin > 0 ? (Fotograma + pasos) % (fin + 1) : 0;
+                if (nuevo < Fotograma)
+                    SincronizarAudio(nuevo); // dio la vuelta: el audio vuelve a empezar
+                Fotograma = nuevo;
                 MostrarFotograma();
                 Avisar();
             }
@@ -58,7 +63,22 @@ public class Animacion : MonoBehaviour
         }
     }
 
-    int UltimoFotograma()
+    // Pone a sonar el audio desde el fotograma indicado (si hay audio).
+    void SincronizarAudio(int f)
+    {
+        if (fuenteAudio == null || fuenteAudio.clip == null)
+            return;
+        float t = f / Mathf.Max(1f, fotogramasPorSegundo);
+        if (t >= fuenteAudio.clip.length)
+        {
+            fuenteAudio.Stop();
+            return;
+        }
+        fuenteAudio.time = t;
+        fuenteAudio.Play();
+    }
+
+    public int UltimoFotograma()
     {
         int fin = claves.Count > 0 ? claves[claves.Count - 1].fotograma : 0;
         return fin > 0 ? fin : TotalFotogramas - 1;
@@ -84,6 +104,13 @@ public class Animacion : MonoBehaviour
             if (c.fotograma == f)
                 return c;
         return null;
+    }
+
+    // Guarda (o reemplaza) la clave del fotograma f con la forma actual de todas las líneas.
+    public void GuardarClaveEn(int f)
+    {
+        GuardarClave(Mathf.Clamp(f, 0, TotalFotogramas - 1));
+        Avisar();
     }
 
     void GuardarClave(int f)
@@ -143,6 +170,7 @@ public class Animacion : MonoBehaviour
         }
         Reproduciendo = true;
         acumulado = 0f;
+        SincronizarAudio(Fotograma);
         Avisar();
     }
 
@@ -151,6 +179,8 @@ public class Animacion : MonoBehaviour
         if (!Reproduciendo)
             return;
         Reproduciendo = false;
+        if (fuenteAudio != null)
+            fuenteAudio.Stop();
         Avisar();
     }
 

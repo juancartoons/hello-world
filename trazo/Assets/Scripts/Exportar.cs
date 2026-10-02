@@ -119,27 +119,61 @@ public static class Exportar
         return v.ToString("0.###", Cultura);
     }
 
-    // Foto: una cámara temporal (no estéreo) dibuja la escena en una imagen.
-    public static byte[] Foto(Camera origen, Vector3 posicion, Quaternion rotacion, float campoVision,
-                              int ancho, int alto, Color fondo)
+    // Foto (PNG): una cámara temporal (no estéreo) dibuja la escena en una imagen.
+    public static byte[] Foto(Vector3 posicion, Quaternion rotacion, float campoVision,
+                              int ancho, int alto, Color fondo, int mascara)
     {
-        var go = new GameObject("CamaraFoto");
-        go.transform.SetPositionAndRotation(posicion, rotacion);
-        var cam = go.AddComponent<Camera>();
-        cam.enabled = false;
-        cam.stereoTargetEye = StereoTargetEyeMask.None;
-        cam.cullingMask = origen.cullingMask;
-        cam.clearFlags = CameraClearFlags.SolidColor;
-        cam.backgroundColor = fondo;
-        cam.nearClipPlane = 0.02f;
-        cam.farClipPlane = 100f;
-        cam.fieldOfView = campoVision;
-        cam.aspect = ancho / (float)alto;
-
-        var rt = new RenderTexture(ancho, alto, 24, RenderTextureFormat.ARGB32);
-        rt.Create();
         byte[] png = null;
+        var captura = new Captura(ancho, alto, mascara, fondo);
         try
+        {
+            captura.Poner(posicion, rotacion, campoVision);
+            png = captura.CapturarPng();
+        }
+        catch (System.Exception e)
+        {
+            UnityEngine.Debug.LogWarning("TrazoVR: no se pudo tomar la foto: " + e.Message);
+        }
+        captura.Liberar();
+        return png;
+    }
+
+    // Cámara para capturar muchos cuadros seguidos (fotos y videos).
+    // Solo ve las capas de "mascara" (el dibujo), así no salen paneles, nodos ni imágenes de referencia.
+    public sealed class Captura
+    {
+        readonly GameObject go;
+        readonly Camera cam;
+        readonly RenderTexture rt;
+        readonly Texture2D tex;
+        public readonly int ancho, alto;
+
+        public Captura(int ancho, int alto, int mascara, Color fondo)
+        {
+            this.ancho = ancho;
+            this.alto = alto;
+            go = new GameObject("CamaraCaptura");
+            cam = go.AddComponent<Camera>();
+            cam.enabled = false;
+            cam.stereoTargetEye = StereoTargetEyeMask.None;
+            cam.cullingMask = mascara;
+            cam.clearFlags = CameraClearFlags.SolidColor;
+            cam.backgroundColor = fondo;
+            cam.nearClipPlane = 0.02f;
+            cam.farClipPlane = 100f;
+            cam.aspect = ancho / (float)alto;
+            rt = new RenderTexture(ancho, alto, 24, RenderTextureFormat.ARGB32);
+            rt.Create();
+            tex = new Texture2D(ancho, alto, TextureFormat.RGBA32, false);
+        }
+
+        public void Poner(Vector3 posicion, Quaternion rotacion, float campoVision)
+        {
+            go.transform.SetPositionAndRotation(posicion, rotacion);
+            cam.fieldOfView = Mathf.Clamp(campoVision, 10f, 120f);
+        }
+
+        void Dibujar()
         {
             var pedido = new RenderPipeline.StandardRequest { destination = rt };
             if (RenderPipeline.SupportsRenderRequest(cam, pedido))
@@ -152,23 +186,32 @@ public static class Exportar
                 cam.Render();
                 cam.targetTexture = null;
             }
-
             var anterior = RenderTexture.active;
             RenderTexture.active = rt;
-            var tex = new Texture2D(ancho, alto, TextureFormat.RGB24, false);
             tex.ReadPixels(new Rect(0, 0, ancho, alto), 0, 0);
-            tex.Apply();
+            tex.Apply(false);
             RenderTexture.active = anterior;
-            png = tex.EncodeToPNG();
-            Object.Destroy(tex);
         }
-        catch (System.Exception e)
+
+        // Píxeles RGBA (de abajo hacia arriba), ancho * alto * 4 bytes.
+        public byte[] CapturarRgba()
         {
-            UnityEngine.Debug.LogWarning("TrazoVR: no se pudo tomar la foto: " + e.Message);
+            Dibujar();
+            return tex.GetRawTextureData();
         }
-        rt.Release();
-        Object.Destroy(rt);
-        Object.Destroy(go);
-        return png;
+
+        public byte[] CapturarPng()
+        {
+            Dibujar();
+            return tex.EncodeToPNG();
+        }
+
+        public void Liberar()
+        {
+            rt.Release();
+            Object.Destroy(rt);
+            Object.Destroy(tex);
+            Object.Destroy(go);
+        }
     }
 }

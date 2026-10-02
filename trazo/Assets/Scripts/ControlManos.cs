@@ -4,7 +4,8 @@ using UnityEngine;
 
 // Los gestos de TrazoVR (todo con las manos):
 //  Izquierda pulgar + ÍNDICE (sostener)  -> dibujar con la punta del índice derecho.
-//  Izquierda pulgar + MEÑIQUE (sostener) -> línea recta (del punto donde empiezas hasta tu dedo).
+//  Izquierda pulgar + ÍNDICE + MEDIO juntos (o pulgar + meñique) -> línea recta (del punto donde empiezas hasta tu dedo).
+//  En modo Plano (2D), si alejas el dedo del plano más de ~2.5 cm la línea se corta (como levantar el lápiz).
 //  Izquierda pulgar + MEDIO  (sostener)  -> modo nodos: pellizca con la derecha para mover nodos y asas.
 //       Arrastra la punta de una línea sobre otra punta: se unen como imán (o se cierra la figura).
 //  Izquierda pulgar + ANULAR (sostener)  -> grosor: sube/baja la mano izquierda = todo más grueso/delgado;
@@ -24,6 +25,8 @@ public class ControlManos : MonoBehaviour
 
     public Dibujo dibujo;
     public CajaTransformar caja;
+    public Referencias referencias;
+    public PanelArriba panelArriba;
     public Material materialNodo;
     public Material materialNodoActivo;
     public Material materialAsa;
@@ -58,6 +61,9 @@ public class ControlManos : MonoBehaviour
     [Tooltip("Texto que flota sobre la mano con el nombre del gesto")]
     public TMP_Text textoGesto;
     public bool mostrarAyudas = true;
+
+    // true mientras otro objeto usa las manos (por ejemplo, al mover el panel de arriba).
+    public bool Ocupado { get; set; }
 
     public ManoSeguida Izq { get; } = new ManoSeguida(true);
     public ManoSeguida Der { get; } = new ManoSeguida(false);
@@ -137,6 +143,14 @@ public class ControlManos : MonoBehaviour
     // Línea recta
     Vector3 inicioRecta;
 
+    // Plano 2D: el dedo está lejos del plano (lápiz levantado)
+    bool lejosDelPlano;
+    float gestoDesde;
+
+    // Mover una imagen de referencia con el pellizco derecho
+    Transform imagenMovida;
+    Vector3 desfaseImagen;
+
     // Etiqueta sobre la mano
     string etiquetaTemporal;
     float etiquetaHasta;
@@ -173,6 +187,10 @@ public class ControlManos : MonoBehaviour
             dibujo = FindFirstObjectByType<Dibujo>();
         if (caja == null)
             caja = GetComponent<CajaTransformar>();
+        if (referencias == null)
+            referencias = FindFirstObjectByType<Referencias>();
+        if (panelArriba == null)
+            panelArriba = FindFirstObjectByType<PanelArriba>();
 
         var esfera = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         esfera.name = "Cursor";
@@ -218,6 +236,21 @@ public class ControlManos : MonoBehaviour
         Izq.Actualizar(rig.leftHandAnchor, suavizado, pellizcoEntra, pellizcoSale);
         Der.Actualizar(rig.rightHandAnchor, suavizado, pellizcoEntra, pellizcoSale);
         LeerPoseIzquierda();
+
+        if (Ocupado || ExportadorVideo.Exportando)
+        {
+            // Otro objeto está usando las manos: no se dibuja ni se edita nada.
+            if (GestoIzq != Gesto.Ninguno)
+                SalirDeGesto();
+            SoltarImagen();
+            lineaMovida = null;
+            menuAbierto = false;
+            esperarSoltarIzq = true;
+            OcultarModoNodos();
+            ActualizarCursor();
+            ActualizarEtiqueta();
+            return;
+        }
 
         ActualizarGestoIzquierdo();
         ActualizarMenu();
@@ -347,11 +380,22 @@ public class ControlManos : MonoBehaviour
                 SalirDeGesto();
             return;
         }
+        // Recta con tres dedos: pulgar + índice + medio juntos (más fácil de ver que el meñique).
+        bool tresDedos = dIndice < pellizcoEntra * 1.3f && dMedio < pellizcoEntra * 1.25f;
+        if (GestoIzq == Gesto.Dibujar && tresDedos && Time.time - gestoDesde < 0.4f)
+        {
+            // Apenas empezaba a dibujar y juntó también el medio: era una recta.
+            if (trazoActual != null)
+                dibujo.CancelarTrazo(trazoActual);
+            trazoActual = null;
+            EntrarEnGesto(Gesto.Recta);
+            return;
+        }
         if (GestoIzq != Gesto.Ninguno)
         {
             float d = GestoIzq == Gesto.Dibujar ? dIndice
                     : GestoIzq == Gesto.Nodos ? dMedio
-                    : GestoIzq == Gesto.Recta ? dMenique
+                    : GestoIzq == Gesto.Recta ? Mathf.Min(dIndice, dMenique)
                     : dAnular;
             if (d > pellizcoSale)
                 SalirDeGesto();
@@ -367,7 +411,11 @@ public class ControlManos : MonoBehaviour
 
         // Prioridad: pellizco de índice (dibujar) > puño (borrar) > pellizco de medio/anular.
         Gesto nuevo = Gesto.Ninguno;
-        if (dIndice < pellizcoEntra && dIndice <= dMedio && dIndice <= dAnular)
+        if (dIndice < pellizcoEntra * 1.3f && dMedio < pellizcoEntra * 1.25f)
+        {
+            nuevo = Gesto.Recta;
+        }
+        else if (dIndice < pellizcoEntra && dIndice <= dMedio && dIndice <= dAnular)
         {
             nuevo = Gesto.Dibujar;
         }
@@ -396,7 +444,7 @@ public class ControlManos : MonoBehaviour
         if (nuevo == Gesto.Ninguno || Time.time - candidatoDesde < confirmar)
             return;
 
-        if (nuevo == Gesto.Dibujar && Der.pellizco && Izq.pellizco)
+        if ((nuevo == Gesto.Dibujar || nuevo == Gesto.Recta) && Der.pellizco && Izq.pellizco)
             EntrarEnGesto(Gesto.Transformar);
         else
             EntrarEnGesto(nuevo);
@@ -420,7 +468,11 @@ public class ControlManos : MonoBehaviour
     void EntrarEnGesto(Gesto g)
     {
         GestoIzq = g;
+        gestoDesde = Time.time;
         lineaMovida = null;
+        lejosDelPlano = false;
+        if (g != Gesto.Transformar)
+            SoltarImagen();
         if (dibujo.animacion != null)
             dibujo.animacion.Pausar();
         if (g == Gesto.Grosor)
@@ -432,8 +484,10 @@ public class ControlManos : MonoBehaviour
         }
         else if (g == Gesto.Transformar)
         {
+            Transform imagen = referencias != null ? referencias.Seleccionada : null;
+            SoltarImagen();
             if (caja != null)
-                caja.Empezar(Izq, Der, dibujo.Seleccion);
+                caja.Empezar(Izq, Der, dibujo.Seleccion, imagen);
         }
         else if (g == Gesto.Borrar)
         {
@@ -454,7 +508,11 @@ public class ControlManos : MonoBehaviour
         if (GestoIzq == Gesto.Grosor)
             dibujo.TerminarGrosor();
         if (GestoIzq == Gesto.Transformar && caja != null)
+        {
             caja.Terminar();
+            if (referencias != null && referencias.Seleccionada != null)
+                referencias.Guardar();
+        }
         if (GestoIzq == Gesto.Borrar)
         {
             RestaurarMano();
@@ -477,6 +535,8 @@ public class ControlManos : MonoBehaviour
         if (!Der.valida)
             return;
         Vector3 local = dibujo.transform.InverseTransformPoint(Der.indice);
+        if (LapizLevantado(local))
+            return;
         if (trazoActual == null)
         {
             if (dibujo.plano && !dibujo.HayPlano && Cabeza != null)
@@ -488,13 +548,42 @@ public class ControlManos : MonoBehaviour
         trazoActual.AgregarPuntoCrudo(dibujo.ProyectarEnPlano(local));
     }
 
-    // ---------- Línea recta (pulgar + meñique izquierdo) ----------
+    // En Plano (2D): el dedo tiene que estar sobre el plano para dibujar, como un lápiz en el papel.
+    // Empieza a menos de 1.5 cm; si se aleja más de 2.5 cm, la línea termina ahí.
+    // El gesto de la mano izquierda sigue activo: al volver al plano empieza otra línea.
+    bool LapizLevantado(Vector3 local)
+    {
+        if (!dibujo.PlanoActivo)
+        {
+            lejosDelPlano = false;
+            return false;
+        }
+        float d = dibujo.DistanciaAlPlanoMundo(local);
+        if (trazoActual == null)
+        {
+            lejosDelPlano = d > 0.015f;
+            return lejosDelPlano;
+        }
+        if (d <= 0.025f)
+        {
+            lejosDelPlano = false;
+            return false;
+        }
+        dibujo.TerminarTrazo(trazoActual);
+        trazoActual = null;
+        lejosDelPlano = true;
+        return true;
+    }
+
+    // ---------- Línea recta (pulgar + índice + medio, o pulgar + meñique) ----------
 
     void Recta()
     {
         if (!Der.valida)
             return;
         Vector3 local = dibujo.transform.InverseTransformPoint(Der.indice);
+        if (LapizLevantado(local))
+            return;
         if (trazoActual == null)
         {
             if (dibujo.plano && !dibujo.HayPlano && Cabeza != null)
@@ -1211,17 +1300,52 @@ public class ControlManos : MonoBehaviour
             lineaMovida.Desplazar(baseLinea, delta);
             return;
         }
+        if (imagenMovida != null)
+        {
+            if (!Der.valida || !Der.pellizco)
+            {
+                SoltarImagen();
+                return;
+            }
+            imagenMovida.position = Der.PuntoPellizco + desfaseImagen;
+            return;
+        }
         if (!Der.valida || !Der.empezoPellizco)
+            return;
+        // Pellizcos sobre el panel de arriba son del panel.
+        if (panelArriba != null && panelArriba.Contiene(Der.PuntoPellizco))
             return;
         var t = LineaBajo(Der.PuntoPellizco, Der.indice);
         dibujo.Seleccionar(t);
         if (t == null)
+        {
+            // ¿Una imagen de referencia? Se selecciona y se mueve. En el aire: nada seleccionado.
+            Transform imagen = referencias != null ? referencias.BuscarBajo(Der.PuntoPellizco) : null;
+            if (referencias != null)
+                referencias.Seleccionar(imagen);
+            if (imagen != null)
+            {
+                imagenMovida = imagen;
+                desfaseImagen = imagen.position - Der.PuntoPellizco;
+            }
             return;
+        }
+        if (referencias != null)
+            referencias.Seleccionar(null);
         lineaMovida = t;
         baseLinea.Clear();
         baseLinea.AddRange(t.nodos);
         inicioLinea = Der.PuntoPellizco;
         deshacerLineaPendiente = true;
+    }
+
+    void SoltarImagen()
+    {
+        if (imagenMovida == null)
+            return;
+        imagenMovida = null;
+        if (referencias != null)
+            referencias.Guardar();
     }
 
     // La línea (o figura rellena) más cercana a la pinza, si está lo bastante cerca.
@@ -1370,13 +1494,15 @@ public class ControlManos : MonoBehaviour
         bool hayLinea = dibujo.Seleccion != null;
         switch (GestoIzq)
         {
-            case Gesto.Dibujar: texto = "Dibujar"; break;
-            case Gesto.Recta: texto = "Línea recta"; break;
+            case Gesto.Dibujar: texto = lejosDelPlano ? "Dibujar (acerca el dedo al plano)" : "Dibujar"; break;
+            case Gesto.Recta: texto = lejosDelPlano ? "Línea recta (acerca el dedo al plano)" : "Línea recta"; break;
             case Gesto.Nodos: texto = hayLinea ? "Editar nodos (esta línea)" : "Editar nodos"; break;
             case Gesto.Grosor: texto = hayLinea ? "Grosor (esta línea)" : "Grosor (todo)"; break;
             case Gesto.Borrar: texto = "Borrar\n(frota la línea para borrarla entera)"; break;
             case Gesto.Transformar:
-                texto = hayLinea ? "Girar / escalar línea" : "Girar / escalar todo";
+                texto = hayLinea ? "Girar / escalar línea"
+                      : referencias != null && referencias.Seleccionada != null ? "Girar / escalar imagen"
+                      : "Girar / escalar todo";
                 entreManos = true;
                 break;
         }
@@ -1389,6 +1515,11 @@ public class ControlManos : MonoBehaviour
             else if (lineaMovida != null)
             {
                 texto = "Mover línea";
+                sobre = Der;
+            }
+            else if (imagenMovida != null)
+            {
+                texto = "Mover imagen";
                 sobre = Der;
             }
         }

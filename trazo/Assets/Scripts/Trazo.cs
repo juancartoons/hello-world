@@ -49,6 +49,10 @@ public class Trazo : MonoBehaviour
     public static bool silenciar;
     public static bool huboCambio;
 
+    // Para grabar el proceso: qué líneas cambiaron desde la última muestra.
+    public static bool registrarCambios;
+    public static readonly HashSet<Trazo> modificados = new HashSet<Trazo>();
+
     const float separacionCrudos = 0.003f;       // metros entre puntos al dibujar
     const float toleranciaSimplificar = 0.003f;  // cuánto puede alejarse la curva al simplificar
     const float pasoMuestras = 0.004f;           // detalle de la curva final
@@ -133,6 +137,31 @@ public class Trazo : MonoBehaviour
     }
 
     public float LargoCrudo => LargoDe(crudos);
+
+    // Pone una línea "a mano alzada" con estos puntos (para la repetición y las manos fantasma).
+    public void PonerCrudos(List<Vector3> puntos)
+    {
+        crudos.Clear();
+        if (puntos != null)
+            crudos.AddRange(puntos);
+        Reconstruir();
+    }
+
+    // Como CrearDatos, pero si la línea se está dibujando guarda sus puntos crudos.
+    public DatosTrazo CrearDatosRepeticion()
+    {
+        var d = CrearDatos();
+        if (crudos.Count > 0)
+        {
+            d.nodos = new List<Vector3>(crudos);
+            d.asaEntrada.Clear();
+            d.asaSalida.Clear();
+            d.asaManual.Clear();
+            d.grosorNodo.Clear();
+            d.crudo = true;
+        }
+        return d;
+    }
 
     // Línea recta mientras se dibuja: solo dos puntos, inicio y fin.
     public void PonerRecta(Vector3 a, Vector3 b)
@@ -397,6 +426,7 @@ public class Trazo : MonoBehaviour
     {
         if (a == null || a.nodos == null || a.nodos.Count < 2)
             return;
+        crudos.Clear();
         int n = a.nodos.Count;
         bool mezclar = b != null && u > 0f && Completa(b.nodos, n) && b.cerrado == a.cerrado;
         bool asasA = Completa(a.asaEntrada, n) && Completa(a.asaSalida, n) && Completa(a.asaManual, n);
@@ -496,6 +526,8 @@ public class Trazo : MonoBehaviour
         AsegurarMalla();
         if (!silenciar)
             huboCambio = true;
+        if (registrarCambios)
+            modificados.Add(this);
         muestras.Clear();
         multiplicadores.Clear();
         if (crudos.Count > 0)
@@ -667,6 +699,7 @@ public class Trazo : MonoBehaviour
         if (rellenoRenderer == null)
         {
             var go = new GameObject("Relleno");
+            go.layer = gameObject.layer;
             go.transform.SetParent(transform, false);
             mallaRelleno = new Mesh { name = "Relleno" };
             mallaRelleno.MarkDynamic();

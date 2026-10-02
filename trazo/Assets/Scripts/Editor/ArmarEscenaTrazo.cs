@@ -14,6 +14,7 @@ public static class ArmarEscenaTrazo
     const string carpetaBase = "Assets/TrazoVR";
     const string carpeta = "Assets/TrazoVR/Materiales";
     const string nombreRaiz = "_TrazoVR";
+    const int CapaDibujo = 29;
 
     [MenuItem("TrazoVR/★ Armar escena")]
     static void Armar()
@@ -80,8 +81,13 @@ public static class ArmarEscenaTrazo
         var matClave = Mat("Clave", unlit, new Color(1f, 0.55f, 0.1f));
         var matCabezal = Mat("Cabezal", unlit, new Color(0.9f, 0.15f, 0.15f));
         var matBarra = Mat("Barra", unlit, new Color(0.55f, 0.57f, 0.62f));
-        // Los círculos de los nodos se ven por ambos lados.
-        foreach (var m in new[] { matNodo, matNodoActivo, matAsa, matIman })
+        var matAsaPanel = Mat("AsaPanel", unlit, new Color(0.3f, 0.55f, 0.95f));
+        var matImagen = Mat("Imagen", unlit, Color.white);
+        var matManoFantasma = Mat("ManoFantasma", shaderLinea, new Color(0.6f, 0.6f, 0.63f));
+        if (matManoFantasma.HasProperty("_ColorLuz"))
+            matManoFantasma.SetColor("_ColorLuz", new Color(0.8f, 0.8f, 0.82f));
+        // Los círculos de los nodos (y las imágenes) se ven por ambos lados.
+        foreach (var m in new[] { matNodo, matNodoActivo, matAsa, matIman, matImagen })
             if (m.HasProperty("_Cull"))
                 m.SetFloat("_Cull", 0f);
         AssetDatabase.SaveAssets();
@@ -99,6 +105,8 @@ public static class ArmarEscenaTrazo
 
         var goDibujo = new GameObject("Dibujo");
         goDibujo.transform.SetParent(raiz.transform, false);
+        // Capa propia del dibujo: las fotos y los videos solo ven esta capa (sin paneles ni imágenes).
+        goDibujo.layer = CapaDibujo;
         var dibujo = goDibujo.AddComponent<Dibujo>();
         var animacion = goDibujo.AddComponent<Animacion>();
         animacion.dibujo = dibujo;
@@ -127,8 +135,49 @@ public static class ArmarEscenaTrazo
         caja.dibujo = dibujo;
         caja.materialCaja = matCaja;
 
+        // Imágenes de referencia
+        var goRef = new GameObject("Referencias");
+        goRef.transform.SetParent(raiz.transform, false);
+        var referencias = goRef.AddComponent<Referencias>();
+        referencias.dibujo = dibujo;
+        referencias.materialImagen = matImagen;
+        control.referencias = referencias;
+
+        // Bocas automáticas (lipsync) + el audio que suena con la animación
+        var goLip = new GameObject("Lipsync");
+        goLip.transform.SetParent(raiz.transform, false);
+        var fuente = goLip.AddComponent<AudioSource>();
+        fuente.playOnAwake = false;
+        fuente.loop = false;
+        fuente.spatialBlend = 0f;
+        var lipsync = goLip.AddComponent<Lipsync>();
+        lipsync.dibujo = dibujo;
+        lipsync.animacion = animacion;
+        lipsync.fuente = fuente;
+        animacion.fuenteAudio = fuente;
+        dibujo.lipsync = lipsync;
+
+        // Videos (animación y proceso)
+        var goExp = new GameObject("Exportador");
+        goExp.transform.SetParent(raiz.transform, false);
+        var grabador = goExp.AddComponent<GrabadorProceso>();
+        grabador.dibujo = dibujo;
+        grabador.control = control;
+        var exportador = goExp.AddComponent<ExportadorVideo>();
+        exportador.dibujo = dibujo;
+        exportador.animacion = animacion;
+        exportador.lipsync = lipsync;
+        exportador.grabador = grabador;
+        exportador.control = control;
+        exportador.materialManoFantasma = matManoFantasma;
+
         var panel = CrearPanel(raiz.transform, control, dibujo, escenario, matPanel, matBoton, matBotonMarcado);
-        CrearPanelArriba(raiz.transform, control, dibujo, animacion, escenario, matPanel, matBoton, matBotonMarcado, matClave, matCabezal, matBarra);
+        var arriba = CrearPanelArriba(raiz.transform, control, dibujo, animacion, escenario, matPanel, matBoton, matBotonMarcado, matClave, matCabezal, matBarra, matAsaPanel);
+        arriba.lipsync = lipsync;
+        arriba.referencias = referencias;
+        arriba.grabador = grabador;
+        arriba.exportador = exportador;
+        control.panelArriba = arriba;
         var aviso = Texto(raiz.transform, "", new Vector3(0f, 1.4f, 0.6f), new Vector2(0.4f, 0.05f), new Color(0.1f, 0.1f, 0.12f));
         aviso.gameObject.name = "Aviso";
         aviso.fontSizeMax = 0.3f;
@@ -303,11 +352,11 @@ public static class ArmarEscenaTrazo
         return panel;
     }
 
-    // ---------- Panel de arriba: animación y capas ----------
+    // ---------- Panel de arriba: animación, capas, medios y bocas ----------
 
-    static void CrearPanelArriba(Transform raiz, ControlManos control, Dibujo dibujo, Animacion animacion, Escenario escenario,
+    static PanelArriba CrearPanelArriba(Transform raiz, ControlManos control, Dibujo dibujo, Animacion animacion, Escenario escenario,
                                  Material matPanel, Material matBoton, Material matBotonMarcado,
-                                 Material matClave, Material matCabezal, Material matBarra)
+                                 Material matClave, Material matCabezal, Material matBarra, Material matAsaPanel)
     {
         var go = new GameObject("PanelArriba");
         go.transform.SetParent(raiz, false);
@@ -322,23 +371,35 @@ public static class ArmarEscenaTrazo
         var contenido = new GameObject("Contenido");
         contenido.transform.SetParent(go.transform, false);
         panel.contenido = contenido;
+        var c = contenido.transform;
 
         var fondo = GameObject.CreatePrimitive(PrimitiveType.Quad);
         fondo.name = "Fondo";
         Object.DestroyImmediate(fondo.GetComponent<Collider>());
-        fondo.transform.SetParent(contenido.transform, false);
-        fondo.transform.localPosition = new Vector3(0f, 0.01f, 0.006f);
-        fondo.transform.localScale = new Vector3(0.5f, 0.27f, 1f);
+        fondo.transform.SetParent(c, false);
+        fondo.transform.localPosition = new Vector3(0f, 0.035f, 0.006f);
+        fondo.transform.localScale = new Vector3(0.5f, 0.34f, 1f);
         SinSombras(fondo.GetComponent<Renderer>(), matPanel);
 
-        panel.textoFotograma = Texto(contenido.transform, "Fotograma 1 / 200", new Vector3(0f, 0.125f, -0.001f), new Vector2(0.3f, 0.022f), Color.black);
+        // Asa para mover el panel (y cambiar su tamaño con la otra mano)
+        var asa = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        asa.name = "Asa";
+        Object.DestroyImmediate(asa.GetComponent<Collider>());
+        asa.transform.SetParent(c, false);
+        asa.transform.localPosition = new Vector3(0f, 0.195f, 0f);
+        asa.transform.localScale = new Vector3(0.14f, 0.016f, 0.01f);
+        SinSombras(asa.GetComponent<Renderer>(), matAsaPanel);
+        panel.asa = asa.transform;
+        Texto(c, "pellizca aquí para mover · + otra mano = tamaño", new Vector3(0f, 0.195f, -0.006f), new Vector2(0.13f, 0.012f), Color.white);
+
+        panel.textoFotograma = Texto(c, "Fotograma 1 / 2000", new Vector3(0f, 0.16f, -0.001f), new Vector2(0.4f, 0.02f), Color.black);
 
         // Línea de tiempo
         var barra = GameObject.CreatePrimitive(PrimitiveType.Cube);
         barra.name = "BarraTiempo";
         Object.DestroyImmediate(barra.GetComponent<Collider>());
-        barra.transform.SetParent(contenido.transform, false);
-        barra.transform.localPosition = new Vector3(0f, 0.09f, 0f);
+        barra.transform.SetParent(c, false);
+        barra.transform.localPosition = new Vector3(0f, 0.128f, 0f);
         barra.transform.localScale = new Vector3(0.44f, 0.02f, 0.008f);
         SinSombras(barra.GetComponent<Renderer>(), matBarra);
         panel.barra = barra.transform;
@@ -346,20 +407,30 @@ public static class ArmarEscenaTrazo
         var cabezal = GameObject.CreatePrimitive(PrimitiveType.Cube);
         cabezal.name = "Cabezal";
         Object.DestroyImmediate(cabezal.GetComponent<Collider>());
-        cabezal.transform.SetParent(contenido.transform, false);
-        cabezal.transform.localPosition = new Vector3(-0.22f, 0.09f, -0.006f);
+        cabezal.transform.SetParent(c, false);
+        cabezal.transform.localPosition = new Vector3(-0.22f, 0.128f, -0.006f);
         cabezal.transform.localScale = new Vector3(0.004f, 0.036f, 0.004f);
         SinSombras(cabezal.GetComponent<Renderer>(), matCabezal);
         panel.cabezal = cabezal.transform;
 
-        // Controles de la animación
+        // Pestañas
+        string[] pestanas = { "Animar", "Medios", "Bocas", "Zoom: 100", "Fijar aquí" };
+        var p = new BotonTocable[pestanas.Length];
+        for (int i = 0; i < pestanas.Length; i++)
+            p[i] = Boton(c, pestanas[i], new Vector3(-0.192f + i * 0.096f, 0.092f, 0f), matBoton, matBotonMarcado);
+        panel.btnPaginaAnimar = p[0];
+        panel.btnPaginaMedios = p[1];
+        panel.btnPaginaBocas = p[2];
+        panel.btnZoom = p[3];
+        panel.btnSeguir = p[4];
+
+        // ----- Página Animar -----
+        var animar = Pagina(c, "PaginaAnimar");
+        panel.paginaAnimar = animar.gameObject;
         string[] controles = { "Inicio", "<", "Play", ">", "+ Clave", "- Clave", "12 fps" };
         var b = new BotonTocable[controles.Length];
         for (int i = 0; i < controles.Length; i++)
-        {
-            float x = -0.192f + i * 0.064f;
-            b[i] = Boton(contenido.transform, controles[i], new Vector3(x, 0.05f, 0f), matBoton, matBotonMarcado);
-        }
+            b[i] = Boton(animar, controles[i], new Vector3(-0.192f + i * 0.064f, 0.055f, 0f), matBoton, matBotonMarcado);
         panel.btnInicio = b[0];
         panel.btnAnterior = b[1];
         panel.btnPlay = b[2];
@@ -368,23 +439,18 @@ public static class ArmarEscenaTrazo
         panel.btnQuitarClave = b[5];
         panel.btnFps = b[6];
 
-        // Capas
         panel.btnCapas = new BotonTocable[Dibujo.NumeroDeCapas];
         panel.btnVer = new BotonTocable[Dibujo.NumeroDeCapas];
         for (int i = 0; i < Dibujo.NumeroDeCapas; i++)
         {
             float x = -0.165f + i * 0.11f;
-            panel.btnCapas[i] = Boton(contenido.transform, "Capa " + (i + 1), new Vector3(x, 0f, 0f), matBoton, matBotonMarcado);
-            panel.btnVer[i] = Boton(contenido.transform, "Ver", new Vector3(x, -0.028f, 0f), matBoton, matBotonMarcado);
+            panel.btnCapas[i] = Boton(animar, "Capa " + (i + 1), new Vector3(x, 0.018f, 0f), matBoton, matBotonMarcado);
+            panel.btnVer[i] = Boton(animar, "Ver", new Vector3(x, -0.01f, 0f), matBoton, matBotonMarcado);
         }
-        // Copia del menú de la mano + exportar
         string[] menu = { "Libre (3D)", "Fondo", "Guardar", "Cargar", "Borrar todo", "SVG", "Foto" };
         var m = new BotonTocable[menu.Length];
         for (int i = 0; i < menu.Length; i++)
-        {
-            float x = -0.192f + i * 0.064f;
-            m[i] = Boton(contenido.transform, menu[i], new Vector3(x, -0.07f, 0f), matBoton, matBotonMarcado);
-        }
+            m[i] = Boton(animar, menu[i], new Vector3(-0.192f + i * 0.064f, -0.05f, 0f), matBoton, matBotonMarcado);
         panel.btnPlano = m[0];
         panel.btnFondo = m[1];
         panel.btnGuardar = m[2];
@@ -392,8 +458,64 @@ public static class ArmarEscenaTrazo
         panel.btnBorrarTodo = m[4];
         panel.btnSvg = m[5];
         panel.btnFoto = m[6];
+        Texto(animar, "Toca la barra = ir a un fotograma · pellizca una clave = moverla · si editas, se guarda una clave", new Vector3(0f, -0.09f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.3f, 0.3f, 0.35f));
 
-        Texto(contenido.transform, "Toca la barra = ir a un fotograma · pellizca una clave = moverla · si editas, se guarda una clave", new Vector3(0f, -0.105f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.3f, 0.3f, 0.35f));
+        // ----- Página Medios -----
+        var medios = Pagina(c, "PaginaMedios");
+        panel.paginaMedios = medios.gameObject;
+        string[] fila1 = { "Grabar", "Video proceso", "Vel x1" };
+        string[] fila2 = { "Video anim", "Imagen +", "Imagen -" };
+        var f1 = new BotonTocable[3];
+        var f2 = new BotonTocable[3];
+        for (int i = 0; i < 3; i++)
+        {
+            f1[i] = BotonAncho(medios, fila1[i], new Vector3(-0.13f + i * 0.13f, 0.05f, 0f), matBoton, matBotonMarcado);
+            f2[i] = BotonAncho(medios, fila2[i], new Vector3(-0.13f + i * 0.13f, 0.01f, 0f), matBoton, matBotonMarcado);
+        }
+        panel.btnGrabar = f1[0];
+        panel.btnVideoProceso = f1[1];
+        panel.btnVelocidad = f1[2];
+        panel.btnVideoAnim = f2[0];
+        panel.btnImagenMas = f2[1];
+        panel.btnImagenMenos = f2[2];
+        panel.textoMedios = Texto(medios, "", new Vector3(0f, -0.045f, -0.001f), new Vector2(0.46f, 0.03f), new Color(0.2f, 0.2f, 0.25f));
+        Texto(medios, "Los videos y fotos se guardan en Dibujos · las imágenes no salen en los videos", new Vector3(0f, -0.09f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.3f, 0.3f, 0.35f));
+
+        // ----- Página Bocas -----
+        var bocas = Pagina(c, "PaginaBocas");
+        panel.paginaBocas = bocas.gameObject;
+        panel.btnBocas = new BotonTocable[Lipsync.Nombres.Length];
+        for (int i = 0; i < Lipsync.Nombres.Length; i++)
+            panel.btnBocas[i] = Boton(bocas, Lipsync.Nombres[i], new Vector3(-0.192f + i * 0.064f, 0.055f, 0f), matBoton, matBotonMarcado);
+        string[] acciones = { "Modo: Guardar", "Voz", "Audio", "Lipsync", "Quitar audio" };
+        var a = new BotonTocable[acciones.Length];
+        for (int i = 0; i < acciones.Length; i++)
+            a[i] = Boton(bocas, acciones[i], new Vector3(-0.192f + i * 0.096f, 0.018f, 0f), matBoton, matBotonMarcado);
+        panel.btnModoBoca = a[0];
+        panel.btnVoz = a[1];
+        panel.btnAudio = a[2];
+        panel.btnLipsync = a[3];
+        panel.btnQuitarAudio = a[4];
+        panel.textoBocas = Texto(bocas, "", new Vector3(0f, -0.04f, -0.001f), new Vector2(0.46f, 0.04f), new Color(0.2f, 0.2f, 0.25f));
+        Texto(bocas, "Dibuja la boca en su propia capa y elígela · audios propios en Dibujos/Audio", new Vector3(0f, -0.09f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.3f, 0.3f, 0.35f));
+        return panel;
+    }
+
+    static Transform Pagina(Transform padre, string nombre)
+    {
+        var go = new GameObject(nombre);
+        go.transform.SetParent(padre, false);
+        return go.transform;
+    }
+
+    // Botón más ancho (para textos largos).
+    static BotonTocable BotonAncho(Transform padre, string texto, Vector3 posicion, Material normal, Material marcado)
+    {
+        var b = Boton(padre, texto, posicion, normal, marcado);
+        b.transform.localScale = new Vector3(0.11f, 0.026f, 0.008f);
+        if (b.etiqueta != null)
+            b.etiqueta.rectTransform.sizeDelta = new Vector2(0.1f, 0.02f);
+        return b;
     }
 
     static bool PonerEnum(SerializedProperty prop, string nombre)

@@ -8,7 +8,7 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 | Gesto | Qué hace |
 |---|---|
 | Izquierda: **pulgar + índice** (sostener) | Dibujas con la punta del **índice derecho** |
-| Izquierda: **pulgar + meñique** (sostener) | **Línea recta** desde donde empiezas hasta tu dedo. Las puntas se pegan a otras líneas (polígonos que se cierran solos) |
+| Izquierda: **pulgar + índice + medio juntos** (sostener) — o pulgar + meñique | **Línea recta** desde donde empiezas hasta tu dedo. Las puntas se pegan a otras líneas (polígonos que se cierran solos) |
 | Izquierda: **pulgar + medio** (sostener) | **Modo nodos**: pellizca un nodo con la derecha y arrástralo. El nodo tocado muestra sus **asas** (verdes): pellízcalas para curvar. Pellizcar la **línea seleccionada** lejos de sus nodos = **agregar un nodo** |
 | Modo nodos: arrastrar una **punta** sobre otra punta | Imán: se unen en una sola línea, o se **cierra la figura** y se rellena |
 | Izquierda: **pulgar + anular** (sostener) | **Grosor**: sube/baja la mano izquierda = más grueso/delgado (solo la línea seleccionada, o todo si no hay selección). Pellizca un **nodo** con la derecha y súbela/bájala = grosor solo de ese nodo |
@@ -18,14 +18,19 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 | Izquierda abierta, **punta del pulgar en la base de los dedos** (sobre la palma) | **Menú**: Libre 3D / Plano 2D, Fondo, Guardar, Cargar, Borrar todo |
 | **Las dos manos pellizcando** (índice + pulgar) | Separar/juntar = escalar · girar como un volante = rotar · mover = trasladar (solo la línea seleccionada, o todo si no hay selección) |
 | Tocar un **relleno** con el índice derecho | Cambia su color |
-| **Mirar hacia arriba** | Línea de tiempo (200 fotogramas), capas, copia del menú y **exportar** (SVG y Foto) |
+| **Mirar hacia arriba** | Panel de arriba: línea de tiempo (2000 fotogramas), capas, menú, exportar, videos, imágenes y bocas |
+| Pellizcar el **asa azul** del panel de arriba | Moverlo a donde quieras (queda fijo). Pellizcando también con la izquierda: separar/juntar = **tamaño** |
+| Pellizcar una **imagen** con la derecha | Moverla (queda seleccionada). Con las dos manos: escalarla y girarla |
 
 - Mientras aprendes, sobre la mano aparece el **nombre del gesto** que estás haciendo.
 - Las líneas nuevas salen con el **grosor promedio** de las que ya hay.
+- En **Plano (2D)** el dedo tiene que estar sobre el plano: si lo alejas más de ~2.5 cm, la línea se corta
+  (como levantar el lápiz). El gesto izquierdo sigue activo: al acercar el dedo empieza otra línea.
 
 ## Animación (morph)
 
 1. Mira hacia arriba y toca la **barra** para ir a otro fotograma (por ejemplo, el 40).
+   El botón **Zoom** cambia cuántos fotogramas caben en la barra: Todo, 400, 100 o 25.
 2. Mueve los nodos (pulgar + medio). Se guarda una **clave** sola en ese fotograma.
 3. **Play**: las líneas se transforman suavemente entre las claves.
 
@@ -39,7 +44,28 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 
 - **SVG**: cada línea es una curva con los mismos nodos que en la app. En Plano se ve de frente al plano; en 3D, desde donde estás.
 - **Foto**: imagen PNG del dibujo desde donde estás.
+- **Video anim** (página Medios): la animación en MP4 (1280x720), con el audio de las bocas si hay.
+- **Grabar** (página Medios) graba tu proceso: tus manos y cómo aparecen las líneas. **Detener** para.
+  **Video proceso** lo convierte en MP4 (líneas + manos en gris). **Vel** = x1, x2, x4 u x8.
+- Si el MP4 falla, se guarda una carpeta con imágenes PNG y un `hacer_video.bat` (necesita ffmpeg en el PC).
+- Ni los paneles, ni los nodos, ni las imágenes de referencia salen en fotos ni videos.
 - Se guardan en las gafas, en `Android/data/<tu app>/files/Dibujos` (con Meta Quest Developer Hub → File Manager).
+
+## Imágenes de referencia
+
+1. Copia imágenes (png o jpg) a `Android/data/<tu app>/files/Dibujos/Imagenes`.
+2. Página **Medios** → **Imagen +**: aparece la siguiente imagen frente a ti.
+3. Pellízcala con la derecha para moverla; con las dos manos, escálala y gírala. Se queda donde la dejes.
+4. **Imagen -** quita la imagen seleccionada (la que tiene tono azul).
+
+## Bocas automáticas (lipsync)
+
+1. Dibuja la boca en **su propia capa** (por ejemplo, Capa 2) y deja esa capa elegida.
+2. Página **Bocas**, **Modo: Guardar**: mueve los nodos de la boca y toca **Reposo, A, E, I, O, U o M**
+   para guardar cada forma (los botones guardados se ven oscuros).
+3. **Voz** graba tu voz (otra vez Voz = parar), o **Audio** elige un audio de `Dibujos/Audio` (wav, mp3).
+4. **Lipsync**: crea las claves de la boca según el audio. **Play** reproduce con sonido.
+5. **Modo: Probar**: tocar una boca la pone en el fotograma actual (para corregir a mano).
 
 ## Capas
 
@@ -52,4 +78,4 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 
 ## Ideas para después
 
-- Importar imágenes de referencia.
+- Títeres: parpadeo automático, ojos y cejas, poses con gestos de la mano, cuerpo con los dedos.
