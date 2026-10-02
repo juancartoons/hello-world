@@ -11,10 +11,12 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 | Izquierda: **pulgar + índice + medio juntos** (sostener) — o pulgar + meñique | **Línea recta** desde donde empiezas hasta tu dedo. Las puntas se pegan a otras líneas (polígonos que se cierran solos) |
 | Izquierda: **pulgar + medio** (sostener) | **Modo nodos**: pellizca un nodo con la derecha y arrástralo. El nodo tocado muestra sus **asas** (verdes): pellízcalas para curvar. Pellizcar la **línea seleccionada** lejos de sus nodos = **agregar un nodo** |
 | Modo nodos: arrastrar una **punta** sobre otra punta | Imán: se unen en una sola línea, o se **cierra la figura** y se rellena |
-| Izquierda: **pulgar + anular** (sostener) | **Grosor**: sube/baja la mano izquierda = más grueso/delgado (solo la línea seleccionada, o todo si no hay selección). Pellizca un **nodo** con la derecha y súbela/bájala = grosor solo de ese nodo |
-| Izquierda: **puño** (pulgar sobre los dedos o al lado) | **Borrador** (la mano se pone roja): tocar un **nodo** o un **relleno** lo borra. La **línea entera** solo se borra si la **frotas** (ida y vuelta, ~6 cm) lejos de sus nodos; se pone roja mientras |
+| Izquierda: **pulgar + anular** (sostener) | **Grosor**: sube/baja la mano izquierda = más grueso/delgado (solo la línea seleccionada, o todo si no hay selección). Pellizca un **nodo** con la derecha y súbela/bájala = grosor solo de ese nodo. **Gira el índice derecho en un círculo pequeño** (como un teléfono de disco) = grosor de las **líneas nuevas**: hacia la derecha más grueso, hacia la izquierda más delgado |
+| Izquierda: **puño** (pulgar sobre los dedos o al lado) | **Borrador** (la mano se vuelve una goma de borrar; se borra con el índice derecho): tocar un **nodo** o un **relleno** lo borra. La **línea entera** solo se borra si la **frotas** (ida y vuelta, ~6 cm) lejos de sus nodos; se pone roja mientras |
 | **Pellizcar una línea** con la derecha (sin gesto izquierdo) | La **selecciona** (se pone azul) y la **mueves**. Pellizcar en el aire = quitar la selección |
-| Izquierda: **puño con el pulgar hacia tu izquierda** | **Deshacer** (la mano destella en azul) |
+| Izquierda: **puño con el pulgar hacia tu izquierda** | La mano se vuelve una **flecha**: toca la **diana roja** con la punta = **Deshacer** (retírala y vuelve a tocar para deshacer otra vez) |
+| Izquierda: **puño con el pulgar hacia tu derecha** | Flecha hacia la derecha: toca la **diana verde** = **Rehacer** |
+| Izquierda: **doble toque rápido** de pulgar + índice | **Bloquear / desbloquear** el dibujo (no se dibuja por accidente). Se ve un candado arriba a la derecha |
 | Izquierda abierta, **punta del pulgar en la base de los dedos** (sobre la palma) | **Menú**: Libre 3D / Plano 2D, Fondo, Guardar, Cargar, Borrar todo |
 | **Las dos manos pellizcando** (índice + pulgar) | Separar/juntar = escalar · girar como un volante = rotar · mover = trasladar (solo la línea seleccionada, o todo si no hay selección) |
 | Tocar un **relleno** con el índice derecho | Cambia su color |
@@ -52,12 +54,23 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 - **Temblor** (página Medios): las líneas vibran como dibujadas a mano (No, Suave, Medio, Fuerte). Sale en los videos y se guarda con el dibujo.
 - Se guardan en las gafas, en `Android/data/<tu app>/files/Dibujos` (con Meta Quest Developer Hub → File Manager).
 
+## Títere con los dedos (caminar)
+
+1. Panel de arriba → página **Títere** → **Muñeco prueba**: aparece un muñeco listo frente a ti.
+2. **Títere**: pon el índice y el medio derechos "parados", como dos piernas, 2 segundos.
+3. Camina con los dedos (como sobre una mesa): el nudillo es la cadera, el medio del dedo la rodilla, la punta el pie.
+   El cuerpo sigue a la cadera. **Pellizco izquierdo** = apagar.
+4. **Grabar**: cuenta 3 segundos y guarda una clave por fotograma. **Pellizco izquierdo** = parar. Luego **Play**.
+5. Con tus dibujos: pellizca una línea y toca **Pierna 1**, **Pierna 2** o **Cuerpo +/-**. **Voltear** = rodillas al otro lado.
+
 ## Imágenes de referencia
 
 1. Copia imágenes (png o jpg) a `Android/data/<tu app>/files/Dibujos/Imagenes`.
 2. Página **Medios** → **Imagen +**: aparece la siguiente imagen frente a ti.
 3. Pellízcala con la derecha para moverla; con las dos manos, escálala y gírala. Se queda donde la dejes.
 4. **Imagen -** quita la imagen seleccionada (la que tiene tono azul).
+5. **Para calcar**: en modo Plano (2D), suelta la imagen cerca del plano y **se pega detrás** como imán.
+   Si mueves, giras o escalas el dibujo, la imagen lo sigue. Botón **Despegar** arriba a la derecha de la imagen.
 
 ## Bocas automáticas (lipsync)
 

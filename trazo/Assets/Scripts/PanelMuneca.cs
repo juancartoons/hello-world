@@ -16,7 +16,7 @@ public class PanelMuneca : MonoBehaviour
     public TMP_Text textoAviso;
     public float suavizado = 20f;
 
-    const string textoAyuda = "Izq + pulgar: índice dibuja · índice+medio recta · medio nodos · anular grosor\nPuño: borrar · Pulgar a la izq: deshacer · Mira arriba: animar";
+    const string textoAyuda = "Izq + pulgar: índice dibuja · índice+medio recta · medio nodos · anular grosor\nPuño: borrar · Pulgar izq/der: deshacer/rehacer · Doble toque: candado · Mira arriba: panel";
 
     bool visible;
     float ultimaVezVisto;

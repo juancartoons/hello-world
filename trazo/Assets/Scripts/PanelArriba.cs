@@ -11,7 +11,7 @@ using UnityEngine.Events;
 //    "Zoom" cambia cuántos fotogramas caben en la barra (Todo, 400, 100, 25).
 //    Pellizca una clave (marca naranja) y arrástrala para moverla a otro fotograma.
 //  - Páginas: Animar (controles, capas, menú, exportar), Medios (videos, grabar el proceso, imágenes)
-//    y Bocas (lipsync).
+//    Bocas (lipsync) y Títere (caminar con los dedos).
 public class PanelArriba : MonoBehaviour
 {
     public static readonly int[] Ventanas = { 0, 400, 100, 25 }; // 0 = todo
@@ -24,6 +24,7 @@ public class PanelArriba : MonoBehaviour
     public Referencias referencias;
     public GrabadorProceso grabador;
     public ExportadorVideo exportador;
+    public Titere titere;
     public GameObject contenido;
     [Tooltip("Barra de la línea de tiempo (un cubo hijo de Contenido)")]
     public Transform barra;
@@ -34,8 +35,8 @@ public class PanelArriba : MonoBehaviour
     public TMP_Text textoFotograma;
 
     [Header("Pestañas")]
-    public GameObject paginaAnimar, paginaMedios, paginaBocas;
-    public BotonTocable btnPaginaAnimar, btnPaginaMedios, btnPaginaBocas, btnZoom, btnSeguir;
+    public GameObject paginaAnimar, paginaMedios, paginaBocas, paginaTitere;
+    public BotonTocable btnPaginaAnimar, btnPaginaMedios, btnPaginaBocas, btnPaginaTitere, btnZoom, btnSeguir;
 
     [Header("Animar")]
     public BotonTocable btnInicio, btnAnterior, btnPlay, btnSiguiente, btnClave, btnQuitarClave, btnFps;
@@ -51,6 +52,10 @@ public class PanelArriba : MonoBehaviour
     public BotonTocable[] btnBocas = new BotonTocable[0];
     public BotonTocable btnModoBoca, btnVoz, btnAudio, btnLipsync, btnQuitarAudio;
     public TMP_Text textoBocas;
+
+    [Header("Títere")]
+    public BotonTocable btnMuneco, btnTitere, btnGrabarTitere, btnPierna1, btnPierna2, btnCuerpo, btnVoltear;
+    public TMP_Text textoTitere;
 
     [Tooltip("Qué tanto hay que mirar hacia arriba para que aparezca (0 a 1)")]
     public float mirarArribaEntra = 0.35f;
@@ -87,10 +92,12 @@ public class PanelArriba : MonoBehaviour
         if (referencias == null) referencias = FindFirstObjectByType<Referencias>();
         if (grabador == null) grabador = FindFirstObjectByType<GrabadorProceso>();
         if (exportador == null) exportador = FindFirstObjectByType<ExportadorVideo>();
+        if (titere == null) titere = FindFirstObjectByType<Titere>();
 
         Conectar(btnPaginaAnimar, () => PonerPagina(0));
         Conectar(btnPaginaMedios, () => PonerPagina(1));
         Conectar(btnPaginaBocas, () => PonerPagina(2));
+        Conectar(btnPaginaTitere, () => PonerPagina(3));
         Conectar(btnZoom, CambiarZoom);
         Conectar(btnSeguir, AlternarFijo);
 
@@ -155,6 +162,17 @@ public class PanelArriba : MonoBehaviour
             Conectar(btnQuitarAudio, lipsync.QuitarAudio);
         }
 
+        if (titere != null)
+        {
+            Conectar(btnMuneco, titere.CargarMuneco);
+            Conectar(btnTitere, titere.AlternarVivo);
+            Conectar(btnGrabarTitere, titere.Grabar);
+            Conectar(btnPierna1, () => titere.AsignarPierna(1));
+            Conectar(btnPierna2, () => titere.AsignarPierna(2));
+            Conectar(btnCuerpo, titere.AlternarCuerpo);
+            Conectar(btnVoltear, titere.Voltear);
+        }
+
         PonerPagina(0);
         if (contenido != null)
             contenido.SetActive(false);
@@ -166,9 +184,11 @@ public class PanelArriba : MonoBehaviour
         if (paginaAnimar != null) paginaAnimar.SetActive(p == 0);
         if (paginaMedios != null) paginaMedios.SetActive(p == 1);
         if (paginaBocas != null) paginaBocas.SetActive(p == 2);
+        if (paginaTitere != null) paginaTitere.SetActive(p == 3);
         if (btnPaginaAnimar != null) btnPaginaAnimar.Marcar(p == 0);
         if (btnPaginaMedios != null) btnPaginaMedios.Marcar(p == 1);
         if (btnPaginaBocas != null) btnPaginaBocas.Marcar(p == 2);
+        if (btnPaginaTitere != null) btnPaginaTitere.Marcar(p == 3);
     }
 
     void CambiarZoom()
@@ -526,8 +546,36 @@ public class PanelArriba : MonoBehaviour
             RefrescarAnimar();
         else if (pagina == 1)
             RefrescarMedios();
-        else
+        else if (pagina == 2)
             RefrescarBocas();
+        else
+            RefrescarTitere();
+    }
+
+    void RefrescarTitere()
+    {
+        if (titere == null)
+            return;
+        if (btnTitere != null)
+        {
+            btnTitere.PonerTexto(titere.Encendido && !titere.Grabando ? "Apagar" : "Títere");
+            btnTitere.Marcar(titere.Encendido);
+        }
+        if (btnGrabarTitere != null)
+        {
+            btnGrabarTitere.PonerTexto(titere.Grabando ? "Parar" : "Grabar");
+            btnGrabarTitere.Marcar(titere.Grabando);
+        }
+        if (btnVoltear != null)
+            btnVoltear.Marcar(titere.voltear);
+        if (btnPierna1 != null)
+            btnPierna1.Marcar(dibujo != null && dibujo.BuscarPorId(titere.pierna1) != null);
+        if (btnPierna2 != null)
+            btnPierna2.Marcar(dibujo != null && dibujo.BuscarPorId(titere.pierna2) != null);
+        if (textoTitere != null)
+            textoTitere.text = titere.Encendido
+                ? "Índice y medio derechos = piernas · pellizco IZQUIERDO = parar"
+                : "Cuerpo: " + titere.cuerpo.Count + " líneas · para tus dibujos: pellizca una línea y toca Pierna 1, Pierna 2 o Cuerpo";
     }
 
     void RefrescarAnimar()

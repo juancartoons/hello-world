@@ -46,6 +46,13 @@ public static class ArmarEscenaTrazo
                 "No encontré el shader TrazoVR/Relleno.\n\nCopia otra vez la carpeta Shaders dentro de Assets (elige Reemplazar) y espera a que Unity cargue.", "OK");
             return;
         }
+        var shaderInvisible = Shader.Find("TrazoVR/Invisible");
+        if (shaderInvisible == null)
+        {
+            EditorUtility.DisplayDialog("TrazoVR",
+                "No encontré el shader TrazoVR/Invisible.\n\nCopia otra vez la carpeta Shaders dentro de Assets (elige Reemplazar) y espera a que Unity cargue.", "OK");
+            return;
+        }
         var unlit = Shader.Find("Universal Render Pipeline/Unlit");
         if (unlit == null)
             unlit = Shader.Find("Unlit/Color");
@@ -86,8 +93,17 @@ public static class ArmarEscenaTrazo
         var matManoFantasma = Mat("ManoFantasma", shaderLinea, new Color(0.6f, 0.6f, 0.63f));
         if (matManoFantasma.HasProperty("_ColorLuz"))
             matManoFantasma.SetColor("_ColorLuz", new Color(0.8f, 0.8f, 0.82f));
-        // Los círculos de los nodos (y las imágenes) se ven por ambos lados.
-        foreach (var m in new[] { matNodo, matNodoActivo, matAsa, matIman, matImagen })
+        var matInvisible = Mat("Invisible", shaderInvisible, Color.clear);
+        var matGoma = Mat("BorradorGoma", unlit, new Color(1f, 0.62f, 0.7f));
+        var matFunda = Mat("BorradorFunda", unlit, new Color(0.2f, 0.4f, 0.85f));
+        var matFlecha = Mat("Flecha", unlit, new Color(0.15f, 0.2f, 0.35f));
+        var matDianaRoja = Mat("DianaDeshacer", unlit, new Color(0.9f, 0.15f, 0.15f));
+        var matDianaVerde = Mat("DianaRehacer", unlit, new Color(0.15f, 0.7f, 0.3f));
+        var matBlanco = Mat("Blanco", unlit, Color.white);
+        var matCandado = Mat("Candado", unlit, new Color(0.95f, 0.6f, 0.1f));
+        var matDial = Mat("Dial", unlit, new Color(0.2f, 0.5f, 1f));
+        // Los círculos de los nodos (y las imágenes, dianas, flecha y dial) se ven por ambos lados.
+        foreach (var m in new[] { matNodo, matNodoActivo, matAsa, matIman, matImagen, matFlecha, matDianaRoja, matDianaVerde, matBlanco, matDial })
             if (m.HasProperty("_Cull"))
                 m.SetFloat("_Cull", 0f);
         AssetDatabase.SaveAssets();
@@ -110,6 +126,10 @@ public static class ArmarEscenaTrazo
         var dibujo = goDibujo.AddComponent<Dibujo>();
         var animacion = goDibujo.AddComponent<Animacion>();
         dibujo.temblor = goDibujo.AddComponent<Temblor>();
+        var titere = goDibujo.AddComponent<Titere>();
+        titere.dibujo = dibujo;
+        titere.animacion = animacion;
+        dibujo.titere = titere;
         animacion.dibujo = dibujo;
         dibujo.animacion = animacion;
         dibujo.materialBorrado = matBorrado;
@@ -135,6 +155,18 @@ public static class ArmarEscenaTrazo
         control.materialBorrarMano = matBorrarMano;
         caja.dibujo = dibujo;
         caja.materialCaja = matCaja;
+        titere.control = control;
+        control.materialInvisible = matInvisible;
+        var simbolos = goControl.AddComponent<SimbolosMano>();
+        simbolos.materialGoma = matGoma;
+        simbolos.materialFunda = matFunda;
+        simbolos.materialFlecha = matFlecha;
+        simbolos.materialDianaDeshacer = matDianaRoja;
+        simbolos.materialDianaRehacer = matDianaVerde;
+        simbolos.materialBlanco = matBlanco;
+        simbolos.materialCandado = matCandado;
+        simbolos.materialDial = matDial;
+        control.simbolos = simbolos;
 
         // Imágenes de referencia
         var goRef = new GameObject("Referencias");
@@ -142,6 +174,7 @@ public static class ArmarEscenaTrazo
         var referencias = goRef.AddComponent<Referencias>();
         referencias.dibujo = dibujo;
         referencias.materialImagen = matImagen;
+        referencias.materialBoton = matBoton;
         control.referencias = referencias;
 
         // Bocas automáticas (lipsync) + el audio que suena con la animación
@@ -178,6 +211,7 @@ public static class ArmarEscenaTrazo
         arriba.referencias = referencias;
         arriba.grabador = grabador;
         arriba.exportador = exportador;
+        arriba.titere = titere;
         control.panelArriba = arriba;
         var aviso = Texto(raiz.transform, "", new Vector3(0f, 1.4f, 0.6f), new Vector2(0.4f, 0.05f), new Color(0.1f, 0.1f, 0.12f));
         aviso.gameObject.name = "Aviso";
@@ -415,15 +449,16 @@ public static class ArmarEscenaTrazo
         panel.cabezal = cabezal.transform;
 
         // Pestañas
-        string[] pestanas = { "Animar", "Medios", "Bocas", "Zoom: 100", "Fijar aquí" };
+        string[] pestanas = { "Animar", "Medios", "Bocas", "Títere", "Zoom: 100", "Fijar aquí" };
         var p = new BotonTocable[pestanas.Length];
         for (int i = 0; i < pestanas.Length; i++)
-            p[i] = Boton(c, pestanas[i], new Vector3(-0.192f + i * 0.096f, 0.092f, 0f), matBoton, matBotonMarcado);
+            p[i] = Boton(c, pestanas[i], new Vector3(-0.2f + i * 0.08f, 0.092f, 0f), matBoton, matBotonMarcado);
         panel.btnPaginaAnimar = p[0];
         panel.btnPaginaMedios = p[1];
         panel.btnPaginaBocas = p[2];
-        panel.btnZoom = p[3];
-        panel.btnSeguir = p[4];
+        panel.btnPaginaTitere = p[3];
+        panel.btnZoom = p[4];
+        panel.btnSeguir = p[5];
 
         // ----- Página Animar -----
         var animar = Pagina(c, "PaginaAnimar");
@@ -500,6 +535,27 @@ public static class ArmarEscenaTrazo
         panel.btnQuitarAudio = a[4];
         panel.textoBocas = Texto(bocas, "", new Vector3(0f, -0.04f, -0.001f), new Vector2(0.46f, 0.04f), new Color(0.2f, 0.2f, 0.25f));
         Texto(bocas, "Dibuja la boca en su propia capa y elígela · audios propios en Dibujos/Audio", new Vector3(0f, -0.09f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.3f, 0.3f, 0.35f));
+
+        // ----- Página Títere -----
+        var tit = Pagina(c, "PaginaTitere");
+        panel.paginaTitere = tit.gameObject;
+        string[] filaT = { "Muñeco prueba", "Títere", "Grabar" };
+        var t1 = new BotonTocable[3];
+        for (int i = 0; i < 3; i++)
+            t1[i] = BotonAncho(tit, filaT[i], new Vector3(-0.13f + i * 0.13f, 0.05f, 0f), matBoton, matBotonMarcado);
+        panel.btnMuneco = t1[0];
+        panel.btnTitere = t1[1];
+        panel.btnGrabarTitere = t1[2];
+        string[] filaT2 = { "Pierna 1", "Pierna 2", "Cuerpo +/-", "Voltear" };
+        var t2 = new BotonTocable[4];
+        for (int i = 0; i < 4; i++)
+            t2[i] = Boton(tit, filaT2[i], new Vector3(-0.15f + i * 0.1f, 0.012f, 0f), matBoton, matBotonMarcado);
+        panel.btnPierna1 = t2[0];
+        panel.btnPierna2 = t2[1];
+        panel.btnCuerpo = t2[2];
+        panel.btnVoltear = t2[3];
+        panel.textoTitere = Texto(tit, "", new Vector3(0f, -0.035f, -0.001f), new Vector2(0.46f, 0.03f), new Color(0.2f, 0.2f, 0.25f));
+        Texto(tit, "Camina con el índice y el medio derechos · Grabar = una clave por fotograma · pellizco izquierdo = parar", new Vector3(0f, -0.09f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.3f, 0.3f, 0.35f));
         return panel;
     }
 

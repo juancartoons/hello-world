@@ -12,7 +12,11 @@ using UnityEngine;
 //       pellizca un nodo con la derecha y súbela/bájala = grosor solo de ese nodo.
 //  Izquierda PUÑO (pulgar sobre los dedos o al lado) -> borrador: tocar un nodo lo borra;
 //       la línea entera solo se borra si la FROTAS (ida y vuelta) lejos de sus nodos.
-//  Izquierda puño con el PULGAR hacia tu izquierda -> deshacer (la mano destella).
+//  Izquierda puño con el PULGAR hacia tu izquierda -> la mano se vuelve una FLECHA: toca la diana roja = deshacer.
+//  Izquierda puño con el PULGAR hacia tu derecha   -> flecha hacia la derecha: toca la diana verde = rehacer.
+//  Izquierda: DOBLE TOQUE rápido de pulgar + índice -> bloquear / desbloquear el dibujo (candado arriba a la derecha).
+//  Izquierda pulgar + ANULAR y el índice derecho girando en círculos pequeños -> grosor de las líneas nuevas
+//       (a la derecha = más grueso, a la izquierda = más delgado).
 //  Izquierda abierta con el pulgar tocando la base de los dedos -> menú.
 //  LAS DOS manos pellizcando (índice + pulgar) -> escalar, girar (como volante) y mover todo.
 //  Tocar un relleno con el índice derecho -> cambiar su color.
@@ -27,6 +31,9 @@ public class ControlManos : MonoBehaviour
     public CajaTransformar caja;
     public Referencias referencias;
     public PanelArriba panelArriba;
+    public SimbolosMano simbolos;
+    [Tooltip("Material que no dibuja nada (para esconder la mano)")]
+    public Material materialInvisible;
     public Material materialNodo;
     public Material materialNodoActivo;
     public Material materialAsa;
@@ -64,6 +71,9 @@ public class ControlManos : MonoBehaviour
 
     // true mientras otro objeto usa las manos (por ejemplo, al mover el panel de arriba).
     public bool Ocupado { get; set; }
+
+    // Dibujo bloqueado (doble toque izquierdo): no se dibujan líneas por accidente.
+    public bool DibujoBloqueado { get; private set; }
 
     public ManoSeguida Izq { get; } = new ManoSeguida(true);
     public ManoSeguida Der { get; } = new ManoSeguida(false);
@@ -122,8 +132,6 @@ public class ControlManos : MonoBehaviour
     float alturaDerGrosor;
 
     // Borrador, deshacer, rellenos
-    float tiempoDeshacer;
-    bool esperarSoltarDeshacer;
     bool tocandoRelleno;
     float proximoToque;
 
@@ -146,6 +154,34 @@ public class ControlManos : MonoBehaviour
     // Plano 2D: el dedo está lejos del plano (lápiz levantado)
     bool lejosDelPlano;
     float gestoDesde;
+
+    // Mano izquierda: dirección de los dedos (para orientar el borrador)
+    Vector3 dirDedosIzq = Vector3.forward;
+
+    // Flecha y diana (deshacer = -1, rehacer = +1)
+    int flechaModo;
+    int candidatoFlecha;
+    float flechaPoseDesde;
+    float flechaFueraDesde = -1f;
+    Vector3 posDiana;
+    bool dianaArmada;
+    const float largoFlecha = 0.12f;
+    const float distanciaDiana = 0.22f;
+    const float diametroDiana = 0.06f;
+
+    // Doble toque para el candado
+    float toqueInicio = -1f;
+    float toqueUltimoFin = -10f;
+    int toques;
+
+    // Dial de grosor (índice derecho girando)
+    bool dialUsado;
+    bool dialPrevioValido;
+    Vector3 dialCentro;
+    Vector3 dialPrevio;
+    float dialAngulo;
+    float anchoDialInicio;
+    float dialRadio;
 
     // Mover una imagen de referencia con el pellizco derecho
     Transform imagenMovida;
@@ -237,8 +273,9 @@ public class ControlManos : MonoBehaviour
         Der.Actualizar(rig.rightHandAnchor, suavizado, pellizcoEntra, pellizcoSale);
         LeerPoseIzquierda();
 
-        if (Ocupado || ExportadorVideo.Exportando)
+        if (Ocupado || ExportadorVideo.Exportando || Titere.Activo)
         {
+            SalirFlecha();
             // Otro objeto está usando las manos: no se dibuja ni se edita nada.
             if (GestoIzq != Gesto.Ninguno)
                 SalirDeGesto();
@@ -249,9 +286,11 @@ public class ControlManos : MonoBehaviour
             OcultarModoNodos();
             ActualizarCursor();
             ActualizarEtiqueta();
+            ActualizarSimbolos();
             return;
         }
 
+        RevisarCandado();
         ActualizarGestoIzquierdo();
         ActualizarMenu();
 
@@ -275,10 +314,28 @@ public class ControlManos : MonoBehaviour
 
         if (GestoIzq != Gesto.Nodos && GestoIzq != Gesto.Grosor && GestoIzq != Gesto.Borrar)
             OcultarModoNodos();
+        if (GestoIzq != Gesto.Ninguno || menuAbierto)
+            SalirFlecha();
         ActualizarCursor();
         if (finDestelloMano > 0f && Time.time > finDestelloMano)
             RestaurarMano();
         ActualizarEtiqueta();
+        ActualizarSimbolos();
+    }
+
+    // Borrador, candado y dial (la flecha y la diana las maneja RevisarDeshacer).
+    void ActualizarSimbolos()
+    {
+        if (simbolos == null)
+            return;
+        bool borrador = GestoIzq == Gesto.Borrar && poseValida && !Ocupado;
+        Quaternion giroBorrador = Quaternion.identity;
+        if (borrador && dirDedosIzq.sqrMagnitude > 1e-6f && palmaIzq.normal.sqrMagnitude > 1e-6f)
+            giroBorrador = Quaternion.LookRotation(dirDedosIzq, -palmaIzq.normal);
+        simbolos.Borrador(borrador, borrador ? palmaIzq.centro + dirDedosIzq * 0.02f : Vector3.zero, giroBorrador);
+        simbolos.Candado(DibujoBloqueado, Cabeza);
+        bool dial = GestoIzq == Gesto.Grosor && dialUsado && Cabeza != null;
+        simbolos.Dial(dial, dialCentro, Cabeza != null ? Cabeza.position : Vector3.zero, Mathf.Clamp(dialRadio * 2f, 0.02f, 0.08f));
     }
 
     // ---------- Pose de la mano izquierda ----------
@@ -303,6 +360,9 @@ public class ControlManos : MonoBehaviour
         curvaAnular = Vector3.Distance(Izq.anular, palmaIzq.centro) / tam;
         pulgarANudillo = Vector3.Distance(Izq.pulgar, nudilloIndice.position);
         basePulgar = pulgar.position;
+        Vector3 dedos = nudilloMedio.position - muneca.position;
+        if (dedos.sqrMagnitude > 1e-6f)
+            dirDedosIzq = dedos.normalized;
         // La "base de los dedos": una franja desde el nudillo del índice hasta el del meñique,
         // un poco hacia la muñeca. Sirve aunque el pulgar toque un poco más abajo.
         Vector3 a = Vector3.Lerp(nudilloIndice.position, muneca.position, 0.2f);
@@ -481,6 +541,11 @@ public class ControlManos : MonoBehaviour
             factorGlobal = 1f;
             grosorTrazo = null;
             dibujo.EmpezarGrosor();
+            dialUsado = false;
+            dialPrevioValido = false;
+            dialAngulo = 0f;
+            dialCentro = Der.indice;
+            anchoDialInicio = dibujo.AnchoNuevoMundo;
         }
         else if (g == Gesto.Transformar)
         {
@@ -494,7 +559,8 @@ public class ControlManos : MonoBehaviour
             armadoBorrar = false; // no borra lo que ya estaba tocando al cerrar el puño
             posUltimoBorrado = Der.indice;
             froteTrazo = null;
-            PintarMano(Izq, materialBorrarMano, 0f); // mano roja mientras dure el borrador
+            // La mano se esconde y en su lugar aparece un borrador (solo es un símbolo).
+            PintarMano(Izq, materialInvisible != null ? materialInvisible : materialBorrarMano, 0f);
         }
     }
 
@@ -506,12 +572,17 @@ public class ControlManos : MonoBehaviour
             trazoActual = null;
         }
         if (GestoIzq == Gesto.Grosor)
+        {
             dibujo.TerminarGrosor();
+            if (dialUsado)
+                dibujo.Mensaje("Líneas nuevas: " + Mathf.RoundToInt(dibujo.AnchoNuevoMundo * 1000f) + " mm");
+            dialUsado = false;
+        }
         if (GestoIzq == Gesto.Transformar && caja != null)
         {
             caja.Terminar();
             if (referencias != null && referencias.Seleccionada != null)
-                referencias.Guardar();
+                referencias.AlSoltar(referencias.Seleccionada);
         }
         if (GestoIzq == Gesto.Borrar)
         {
@@ -533,6 +604,8 @@ public class ControlManos : MonoBehaviour
     void Dibujar()
     {
         if (!Der.valida)
+            return;
+        if (DibujoBloqueado)
             return;
         Vector3 local = dibujo.transform.InverseTransformPoint(Der.indice);
         if (LapizLevantado(local))
@@ -580,6 +653,8 @@ public class ControlManos : MonoBehaviour
     void Recta()
     {
         if (!Der.valida)
+            return;
+        if (DibujoBloqueado)
             return;
         Vector3 local = dibujo.transform.InverseTransformPoint(Der.indice);
         if (LapizLevantado(local))
@@ -870,13 +945,58 @@ public class ControlManos : MonoBehaviour
                 grosorNodoInicio = t.GrosorDeNodo(i);
                 alturaDerGrosor = Der.PuntoPellizco.y;
             }
-            else if (Izq.valida)
+            else
             {
-                factorGlobal = Mathf.Exp((Izq.pulgar.y - alturaInicialGrosor) * sensibilidadGrosor);
-                dibujo.AplicarFactorGrosor(factorGlobal);
+                bool antes = dialUsado;
+                ActualizarDial();
+                if (dialUsado && !antes && !Mathf.Approximately(factorGlobal, 1f))
+                {
+                    // Empezaste a usar el dial: lo que se movió la mano izquierda no cuenta.
+                    factorGlobal = 1f;
+                    dibujo.AplicarFactorGrosor(1f);
+                }
+                if (!dialUsado && Izq.valida)
+                {
+                    factorGlobal = Mathf.Exp((Izq.pulgar.y - alturaInicialGrosor) * sensibilidadGrosor);
+                    dibujo.AplicarFactorGrosor(factorGlobal);
+                }
             }
         }
         MostrarModoNodos(false, dibujo.Seleccion);
+    }
+
+    // Dial de grosor: el índice derecho gira en un círculo pequeño (como un teléfono de disco).
+    // Hacia la derecha (como el reloj) = más grueso; hacia la izquierda = más delgado. Una vuelta = el doble.
+    void ActualizarDial()
+    {
+        if (!Der.valida || Der.pellizco || Cabeza == null)
+        {
+            dialPrevioValido = false;
+            return;
+        }
+        Vector3 p = Der.indice;
+        dialCentro = Vector3.Lerp(dialCentro, p, 1f - Mathf.Exp(-1f * Time.deltaTime));
+        Vector3 eje = Cabeza.forward;
+        Vector3 r = Vector3.ProjectOnPlane(p - dialCentro, eje);
+        dialRadio = r.magnitude;
+        if (dialRadio < 0.005f || dialRadio > 0.06f)
+        {
+            dialPrevioValido = false;
+            return;
+        }
+        if (dialPrevioValido)
+        {
+            // SignedAngle es negativo cuando gira como el reloj (visto desde tus ojos).
+            float paso = -Vector3.SignedAngle(dialPrevio, r, eje);
+            if (Mathf.Abs(paso) < 45f)
+                dialAngulo += paso;
+            if (!dialUsado && Mathf.Abs(dialAngulo) > 40f)
+                dialUsado = true;
+            if (dialUsado)
+                dibujo.ElegirAnchoPincel(anchoDialInicio * Mathf.Pow(2f, dialAngulo / 360f));
+        }
+        dialPrevio = r;
+        dialPrevioValido = true;
     }
 
     // ---------- Borrador: puño izquierdo + tocar con el índice derecho ----------
@@ -1147,7 +1267,7 @@ public class ControlManos : MonoBehaviour
     }
 
     // Círculo plano (siempre mira hacia ti). Diámetro 1.
-    static Mesh MallaDisco()
+    public static Mesh MallaDisco()
     {
         if (mallaDisco != null)
             return mallaDisco;
@@ -1175,7 +1295,7 @@ public class ControlManos : MonoBehaviour
     }
 
     // Aro (círculo hueco), para las puntas de las líneas.
-    static Mesh MallaAnillo()
+    public static Mesh MallaAnillo()
     {
         if (mallaAnillo != null)
             return mallaAnillo;
@@ -1204,46 +1324,166 @@ public class ControlManos : MonoBehaviour
         return mallaAnillo;
     }
 
-    // ---------- Deshacer: puño izquierdo con el pulgar hacia tu izquierda ----------
+    // ---------- Deshacer y rehacer: la mano se vuelve una flecha y hay que tocar la diana ----------
+    // Puño izquierdo con el pulgar hacia tu izquierda = deshacer (diana roja a tu izquierda).
+    // Puño izquierdo con el pulgar hacia tu derecha = rehacer (diana verde a tu derecha).
+    // Para repetir, retira un poco la flecha y vuelve a tocar la diana.
 
     void RevisarDeshacer()
     {
-        if (!PoseDeshacer())
+        int pose = PoseFlecha(flechaModo);
+        if (flechaModo == 0)
         {
-            tiempoDeshacer = 0f;
-            esperarSoltarDeshacer = false;
+            if (pose == 0)
+            {
+                candidatoFlecha = 0;
+                return;
+            }
+            if (pose != candidatoFlecha)
+            {
+                candidatoFlecha = pose;
+                flechaPoseDesde = Time.time;
+                return;
+            }
+            if (Time.time - flechaPoseDesde < 0.15f)
+                return;
+            flechaModo = pose;
+            posDiana = palmaIzq.centro + LadoHorizontal(pose) * distanciaDiana;
+            dianaArmada = true;
+            flechaFueraDesde = -1f;
+            PintarMano(Izq, materialInvisible != null ? materialInvisible : materialDestelloMano, 0f);
+        }
+        if (pose != flechaModo)
+        {
+            // Si la pose se pierde un momento, la flecha espera un poquito antes de irse.
+            if (flechaFueraDesde < 0f)
+                flechaFueraDesde = Time.time;
+            if (Time.time - flechaFueraDesde > 0.35f)
+                SalirFlecha();
             return;
         }
-        if (esperarSoltarDeshacer)
+        flechaFueraDesde = -1f;
+        Vector3 dir = Izq.pulgar - basePulgar;
+        if (dir.sqrMagnitude < 1e-6f)
             return;
-        tiempoDeshacer += Time.deltaTime;
-        if (tiempoDeshacer < 0.2f)
-            return;
-        esperarSoltarDeshacer = true;
-        if (dibujo.Deshacer())
+        dir.Normalize();
+        Vector3 cola = palmaIzq.centro;
+        Vector3 punta = cola + dir * largoFlecha;
+        float distancia = Vector3.Distance(punta, posDiana);
+        float radio = diametroDiana * 0.5f;
+        if (dianaArmada && distancia < radio + 0.008f)
         {
-            PintarMano(Izq, materialDestelloMano, 0.3f);
-            MostrarEtiqueta("Deshacer");
+            dianaArmada = false;
+            bool rehacer = flechaModo > 0;
+            bool hecho = rehacer ? dibujo.Rehacer() : dibujo.Deshacer();
+            if (hecho)
+                MostrarEtiqueta(rehacer ? "Rehacer" : "Deshacer");
+            if (simbolos != null)
+                simbolos.Acertar(rehacer);
+        }
+        else if (!dianaArmada && distancia > radio + 0.04f)
+        {
+            dianaArmada = true;
+        }
+        if (simbolos != null && Cabeza != null)
+        {
+            simbolos.Flecha(true, cola, dir, largoFlecha);
+            simbolos.Diana(flechaModo > 0, true, posDiana, Cabeza.position, diametroDiana);
+            simbolos.Diana(flechaModo < 0, false, Vector3.zero, Vector3.zero, 0f);
         }
     }
 
-    bool PoseDeshacer()
+    void SalirFlecha()
+    {
+        if (flechaModo == 0 && candidatoFlecha == 0)
+            return;
+        bool estaba = flechaModo != 0;
+        flechaModo = 0;
+        candidatoFlecha = 0;
+        flechaFueraDesde = -1f;
+        if (estaba)
+            RestaurarMano();
+        if (simbolos != null)
+        {
+            simbolos.Flecha(false, Vector3.zero, Vector3.forward, 0f);
+            simbolos.Diana(false, false, Vector3.zero, Vector3.zero, 0f);
+            simbolos.Diana(true, false, Vector3.zero, Vector3.zero, 0f);
+        }
+    }
+
+    // Izquierda (lado = -1) o derecha (+1) de tu cabeza, en horizontal.
+    Vector3 LadoHorizontal(int lado)
+    {
+        Vector3 derecha = Cabeza != null ? Cabeza.right : Vector3.right;
+        derecha.y = 0f;
+        if (derecha.sqrMagnitude < 1e-4f)
+            derecha = Vector3.right;
+        return derecha.normalized * lado;
+    }
+
+    // -1 = pose de deshacer, +1 = pose de rehacer, 0 = ninguna. Ya en una pose, es más tolerante.
+    int PoseFlecha(int actual)
     {
         if (!poseValida || Cabeza == null)
-            return false;
-        // Dedos doblados (no hace falta un puño perfecto).
-        if (curvaIndice > 1.3f || curvaMedio > 1.3f || curvaAnular > 1.3f)
-            return false;
+            return 0;
+        float curva = actual != 0 ? 1.45f : 1.3f;
+        if (curvaIndice > curva || curvaMedio > curva || curvaAnular > curva)
+            return 0;
         // Pulgar bien estirado y lejos del índice (así no se confunde con el puño del borrador).
         Vector3 dir = Izq.pulgar - basePulgar;
-        if (dir.magnitude < 0.05f || pulgarANudillo < 0.07f)
-            return false;
-        Vector3 izquierda = -Cabeza.right;
-        izquierda.y = 0f;
-        if (izquierda.sqrMagnitude < 1e-4f)
-            return false;
-        izquierda.Normalize();
-        return Vector3.Dot(dir.normalized, izquierda) > 0.55f;
+        if (dir.magnitude < 0.045f || pulgarANudillo < (actual != 0 ? 0.06f : 0.07f))
+            return 0;
+        float lado = Vector3.Dot(dir.normalized, LadoHorizontal(1));
+        float minimo = actual != 0 ? 0.35f : 0.55f;
+        if (lado < -minimo && actual != 1)
+            return -1;
+        if (lado > minimo && actual != -1)
+            return 1;
+        return 0;
+    }
+
+    // ---------- Candado: doble toque rápido de pulgar + índice izquierdos ----------
+
+    void RevisarCandado()
+    {
+        if (!Izq.valida)
+            return;
+        if (Izq.empezoPellizco)
+        {
+            toqueInicio = Time.time;
+            if (Time.time - toqueUltimoFin > 0.4f)
+                toques = 0;
+        }
+        if (Izq.soltoPellizco && toqueInicio >= 0f)
+        {
+            float duracion = Time.time - toqueInicio;
+            toqueInicio = -1f;
+            if (duracion < 0.3f)
+            {
+                toques++;
+                toqueUltimoFin = Time.time;
+                if (toques >= 2)
+                {
+                    toques = 0;
+                    AlternarBloqueo();
+                }
+            }
+            else
+            {
+                toques = 0;
+            }
+        }
+    }
+
+    public void AlternarBloqueo()
+    {
+        DibujoBloqueado = !DibujoBloqueado;
+        if (DibujoBloqueado && trazoActual != null)
+        {
+            dibujo.CancelarTrazo(trazoActual);
+            trazoActual = null;
+        }
+        dibujo.Mensaje(DibujoBloqueado ? "Dibujo bloqueado (doble toque para desbloquear)" : "Dibujo desbloqueado");
     }
 
     // La mano cambia de color: un instante (duración > 0) o hasta que se restaure (duración 0).
@@ -1307,7 +1547,8 @@ public class ControlManos : MonoBehaviour
                 SoltarImagen();
                 return;
             }
-            imagenMovida.position = Der.PuntoPellizco + desfaseImagen;
+            if (referencias != null)
+                referencias.MoverA(imagenMovida, Der.PuntoPellizco + desfaseImagen);
             return;
         }
         if (!Der.valida || !Der.empezoPellizco)
@@ -1343,9 +1584,10 @@ public class ControlManos : MonoBehaviour
     {
         if (imagenMovida == null)
             return;
+        var soltada = imagenMovida;
         imagenMovida = null;
         if (referencias != null)
-            referencias.Guardar();
+            referencias.AlSoltar(soltada);
     }
 
     // La línea (o figura rellena) más cercana a la pinza, si está lo bastante cerca.
@@ -1494,11 +1736,17 @@ public class ControlManos : MonoBehaviour
         bool hayLinea = dibujo.Seleccion != null;
         switch (GestoIzq)
         {
-            case Gesto.Dibujar: texto = lejosDelPlano ? "Dibujar (acerca el dedo al plano)" : "Dibujar"; break;
-            case Gesto.Recta: texto = lejosDelPlano ? "Línea recta (acerca el dedo al plano)" : "Línea recta"; break;
+            case Gesto.Dibujar: texto = DibujoBloqueado ? "Bloqueado (doble toque)" : lejosDelPlano ? "Dibujar (acerca el dedo al plano)" : "Dibujar"; break;
+            case Gesto.Recta: texto = DibujoBloqueado ? "Bloqueado (doble toque)" : lejosDelPlano ? "Línea recta (acerca el dedo al plano)" : "Línea recta"; break;
             case Gesto.Nodos: texto = hayLinea ? "Editar nodos (esta línea)" : "Editar nodos"; break;
-            case Gesto.Grosor: texto = hayLinea ? "Grosor (esta línea)" : "Grosor (todo)"; break;
-            case Gesto.Borrar: texto = "Borrar\n(frota la línea para borrarla entera)"; break;
+            case Gesto.Grosor:
+                texto = dialUsado ? "Líneas nuevas: " + Mathf.RoundToInt(dibujo.AnchoNuevoMundo * 1000f) + " mm"
+                      : hayLinea ? "Grosor (esta línea)\ngira el índice = líneas nuevas"
+                      : "Grosor (todo)\ngira el índice = líneas nuevas";
+                if (dialUsado)
+                    sobre = Der;
+                break;
+            case Gesto.Borrar: texto = "Borrar\n(frota la línea para borrarla entera)"; sobre = Der; break;
             case Gesto.Transformar:
                 texto = hayLinea ? "Girar / escalar línea"
                       : referencias != null && referencias.Seleccionada != null ? "Girar / escalar imagen"

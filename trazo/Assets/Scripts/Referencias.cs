@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using TMPro;
 using UnityEngine;
 
 [System.Serializable]
@@ -9,6 +10,10 @@ public class DatosImagen
     public Vector3 posicion;
     public Quaternion rotacion = Quaternion.identity;
     public float escala = 0.4f;
+    public bool pegada;            // pegada al plano 2D (sigue al dibujo)
+    public Vector3 posicionLocal;  // respecto al dibujo, si está pegada
+    public Quaternion rotacionLocal = Quaternion.identity;
+    public float escalaLocal = 0.4f;
 }
 
 [System.Serializable]
@@ -23,12 +28,21 @@ public class DatosReferencias
 //  - Pellizca una imagen con la derecha para moverla (queda seleccionada, con un tono azul).
 //  - Con una imagen seleccionada, pellizca con las dos manos: escalar, girar y mover.
 //  - "Imagen -" quita la imagen seleccionada. Todo queda guardado donde lo dejes.
+//  - En modo Plano (2D): si sueltas una imagen cerca del plano, se PEGA detrás de él como imán
+//    (para calcar). Si mueves, giras o escalas el dibujo, la imagen lo sigue.
+//    Arriba a la derecha de una imagen pegada aparece el botón "Despegar".
 public class Referencias : MonoBehaviour
 {
     public Dibujo dibujo;
     [Tooltip("Material base (URP Unlit) para las imágenes")]
     public Material materialImagen;
     public Color colorSeleccion = new Color(0.7f, 0.82f, 1f);
+    [Tooltip("Material del botón Despegar")]
+    public Material materialBoton;
+    [Tooltip("Qué tan cerca del plano (metros) hay que soltar la imagen para que se pegue")]
+    public float distanciaIman = 0.08f;
+    [Tooltip("Qué tan detrás del plano queda la imagen pegada (metros)")]
+    public float detrasDelPlano = 0.004f;
 
     class Imagen
     {
@@ -37,6 +51,7 @@ public class Referencias : MonoBehaviour
         public Material material;
         public Texture2D textura;
         public float aspecto = 1f;
+        public Transform boton;   // "Despegar" (solo si está pegada)
     }
 
     readonly List<Imagen> imagenes = new List<Imagen>();
@@ -53,6 +68,152 @@ public class Referencias : MonoBehaviour
         if (dibujo == null)
             dibujo = FindFirstObjectByType<Dibujo>();
         CargarEstado();
+    }
+
+    void Update()
+    {
+        // El botón "Despegar" sigue la esquina de arriba a la derecha de cada imagen pegada.
+        foreach (var img in imagenes)
+        {
+            if (img.boton == null || img.raiz == null)
+                continue;
+            bool ver = img.datos.pegada;
+            if (img.boton.gameObject.activeSelf != ver)
+                img.boton.gameObject.SetActive(ver);
+            if (!ver)
+                continue;
+            Vector3 esquina = img.raiz.TransformPoint(new Vector3(img.aspecto * 0.5f, 0.5f, 0f));
+            Vector3 hacia = -img.raiz.forward; // hacia ti
+            img.boton.SetPositionAndRotation(esquina + hacia * 0.01f - img.raiz.right * 0.03f + img.raiz.up * 0.015f, img.raiz.rotation);
+        }
+    }
+
+    Imagen Buscar(Transform raiz)
+    {
+        if (raiz == null)
+            return null;
+        foreach (var img in imagenes)
+            if (img.raiz == raiz)
+                return img;
+        return null;
+    }
+
+    public bool EstaPegada(Transform raiz)
+    {
+        var img = Buscar(raiz);
+        return img != null && img.datos.pegada;
+    }
+
+    // Mover una imagen (con el pellizco). Si está pegada y hay plano, se desliza sobre el plano.
+    public void MoverA(Transform raiz, Vector3 posicion)
+    {
+        var img = Buscar(raiz);
+        if (img == null)
+            return;
+        Vector3 punto, normal;
+        if (img.datos.pegada && dibujo != null && dibujo.PlanoMundo(out punto, out normal))
+        {
+            normal = NormalLejos(normal, posicion);
+            posicion = posicion - normal * Vector3.Dot(posicion - punto, normal) + normal * detrasDelPlano * dibujo.EscalaMundo;
+        }
+        raiz.position = posicion;
+    }
+
+    // Al soltar una imagen (o terminar de girarla/escalarla): si está cerca del plano, se pega.
+    public void AlSoltar(Transform raiz)
+    {
+        var img = Buscar(raiz);
+        if (img == null || dibujo == null)
+            return;
+        Vector3 punto, normal;
+        if (dibujo.PlanoMundo(out punto, out normal))
+        {
+            normal = NormalLejos(normal, raiz.position);
+            float distancia = Mathf.Abs(Vector3.Dot(raiz.position - punto, normal));
+            if (img.datos.pegada || distancia < distanciaIman)
+            {
+                bool nueva = !img.datos.pegada;
+                Pegar(img, punto, normal);
+                if (nueva)
+                    Mensaje("Imagen pegada al plano");
+            }
+        }
+        Guardar();
+    }
+
+    // La normal del plano apuntando lejos de ti (la imagen va detrás del plano).
+    Vector3 NormalLejos(Vector3 normal, Vector3 cerca)
+    {
+        var control = ControlManos.Instancia;
+        if (control != null && control.Cabeza != null && Vector3.Dot(normal, cerca - control.Cabeza.position) < 0f)
+            return -normal;
+        return normal;
+    }
+
+    void Pegar(Imagen img, Vector3 punto, Vector3 normal)
+    {
+        var raiz = img.raiz;
+        Vector3 pos = raiz.position;
+        pos = pos - normal * Vector3.Dot(pos - punto, normal) + normal * detrasDelPlano * dibujo.EscalaMundo;
+        // Mira igual que el plano, conservando su giro dentro del plano.
+        Vector3 arriba = Vector3.ProjectOnPlane(raiz.up, normal);
+        if (arriba.sqrMagnitude < 1e-4f)
+            arriba = Vector3.ProjectOnPlane(Vector3.up, normal);
+        if (arriba.sqrMagnitude < 1e-4f)
+            arriba = Vector3.ProjectOnPlane(Vector3.forward, normal);
+        raiz.SetPositionAndRotation(pos, Quaternion.LookRotation(normal, arriba.normalized));
+        raiz.SetParent(dibujo.transform, true);
+        img.datos.pegada = true;
+        AsegurarBoton(img);
+    }
+
+    void Despegar(Imagen img)
+    {
+        if (img == null || img.raiz == null || !img.datos.pegada)
+            return;
+        img.raiz.SetParent(transform, true);
+        img.datos.pegada = false;
+        if (img.boton != null)
+            img.boton.gameObject.SetActive(false);
+        Guardar();
+        Mensaje("Imagen despegada");
+    }
+
+    // Botón "Despegar" (se toca con el índice derecho).
+    void AsegurarBoton(Imagen img)
+    {
+        if (img.boton != null)
+            return;
+        var contenedor = new GameObject("BotonDespegar").transform;
+        contenedor.SetParent(transform, false);
+        var cubo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        cubo.name = "Boton";
+        cubo.transform.SetParent(contenedor, false);
+        cubo.transform.localScale = new Vector3(0.055f, 0.02f, 0.006f);
+        var r = cubo.GetComponent<Renderer>();
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
+        if (materialBoton != null)
+            r.sharedMaterial = materialBoton;
+        var boton = cubo.AddComponent<BotonTocable>();
+        boton.materialNormal = materialBoton;
+        boton.materialMarcado = materialBoton;
+        var texto = new GameObject("Texto", typeof(RectTransform));
+        texto.transform.SetParent(contenedor, false);
+        texto.transform.localPosition = new Vector3(0f, 0f, -0.0035f);
+        var tmp = texto.AddComponent<TextMeshPro>();
+        tmp.text = "Despegar";
+        tmp.enableAutoSizing = true;
+        tmp.fontSizeMin = 0.01f;
+        tmp.fontSizeMax = 0.2f;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.fontStyle = FontStyles.Bold;
+        tmp.color = Color.black;
+        tmp.rectTransform.sizeDelta = new Vector2(0.05f, 0.016f);
+        boton.etiqueta = tmp;
+        var esta = img;
+        boton.alTocar.AddListener(() => Despegar(esta));
+        img.boton = contenedor;
     }
 
     void Mensaje(string texto)
@@ -142,7 +303,7 @@ public class Referencias : MonoBehaviour
             if (img.raiz == null)
                 continue;
             Vector3 l = img.raiz.InverseTransformPoint(mundo);
-            float z = Mathf.Abs(l.z) * img.raiz.localScale.x;
+            float z = Mathf.Abs(l.z) * img.raiz.lossyScale.x;
             if (Mathf.Abs(l.x) <= img.aspecto * 0.55f && Mathf.Abs(l.y) <= 0.55f && z < 0.03f && z < mejorZ)
             {
                 mejorZ = z;
@@ -200,9 +361,22 @@ public class Referencias : MonoBehaviour
 
         var img = new Imagen { datos = d, textura = tex, aspecto = tex.width / (float)Mathf.Max(1, tex.height) };
         var raiz = new GameObject("Imagen_" + d.archivo);
-        raiz.transform.SetParent(transform, false);
-        raiz.transform.SetPositionAndRotation(d.posicion, d.rotacion);
-        raiz.transform.localScale = Vector3.one * Mathf.Clamp(d.escala, 0.05f, 10f);
+        if (d.pegada && dibujo != null)
+        {
+            // Pegada al plano: su lugar se guarda respecto al dibujo.
+            raiz.transform.SetParent(dibujo.transform, false);
+            var q = d.rotacionLocal;
+            raiz.transform.localPosition = d.posicionLocal;
+            raiz.transform.localRotation = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w > 0.5f ? q : Quaternion.identity;
+            raiz.transform.localScale = Vector3.one * Mathf.Clamp(d.escalaLocal > 0f ? d.escalaLocal : d.escala, 0.001f, 100f);
+        }
+        else
+        {
+            d.pegada = false;
+            raiz.transform.SetParent(transform, false);
+            raiz.transform.SetPositionAndRotation(d.posicion, d.rotacion);
+            raiz.transform.localScale = Vector3.one * Mathf.Clamp(d.escala, 0.05f, 10f);
+        }
         img.raiz = raiz.transform;
 
         var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
@@ -222,6 +396,8 @@ public class Referencias : MonoBehaviour
             Tenir(img, Color.white);
         }
         imagenes.Add(img);
+        if (d.pegada)
+            AsegurarBoton(img);
         return img;
     }
 
@@ -229,6 +405,8 @@ public class Referencias : MonoBehaviour
     {
         if (img.raiz != null)
             Destroy(img.raiz.gameObject);
+        if (img.boton != null)
+            Destroy(img.boton.gameObject);
         if (img.material != null)
             Destroy(img.material);
         if (img.textura != null)
@@ -245,7 +423,10 @@ public class Referencias : MonoBehaviour
                 continue;
             img.datos.posicion = img.raiz.position;
             img.datos.rotacion = img.raiz.rotation;
-            img.datos.escala = img.raiz.localScale.x;
+            img.datos.escala = img.raiz.lossyScale.x;
+            img.datos.posicionLocal = img.raiz.localPosition;
+            img.datos.rotacionLocal = img.raiz.localRotation;
+            img.datos.escalaLocal = img.raiz.localScale.x;
             estado.imagenes.Add(img.datos);
         }
         try

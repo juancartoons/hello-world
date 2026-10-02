@@ -68,6 +68,11 @@ public class DatosDibujo
     public List<PoseBoca> bocas = new List<PoseBoca>();
     public string audio = "";
     public int temblor;
+    public bool pincelElegido;
+    public int titerePierna1;
+    public int titerePierna2;
+    public List<int> titereCuerpo = new List<int>();
+    public bool titereVoltear;
 }
 
 // El dibujo completo: crea las líneas, une, cierra, borra, deshace, guarda y carga.
@@ -86,8 +91,11 @@ public class Dibujo : MonoBehaviour
     public Animacion animacion;
     public Lipsync lipsync;
     public Temblor temblor;
+    public Titere titere;
     [Tooltip("Grosor máximo (en el centro) de las líneas nuevas, en metros")]
     public float anchoPincel = 0.008f;
+    [Tooltip("true = las líneas nuevas usan el grosor elegido con el dial; false = el promedio de las que hay")]
+    public bool pincelElegido;
     [Tooltip("Dibujar sobre un plano (2D) en vez de libre en 3D")]
     public bool plano;
     [Tooltip("Distancia (metros) a la que las puntas se pegan como imán")]
@@ -113,6 +121,8 @@ public class Dibujo : MonoBehaviour
 
     const int maxHistorial = 40;
     readonly List<string> historial = new List<string>();
+    readonly List<string> rehacer = new List<string>();
+    readonly List<string> rehacerRespaldo = new List<string>();
     readonly List<float> anchosInicio = new List<float>();
     float pincelInicio;
 
@@ -139,6 +149,8 @@ public class Dibujo : MonoBehaviour
             temblor = GetComponent<Temblor>();
         if (temblor == null)
             temblor = gameObject.AddComponent<Temblor>();
+        if (titere == null)
+            titere = GetComponent<Titere>();
     }
 
     void Start()
@@ -277,6 +289,8 @@ public class Dibujo : MonoBehaviour
     // aunque hayas agrandado o achicado todo). Si no hay líneas, el del pincel.
     public float AnchoNuevoLocal()
     {
+        if (pincelElegido)
+            return anchoPincel / EscalaMundo;
         float suma = 0f;
         int cuenta = 0;
         foreach (var t in trazos)
@@ -291,6 +305,38 @@ public class Dibujo : MonoBehaviour
 
     public float AnchoNuevoMundo => AnchoNuevoLocal() * EscalaMundo;
 
+    // El dial de grosor: las líneas nuevas salen con este grosor (en metros).
+    public void ElegirAnchoPincel(float mundo)
+    {
+        anchoPincel = Mathf.Clamp(mundo, 0.001f, 0.06f);
+        pincelElegido = true;
+    }
+
+    // Agrega una línea ya hecha (por ejemplo, el muñeco de prueba). Guarda "deshacer" antes de llamarla.
+    public Trazo AgregarTrazo(DatosTrazo d)
+    {
+        AsegurarCapas();
+        if (d.ancho <= 0f)
+            d.ancho = AnchoNuevoLocal();
+        var t = CrearTrazo(d.ancho);
+        t.id = siguienteId++;
+        t.capa = capaActual;
+        t.AplicarPose(d, null, 0f);
+        trazos.Add(t);
+        ActualizarVisibilidad();
+        Avisar();
+        return t;
+    }
+
+    public Trazo BuscarPorId(int id)
+    {
+        if (id <= 0)
+            return null;
+        foreach (var t in trazos)
+            if (t != null && t.id == id)
+                return t;
+        return null;
+    }
     // Termina la línea; si su final toca su inicio se cierra, y si toca otra línea se une a ella.
     public void TerminarTrazo(Trazo t)
     {
@@ -597,6 +643,14 @@ public class Dibujo : MonoBehaviour
         ActualizarGuia();
     }
 
+    // El plano 2D en el mundo (punto y normal, la normal apunta lejos de ti). false si no hay plano.
+    public bool PlanoMundo(out Vector3 punto, out Vector3 normal)
+    {
+        punto = transform.TransformPoint(planoPunto);
+        normal = transform.TransformDirection(planoNormal).normalized;
+        return PlanoActivo;
+    }
+
     public Vector3 ProyectarVectorEnPlano(Vector3 vectorLocal)
     {
         if (!PlanoActivo)
@@ -723,6 +777,10 @@ public class Dibujo : MonoBehaviour
 
     public void GuardarParaDeshacer()
     {
+        // Un cambio nuevo borra lo que se podía rehacer (se guarda por si el cambio se descarta).
+        rehacerRespaldo.Clear();
+        rehacerRespaldo.AddRange(rehacer);
+        rehacer.Clear();
         historial.Add(JsonUtility.ToJson(CrearDatos()));
         if (historial.Count > maxHistorial)
             historial.RemoveAt(0);
@@ -734,6 +792,9 @@ public class Dibujo : MonoBehaviour
     {
         if (historial.Count > 0)
             historial.RemoveAt(historial.Count - 1);
+        if (rehacer.Count == 0 && rehacerRespaldo.Count > 0)
+            rehacer.AddRange(rehacerRespaldo);
+        rehacerRespaldo.Clear();
     }
 
     public bool Deshacer()
@@ -745,10 +806,33 @@ public class Dibujo : MonoBehaviour
         }
         string json = historial[historial.Count - 1];
         historial.RemoveAt(historial.Count - 1);
+        rehacer.Add(JsonUtility.ToJson(CrearDatos()));
+        if (rehacer.Count > maxHistorial)
+            rehacer.RemoveAt(0);
+        rehacerRespaldo.Clear();
         var d = JsonUtility.FromJson<DatosDibujo>(json);
         if (d != null)
             Aplicar(d, false);
         Mensaje("Deshecho");
+        return true;
+    }
+
+    public bool Rehacer()
+    {
+        if (rehacer.Count == 0)
+        {
+            Mensaje("Nada que rehacer");
+            return false;
+        }
+        string json = rehacer[rehacer.Count - 1];
+        rehacer.RemoveAt(rehacer.Count - 1);
+        historial.Add(JsonUtility.ToJson(CrearDatos()));
+        if (historial.Count > maxHistorial)
+            historial.RemoveAt(0);
+        var d = JsonUtility.FromJson<DatosDibujo>(json);
+        if (d != null)
+            Aplicar(d, false);
+        Mensaje("Rehecho");
         return true;
     }
 
@@ -829,8 +913,16 @@ public class Dibujo : MonoBehaviour
             siguienteId = siguienteId,
             fotograma = animacion != null ? animacion.Fotograma : 0,
             fps = animacion != null ? animacion.fotogramasPorSegundo : 12f,
-            temblor = temblor != null ? temblor.nivel : 0
+            temblor = temblor != null ? temblor.nivel : 0,
+            pincelElegido = pincelElegido
         };
+        if (titere != null)
+        {
+            d.titerePierna1 = titere.pierna1;
+            d.titerePierna2 = titere.pierna2;
+            d.titereCuerpo.AddRange(titere.cuerpo);
+            d.titereVoltear = titere.voltear;
+        }
         foreach (var c in capas)
             d.capas.Add(new DatosCapa { nombre = c.nombre, visible = c.visible });
         foreach (var t in trazos)
@@ -897,6 +989,9 @@ public class Dibujo : MonoBehaviour
             lipsync.Restaurar(d.bocas, d.audio, incluirFondo);
         if (temblor != null)
             temblor.nivel = Mathf.Clamp(d.temblor, 0, Temblor.Nombres.Length - 1);
+        pincelElegido = d.pincelElegido;
+        if (titere != null)
+            titere.Restaurar(d.titerePierna1, d.titerePierna2, d.titereCuerpo, d.titereVoltear);
         if (incluirFondo && escenario != null)
             escenario.PonerModo(d.fondo);
         ActualizarVisibilidad();
