@@ -32,6 +32,7 @@ public class ControlManos : MonoBehaviour
     public Referencias referencias;
     public PanelArriba panelArriba;
     public SimbolosMano simbolos;
+    public Figuras figuras;
     [Tooltip("Material que no dibuja nada (para esconder la mano)")]
     public Material materialInvisible;
     public Material materialNodo;
@@ -176,7 +177,7 @@ public class ControlManos : MonoBehaviour
     float finGestoIzq = -10f;
     float finGestoDer = -10f;
     const float largoFlecha = 0.12f;
-    const float distanciaDiana = 0.09f;
+    const float distanciaDiana = 0.012f;
     const float diametroDiana = 0.06f;
 
     // Manos escondidas (cuando se vuelven borrador o flecha)
@@ -202,6 +203,17 @@ public class ControlManos : MonoBehaviour
     // Mover una imagen de referencia con el pellizco derecho
     Transform imagenMovida;
     Vector3 desfaseImagen;
+
+    // Mover una figura 3D con el pellizco derecho
+    Transform figuraMovida;
+    Vector3 desfaseFigura;
+    bool deshacerFiguraPendiente;
+
+    // Gesto de grosor: grosor de las hebras (pellizco derecho en el aire) y suavizar figuras
+    bool ajusteHebra;
+    float hebraInicio;
+    float alturaHebra;
+    float suavizadoInicio;
 
     // Etiqueta sobre la mano
     string etiquetaTemporal;
@@ -239,6 +251,8 @@ public class ControlManos : MonoBehaviour
             referencias = FindFirstObjectByType<Referencias>();
         if (panelArriba == null)
             panelArriba = FindFirstObjectByType<PanelArriba>();
+        if (figuras == null && dibujo != null)
+            figuras = dibujo.figuras != null ? dibujo.figuras : FindFirstObjectByType<Figuras>();
 
         var esfera = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         esfera.name = "Cursor";
@@ -294,6 +308,7 @@ public class ControlManos : MonoBehaviour
                 SalirDeGesto();
             SoltarImagen();
             lineaMovida = null;
+            figuraMovida = null;
             menuAbierto = false;
             esperarSoltarIzq = true;
             OcultarModoNodos();
@@ -311,12 +326,13 @@ public class ControlManos : MonoBehaviour
         {
             case Gesto.Dibujar: Dibujar(); break;
             case Gesto.Recta: Recta(); break;
-            case Gesto.Nodos: EditarNodos(); break;
-            case Gesto.Grosor: CambiarGrosor(); break;
-            case Gesto.Borrar: Borrar(); break;
+            // Con el candado ("modo seguro") no se edita nada: solo se puede mirar y navegar.
+            case Gesto.Nodos: if (!DibujoBloqueado) EditarNodos(); break;
+            case Gesto.Grosor: if (!DibujoBloqueado) CambiarGrosor(); break;
+            case Gesto.Borrar: if (!DibujoBloqueado) Borrar(); break;
             case Gesto.Transformar: if (caja != null) caja.Actualizar(Izq, Der); break;
             default:
-                if (!menuAbierto)
+                if (!menuAbierto && !DibujoBloqueado)
                 {
                     RevisarAgarreLinea();
                     RevisarToqueRelleno();
@@ -326,6 +342,8 @@ public class ControlManos : MonoBehaviour
 
         if (GestoIzq != Gesto.Nodos && GestoIzq != Gesto.Grosor && GestoIzq != Gesto.Borrar)
             OcultarModoNodos();
+        if (GestoIzq != Gesto.Nodos && figuras != null)
+            figuras.OcultarNodos();
         ActualizarFlechas();
         if (Der.soltoPellizco)
             finGestoDer = Time.time;
@@ -541,6 +559,8 @@ public class ControlManos : MonoBehaviour
         GestoIzq = g;
         gestoDesde = Time.time;
         lineaMovida = null;
+        figuraMovida = null;
+        ajusteHebra = false;
         lejosDelPlano = false;
         if (g != Gesto.Transformar)
             SoltarImagen();
@@ -551,7 +571,9 @@ public class ControlManos : MonoBehaviour
             alturaInicialGrosor = Izq.pulgar.y;
             factorGlobal = 1f;
             grosorTrazo = null;
-            dibujo.EmpezarGrosor();
+            suavizadoInicio = figuras != null ? figuras.SuavizadoSeleccionada : 0f;
+            if (!DibujoBloqueado)
+                dibujo.EmpezarGrosor();
             dialUsado = false;
             dialPrevioValido = false;
             dialAngulo = 0f;
@@ -561,9 +583,24 @@ public class ControlManos : MonoBehaviour
         else if (g == Gesto.Transformar)
         {
             Transform imagen = referencias != null ? referencias.Seleccionada : null;
+            Transform figura = figuras != null ? figuras.Seleccionada : null;
             SoltarImagen();
             if (caja != null)
-                caja.Empezar(Izq, Der, dibujo.Seleccion, imagen);
+            {
+                if (DibujoBloqueado)
+                {
+                    caja.Empezar(Izq, Der, null, null); // con candado: solo girar/mover todo para mirar
+                }
+                else if (dibujo.Seleccion == null && figura != null)
+                {
+                    dibujo.GuardarParaDeshacer();
+                    caja.Empezar(Izq, Der, null, figura);
+                }
+                else
+                {
+                    caja.Empezar(Izq, Der, dibujo.Seleccion, imagen);
+                }
+            }
         }
         else if (g == Gesto.Borrar)
         {
@@ -592,7 +629,8 @@ public class ControlManos : MonoBehaviour
         if (GestoIzq == Gesto.Transformar && caja != null)
         {
             caja.Terminar();
-            if (referencias != null && referencias.Seleccionada != null)
+            bool eraFigura = figuras != null && figuras.Seleccionada != null && dibujo.Seleccion == null;
+            if (!eraFigura && referencias != null && referencias.Seleccionada != null)
                 referencias.AlSoltar(referencias.Seleccionada);
         }
         if (GestoIzq == Gesto.Borrar)
@@ -698,6 +736,13 @@ public class ControlManos : MonoBehaviour
 
     void EditarNodos()
     {
+        if (figuras != null && figuras.Seleccionada != null && dibujo.Seleccion == null)
+        {
+            // Una figura elegida: sus puntos se arrastran (y se agregan) como plastilina.
+            figuras.EditarNodos(Der);
+            OcultarModoNodos();
+            return;
+        }
         if (!Der.valida)
         {
             if (arrastre != Objetivo.Nada)
@@ -929,6 +974,23 @@ public class ControlManos : MonoBehaviour
 
     void CambiarGrosor()
     {
+        if (figuras != null && figuras.Seleccionada != null && dibujo.Seleccion == null)
+        {
+            // Figura elegida: subir/bajar la izquierda = suavizar sus esquinas.
+            if (Izq.valida)
+                figuras.PonerSuavizado(suavizadoInicio + (Izq.pulgar.y - alturaInicialGrosor) * 4f);
+            return;
+        }
+        if (ajusteHebra)
+        {
+            // Pellizco derecho en el aire: subir/bajar = hebras más gruesas o más delgadas (todas iguales).
+            if (!Der.valida || !Der.pellizco)
+                ajusteHebra = false;
+            else if (dibujo.temblor != null)
+                dibujo.temblor.PonerGrosorHebra(hebraInicio * Mathf.Exp((Der.PuntoPellizco.y - alturaHebra) * sensibilidadGrosor));
+            MostrarModoNodos(false, dibujo.Seleccion);
+            return;
+        }
         if (grosorTrazo != null)
         {
             if (!Der.valida || !Der.pellizco || grosorIndice >= grosorTrazo.nodos.Count)
@@ -957,6 +1019,19 @@ public class ControlManos : MonoBehaviour
                 grosorIndice = i;
                 grosorNodoInicio = t.GrosorDeNodo(i);
                 alturaDerGrosor = Der.PuntoPellizco.y;
+            }
+            else if (!cerca && Der.valida && Der.empezoPellizco && dibujo.temblor != null)
+            {
+                if (dibujo.temblor.Hebras > 1)
+                {
+                    ajusteHebra = true;
+                    hebraInicio = dibujo.temblor.GrosorHebra;
+                    alturaHebra = Der.PuntoPellizco.y;
+                }
+                else
+                {
+                    dibujo.Mensaje("Primero activa las hebras (página Medios)");
+                }
             }
             else
             {
@@ -1355,21 +1430,13 @@ public class ControlManos : MonoBehaviour
         float dt = Mathf.Max(1e-4f, Time.deltaTime);
         Vector3 dirPulgar = Vector3.zero;
         bool pose = permitido && PoseFlecha(mano, izquierda, e.activa, out dirPulgar);
-        float velocidad = mano.valida ? (mano.pulgar - e.ultimaPos).magnitude / dt : 0f;
         if (mano.valida)
             e.ultimaPos = mano.pulgar;
 
         if (!e.activa)
         {
-            float finGesto = izquierda ? finGestoIzq : finGestoDer;
-            if (!pose || Time.time - finGesto < 0.4f || velocidad > 0.35f)
-            {
-                e.candidatoDesde = -1f;
-                return;
-            }
-            if (e.candidatoDesde < 0f)
-                e.candidatoDesde = Time.time;
-            if (Time.time - e.candidatoDesde < 0.3f)
+            // Aparece en cuanto se reconoce la pose, sin esperar.
+            if (!pose)
                 return;
             // Aparece la flecha y la diana queda fija delante de su punta.
             e.activa = true;
@@ -1408,7 +1475,7 @@ public class ControlManos : MonoBehaviour
         float adelanteDiana = Vector3.Dot(rel, e.dirDiana);
         float aLado = (rel - e.dirDiana * adelanteDiana).magnitude;
         float radio = diametroDiana * 0.5f;
-        if (e.armada && adelanteDiana > -0.01f && aLado < radio + 0.012f)
+        if (e.armada && adelanteDiana > 0f && aLado < radio + 0.012f)
         {
             e.armada = false;
             bool rehacer = !izquierda;
@@ -1418,7 +1485,7 @@ public class ControlManos : MonoBehaviour
             if (simbolos != null)
                 simbolos.Acertar(rehacer);
         }
-        else if (!e.armada && adelanteDiana < -0.04f)
+        else if (!e.armada && adelanteDiana < -0.025f)
         {
             e.armada = true;
         }
@@ -1493,8 +1560,9 @@ public class ControlManos : MonoBehaviour
         Vector3 d = mano.pulgar - basePul.position;
         if (d.magnitude < 0.045f || Vector3.Distance(mano.pulgar, nudillo.position) < (yaActiva ? 0.06f : 0.07f))
             return false;
+        // El pulgar hacia el lado (también en diagonal hacia arriba).
         float lado = Vector3.Dot(d.normalized, LadoHorizontal(izquierda ? -1 : 1));
-        if (lado < (yaActiva ? 0.35f : 0.55f))
+        if (lado < (yaActiva ? 0.15f : 0.3f) || d.normalized.y < -0.6f)
             return false;
         dirPulgar = d.normalized;
         return true;
@@ -1653,6 +1721,24 @@ public class ControlManos : MonoBehaviour
             lineaMovida.Desplazar(baseLinea, delta);
             return;
         }
+        if (figuraMovida != null)
+        {
+            if (!Der.valida || !Der.pellizco)
+            {
+                figuraMovida = null;
+                return;
+            }
+            Vector3 destino = Der.PuntoPellizco + desfaseFigura;
+            if (deshacerFiguraPendiente)
+            {
+                if (Vector3.Distance(destino, figuraMovida.position) < 0.003f)
+                    return;
+                dibujo.GuardarParaDeshacer();
+                deshacerFiguraPendiente = false;
+            }
+            figuraMovida.position = destino;
+            return;
+        }
         if (imagenMovida != null)
         {
             if (!Der.valida || !Der.pellizco)
@@ -1673,6 +1759,19 @@ public class ControlManos : MonoBehaviour
         dibujo.Seleccionar(t);
         if (t == null)
         {
+            // ¿Una figura 3D? Se elige y se mueve.
+            Transform figura = figuras != null ? figuras.BuscarBajo(Der.PuntoPellizco) : null;
+            if (figuras != null)
+                figuras.Seleccionar(figura);
+            if (figura != null)
+            {
+                if (referencias != null)
+                    referencias.Seleccionar(null);
+                figuraMovida = figura;
+                desfaseFigura = figura.position - Der.PuntoPellizco;
+                deshacerFiguraPendiente = true;
+                return;
+            }
             // ¿Una imagen de referencia? Se selecciona y se mueve. En el aire: nada seleccionado.
             Transform imagen = referencias != null ? referencias.BuscarBajo(Der.PuntoPellizco) : null;
             if (referencias != null)
@@ -1686,6 +1785,8 @@ public class ControlManos : MonoBehaviour
         }
         if (referencias != null)
             referencias.Seleccionar(null);
+        if (figuras != null)
+            figuras.Seleccionar(null);
         lineaMovida = t;
         baseLinea.Clear();
         baseLinea.AddRange(t.nodos);
@@ -1851,17 +1952,26 @@ public class ControlManos : MonoBehaviour
         {
             case Gesto.Dibujar: texto = DibujoBloqueado ? "Bloqueado (doble toque)" : lejosDelPlano ? "Dibujar (acerca el dedo al plano)" : "Dibujar"; break;
             case Gesto.Recta: texto = DibujoBloqueado ? "Bloqueado (doble toque)" : lejosDelPlano ? "Línea recta (acerca el dedo al plano)" : "Línea recta"; break;
-            case Gesto.Nodos: texto = hayLinea ? "Editar nodos (esta línea)" : "Editar nodos"; break;
+            case Gesto.Nodos:
+                texto = DibujoBloqueado ? "Bloqueado (doble toque)"
+                      : !hayLinea && figuras != null && figuras.Seleccionada != null ? "Nodos de la figura\n(pellizca la superficie = nodo nuevo)"
+                      : hayLinea ? "Editar nodos (esta línea)" : "Editar nodos";
+                break;
             case Gesto.Grosor:
-                texto = dialUsado ? "Líneas nuevas: " + Mathf.RoundToInt(dibujo.AnchoNuevoMundo * 1000f) + " mm"
+                texto = DibujoBloqueado ? "Bloqueado (doble toque)"
+                      : !hayLinea && figuras != null && figuras.Seleccionada != null ? "Suavizar figura\n(sube o baja la izquierda)"
+                      : ajusteHebra ? "Grosor de las hebras"
+                      : dialUsado ? "Líneas nuevas: " + Mathf.RoundToInt(dibujo.AnchoNuevoMundo * 1000f) + " mm"
                       : hayLinea ? "Grosor (esta línea)\ngira el índice = líneas nuevas"
                       : "Grosor (todo)\ngira el índice = líneas nuevas";
                 if (dialUsado)
                     sobre = Der;
                 break;
-            case Gesto.Borrar: texto = "Borrar\n(frota la línea para borrarla entera)"; sobre = Der; break;
+            case Gesto.Borrar: texto = DibujoBloqueado ? "Bloqueado (doble toque)" : "Borrar\n(frota la línea para borrarla entera)"; sobre = Der; break;
             case Gesto.Transformar:
-                texto = hayLinea ? "Girar / escalar línea"
+                texto = DibujoBloqueado ? "Girar / mirar todo"
+                      : hayLinea ? "Girar / escalar línea"
+                      : figuras != null && figuras.Seleccionada != null ? "Girar / escalar figura"
                       : referencias != null && referencias.Seleccionada != null ? "Girar / escalar imagen"
                       : "Girar / escalar todo";
                 entreManos = true;

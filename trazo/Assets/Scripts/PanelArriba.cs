@@ -47,6 +47,7 @@ public class PanelArriba : MonoBehaviour
     [Header("Medios")]
     public BotonTocable btnGrabar, btnVideoProceso, btnVelocidad, btnVideoAnim, btnImagenMas, btnImagenMenos, btnTemblor;
     public BotonTocable btnHebras, btnGrosorVivo, btnCicloTemblor, btnImagenesVer;
+    public BotonTocable btnSuavidad, btnVelocidadTemblor, btnBoceto, btnUnirPlano;
     public TMP_Text textoMedios;
 
     [Header("Bocas")]
@@ -56,7 +57,7 @@ public class PanelArriba : MonoBehaviour
 
     [Header("Títere")]
     public BotonTocable btnMuneco, btnTitere, btnGrabarTitere, btnPierna1, btnPierna2, btnCuerpo, btnVoltear;
-    public BotonTocable btnPosar, btnCiclo, btnGuardarCiclo, btnBrazo1, btnBrazo2;
+    public BotonTocable btnPosar, btnCiclo, btnGuardarCiclo, btnBrazo1, btnBrazo2, btnPiso;
     public TMP_Text textoTitere;
 
     [Tooltip("Qué tanto hay que mirar hacia arriba para que aparezca (0 a 1)")]
@@ -122,6 +123,7 @@ public class PanelArriba : MonoBehaviour
             Conectar(btnCargar, dibujo.Cargar);
             Conectar(btnBorrarTodo, dibujo.BorrarTodo);
             Conectar(btnSvg, dibujo.ExportarSVG);
+            Conectar(btnUnirPlano, dibujo.AlternarUnirPlano);
             for (int i = 0; i < btnCapas.Length; i++)
             {
                 int capa = i;
@@ -148,6 +150,9 @@ public class PanelArriba : MonoBehaviour
             Conectar(btnHebras, dibujo.temblor.SiguienteHebras);
             Conectar(btnGrosorVivo, dibujo.temblor.AlternarGrosor);
             Conectar(btnCicloTemblor, dibujo.temblor.AlternarCiclo);
+            Conectar(btnSuavidad, dibujo.temblor.SiguienteSuavidad);
+            Conectar(btnVelocidadTemblor, dibujo.temblor.SiguienteVelocidad);
+            Conectar(btnBoceto, dibujo.temblor.SiguienteBoceto);
         }
         if (referencias != null)
         {
@@ -184,6 +189,7 @@ public class PanelArriba : MonoBehaviour
             Conectar(btnGuardarCiclo, titere.GuardarCiclo);
             Conectar(btnBrazo1, () => titere.AsignarBrazo(1));
             Conectar(btnBrazo2, () => titere.AsignarBrazo(2));
+            Conectar(btnPiso, titere.AlternarPiso);
         }
 
         PonerPagina(0);
@@ -601,8 +607,8 @@ public class PanelArriba : MonoBehaviour
             textoTitere.text = titere.Posando
                 ? "Acomoda las piernas con el índice y el medio · pellizco IZQUIERDO = guardar clave"
                 : titere.Encendido
-                ? "Mueve la mano derecha: el muñeco camina · pellizco IZQUIERDO = parar"
-                : "Cuerpo: " + titere.cuerpo.Count + " líneas · tus dibujos: pellizca una línea y toca Pierna, Brazo o Cuerpo";
+                ? "Mano a los lados = caminar/correr · golpe arriba = saltar · choca esos cinco = apagar"
+                : "Choca esos cinco con el muñeco para encenderlo · pisos: " + titere.pisos.Count + " · tus dibujos: pellizca una línea y toca Pierna, Brazo, Cuerpo o Piso";
     }
 
     void RefrescarAnimar()
@@ -646,20 +652,34 @@ public class PanelArriba : MonoBehaviour
             if (btnTemblor != null)
             {
                 btnTemblor.PonerTexto("Temblor: " + tb.NombreNivel);
-                btnTemblor.Marcar(tb.nivel > 0);
+                btnTemblor.Marcar(tb.Nivel > 0);
             }
             if (btnHebras != null)
             {
-                btnHebras.PonerTexto("Hebras: " + tb.hebras);
-                btnHebras.Marcar(tb.hebras > 1);
+                btnHebras.PonerTexto("Hebras: " + tb.Hebras);
+                btnHebras.Marcar(tb.Hebras > 1);
             }
             if (btnGrosorVivo != null)
-                btnGrosorVivo.Marcar(tb.grosorVivo);
+                btnGrosorVivo.Marcar(tb.GrosorVivo);
             if (btnCicloTemblor != null)
             {
-                btnCicloTemblor.PonerTexto(tb.ciclo3 ? "Ciclo de 3" : "Libre");
-                btnCicloTemblor.Marcar(tb.ciclo3);
+                btnCicloTemblor.PonerTexto(tb.Ciclo3 ? "Ciclo de 3" : "Libre");
+                btnCicloTemblor.Marcar(tb.Ciclo3);
             }
+            if (btnSuavidad != null)
+                btnSuavidad.PonerTexto("Suavidad: " + tb.NombreSuavidad);
+            if (btnVelocidadTemblor != null)
+                btnVelocidadTemblor.PonerTexto("Velocidad: " + tb.CambiosPorSegundo);
+            if (btnBoceto != null)
+            {
+                btnBoceto.PonerTexto("Boceto: " + tb.NombreBoceto);
+                btnBoceto.Marcar(tb.Boceto > 0);
+            }
+        }
+        if (btnUnirPlano != null && dibujo != null)
+        {
+            btnUnirPlano.PonerTexto(dibujo.CapaActual.unido ? "Plano: unido" : "Plano: propio");
+            btnUnirPlano.Marcar(dibujo.CapaActual.unido);
         }
         if (btnImagenesVer != null && referencias != null)
         {
@@ -676,7 +696,7 @@ public class PanelArriba : MonoBehaviour
         else if (grabador != null && grabador.muestras.Count > 1)
             texto = "Grabación lista: " + GrabadorProceso.Formato(grabador.Duracion) + " · toca Video proceso";
         else
-            texto = "Grabar = guardar tu proceso con las manos · Imagen + = referencias de Dibujos/Imagenes";
+            texto = dibujo != null ? "Las líneas vivas y el boceto son de la capa activa: " + dibujo.CapaActual.nombre : "";
         textoMedios.text = texto;
     }
 

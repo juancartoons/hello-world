@@ -49,8 +49,31 @@ public class Trazo : MonoBehaviour
     public static bool silenciar;
     public static bool huboCambio;
 
-    // Líneas vivas: cuántas hebras finas forman cada línea (1 = una sola línea normal).
-    public static int hebras = 1;
+    // Líneas vivas (temblor, hebras, grosor vivo): cada capa tiene las suyas. Las da el Dibujo.
+    public struct EstiloVivo
+    {
+        public int hebras;         // 1, 3 o 5 hebras finas por línea
+        public float grosorHebra;  // grosor de cada hebra (veces el de la línea)
+        public Vector4 a;          // amplitud del temblor, separación de hebras, grosor vivo, cambios por segundo
+        public Vector4 b;          // ciclo de 3 (1/0), frecuencia del ruido (suavidad)
+    }
+    public static System.Func<int, EstiloVivo> estiloCapa;
+
+    EstiloVivo Estilo()
+    {
+        EstiloVivo e;
+        if (estiloCapa != null)
+        {
+            e = estiloCapa(capa);
+        }
+        else
+        {
+            e = new EstiloVivo { a = new Vector4(0f, 0f, 0f, 8f), b = new Vector4(1f, 9f, 0f, 0f) };
+        }
+        if (e.hebras < 1) e.hebras = 1;
+        if (e.grosorHebra <= 0f) e.grosorHebra = 1f;
+        return e;
+    }
 
     // Para grabar el proceso: qué líneas cambiaron desde la última muestra.
     public static bool registrarCambios;
@@ -80,6 +103,8 @@ public class Trazo : MonoBehaviour
     static readonly List<Vector3> normales = new List<Vector3>();
     static readonly List<Vector2> uvs = new List<Vector2>();
     static readonly List<Vector2> uvs2 = new List<Vector2>(); // x: número de hebra, y: lugar a lo largo (0 a 1)
+    static readonly List<Vector4> uvs3 = new List<Vector4>(); // estilo vivo (a)
+    static readonly List<Vector4> uvs4 = new List<Vector4>(); // estilo vivo (b)
     static readonly List<int> indices = new List<int>();
     static readonly List<int> restantes = new List<int>();
     static readonly List<Color> colores = new List<Color>();
@@ -575,6 +600,8 @@ public class Trazo : MonoBehaviour
         normales.Clear();
         uvs.Clear();
         uvs2.Clear();
+        uvs3.Clear();
+        uvs4.Clear();
         indices.Clear();
         if (estilo == EstiloLinea.Tubo)
             ConstruirTubo(total);
@@ -587,6 +614,11 @@ public class Trazo : MonoBehaviour
         malla.SetUVs(0, uvs);
         if (uvs2.Count == vertices.Count)
             malla.SetUVs(1, uvs2);
+        if (uvs3.Count == vertices.Count)
+        {
+            malla.SetUVs(2, uvs3);
+            malla.SetUVs(3, uvs4);
+        }
         malla.SetTriangles(indices, 0);
         malla.RecalculateBounds();
         var caja = malla.bounds;
@@ -629,8 +661,9 @@ public class Trazo : MonoBehaviour
     // Con varias hebras, la cinta se repite (más delgada); el shader mueve cada hebra por su lado.
     void ConstruirCinta(float total)
     {
-        int n = Mathf.Max(1, hebras);
-        float delgada = n > 1 ? 0.5f : 1f;
+        var e = Estilo();
+        int n = e.hebras;
+        float delgada = n > 1 ? e.grosorHebra : 1f;
         for (int hebra = 0; hebra < n; hebra++)
         {
             int inicio = vertices.Count;
@@ -640,8 +673,8 @@ public class Trazo : MonoBehaviour
                 Vector3 t = Tangente(i);
                 float h = MedioGrosor(i, total) * delgada;
                 float a = total > 0f ? largos[i] / total : 0f;
-                vertices.Add(p); normales.Add(t); uvs.Add(new Vector2(-h, 0f)); uvs2.Add(new Vector2(hebra, a));
-                vertices.Add(p); normales.Add(t); uvs.Add(new Vector2(h, 0f)); uvs2.Add(new Vector2(hebra, a));
+                vertices.Add(p); normales.Add(t); uvs.Add(new Vector2(-h, 0f)); uvs2.Add(new Vector2(hebra, a)); uvs3.Add(e.a); uvs4.Add(e.b);
+                vertices.Add(p); normales.Add(t); uvs.Add(new Vector2(h, 0f)); uvs2.Add(new Vector2(hebra, a)); uvs3.Add(e.a); uvs4.Add(e.b);
                 if (i > 0)
                 {
                     int b = inicio + (i - 1) * 2;
@@ -733,12 +766,21 @@ public class Trazo : MonoBehaviour
         vertices.AddRange(poli3D);
         Triangular(poli2D, indices, vertices);
         Color c = Paleta[Mathf.Abs(colorRelleno) % Paleta.Length];
+        var estiloVivo = Estilo();
+        uvs3.Clear();
+        uvs4.Clear();
         for (int i = 0; i < vertices.Count; i++)
+        {
             colores.Add(c);
+            uvs3.Add(estiloVivo.a);
+            uvs4.Add(estiloVivo.b);
+        }
 
         mallaRelleno.Clear();
         mallaRelleno.SetVertices(vertices);
         mallaRelleno.SetColors(colores);
+        mallaRelleno.SetUVs(2, uvs3);
+        mallaRelleno.SetUVs(3, uvs4);
         mallaRelleno.SetTriangles(indices, 0);
         mallaRelleno.RecalculateBounds();
     }

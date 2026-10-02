@@ -26,6 +26,25 @@ public class DatosCapa
 {
     public string nombre = "Capa";
     public bool visible = true;
+    // Líneas vivas de esta capa
+    public int temblor;              // 0 No, 1 Suave, 2 Medio, 3 Fuerte
+    public int hebras = 1;           // 1, 3 o 5
+    public float grosorHebra = 0.5f; // grosor de cada hebra (veces el de la línea)
+    public bool grosorVivo;
+    public bool ciclo3 = true;
+    public int suavidad = 1;         // 0 Suave, 1 Normal, 2 Nervioso
+    public int velocidad = 1;        // índice en Dibujo.Velocidades
+    public int boceto;               // 0 no, 1 lápiz gris, 2 azul (no sale en fotos ni videos)
+    // Plano 2D de esta capa
+    public bool hayPlano;
+    public Vector3 planoPunto;
+    public Vector3 planoNormal = Vector3.forward;
+    public bool unido;               // unido con los planos de las otras capas unidas
+
+    public DatosCapa Copia()
+    {
+        return (DatosCapa)MemberwiseClone();
+    }
 }
 
 // Una forma de boca de la biblioteca (para el lipsync): la forma de las líneas de la boca.
@@ -48,7 +67,7 @@ public class Clave
 [System.Serializable]
 public class DatosDibujo
 {
-    public int version = 3;
+    public int version = 4;
     public List<DatosTrazo> trazos = new List<DatosTrazo>();
     public int fondo;
     public float anchoPincel = 0.008f;
@@ -67,6 +86,7 @@ public class DatosDibujo
     public float fps = 12f;
     public List<PoseBoca> bocas = new List<PoseBoca>();
     public string audio = "";
+    public List<DatosFigura> figuras = new List<DatosFigura>();
     public int temblor;
     public bool pincelElegido;
     public int titerePierna1;
@@ -77,6 +97,7 @@ public class DatosDibujo
     public int titereBrazo2;
     public int titereCabeza;
     public int titereCiclo;
+    public List<int> titerePisos = new List<int>();
     public int temblorHebras = 1;
     public bool temblorGrosor;
     public bool temblorCiclo = true;
@@ -95,6 +116,11 @@ public class Dibujo : MonoBehaviour
     public Material materialSeleccion;
     [Tooltip("Rojo del borrador")]
     public Material materialBorrado;
+    [Tooltip("Líneas de una capa de boceto: gris lápiz")]
+    public Material materialBocetoGris;
+    [Tooltip("Líneas de una capa de boceto: azul")]
+    public Material materialBocetoAzul;
+    public Figuras figuras;
     public Animacion animacion;
     public Lipsync lipsync;
     public Temblor temblor;
@@ -145,6 +171,14 @@ public class Dibujo : MonoBehaviour
     public float EscalaMundo => Mathf.Max(0.0001f, transform.lossyScale.x);
     public float RadioImanLocal => radioIman / EscalaMundo;
     public bool PlanoActivo => plano && HayPlano;
+
+    // Opciones de las líneas vivas (por capa).
+    public static readonly float[] AmplitudesTemblor = { 0f, 0.0015f, 0.003f, 0.006f };
+    public static readonly float[] Frecuencias = { 5f, 9f, 16f };
+    public static readonly string[] NombresSuavidad = { "Suave", "Normal", "Nervioso" };
+    public static readonly float[] Velocidades = { 4f, 8f, 12f, 24f };
+    public const float SeparacionHebras = 1.2f;
+    public const float SeparacionPlanos = 0.002f; // metros entre planos unidos
     bool AnimacionActiva => animacion != null && animacion.Activa;
 
     void Awake()
@@ -152,12 +186,15 @@ public class Dibujo : MonoBehaviour
         AsegurarCapas();
         if (animacion == null)
             animacion = GetComponent<Animacion>();
+        Trazo.estiloCapa = EstiloDe;
         if (temblor == null)
             temblor = GetComponent<Temblor>();
         if (temblor == null)
             temblor = gameObject.AddComponent<Temblor>();
         if (titere == null)
             titere = GetComponent<Titere>();
+        if (figuras == null)
+            figuras = GetComponent<Figuras>();
     }
 
     void Start()
@@ -210,6 +247,83 @@ public class Dibujo : MonoBehaviour
         capaActual = Mathf.Clamp(capaActual, 0, capas.Count - 1);
     }
 
+    public DatosCapa DatosDeCapa(int capa)
+    {
+        AsegurarCapas();
+        return capas[Mathf.Clamp(capa, 0, capas.Count - 1)];
+    }
+
+    public DatosCapa CapaActual => DatosDeCapa(capaActual);
+
+    public bool EsBoceto(int capa)
+    {
+        return capa >= 0 && capa < capas.Count && capas[capa].boceto > 0;
+    }
+
+    // Cómo se ven las líneas vivas de una capa (lo usa Trazo al armar su malla).
+    public Trazo.EstiloVivo EstiloDe(int capa)
+    {
+        var c = DatosDeCapa(capa);
+        var e = new Trazo.EstiloVivo();
+        e.hebras = Mathf.Clamp(c.hebras, 1, 5);
+        e.grosorHebra = e.hebras > 1 ? Mathf.Clamp(c.grosorHebra, 0.15f, 1f) : 1f;
+        e.a = new Vector4(
+            AmplitudesTemblor[Mathf.Clamp(c.temblor, 0, AmplitudesTemblor.Length - 1)],
+            e.hebras > 1 ? SeparacionHebras : 0f,
+            c.grosorVivo ? 1f : 0f,
+            Velocidades[Mathf.Clamp(c.velocidad, 0, Velocidades.Length - 1)]);
+        e.b = new Vector4(c.ciclo3 ? 1f : 0f, Frecuencias[Mathf.Clamp(c.suavidad, 0, Frecuencias.Length - 1)], 0f, 0f);
+        return e;
+    }
+
+    // Material de la línea según su capa (boceto gris o azul, o tinta normal).
+    public Material MaterialDe(Trazo t)
+    {
+        return t != null ? MaterialCapa(t.capa, materialLinea) : materialLinea;
+    }
+
+    public Material MaterialCapa(int capa, Material normal)
+    {
+        if (capa >= 0 && capa < capas.Count)
+        {
+            int b = capas[capa].boceto;
+            if (b == 1 && materialBocetoGris != null) return materialBocetoGris;
+            if (b == 2 && materialBocetoAzul != null) return materialBocetoAzul;
+        }
+        return normal;
+    }
+
+    // Capa de Unity (lo que ven las fotos y videos) y color de la línea según su capa.
+    public void AplicarCapaVisual(Trazo t)
+    {
+        if (t == null)
+            return;
+        int capaUnity = EsBoceto(t.capa) ? 0 : gameObject.layer;
+        if (t.gameObject.layer != capaUnity)
+            foreach (var hijo in t.GetComponentsInChildren<Transform>(true))
+                hijo.gameObject.layer = capaUnity;
+        t.PonerMaterialLinea(t == seleccion && materialSeleccion != null ? materialSeleccion : MaterialDe(t));
+    }
+
+    // Vuelve a armar las líneas (y figuras) de una capa después de cambiar su estilo.
+    public void RefrescarCapa(int capa)
+    {
+        bool antes = Trazo.silenciar;
+        Trazo.silenciar = true;
+        foreach (var t in trazos)
+        {
+            if (t == null || t.capa != capa)
+                continue;
+            AplicarCapaVisual(t);
+            t.Reconstruir(false);
+        }
+        Trazo.silenciar = antes;
+        Trazo.huboCambio = false;
+        if (figuras != null)
+            figuras.RefrescarCapa(capa);
+        Avisar();
+    }
+
     public bool CapaVisible(int capa)
     {
         return capa < 0 || capa >= capas.Count || capas[capa].visible;
@@ -224,6 +338,8 @@ public class Dibujo : MonoBehaviour
             capas[capaActual].visible = true;
             ActualizarVisibilidad();
         }
+        RefrescarPlano();
+        ActualizarGuia();
         Avisar();
         Mensaje("Dibujas en " + capas[capaActual].nombre);
     }
@@ -267,9 +383,10 @@ public class Dibujo : MonoBehaviour
     {
         if (seleccion == t)
             return;
-        if (seleccion != null)
-            seleccion.PonerMaterialLinea(materialLinea);
+        var anterior = seleccion;
         seleccion = t;
+        if (anterior != null)
+            anterior.PonerMaterialLinea(MaterialDe(anterior));
         if (seleccion != null)
             seleccion.PonerMaterialLinea(materialSeleccion != null ? materialSeleccion : materialLinea);
     }
@@ -288,6 +405,7 @@ public class Dibujo : MonoBehaviour
         var t = CrearTrazo(AnchoNuevoLocal());
         t.id = siguienteId++;
         t.capa = capaActual;
+        AplicarCapaVisual(t);
         trazos.Add(t);
         return t;
     }
@@ -328,6 +446,7 @@ public class Dibujo : MonoBehaviour
         var t = CrearTrazo(d.ancho);
         t.id = siguienteId++;
         t.capa = capaActual;
+        AplicarCapaVisual(t);
         t.AplicarPose(d, null, 0f);
         trazos.Add(t);
         ActualizarVisibilidad();
@@ -446,7 +565,7 @@ public class Dibujo : MonoBehaviour
     public void RestaurarMaterial(Trazo t)
     {
         if (t != null)
-            t.PonerMaterialLinea(t == seleccion && materialSeleccion != null ? materialSeleccion : materialLinea);
+            t.PonerMaterialLinea(t == seleccion && materialSeleccion != null ? materialSeleccion : MaterialDe(t));
     }
 
     public void BorrarTrazo(Trazo t, bool conDestello)
@@ -632,7 +751,9 @@ public class Dibujo : MonoBehaviour
     public void AlternarPlano()
     {
         plano = !plano;
-        HayPlano = false;
+        // El plano de esta capa se vuelve a definir con la próxima línea.
+        CapaActual.hayPlano = false;
+        RefrescarPlano();
         ActualizarGuia();
         Avisar();
         Mensaje(plano ? "Plano: tu próxima línea define el plano" : "Dibujo libre en 3D");
@@ -644,10 +765,48 @@ public class Dibujo : MonoBehaviour
         adelanteMundo.y = 0f;
         if (adelanteMundo.sqrMagnitude < 1e-4f)
             adelanteMundo = Vector3.forward;
-        planoPunto = local;
-        planoNormal = transform.InverseTransformDirection(adelanteMundo.normalized).normalized;
-        HayPlano = true;
+        var c = CapaActual;
+        c.planoPunto = local;
+        c.planoNormal = transform.InverseTransformDirection(adelanteMundo.normalized).normalized;
+        c.hayPlano = true;
+        RefrescarPlano();
         ActualizarGuia();
+    }
+
+    // El plano de la capa actual. Si la capa está "unida", usa el plano del grupo
+    // (cada capa unida queda 2 mm más cerca de ti que la anterior: boceto atrás, tinta adelante).
+    void RefrescarPlano()
+    {
+        AsegurarCapas();
+        var c = capas[capaActual];
+        if (c.unido)
+        {
+            for (int i = 0; i < capas.Count; i++)
+            {
+                var b = capas[i];
+                if (!b.unido || !b.hayPlano || b.planoNormal.sqrMagnitude < 1e-6f)
+                    continue;
+                Vector3 n = b.planoNormal.normalized;
+                planoNormal = n;
+                planoPunto = b.planoPunto - n * (SeparacionPlanos / EscalaMundo) * (capaActual - i);
+                HayPlano = true;
+                return;
+            }
+        }
+        HayPlano = c.hayPlano && c.planoNormal.sqrMagnitude > 1e-6f;
+        planoPunto = c.planoPunto;
+        planoNormal = HayPlano ? c.planoNormal.normalized : Vector3.forward;
+    }
+
+    // Une (o separa) el plano de la capa actual con los de las otras capas unidas.
+    public void AlternarUnirPlano()
+    {
+        var c = CapaActual;
+        c.unido = !c.unido;
+        RefrescarPlano();
+        ActualizarGuia();
+        Avisar();
+        Mensaje(c.unido ? c.nombre + ": plano unido" : c.nombre + ": plano propio");
     }
 
     // El plano 2D en el mundo (punto y normal, la normal apunta lejos de ti). false si no hay plano.
@@ -857,7 +1016,11 @@ public class Dibujo : MonoBehaviour
         transform.localPosition = Vector3.zero;
         transform.localRotation = Quaternion.identity;
         transform.localScale = Vector3.one;
-        HayPlano = false;
+        foreach (var c in capas)
+            c.hayPlano = false;
+        if (figuras != null)
+            figuras.QuitarTodas();
+        RefrescarPlano();
         ActualizarGuia();
         Trazo.huboCambio = false;
         Avisar();
@@ -920,19 +1083,14 @@ public class Dibujo : MonoBehaviour
             siguienteId = siguienteId,
             fotograma = animacion != null ? animacion.Fotograma : 0,
             fps = animacion != null ? animacion.fotogramasPorSegundo : 12f,
-            temblor = temblor != null ? temblor.nivel : 0,
             pincelElegido = pincelElegido
         };
         if (titere != null)
             titere.GuardarEn(d);
-        if (temblor != null)
-        {
-            d.temblorHebras = temblor.hebras;
-            d.temblorGrosor = temblor.grosorVivo;
-            d.temblorCiclo = temblor.ciclo3;
-        }
         foreach (var c in capas)
-            d.capas.Add(new DatosCapa { nombre = c.nombre, visible = c.visible });
+            d.capas.Add(c.Copia());
+        if (figuras != null)
+            figuras.GuardarEn(d);
         foreach (var t in trazos)
             if (t != null && t.nodos.Count >= 2)
                 d.trazos.Add(t.CrearDatos());
@@ -957,17 +1115,32 @@ public class Dibujo : MonoBehaviour
         transform.localRotation = rotacionValida ? q : Quaternion.identity;
         transform.localScale = Vector3.one * (d.escala > 0f ? d.escala : 1f);
         plano = d.plano;
-        HayPlano = d.hayPlano && d.planoNormal.sqrMagnitude > 1e-6f;
-        planoPunto = d.planoPunto;
-        planoNormal = HayPlano ? d.planoNormal.normalized : Vector3.forward;
 
         capas.Clear();
         if (d.capas != null)
             foreach (var c in d.capas)
                 if (c != null)
-                    capas.Add(new DatosCapa { nombre = c.nombre, visible = c.visible });
+                    capas.Add(c.Copia());
         AsegurarCapas();
         capaActual = Mathf.Clamp(d.capaActual, 0, capas.Count - 1);
+        if (d.version < 4)
+        {
+            // Dibujos viejos: el plano y las líneas vivas eran de todo el dibujo.
+            foreach (var c in capas)
+            {
+                c.temblor = d.temblor;
+                c.hebras = Mathf.Max(1, d.temblorHebras);
+                c.grosorVivo = d.temblorGrosor;
+                c.ciclo3 = d.temblorCiclo;
+            }
+            if (d.hayPlano && d.planoNormal.sqrMagnitude > 1e-6f)
+            {
+                capas[capaActual].hayPlano = true;
+                capas[capaActual].planoPunto = d.planoPunto;
+                capas[capaActual].planoNormal = d.planoNormal.normalized;
+            }
+        }
+        RefrescarPlano();
 
         siguienteId = Mathf.Max(1, d.siguienteId);
         if (d.trazos != null)
@@ -979,6 +1152,7 @@ public class Dibujo : MonoBehaviour
                 var t = CrearTrazo(dt.ancho > 0f ? dt.ancho : 0.008f);
                 t.id = dt.id > 0 ? dt.id : siguienteId++;
                 t.capa = Mathf.Clamp(dt.capa, 0, capas.Count - 1);
+                AplicarCapaVisual(t);
                 siguienteId = Mathf.Max(siguienteId, t.id + 1);
                 t.AplicarPose(dt, null, 0f);
                 trazos.Add(t);
@@ -995,13 +1169,8 @@ public class Dibujo : MonoBehaviour
         Trazo.huboCambio = false;
         if (lipsync != null)
             lipsync.Restaurar(d.bocas, d.audio, incluirFondo);
-        if (temblor != null)
-        {
-            temblor.nivel = Mathf.Clamp(d.temblor, 0, Temblor.Nombres.Length - 1);
-            temblor.grosorVivo = d.temblorGrosor;
-            temblor.ciclo3 = d.temblorCiclo;
-            temblor.PonerHebras(d.temblorHebras);
-        }
+        if (figuras != null)
+            figuras.Restaurar(d);
         pincelElegido = d.pincelElegido;
         if (titere != null)
             titere.Restaurar(d);
@@ -1106,7 +1275,11 @@ public class Dibujo : MonoBehaviour
         Quaternion rotacion;
         float campoVision;
         EncuadreExportar(1.15f, out posicion, out rotacion, out campoVision);
+        if (figuras != null)
+            figuras.PonerVista(posicion);
         byte[] png = Exportar.Foto(posicion, rotacion, campoVision, 2560, 1440, Color.white, MascaraExportar);
+        if (figuras != null)
+            figuras.PonerVista(null);
         if (png == null)
         {
             Mensaje("No se pudo tomar la foto");

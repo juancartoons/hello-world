@@ -1,13 +1,12 @@
 #ifndef TRAZO_TEMBLOR_INCLUDED
 #define TRAZO_TEMBLOR_INCLUDED
 
-// Temblor de líneas ("line boil"): cada punto se mueve un poquito con un ruido suave
-// que cambia de forma unas 10 veces por segundo, como un dibujo animado a mano.
-// Los valores los pone Temblor.cs para todos los materiales a la vez (propiedades globales).
-float _TrazoTemblor;      // cuánto se mueve (metros). 0 = apagado
-float _TrazoTemblorFase;  // cambia de número en cada "dibujo" nuevo
-float _TrazoHebras;       // cuánto se separan las hebras (veces el grosor). 0 = juntas
-float _TrazoGrosorVivo;   // 0 = grosor normal; 1 = el grosor cambia a lo largo de la línea
+// Líneas vivas ("line boil"), como un dibujo animado a mano. Cada capa tiene su estilo,
+// que viene en cada vértice:
+//   a = (amplitud del temblor en metros, separación de hebras, grosor vivo 0/1, cambios por segundo)
+//   b = (ciclo de 3 dibujos 0/1, frecuencia del ruido = suavidad)
+// El tiempo lo pone Temblor.cs (los videos ponen el tiempo de cada cuadro).
+float _TrazoTiempo;
 
 float TrazoHash(float3 p)
 {
@@ -39,33 +38,48 @@ float3 TrazoRuido3(float3 p)
     return float3(TrazoRuido(p), TrazoRuido(p + 31.4), TrazoRuido(p + 67.2)) * 2.0 - 1.0;
 }
 
-// La línea y su relleno usan la misma función, así se mueven juntos.
-float3 TrazoTemblar(float3 posWS)
+// Número del "dibujo" actual: 0, 1, 2 (ciclo de 3) o siempre distinto. Sin temblor, no cambia.
+float TrazoFase(float4 a, float4 b)
 {
-    if (_TrazoTemblor <= 0.0)
-        return posWS;
-    float3 p = posWS * 9.0 + _TrazoTemblorFase * float3(17.31, 5.73, 11.97);
-    return posWS + TrazoRuido3(p) * _TrazoTemblor;
+    if (a.x <= 0.0 || a.w <= 0.0)
+        return 0.0;
+    float paso = floor(_TrazoTiempo * a.w);
+    return b.x > 0.5 ? fmod(paso, 3.0) : fmod(paso, 1000.0);
 }
 
-// Cada hebra (menos la 0) se aparta un poquito por su cuenta; más en las puntas de la línea.
-// medio: medio grosor de la línea en ese punto (metros); a: lugar a lo largo de la línea (0 a 1).
-float3 TrazoHebra(float3 posWS, float hebra, float a, float medio)
+float TrazoFrecuencia(float4 b)
 {
-    if (hebra < 0.5 || _TrazoHebras <= 0.0)
+    return b.y > 0.0 ? b.y : 9.0;
+}
+
+// La línea y su relleno usan la misma función, así se mueven juntos.
+float3 TrazoTemblar(float3 posWS, float4 a, float4 b, float fase)
+{
+    if (a.x <= 0.0)
+        return posWS;
+    float3 p = posWS * TrazoFrecuencia(b) + fase * float3(17.31, 5.73, 11.97);
+    return posWS + TrazoRuido3(p) * a.x;
+}
+
+// Cada hebra (menos la 0) se aparta un poquito por su cuenta. En las PUNTAS de la línea
+// todas se juntan en una sola (como un mechón de pelo con gel).
+// medio: medio grosor de la línea en ese punto (metros); t: lugar a lo largo de la línea (0 a 1).
+float3 TrazoHebra(float3 posWS, float hebra, float t, float medio, float4 a, float4 b, float fase)
+{
+    if (hebra < 0.5 || a.y <= 0.0)
         return float3(0, 0, 0);
-    float puntas = 1.0 + 1.5 * (1.0 - sin(3.14159 * saturate(a)));
-    float3 p = posWS * 14.0 + hebra * float3(13.7, 7.1, 3.3) + _TrazoTemblorFase * float3(3.1, 9.7, 5.3);
-    return TrazoRuido3(p) * _TrazoHebras * max(medio, 0.0015) * puntas;
+    float juntas = saturate(sin(3.14159 * saturate(t)) * 1.6);
+    float3 p = posWS * (TrazoFrecuencia(b) * 1.55) + hebra * float3(13.7, 7.1, 3.3) + fase * float3(3.1, 9.7, 5.3);
+    return TrazoRuido3(p) * a.y * max(medio, 0.0015) * juntas;
 }
 
 // El grosor sube y baja a lo largo de la línea (como la presión de un pincel) y cambia con el temblor.
-float TrazoGrosorVivo(float3 posWS, float hebra)
+float TrazoGrosorVivo(float3 posWS, float hebra, float4 a, float4 b, float fase)
 {
-    if (_TrazoGrosorVivo <= 0.0)
+    if (a.z <= 0.0)
         return 1.0;
-    float n = TrazoRuido(posWS * 16.0 + hebra * 5.1 + _TrazoTemblorFase * 7.7);
-    return lerp(1.0, 0.35 + 1.3 * n, _TrazoGrosorVivo);
+    float n = TrazoRuido(posWS * (TrazoFrecuencia(b) * 1.8) + hebra * 5.1 + fase * 7.7);
+    return lerp(1.0, 0.35 + 1.3 * n, a.z);
 }
 
 #endif

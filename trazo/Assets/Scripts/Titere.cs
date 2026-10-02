@@ -29,12 +29,15 @@ public class BibliotecaCiclos
     public List<CicloCaminado> ciclos = new List<CicloCaminado>();
 }
 
-// Títere que camina solo.
-//  - "Muñeco prueba": pone frente a ti un muñeco listo (piernas, brazos, torso y cabeza).
-//  - "Títere": pon la mano DERECHA frente a ti 1 segundo. Luego muévela: el muñeco va donde la llevas
-//    y camina solo (ciclo de caminado con piernas, brazos y cabeza). Si mueves la mano hacia atrás, se voltea.
-//    Pellizco IZQUIERDO = apagar.
-//  - "Grabar": cuenta 3 segundos y guarda una clave por fotograma. Pellizco IZQUIERDO = parar.
+// Títere que camina, corre y salta solo.
+//  - "Muñeco prueba": pone frente a ti un muñeco listo (piernas, brazos, torso, cabeza) parado sobre un piso.
+//  - ENCENDER / APAGAR: "choca esos cinco" con el muñeco: mano DERECHA abierta, palma hacia él,
+//    un empujón rápido cerca de él. (El botón "Títere" también sirve.)
+//  - Encendido: mueve la mano derecha a los lados: el muñeco va donde la llevas. Lento = camina, rápido = corre.
+//    Si la llevas hacia atrás, se voltea. Un golpe rápido de la mano HACIA ARRIBA = salta
+//    (se agacha, se estira, cae por la gravedad, se aplasta al caer y rebota).
+//  - Pisos: pellizca una línea y toca "Piso +/-": el muñeco camina sobre ella (sube rampas, cae si se acaba).
+//  - "Grabar": cuenta 3 segundos y guarda una clave por fotograma. "Choca esos cinco" (o "Parar") = terminar.
 //  - "Ciclo": elige el caminado: "Manual" (hecho por la app) o los tuyos.
 //  - "Guardar ciclo": anima un paso con claves (la última pose igual a la primera) y guárdalo como ciclo propio.
 //  - "Posar dedos": el índice y el medio derechos acomodan las piernas (sin prisa); pellizco IZQUIERDO = guardar
@@ -53,6 +56,7 @@ public class Titere : MonoBehaviour
     public int brazo2;
     public int cabeza;
     public List<int> cuerpo = new List<int>();
+    public List<int> pisos = new List<int>();
     public bool voltear;
     public int ciclo; // 0 = Manual; 1.. = ciclos guardados
 
@@ -74,6 +78,19 @@ public class Titere : MonoBehaviour
         { 0.625f, -12f, 45f, -55f }, // se levanta
         { 0.750f,  10f, 70f, -35f }, // pasa por debajo
         { 0.875f,  30f, 35f,  -5f }, // va hacia adelante
+    };
+
+    // Tabla de la carrera (piernas más dobladas y un momento en el aire).
+    static readonly float[,] TablaCorrer =
+    {
+        { 0.000f,  35f,  10f,  15f },
+        { 0.125f,  20f,  35f,   0f },
+        { 0.250f,  -5f,  25f, -10f },
+        { 0.375f, -30f,  30f, -40f },
+        { 0.500f, -35f,  60f, -50f },
+        { 0.625f, -10f, 110f, -40f },
+        { 0.750f,  25f, 100f, -20f },
+        { 0.875f,  45f,  45f,   5f },
     };
 
     static readonly string[][][] Dedos =
@@ -112,6 +129,25 @@ public class Titere : MonoBehaviour
     float peso;
     int mirando = 1;
     Vector3 raizOffset;
+    float correr;              // 0 = camina, 1 = corre
+    float ultimaMunecaValida = -10f;
+    float velocidadVertical;   // de la mano (m/s), para saltar
+
+    // Piso y salto
+    enum Salto { Suelo, Anticipa, Aire }
+    Salto salto = Salto.Suelo;
+    float saltoDesde;
+    float pieY;                // altura de los pies (respecto a la cadera de reposo, eje "arriba")
+    float pieReposo;           // altura de los pies en la pose de reposo
+    float velSalto;
+    float escalaY = 1f;        // aplastar y estirar
+    float velEscala;
+    float agachar;             // la cadera baja (anticipación)
+
+    // "Choca esos cinco"
+    Vector3 palmaPrevia;
+    bool teniaPalma;
+    float choqueBloqueadoHasta;
 
     // Dedos (para posar)
     readonly Vector3[,] dedos = new Vector3[2, 4];
@@ -169,6 +205,7 @@ public class Titere : MonoBehaviour
         d.titereCuerpo.AddRange(cuerpo);
         d.titereVoltear = voltear;
         d.titereCiclo = ciclo;
+        d.titerePisos.AddRange(pisos);
     }
 
     public void Restaurar(DatosDibujo d)
@@ -188,6 +225,30 @@ public class Titere : MonoBehaviour
             cuerpo.AddRange(d.titereCuerpo);
         voltear = d.titereVoltear;
         ciclo = Mathf.Max(0, d.titereCiclo);
+        pisos.Clear();
+        if (d.titerePisos != null)
+            pisos.AddRange(d.titerePisos);
+    }
+
+    // Marca (o desmarca) la línea elegida como piso para el muñeco.
+    public void AlternarPiso()
+    {
+        if (dibujo == null || Encendido)
+            return;
+        var t = dibujo.Seleccion;
+        if (t == null)
+        {
+            Mensaje("Pellizca una línea para elegirla");
+            return;
+        }
+        if (pisos.Remove(t.id))
+        {
+            Mensaje("La línea ya no es piso");
+            return;
+        }
+        QuitarDeRoles(t.id);
+        pisos.Add(t.id);
+        Mensaje("Línea marcada como piso (" + pisos.Count + ")");
     }
 
     // ---------- Botones ----------
@@ -298,6 +359,7 @@ public class Titere : MonoBehaviour
         if (brazo2 == id) brazo2 = 0;
         if (cabeza == id) cabeza = 0;
         cuerpo.Remove(id);
+        pisos.Remove(id);
     }
 
     public void AlternarCuerpo()
@@ -364,8 +426,11 @@ public class Titere : MonoBehaviour
         brazo1 = dibujo.AgregarTrazo(b1).id;
         cabeza = dibujo.AgregarTrazo(cabezaMuneco).id;
         cuerpo.Add(dibujo.AgregarTrazo(nariz).id);
+        // Un piso bajo sus pies.
+        var piso = Linea(cadera, derecha, ancho * 0.7f, false, new Vector2(-0.45f, -0.173f), new Vector2(0.65f, -0.173f));
+        pisos.Add(dibujo.AgregarTrazo(piso).id);
         voltear = false;
-        Mensaje("Muñeco listo. Toca Títere y mueve la mano derecha");
+        Mensaje("Muñeco listo. \"Choca esos cinco\" con la mano derecha abierta para encenderlo");
     }
 
     DatosTrazo Linea(Vector3 cadera, Vector3 derecha, float ancho, bool cerrada, params Vector2[] puntos)
@@ -488,14 +553,20 @@ public class Titere : MonoBehaviour
 
     void Update()
     {
-        if (fase == Fase.Apagado)
-            return;
         if (dibujo == null || control == null)
         {
-            Apagar();
+            if (fase != Fase.Apagado)
+                Apagar();
             return;
         }
-        bool parar = control.Izq.valida && control.Izq.empezoPellizco;
+        // "Choca esos cinco" con el muñeco: enciende, apaga o termina la grabación.
+        bool choque = fase != Fase.Preparando && fase != Fase.Posando && RigValido && DetectarChoque();
+        if (fase == Fase.Apagado)
+        {
+            if (choque)
+                Encender(Fase.Vivo);
+            return;
+        }
 
         switch (fase)
         {
@@ -503,11 +574,6 @@ public class Titere : MonoBehaviour
                 Avisar(despues == Fase.Posando ? "Pon el índice y el medio derechos parados... " : "Pon la mano derecha frente a ti... ");
                 LeerMuneca(true);
                 LeerDedos(6f);
-                if (parar)
-                {
-                    Apagar();
-                    return;
-                }
                 if (Time.time < faseHasta)
                     return;
                 if (!PrepararRig() || (despues == Fase.Posando ? !dedosValidos : !munecaValida))
@@ -520,9 +586,11 @@ public class Titere : MonoBehaviour
                 recorridoPrevio = 0f;
                 velocidad = 0f;
                 peso = 0f;
+                correr = 0f;
                 faseCiclo = 0f;
                 mirando = 1;
                 raizOffset = Vector3.zero;
+                ReiniciarSalto();
                 if (despues == Fase.CuentaGrabar)
                 {
                     EmpezarCuenta();
@@ -535,12 +603,12 @@ public class Titere : MonoBehaviour
                 else
                 {
                     fase = Fase.Vivo;
-                    Mensaje("¡Mueve la mano y camina! Pellizco izquierdo = apagar");
+                    Mensaje("¡Mueve la mano y camina! Golpe hacia arriba = saltar · choca esos cinco = apagar");
                 }
                 break;
 
             case Fase.Vivo:
-                if (parar)
+                if (choque)
                 {
                     Apagar();
                     return;
@@ -550,7 +618,7 @@ public class Titere : MonoBehaviour
                 break;
 
             case Fase.CuentaGrabar:
-                if (parar)
+                if (choque)
                 {
                     Apagar();
                     return;
@@ -566,11 +634,11 @@ public class Titere : MonoBehaviour
                 fotogramaGrabado = inicioGrabacion;
                 acumulado = 0f;
                 GrabarCuadro(fotogramaGrabado);
-                Mensaje("Grabando... pellizco izquierdo = parar");
+                Mensaje("Grabando... choca esos cinco (o Parar) para terminar");
                 break;
 
             case Fase.Grabando:
-                if (parar || animacion == null)
+                if (choque || animacion == null)
                 {
                     TerminarGrabacion();
                     return;
@@ -598,7 +666,7 @@ public class Titere : MonoBehaviour
             case Fase.Posando:
                 LeerDedos(6f);
                 PonerPoseDedos();
-                if (parar && animacion != null)
+                if (control.Izq.valida && control.Izq.empezoPellizco && animacion != null)
                 {
                     int f = animacion.Fotograma;
                     dibujo.GuardarParaDeshacer();
@@ -609,6 +677,56 @@ public class Titere : MonoBehaviour
                 }
                 break;
         }
+    }
+
+    // Mano derecha ABIERTA, palma hacia el muñeco, empujón rápido cerca de él.
+    bool DetectarChoque()
+    {
+        var m = control.Der;
+        if (m == null || !m.valida || m.esqueleto == null)
+        {
+            teniaPalma = false;
+            return false;
+        }
+        var palma = ManosUtil.LeerPalma(m.esqueleto, false);
+        if (!palma.valida)
+        {
+            teniaPalma = false;
+            return false;
+        }
+        float dt = Mathf.Max(1e-4f, Time.deltaTime);
+        Vector3 vel = teniaPalma ? (palma.centro - palmaPrevia) / dt : Vector3.zero;
+        palmaPrevia = palma.centro;
+        teniaPalma = true;
+        if (Time.time < choqueBloqueadoHasta)
+            return false;
+        float tam = palma.tamano;
+        bool abierta = Vector3.Distance(m.indice, palma.centro) / tam > 1.45f
+                       && Vector3.Distance(m.medio, palma.centro) / tam > 1.45f
+                       && Vector3.Distance(m.anular, palma.centro) / tam > 1.4f;
+        if (!abierta)
+            return false;
+        Vector3 hacia = CentroMuneco() - palma.centro;
+        float dist = hacia.magnitude;
+        if (dist > 0.22f || dist < 1e-4f)
+            return false;
+        hacia /= dist;
+        if (Vector3.Dot(palma.normal, hacia) < 0.4f || Vector3.Dot(vel, hacia) < 0.6f)
+            return false;
+        choqueBloqueadoHasta = Time.time + 1f;
+        return true;
+    }
+
+    // La cadera del muñeco, en el mundo.
+    Vector3 CentroMuneco()
+    {
+        var a = dibujo.BuscarPorId(pierna1);
+        var b = dibujo.BuscarPorId(pierna2);
+        Vector3 suma = Vector3.zero;
+        int n = 0;
+        if (a != null && a.nodos.Count > 0) { suma += a.nodos[0]; n++; }
+        if (b != null && b.nodos.Count > 0) { suma += b.nodos[0]; n++; }
+        return n > 0 ? dibujo.transform.TransformPoint(suma / n) : new Vector3(0f, -100f, 0f);
     }
 
     // Cuenta regresiva en los avisos.
@@ -777,6 +895,11 @@ public class Titere : MonoBehaviour
             r.rel = Relativos(r.reposo.nodos);
             cuerpoRoles.Add(r);
         }
+        // Altura de los pies en reposo (el "suelo" del muñeco si no hay pisos debajo).
+        pieReposo = 0f;
+        for (int i = 0; i < 2; i++)
+            foreach (var v in roles[i].rel)
+                pieReposo = Mathf.Min(pieReposo, Vector3.Dot(v, arriba));
         dibujo.ActualizarVisibilidad();
         return true;
     }
@@ -789,47 +912,167 @@ public class Titere : MonoBehaviour
         return l;
     }
 
-    // La mano derecha lleva al muñeco: adelante/atrás = caminar; arriba/abajo = subir o agacharse.
+    // La mano derecha lleva al muñeco a los lados; lento = camina, rápido = corre; golpe hacia arriba = salta.
     void ActualizarControl()
     {
+        Vector3 antes = munecaLocal;
         LeerMuneca(false);
         float dt = Mathf.Max(1e-4f, Time.deltaTime);
         if (!munecaValida)
         {
             velocidad = Mathf.Lerp(velocidad, 0f, 1f - Mathf.Exp(-6f * dt));
             peso = Mathf.Lerp(peso, 0f, 1f - Mathf.Exp(-4f * dt));
-            return;
         }
-        Vector3 d = munecaLocal - munecaCal;
-        float recorrido = Vector3.Dot(d, adelante);
-        raizOffset = adelante * recorrido + arriba * Vector3.Dot(d, arriba);
-        float paso = recorrido - recorridoPrevio;
-        recorridoPrevio = recorrido;
-        velocidad = Mathf.Lerp(velocidad, paso / dt, 1f - Mathf.Exp(-6f * dt));
-        // Un ciclo = dos pasos (más o menos 1.5 veces el largo de la pierna).
-        faseCiclo = Mathf.Repeat(faseCiclo + Mathf.Abs(paso) / (largoPierna * 1.5f), 1f);
-        if (velocidad > largoPierna * 0.2f)
-            mirando = 1;
-        else if (velocidad < -largoPierna * 0.2f)
-            mirando = -1;
-        float objetivo = Mathf.Clamp01(Mathf.Abs(velocidad) / (largoPierna * 0.8f));
-        peso = Mathf.Lerp(peso, objetivo, 1f - Mathf.Exp(-4f * dt));
+        else
+        {
+            Vector3 d = munecaLocal - munecaCal;
+            float recorrido = Vector3.Dot(d, adelante);
+            raizOffset = adelante * recorrido;
+            float paso = recorrido - recorridoPrevio;
+            recorridoPrevio = recorrido;
+            velocidad = Mathf.Lerp(velocidad, paso / dt, 1f - Mathf.Exp(-6f * dt));
+            float rapidez = Mathf.Abs(velocidad) / largoPierna;
+            float objetivoCorrer = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(1.3f, 2.4f, rapidez));
+            correr = Mathf.Lerp(correr, objetivoCorrer, 1f - Mathf.Exp(-4f * dt));
+            // Un ciclo = dos pasos (al correr, pasos más largos).
+            faseCiclo = Mathf.Repeat(faseCiclo + Mathf.Abs(paso) / (largoPierna * Mathf.Lerp(1.5f, 2.6f, correr)), 1f);
+            if (velocidad > largoPierna * 0.2f)
+                mirando = 1;
+            else if (velocidad < -largoPierna * 0.2f)
+                mirando = -1;
+            float objetivo = Mathf.Clamp01(Mathf.Abs(velocidad) / (largoPierna * 0.8f));
+            peso = Mathf.Lerp(peso, objetivo, 1f - Mathf.Exp(-4f * dt));
+
+            // Golpe rápido de la mano hacia arriba = saltar.
+            float vy = Vector3.Dot(munecaLocal - antes, arriba) / dt * dibujo.EscalaMundo;
+            velocidadVertical = Mathf.Lerp(velocidadVertical, vy, 1f - Mathf.Exp(-25f * dt));
+            if (salto == Salto.Suelo && velocidadVertical > 0.8f)
+            {
+                salto = Salto.Anticipa;
+                saltoDesde = Time.time;
+            }
+        }
+        ActualizarSalto(dt);
+    }
+
+    void ReiniciarSalto()
+    {
+        salto = Salto.Suelo;
+        pieY = pieReposo;
+        velSalto = 0f;
+        escalaY = 1f;
+        velEscala = 0f;
+        agachar = 0f;
+        velocidadVertical = 0f;
+    }
+
+    // El piso que hay debajo (en "x" a lo largo del caminar): la línea-piso más alta que se pueda pisar.
+    float AlturaPiso(float x, float desde)
+    {
+        float mejor = float.NegativeInfinity;
+        bool hay = false;
+        float subir = largoPierna * 0.35f;
+        foreach (int id in pisos)
+        {
+            var t = dibujo.BuscarPorId(id);
+            if (t == null || !Dibujo.Editable(t))
+                continue;
+            var c = t.curva;
+            for (int i = 1; i < c.Count; i++)
+            {
+                Vector3 a = c[i - 1] - caderaReposo;
+                Vector3 b = c[i] - caderaReposo;
+                float xa = Vector3.Dot(a, adelante);
+                float xb = Vector3.Dot(b, adelante);
+                if ((x < xa && x < xb) || (x > xa && x > xb))
+                    continue;
+                float u = Mathf.Abs(xb - xa) > 1e-6f ? (x - xa) / (xb - xa) : 0f;
+                float y = Mathf.Lerp(Vector3.Dot(a, arriba), Vector3.Dot(b, arriba), u);
+                if (y <= desde + subir && y > mejor)
+                {
+                    mejor = y;
+                    hay = true;
+                }
+            }
+        }
+        return hay ? mejor : pieReposo;
+    }
+
+    // Física del salto: se agacha, se estira al subir, cae por la gravedad, se aplasta al llegar y rebota.
+    void ActualizarSalto(float dt)
+    {
+        float x = Vector3.Dot(raizOffset, adelante);
+        float gravedad = 14.7f * largoPierna;
+        float suelo = AlturaPiso(x, pieY);
+        switch (salto)
+        {
+            case Salto.Suelo:
+                if (suelo < pieY - largoPierna * 0.05f)
+                {
+                    // Se acabó el piso: cae.
+                    salto = Salto.Aire;
+                    velSalto = 0f;
+                }
+                else
+                {
+                    pieY = Mathf.Lerp(pieY, suelo, 1f - Mathf.Exp(-20f * dt)); // sube rampas suave
+                }
+                agachar = Mathf.Lerp(agachar, 0f, 1f - Mathf.Exp(-12f * dt));
+                break;
+            case Salto.Anticipa:
+                agachar = Mathf.Lerp(agachar, largoPierna * 0.18f, 1f - Mathf.Exp(-25f * dt));
+                if (Time.time - saltoDesde > 0.12f)
+                {
+                    salto = Salto.Aire;
+                    velSalto = 5.1f * largoPierna;
+                }
+                break;
+            case Salto.Aire:
+                velSalto -= gravedad * dt;
+                pieY += velSalto * dt;
+                agachar = Mathf.Lerp(agachar, 0f, 1f - Mathf.Exp(-15f * dt));
+                if (velSalto < 0f && pieY <= suelo)
+                {
+                    pieY = suelo;
+                    salto = Salto.Suelo;
+                    escalaY = 0.75f; // se aplasta al caer
+                    velEscala = 0f;
+                }
+                break;
+        }
+        if (salto == Salto.Suelo)
+        {
+            // Resorte: vuelve a su forma con un pequeño rebote.
+            velEscala += (-(escalaY - 1f) * 260f - velEscala * 14f) * dt;
+            escalaY += velEscala * dt;
+        }
+        else
+        {
+            float objetivo = salto == Salto.Anticipa ? 0.85f : (velSalto > 0f ? 1.12f : 1.04f);
+            escalaY = Mathf.Lerp(escalaY, objetivo, 1f - Mathf.Exp(-18f * dt));
+        }
+        escalaY = Mathf.Clamp(escalaY, 0.6f, 1.3f);
     }
 
     void LeerMuneca(bool primera)
     {
-        munecaValida = false;
+        bool ok = false;
         var mano = control.Der;
-        if (mano == null || !mano.valida || mano.esqueleto == null)
-            return;
-        var m = ManosUtil.Hueso(mano.esqueleto, Muneca);
-        if (m == null)
-            return;
-        Vector3 nueva = dibujo.transform.InverseTransformPoint(m.position);
-        float a = teniaMuneca && !primera ? 1f - Mathf.Exp(-12f * Time.deltaTime) : 1f;
-        munecaLocal = Vector3.Lerp(munecaLocal, nueva, a);
-        teniaMuneca = true;
-        munecaValida = true;
+        if (mano != null && mano.valida && mano.esqueleto != null)
+        {
+            var m = ManosUtil.Hueso(mano.esqueleto, Muneca);
+            if (m != null)
+            {
+                Vector3 nueva = dibujo.transform.InverseTransformPoint(m.position);
+                float a = teniaMuneca && !primera ? 1f - Mathf.Exp(-12f * Time.deltaTime) : 1f;
+                munecaLocal = Vector3.Lerp(munecaLocal, nueva, a);
+                teniaMuneca = true;
+                ultimaMunecaValida = Time.time;
+                ok = true;
+            }
+        }
+        // Si Meta pierde la mano un instante (medio segundo), seguimos con la última posición.
+        munecaValida = ok || (teniaMuneca && Time.time - ultimaMunecaValida < 0.5f);
     }
 
     // Pone el muñeco en la pose del ciclo (mezclada con "de pie" cuando no te mueves).
@@ -838,8 +1081,11 @@ public class Titere : MonoBehaviour
         bool antes = Trazo.silenciar;
         Trazo.silenciar = true;
         var cicloGuardado = ciclo > 0 && ciclo <= biblioteca.ciclos.Count ? biblioteca.ciclos[ciclo - 1] : null;
-        float bob = (cicloGuardado != null ? BobGuardado(cicloGuardado, faseCiclo) : BobManual(faseCiclo)) * peso;
-        Vector3 desplazar = raizOffset + arriba * bob;
+        bool aire = salto == Salto.Aire;
+        float bobCiclo = cicloGuardado != null ? BobGuardado(cicloGuardado, faseCiclo) : BobManual(faseCiclo);
+        float bob = aire ? 0f : bobCiclo * peso;
+        float altura = (pieY - pieReposo) - agachar;
+        Vector3 desplazar = raizOffset + arriba * (altura + bob);
 
         for (int i = 0; i < 4; i++)
         {
@@ -847,24 +1093,43 @@ public class Titere : MonoBehaviour
             if (r == null)
                 continue;
             List<Vector3> pose = null;
-            if (cicloGuardado != null)
+            if (cicloGuardado != null && !aire)
                 pose = PoseGuardada(cicloGuardado, i, faseCiclo, r);
             if (pose == null)
-                pose = i < 2 ? PiernaManual(i, faseCiclo + (i == 1 ? 0.5f : 0f), r) : BrazoManual(i - 2, faseCiclo, r);
+                pose = i < 2 ? PiernaManual(i, faseCiclo + (i == 1 ? 0.5f : 0f), r, aire) : BrazoManual(i - 2, faseCiclo, r, aire);
+            float mezcla = aire ? 1f : peso;
             for (int k = 0; k < pose.Count; k++)
-                pose[k] = Vector3.Lerp(r.rel[k], pose[k], peso);
+                pose[k] = Vector3.Lerp(r.rel[k], pose[k], mezcla);
+            if (i >= 2)
+                Inclinar(pose);
             Aplicar(r, pose, desplazar);
         }
         // Cabeza: rebota un poquito después que el cuerpo (se ve más vivo).
         if (roles[CAB] != null)
         {
-            float bobCabeza = (cicloGuardado != null ? BobGuardado(cicloGuardado, faseCiclo - 0.06f) : BobManual(faseCiclo - 0.06f)) * peso;
-            Aplicar(roles[CAB], new List<Vector3>(roles[CAB].rel), raizOffset + arriba * bobCabeza);
+            float bobCabeza = aire ? 0f : (cicloGuardado != null ? BobGuardado(cicloGuardado, faseCiclo - 0.06f) : BobManual(faseCiclo - 0.06f)) * peso;
+            var rel = new List<Vector3>(roles[CAB].rel);
+            Inclinar(rel);
+            Aplicar(roles[CAB], rel, raizOffset + arriba * (altura + bobCabeza));
         }
         foreach (var r in cuerpoRoles)
-            Aplicar(r, new List<Vector3>(r.rel), desplazar);
+        {
+            var rel = new List<Vector3>(r.rel);
+            Inclinar(rel);
+            Aplicar(r, rel, desplazar);
+        }
         Trazo.silenciar = antes;
         Trazo.huboCambio = false;
+    }
+
+    // Al correr, el cuerpo se inclina hacia adelante (lo que está más arriba, más adelante).
+    void Inclinar(List<Vector3> rel)
+    {
+        float inclinacion = 0.14f * correr * peso;
+        if (inclinacion <= 0f)
+            return;
+        for (int k = 0; k < rel.Count; k++)
+            rel[k] += adelante * Mathf.Max(0f, Vector3.Dot(rel[k], arriba)) * inclinacion;
     }
 
     void Aplicar(Rol r, List<Vector3> rel, Vector3 desplazar)
@@ -872,9 +1137,15 @@ public class Titere : MonoBehaviour
         if (r == null || r.trazo == null)
             return;
         var d = Copiar(r.reposo);
+        float sy = escalaY;
+        float sx = 1f / Mathf.Sqrt(Mathf.Max(0.1f, sy));
         for (int k = 0; k < d.nodos.Count && k < rel.Count; k++)
         {
             Vector3 v = rel[k];
+            // Aplastar y estirar, desde los pies.
+            float alto = Vector3.Dot(v, arriba);
+            Vector3 resto = v - arriba * alto;
+            v = resto * sx + arriba * (pieReposo + (alto - pieReposo) * sy);
             if (mirando < 0)
                 v -= 2f * Vector3.Dot(v, adelante) * adelante; // espejo: mira hacia el otro lado
             d.nodos[k] = dibujo.ProyectarEnPlano(caderaReposo + desplazar + v);
@@ -882,37 +1153,45 @@ public class Titere : MonoBehaviour
         r.trazo.AplicarPose(d, null, 0f);
     }
 
-    // ---------- Caminado "de manual" ----------
+    // ---------- Caminado y carrera "de manual" ----------
 
-    static float Interpolar(int columna, float fase)
+    static float Interpolar(float[,] tabla, int columna, float fase)
     {
         fase = Mathf.Repeat(fase, 1f);
-        int n = Tabla.GetLength(0);
+        int n = tabla.GetLength(0);
         for (int k = 0; k < n; k++)
         {
-            float t0 = Tabla[k, 0];
-            float t1 = k + 1 < n ? Tabla[k + 1, 0] : 1f;
+            float t0 = tabla[k, 0];
+            float t1 = k + 1 < n ? tabla[k + 1, 0] : 1f;
             if (fase >= t0 && fase <= t1)
             {
                 float u = t1 > t0 ? (fase - t0) / (t1 - t0) : 0f;
                 u = u * u * (3f - 2f * u); // suave
-                float v1 = k + 1 < n ? Tabla[k + 1, columna] : Tabla[0, columna];
-                return Mathf.Lerp(Tabla[k, columna], v1, u);
+                float v1 = k + 1 < n ? tabla[k + 1, columna] : tabla[0, columna];
+                return Mathf.Lerp(tabla[k, columna], v1, u);
             }
         }
-        return Tabla[0, columna];
+        return tabla[0, columna];
     }
 
-    // Sube y baja de la cadera (dos veces por ciclo): más abajo al recibir el peso, más arriba al empujar.
+    float Angulo(int columna, float fase)
+    {
+        return Mathf.Lerp(Interpolar(Tabla, columna, fase), Interpolar(TablaCorrer, columna, fase), correr);
+    }
+
+    // Sube y baja de la cadera (dos veces por ciclo). Al correr, más marcado.
     float BobManual(float fase)
     {
         float q = Mathf.Repeat(fase * 2f, 1f);
-        float[] valores = { -0.01f, -0.05f, 0f, 0.03f, -0.01f };
+        float[] camina = { -0.01f, -0.05f, 0f, 0.03f, -0.01f };
+        float[] corre = { -0.03f, -0.07f, 0f, 0.06f, -0.03f };
         float x = q * 4f;
         int i = Mathf.Min(3, Mathf.FloorToInt(x));
         float u = x - i;
         u = u * u * (3f - 2f * u);
-        return Mathf.Lerp(valores[i], valores[i + 1], u) * largoPierna;
+        float a = Mathf.Lerp(camina[i], camina[i + 1], u);
+        float b = Mathf.Lerp(corre[i], corre[i + 1], u);
+        return Mathf.Lerp(a, b, correr) * largoPierna;
     }
 
     Vector3 Direccion(float grados)
@@ -921,11 +1200,22 @@ public class Titere : MonoBehaviour
         return -arriba * Mathf.Cos(r) + adelante * Mathf.Sin(r);
     }
 
-    List<Vector3> PiernaManual(int i, float fase, Rol r)
+    List<Vector3> PiernaManual(int i, float fase, Rol r, bool aire)
     {
-        float aMuslo = Interpolar(1, fase);
-        float rodilla = Interpolar(2, fase);
-        float aPie = Interpolar(3, fase) * Mathf.Deg2Rad;
+        float aMuslo, rodilla, aPie;
+        if (aire)
+        {
+            // En el aire: piernas recogidas.
+            aMuslo = i == 0 ? 40f : 15f;
+            rodilla = i == 0 ? 80f : 60f;
+            aPie = -25f * Mathf.Deg2Rad;
+        }
+        else
+        {
+            aMuslo = Angulo(1, fase);
+            rodilla = Angulo(2, fase);
+            aPie = Angulo(3, fase) * Mathf.Deg2Rad;
+        }
         Vector3 cadera = r.rel[0];
         Vector3 rod = cadera + Direccion(aMuslo) * muslo[i];
         Vector3 tobillo = rod + Direccion(aMuslo - rodilla) * canilla[i];
@@ -933,12 +1223,21 @@ public class Titere : MonoBehaviour
         return SobreCadena(new[] { cadera, rod, tobillo, punta }, r);
     }
 
-    // El brazo se mueve al revés que la pierna de su mismo lado.
-    List<Vector3> BrazoManual(int j, float fase, Rol r)
+    // El brazo se mueve al revés que la pierna de su mismo lado. Al correr, más doblado.
+    List<Vector3> BrazoManual(int j, float fase, Rol r, bool aire)
     {
-        float aPierna = Interpolar(1, fase + (j == 1 ? 0.5f : 0f));
-        float s = -0.8f * aPierna;
-        float codo = 15f + Mathf.Max(0f, s) * 0.7f;
+        float s, codo;
+        if (aire)
+        {
+            s = j == 0 ? 60f : 35f; // brazos arriba al saltar
+            codo = 30f;
+        }
+        else
+        {
+            float aPierna = Angulo(1, fase + (j == 1 ? 0.5f : 0f));
+            s = -Mathf.Lerp(0.8f, 1.1f, correr) * aPierna;
+            codo = Mathf.Lerp(15f + Mathf.Max(0f, s) * 0.7f, 85f, correr);
+        }
         Vector3 hombro = r.rel[0];
         Vector3 c = hombro + Direccion(s) * brazoSup[j];
         Vector3 mano = c + Direccion(s + codo) * antebrazo[j];

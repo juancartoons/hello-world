@@ -16,7 +16,8 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 | **Pellizcar una línea** con la derecha (sin gesto izquierdo) | La **selecciona** (se pone azul) y la **mueves**. Pellizcar en el aire = quitar la selección |
 | Izquierda: **puño con el pulgar hacia tu izquierda** (sostener 0.3 s, quieta) | La mano se vuelve una **flecha** (la punta en tu pulgar): toca la **diana roja** = **Deshacer** (retírala y vuelve a tocar para deshacer otra vez) |
 | **Derecha**: **puño con el pulgar hacia tu derecha** | La mano derecha se vuelve una flecha: toca la **diana verde** = **Rehacer** |
-| Izquierda: **doble toque rápido** de pulgar + índice | **Bloquear / desbloquear** el dibujo (no se dibuja por accidente). Se ve un candado arriba a la derecha |
+| Izquierda: **doble toque rápido** de pulgar + índice | **Candado (modo seguro)**: no se dibuja, borra, cambia grosor, editan nodos ni mueven líneas o figuras. Sí puedes girar/mover todo para mirar, usar los paneles, deshacer y rehacer. Se ve un candado arriba a la derecha |
+| Menú de la mano: **Esfera / Cubo / Cilindro** | **Figura 3D** que se ve como dibujo (relleno + contorno desde donde la mires). Pellízcala para moverla; con las dos manos: tamaño y giro. Gesto de grosor = suavizar esquinas. Modo nodos = deformarla (pellizca la superficie = nodo nuevo). **A líneas** = convertirla en líneas normales |
 | Izquierda abierta, **punta del pulgar en la base de los dedos** (sobre la palma) | **Menú**: Libre 3D / Plano 2D, Fondo, Guardar, Cargar, Borrar todo |
 | **Las dos manos pellizcando** (índice + pulgar) | Separar/juntar = escalar · girar como un volante = rotar · mover = trasladar (solo la línea seleccionada, o todo si no hay selección) |
 | Tocar un **relleno** con el índice derecho | Cambia su color |
@@ -51,21 +52,26 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
   **Video proceso** lo convierte en MP4 (líneas + manos en gris). **Vel** = x1, x2, x4 u x8.
 - Si el MP4 falla, se guarda una carpeta con imágenes PNG y un `hacer_video.bat` (necesita ffmpeg en el PC).
 - Ni los paneles, ni los nodos, ni las imágenes de referencia salen en fotos ni videos.
-- **Líneas vivas** (página Medios): **Temblor** (No, Suave, Medio, Fuerte), **Hebras** (1, 3 o 5 hebras finas por línea),
-  **Grosor vivo** (el grosor cambia a lo largo de la línea) y **Ciclo de 3** (3 dibujos que se repiten) o **Libre**.
-  Sale en los videos y se guarda con el dibujo.
+- **Líneas vivas** (página Medios, **por capa**: cambian solo la capa activa): **Temblor** (No, Suave, Medio, Fuerte),
+  **Hebras** (1, 3 o 5; en las puntas se juntan en una sola), **Grosor vivo**, **Ciclo de 3** o **Libre**,
+  **Suavidad** (Suave, Normal, Nervioso) y **Velocidad** (4, 8, 12 o 24 cambios por segundo).
+  **Grosor de las hebras**: gesto de grosor (pulgar + anular) y pellizco derecho en el aire, sube/baja.
+- **Boceto** (página Medios): la capa activa se ve como lápiz **gris** o **azul** y **no sale** en fotos ni videos.
+- **Plano: propio / unido** (página Medios): cada capa tiene su propio plano 2D. Las capas "unidas" comparten el plano,
+  cada una 2 mm más cerca de ti (boceto atrás, tinta adelante).
 - Se guardan en las gafas, en `Android/data/<tu app>/files/Dibujos` (con Meta Quest Developer Hub → File Manager).
 
-## Títere que camina
+## Títere que camina, corre y salta
 
-1. Panel de arriba → página **Títere** → **Muñeco prueba**: aparece un muñeco listo (piernas, brazos, torso y cabeza).
-2. **Títere**: pon la mano derecha frente a ti 1 segundo. Luego muévela: el muñeco va donde la llevas y **camina solo**
-   (piernas, brazos y cabeza). Hacia atrás, se voltea. Arriba/abajo = sube o se agacha. **Pellizco izquierdo** = apagar.
-3. **Grabar**: cuenta 3 segundos y guarda una clave por fotograma. **Pellizco izquierdo** = parar. Luego **Play**.
-4. **Ciclo**: elige el caminado: **Manual** (hecho por la app) o los tuyos.
-5. **Guardar ciclo**: anima un paso con claves (la última pose igual a la primera) y guárdalo como ciclo propio.
-6. **Posar dedos**: el índice y el medio derechos acomodan las piernas (sin prisa). **Pellizco izquierdo** = guardar una clave.
-7. Con tus dibujos: pellizca una línea y toca **Pierna 1/2**, **Brazo 1/2** o **Cuerpo +/-**. **Voltear** = mira al otro lado.
+1. Panel de arriba → página **Títere** → **Muñeco prueba**: aparece un muñeco listo, parado sobre un piso.
+2. **Encender / apagar**: "choca esos cinco" con el muñeco (mano derecha abierta, palma hacia él, un empujón rápido cerca).
+3. Mueve la mano derecha a los lados: el muñeco va donde la llevas. **Lento = camina, rápido = corre.** Hacia atrás, se voltea.
+4. **Golpe rápido de la mano hacia arriba = salta**: se agacha, se estira, cae por la gravedad, se aplasta al caer y rebota.
+5. **Piso +/-**: pellizca una línea y márcala como piso: el muñeco camina sobre ella (sube rampas, cae si se acaba).
+6. **Grabar**: cuenta 3 segundos y guarda una clave por fotograma. "Choca esos cinco" (o **Parar**) = terminar.
+7. **Ciclo / Guardar ciclo**: elige el caminado (Manual o los tuyos); anima un paso con claves y guárdalo.
+8. **Posar dedos**: el índice y el medio derechos acomodan las piernas; **pellizco izquierdo** = guardar una clave.
+9. Con tus dibujos: pellizca una línea y toca **Pierna 1/2**, **Brazo 1/2** o **Cuerpo +/-**. **Voltear** = el otro lado.
 
 ## Imágenes de referencia
 

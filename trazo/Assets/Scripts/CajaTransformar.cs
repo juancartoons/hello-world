@@ -98,7 +98,7 @@ public class CajaTransformar : MonoBehaviour
         Vector3 medioSolo = (a + b) * 0.5f;
         if (objeto != null)
         {
-            float escalaObjeto = Mathf.Clamp(objetoEscala * s, 0.05f, 10f);
+            float escalaObjeto = Mathf.Clamp(objetoEscala * s, objetoEscala * 0.05f, objetoEscala * 20f);
             float so = escalaObjeto / objetoEscala;
             objeto.position = medioSolo + giroSolo * ((objetoPosicion - medioInicio) * so);
             objeto.rotation = giroSolo * objetoRotacion;

@@ -1,93 +1,115 @@
 using UnityEngine;
 
-// Líneas vivas ("line boil"), como en la animación dibujada a mano:
-//  - Temblor: las líneas vibran un poquito (No, Suave, Medio, Fuerte).
-//  - Hebras: cada línea se dibuja con 1, 3 o 5 hebras finas que se mueven por su cuenta.
+// Líneas vivas ("line boil"), como en la animación dibujada a mano. Cada CAPA tiene las suyas
+// (los botones de la página Medios cambian la capa activa):
+//  - Temblor: No, Suave, Medio, Fuerte.
+//  - Hebras: 1, 3 o 5 hebras finas por línea (en las puntas se juntan en una sola).
 //  - Grosor vivo: el grosor sube y baja a lo largo de la línea, como la presión de un pincel.
-//  - Ciclo de 3: el temblor repite 3 "dibujos" (1, 2, 3, 1, 2, 3...) como en la animación tradicional.
-// No cambia tus nodos: solo cambia cómo se ven (y sale en los videos).
+//  - Ciclo de 3 / Libre: el temblor repite 3 "dibujos" o es siempre distinto.
+//  - Suavidad: Suave, Normal, Nervioso (qué tan ondulado es el temblor).
+//  - Velocidad: 4, 8, 12 o 24 cambios por segundo.
+//  - Boceto: la capa se ve como lápiz gris o azul y NO sale en fotos ni videos.
+// Nada de esto cambia tus nodos: solo cambia cómo se ven.
 public class Temblor : MonoBehaviour
 {
     public static readonly string[] Nombres = { "No", "Suave", "Medio", "Fuerte" };
-    static readonly float[] Cantidades = { 0f, 0.0015f, 0.003f, 0.006f }; // metros
     static readonly int[] OpcionesHebras = { 1, 3, 5 };
+    static readonly string[] NombresBoceto = { "No", "Gris", "Azul" };
 
-    static readonly int idCantidad = Shader.PropertyToID("_TrazoTemblor");
-    static readonly int idFase = Shader.PropertyToID("_TrazoTemblorFase");
-    static readonly int idHebras = Shader.PropertyToID("_TrazoHebras");
-    static readonly int idGrosor = Shader.PropertyToID("_TrazoGrosorVivo");
+    static readonly int idTiempo = Shader.PropertyToID("_TrazoTiempo");
 
     // Los videos ponen aquí el "tiempo" de cada cuadro (así el temblor va al ritmo del video). -1 = tiempo real.
     public static float tiempoFijo = -1f;
-
-    [Tooltip("Cuántas veces por segundo cambia el temblor")]
-    public float cambiosPorSegundo = 8f;
-    public int nivel;
-    public int hebras = 1;
-    public bool grosorVivo;
-    public bool ciclo3 = true;
-    [Tooltip("Cuánto se separan las hebras (veces el grosor de la línea)")]
-    public float separacionHebras = 1.2f;
-
-    public string NombreNivel => Nombres[Mathf.Clamp(nivel, 0, Nombres.Length - 1)];
 
     Dibujo dibujo;
 
     void Awake()
     {
         dibujo = GetComponent<Dibujo>();
-        Trazo.hebras = Mathf.Max(1, hebras);
     }
 
-    void Mensaje(string texto)
+    DatosCapa Capa => dibujo != null ? dibujo.CapaActual : null;
+
+    public string NombreNivel => Capa != null ? Nombres[Mathf.Clamp(Capa.temblor, 0, Nombres.Length - 1)] : Nombres[0];
+    public int Hebras => Capa != null ? Mathf.Clamp(Capa.hebras, 1, 5) : 1;
+    public bool GrosorVivo => Capa != null && Capa.grosorVivo;
+    public bool Ciclo3 => Capa == null || Capa.ciclo3;
+    public int Nivel => Capa != null ? Capa.temblor : 0;
+    public string NombreSuavidad => Capa != null ? Dibujo.NombresSuavidad[Mathf.Clamp(Capa.suavidad, 0, 2)] : "Normal";
+    public float CambiosPorSegundo => Capa != null ? Dibujo.Velocidades[Mathf.Clamp(Capa.velocidad, 0, Dibujo.Velocidades.Length - 1)] : 8f;
+    public int Boceto => Capa != null ? Capa.boceto : 0;
+    public string NombreBoceto => NombresBoceto[Mathf.Clamp(Boceto, 0, 2)];
+
+    void Cambio(string mensaje)
     {
-        if (dibujo != null)
-            dibujo.Mensaje(texto);
+        if (dibujo == null)
+            return;
+        dibujo.RefrescarCapa(dibujo.capaActual);
+        dibujo.Mensaje(dibujo.CapaActual.nombre + ": " + mensaje);
     }
 
     public void Siguiente()
     {
-        nivel = (nivel + 1) % Nombres.Length;
-        Mensaje("Temblor de líneas: " + NombreNivel);
+        if (Capa == null) return;
+        Capa.temblor = (Capa.temblor + 1) % Nombres.Length;
+        Cambio("temblor " + NombreNivel);
     }
 
     public void SiguienteHebras()
     {
-        int i = System.Array.IndexOf(OpcionesHebras, hebras);
-        PonerHebras(OpcionesHebras[(i + 1) % OpcionesHebras.Length]);
-        Mensaje(hebras == 1 ? "Una sola línea" : hebras + " hebras por línea");
+        if (Capa == null) return;
+        int i = System.Array.IndexOf(OpcionesHebras, Hebras);
+        Capa.hebras = OpcionesHebras[(i + 1) % OpcionesHebras.Length];
+        Cambio(Capa.hebras == 1 ? "una sola línea" : Capa.hebras + " hebras por línea");
     }
 
     public void AlternarGrosor()
     {
-        grosorVivo = !grosorVivo;
-        Mensaje(grosorVivo ? "Grosor vivo" : "Grosor normal");
+        if (Capa == null) return;
+        Capa.grosorVivo = !Capa.grosorVivo;
+        Cambio(Capa.grosorVivo ? "grosor vivo" : "grosor normal");
     }
 
     public void AlternarCiclo()
     {
-        ciclo3 = !ciclo3;
-        Mensaje(ciclo3 ? "Temblor en ciclo de 3 dibujos" : "Temblor libre");
+        if (Capa == null) return;
+        Capa.ciclo3 = !Capa.ciclo3;
+        Cambio(Capa.ciclo3 ? "temblor en ciclo de 3 dibujos" : "temblor libre");
     }
 
-    // Cambia el número de hebras y vuelve a armar todas las líneas.
-    public void PonerHebras(int n)
+    public void SiguienteSuavidad()
     {
-        n = Mathf.Clamp(n, 1, 5);
-        hebras = n;
-        if (Trazo.hebras == n)
-            return;
-        Trazo.hebras = n;
-        if (dibujo == null)
-            return;
-        bool antes = Trazo.silenciar;
-        Trazo.silenciar = true;
-        foreach (var t in dibujo.trazos)
-            if (t != null)
-                t.Reconstruir(true);
-        Trazo.silenciar = antes;
-        Trazo.huboCambio = false;
+        if (Capa == null) return;
+        Capa.suavidad = (Mathf.Clamp(Capa.suavidad, 0, 2) + 1) % 3;
+        Cambio("temblor " + NombreSuavidad);
     }
+
+    public void SiguienteVelocidad()
+    {
+        if (Capa == null) return;
+        Capa.velocidad = (Mathf.Clamp(Capa.velocidad, 0, Dibujo.Velocidades.Length - 1) + 1) % Dibujo.Velocidades.Length;
+        Cambio(CambiosPorSegundo + " cambios por segundo");
+    }
+
+    public void SiguienteBoceto()
+    {
+        if (Capa == null) return;
+        Capa.boceto = (Mathf.Clamp(Capa.boceto, 0, 2) + 1) % 3;
+        Cambio(Capa.boceto == 0 ? "tinta (sale en fotos y videos)" : "boceto " + NombreBoceto.ToLower() + " (no sale en fotos ni videos)");
+    }
+
+    // Grosor de cada hebra (con el gesto de grosor y un pellizco derecho en el aire).
+    public void PonerGrosorHebra(float valor)
+    {
+        if (Capa == null) return;
+        valor = Mathf.Clamp(valor, 0.15f, 1f);
+        if (Mathf.Abs(valor - Capa.grosorHebra) < 0.01f)
+            return;
+        Capa.grosorHebra = valor;
+        dibujo.RefrescarCapa(dibujo.capaActual);
+    }
+
+    public float GrosorHebra => Capa != null ? Capa.grosorHebra : 0.5f;
 
     // Para los videos: fija el "tiempo" del temblor en este cuadro (y lo aplica ya). Negativo = tiempo real.
     public void PonerTiempo(float t)
@@ -103,24 +125,8 @@ public class Temblor : MonoBehaviour
 
     void Actualizar()
     {
-        nivel = Mathf.Clamp(nivel, 0, Cantidades.Length - 1);
-        if (Trazo.hebras != hebras)
-            PonerHebras(hebras);
+        // Se repite cada 10 minutos (así no pierde precisión).
         float t = tiempoFijo >= 0f ? tiempoFijo : Time.time;
-        float paso = Mathf.Floor(t * cambiosPorSegundo);
-        // Ciclo de 3 dibujos que se repiten, o "libre" (siempre distinto).
-        float fase = ciclo3 ? paso % 3f : paso % 1000f;
-        bool vivo = nivel > 0;
-        Shader.SetGlobalFloat(idCantidad, Cantidades[nivel]);
-        Shader.SetGlobalFloat(idFase, vivo ? fase : 0f);
-        Shader.SetGlobalFloat(idHebras, hebras > 1 ? separacionHebras : 0f);
-        Shader.SetGlobalFloat(idGrosor, grosorVivo ? 1f : 0f);
-    }
-
-    void OnDisable()
-    {
-        Shader.SetGlobalFloat(idCantidad, 0f);
-        Shader.SetGlobalFloat(idHebras, 0f);
-        Shader.SetGlobalFloat(idGrosor, 0f);
+        Shader.SetGlobalFloat(idTiempo, Mathf.Repeat(t, 600f));
     }
 }

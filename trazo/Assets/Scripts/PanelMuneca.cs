@@ -12,6 +12,9 @@ public class PanelMuneca : MonoBehaviour
     public Escenario escenario;
     public GameObject contenido;
     public BotonTocable btnPlano, btnFondo, btnGuardar, btnCargar, btnBorrar;
+    [Header("Figuras 3D")]
+    public Figuras figuras;
+    public BotonTocable btnEsfera, btnCubo, btnCilindro, btnALineas, btnQuitarFigura;
     public TMP_Text textoEstado;
     public TMP_Text textoAviso;
     public float suavizado = 20f;
@@ -39,6 +42,16 @@ public class PanelMuneca : MonoBehaviour
             dibujo.alMensaje += Mensaje;
         }
         Conectar(btnFondo, SiguienteFondo);
+        if (figuras == null && dibujo != null)
+            figuras = dibujo.figuras;
+        if (figuras != null)
+        {
+            Conectar(btnEsfera, () => figuras.Agregar(0));
+            Conectar(btnCubo, () => figuras.Agregar(1));
+            Conectar(btnCilindro, () => figuras.Agregar(2));
+            Conectar(btnALineas, figuras.ConvertirSeleccionada);
+            Conectar(btnQuitarFigura, figuras.QuitarSeleccionada);
+        }
 
         if (textoEstado != null)
             textoEstado.text = textoAyuda;

@@ -33,6 +33,8 @@ Shader "TrazoVR/Relleno"
             {
                 float4 positionOS : POSITION;
                 float4 color      : COLOR;
+                float4 vivoA      : TEXCOORD2; // estilo vivo de la capa (ver TrazoTemblor.hlsl)
+                float4 vivoB      : TEXCOORD3;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -48,7 +50,8 @@ Shader "TrazoVR/Relleno"
                 Varyings o;
                 UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
-                o.positionCS = TransformWorldToHClip(TrazoTemblar(TransformObjectToWorld(v.positionOS.xyz)));
+                float fase = TrazoFase(v.vivoA, v.vivoB);
+                o.positionCS = TransformWorldToHClip(TrazoTemblar(TransformObjectToWorld(v.positionOS.xyz), v.vivoA, v.vivoB, fase));
                 o.color = v.color;
                 return o;
             }

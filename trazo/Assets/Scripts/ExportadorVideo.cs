@@ -115,6 +115,8 @@ public class ExportadorVideo : MonoBehaviour
             animacion.MostrarFotograma();
             if (dibujo.temblor != null)
                 dibujo.temblor.PonerTiempo(f / (float)fps);
+            if (dibujo.figuras != null)
+                dibujo.figuras.PonerVista(posicion);
             ok = codificador.AgregarCuadro(captura.CapturarRgba());
             if (Time.time > avisoEn)
             {
@@ -126,6 +128,8 @@ public class ExportadorVideo : MonoBehaviour
         captura.Liberar();
         if (dibujo.temblor != null)
             dibujo.temblor.PonerTiempo(-1f);
+        if (dibujo.figuras != null)
+            dibujo.figuras.PonerVista(null);
         bool listo = codificador.Terminar() && ok;
         animacion.IrA(volver);
         animacion.MostrarFotograma();
@@ -272,6 +276,7 @@ public class ExportadorVideo : MonoBehaviour
         {
             t = CrearTrazo(raiz, dibujo.materialLinea, d.ancho > 0f ? d.ancho : 0.008f);
             t.id = d.id;
+            t.capa = d.capa;
             lineas[d.id] = t;
         }
         if (d.crudo)
