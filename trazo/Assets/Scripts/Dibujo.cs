@@ -19,6 +19,7 @@ public class DatosTrazo
     public float ancho = 0.008f;
     public int estilo;
     public bool crudo; // solo para la repetición: la línea aún se estaba dibujando
+    public bool oculto; // línea "hueso": existe (mueve a otras partes) pero no se ve
 }
 
 [System.Serializable]
@@ -35,6 +36,7 @@ public class DatosCapa
     public int suavidad = 1;         // 0 Suave, 1 Normal, 2 Nervioso
     public int velocidad = 1;        // índice en Dibujo.Velocidades
     public int boceto;               // 0 no, 1 lápiz gris, 2 azul (no sale en fotos ni videos)
+    public bool iman = true;         // las puntas se pegan a otras líneas y las figuras se cierran solas
     // Plano 2D de esta capa
     public bool hayPlano;
     public Vector3 planoPunto;
@@ -98,6 +100,8 @@ public class DatosDibujo
     public int titereCabeza;
     public int titereCiclo;
     public List<int> titerePisos = new List<int>();
+    public List<DatosPersonaje> personajes = new List<DatosPersonaje>();
+    public int titereElegido;
     public int temblorHebras = 1;
     public bool temblorGrosor;
     public bool temblorCiclo = true;
@@ -474,6 +478,12 @@ public class Dibujo : MonoBehaviour
             DescartarUltimoDeshacer();
             return;
         }
+        if (!CapaActual.iman && !t.cerrado)
+        {
+            // Imán apagado: la línea queda tal como la dibujaste.
+            Avisar();
+            return;
+        }
         int n = t.nodos.Count;
         float iman = RadioImanLocal;
         if (n >= 4 && Vector3.Distance(t.nodos[0], t.nodos[n - 1]) < iman && t.Largo > iman * 4f)
@@ -796,6 +806,14 @@ public class Dibujo : MonoBehaviour
         HayPlano = c.hayPlano && c.planoNormal.sqrMagnitude > 1e-6f;
         planoPunto = c.planoPunto;
         planoNormal = HayPlano ? c.planoNormal.normalized : Vector3.forward;
+    }
+
+    public void AlternarIman()
+    {
+        var c = CapaActual;
+        c.iman = !c.iman;
+        Avisar();
+        Mensaje(c.nombre + (c.iman ? ": imán encendido (las puntas se unen)" : ": imán apagado (las líneas quedan como las dibujas)"));
     }
 
     // Une (o separa) el plano de la capa actual con los de las otras capas unidas.

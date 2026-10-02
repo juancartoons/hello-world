@@ -452,6 +452,15 @@ public static class ArmarEscenaTrazo
         asa.transform.localScale = new Vector3(0.14f, 0.016f, 0.01f);
         SinSombras(asa.GetComponent<Renderer>(), matAsaPanel);
         panel.asa = asa.transform;
+        // Otra asa abajo del panel (también lo mueve).
+        var asaAbajo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        asaAbajo.name = "AsaAbajo";
+        Object.DestroyImmediate(asaAbajo.GetComponent<Collider>());
+        asaAbajo.transform.SetParent(c, false);
+        asaAbajo.transform.localPosition = new Vector3(0f, -0.15f, 0f);
+        asaAbajo.transform.localScale = new Vector3(0.14f, 0.016f, 0.01f);
+        SinSombras(asaAbajo.GetComponent<Renderer>(), matAsaPanel);
+        panel.asaAbajo = asaAbajo.transform;
         Texto(c, "pellizca aquí para mover · + otra mano = tamaño", new Vector3(0f, 0.195f, -0.006f), new Vector2(0.13f, 0.012f), Color.white);
 
         panel.textoFotograma = Texto(c, "Fotograma 1 / 2000", new Vector3(0f, 0.16f, -0.001f), new Vector2(0.4f, 0.02f), Color.black);
@@ -550,14 +559,15 @@ public static class ArmarEscenaTrazo
         panel.btnGrosorVivo = f3[2];
         panel.btnCicloTemblor = f3[3];
         panel.btnImagenesVer = f3[4];
-        string[] fila4 = { "Suavidad: Normal", "Velocidad: 8", "Boceto: No", "Plano: propio" };
+        string[] fila4 = { "Suavidad: Normal", "Velocidad: 8", "Boceto: No", "Plano: propio", "Imán: Sí" };
         var f4 = new BotonTocable[fila4.Length];
         for (int i = 0; i < fila4.Length; i++)
-            f4[i] = Boton(medios, fila4[i], new Vector3(-0.15f + i * 0.1f, -0.038f, 0f), matBoton, matBotonMarcado);
+            f4[i] = Boton(medios, fila4[i], new Vector3(-0.2f + i * 0.1f, -0.038f, 0f), matBoton, matBotonMarcado);
         panel.btnSuavidad = f4[0];
         panel.btnVelocidadTemblor = f4[1];
         panel.btnBoceto = f4[2];
         panel.btnUnirPlano = f4[3];
+        panel.btnIman = f4[4];
         panel.textoMedios = Texto(medios, "", new Vector3(0f, -0.068f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.2f, 0.2f, 0.25f));
         Texto(medios, "Videos y fotos en Dibujos · las imágenes y las capas de boceto no salen en ellos", new Vector3(0f, -0.095f, -0.001f), new Vector2(0.46f, 0.016f), new Color(0.3f, 0.3f, 0.35f));
 
@@ -582,12 +592,12 @@ public static class ArmarEscenaTrazo
         // ----- Página Títere -----
         var tit = Pagina(c, "PaginaTitere");
         panel.paginaTitere = tit.gameObject;
-        string[] filaT = { "Muñeco prueba", "Títere", "Grabar" };
+        string[] filaT = { "Tipo: Palito", "Crear Palito", "Grabar" };
         var t1 = new BotonTocable[3];
         for (int i = 0; i < 3; i++)
             t1[i] = BotonAncho(tit, filaT[i], new Vector3(-0.13f + i * 0.13f, 0.05f, 0f), matBoton, matBotonMarcado);
-        panel.btnMuneco = t1[0];
-        panel.btnTitere = t1[1];
+        panel.btnTitere = t1[0];
+        panel.btnMuneco = t1[1];
         panel.btnGrabarTitere = t1[2];
         string[] filaT2 = { "Posar dedos", "Ciclo: Manual", "Guardar ciclo", "Voltear", "Piso +/-" };
         var t2 = new BotonTocable[filaT2.Length];

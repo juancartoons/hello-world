@@ -31,6 +31,8 @@ public class PanelArriba : MonoBehaviour
     public Transform cabezal;
     [Tooltip("Barra para pellizcar y mover el panel")]
     public Transform asa;
+    [Tooltip("Otra barra igual, abajo del panel")]
+    public Transform asaAbajo;
     public Material materialClave;
     public TMP_Text textoFotograma;
 
@@ -47,7 +49,7 @@ public class PanelArriba : MonoBehaviour
     [Header("Medios")]
     public BotonTocable btnGrabar, btnVideoProceso, btnVelocidad, btnVideoAnim, btnImagenMas, btnImagenMenos, btnTemblor;
     public BotonTocable btnHebras, btnGrosorVivo, btnCicloTemblor, btnImagenesVer;
-    public BotonTocable btnSuavidad, btnVelocidadTemblor, btnBoceto, btnUnirPlano;
+    public BotonTocable btnSuavidad, btnVelocidadTemblor, btnBoceto, btnUnirPlano, btnIman;
     public TMP_Text textoMedios;
 
     [Header("Bocas")]
@@ -124,6 +126,7 @@ public class PanelArriba : MonoBehaviour
             Conectar(btnBorrarTodo, dibujo.BorrarTodo);
             Conectar(btnSvg, dibujo.ExportarSVG);
             Conectar(btnUnirPlano, dibujo.AlternarUnirPlano);
+            Conectar(btnIman, dibujo.AlternarIman);
             for (int i = 0; i < btnCapas.Length; i++)
             {
                 int capa = i;
@@ -178,7 +181,7 @@ public class PanelArriba : MonoBehaviour
         if (titere != null)
         {
             Conectar(btnMuneco, titere.CargarMuneco);
-            Conectar(btnTitere, titere.AlternarVivo);
+            Conectar(btnTitere, titere.CambiarTipo);
             Conectar(btnGrabarTitere, titere.Grabar);
             Conectar(btnPierna1, () => titere.AsignarPierna(1));
             Conectar(btnPierna2, () => titere.AsignarPierna(2));
@@ -276,7 +279,7 @@ public class PanelArriba : MonoBehaviour
         if (contenido == null || !contenido.activeInHierarchy)
             return false;
         Vector3 l = transform.InverseTransformPoint(mundo);
-        return Mathf.Abs(l.x) < 0.27f && l.y > -0.15f && l.y < 0.225f && Mathf.Abs(l.z) < 0.06f;
+        return Mathf.Abs(l.x) < 0.27f && l.y > -0.175f && l.y < 0.225f && Mathf.Abs(l.z) < 0.06f;
     }
 
     void Update()
@@ -371,16 +374,22 @@ public class PanelArriba : MonoBehaviour
         if (!der.valida || !der.empezoPellizco)
             return;
         Vector3 l = transform.InverseTransformPoint(der.PuntoPellizco);
-        Vector3 a = asa.localPosition;
-        bool enAsa = Mathf.Abs(l.x - a.x) < asa.localScale.x * 0.5f + 0.02f
-                     && Mathf.Abs(l.y - a.y) < 0.025f && Mathf.Abs(l.z) < 0.05f;
-        if (!enAsa)
+        if (!EnAsa(asa, l) && !EnAsa(asaAbajo, l))
             return;
         arrastrando = true;
         escalando = false;
         anclado = true;
         desfaseAsa = transform.position - der.PuntoPellizco;
         control.Ocupado = true;
+    }
+
+    static bool EnAsa(Transform barra, Vector3 l)
+    {
+        if (barra == null)
+            return false;
+        Vector3 a = barra.localPosition;
+        return Mathf.Abs(l.x - a.x) < barra.localScale.x * 0.5f + 0.02f
+               && Mathf.Abs(l.y - a.y) < 0.025f && Mathf.Abs(l.z) < 0.05f;
     }
 
     void SoltarAsa()
@@ -575,12 +584,11 @@ public class PanelArriba : MonoBehaviour
     {
         if (titere == null)
             return;
+        var p = titere.Elegido;
         if (btnTitere != null)
-        {
-            bool vivo = titere.Encendido && !titere.Grabando && !titere.Posando;
-            btnTitere.PonerTexto(vivo ? "Apagar" : "Títere");
-            btnTitere.Marcar(vivo);
-        }
+            btnTitere.PonerTexto("Tipo: " + titere.NombreTipo);
+        if (btnMuneco != null)
+            btnMuneco.PonerTexto("Crear " + titere.NombreTipo);
         if (btnPosar != null)
         {
             btnPosar.PonerTexto(titere.Posando ? "Terminar" : "Posar dedos");
@@ -588,27 +596,27 @@ public class PanelArriba : MonoBehaviour
         }
         if (btnCiclo != null)
             btnCiclo.PonerTexto("Ciclo: " + titere.NombreCiclo);
-        if (btnBrazo1 != null)
-            btnBrazo1.Marcar(dibujo != null && dibujo.BuscarPorId(titere.brazo1) != null);
-        if (btnBrazo2 != null)
-            btnBrazo2.Marcar(dibujo != null && dibujo.BuscarPorId(titere.brazo2) != null);
         if (btnGrabarTitere != null)
         {
             btnGrabarTitere.PonerTexto(titere.Grabando ? "Parar" : "Grabar");
             btnGrabarTitere.Marcar(titere.Grabando);
         }
         if (btnVoltear != null)
-            btnVoltear.Marcar(titere.voltear);
+            btnVoltear.Marcar(p != null && p.voltear);
         if (btnPierna1 != null)
-            btnPierna1.Marcar(dibujo != null && dibujo.BuscarPorId(titere.pierna1) != null);
+            btnPierna1.Marcar(p != null && dibujo != null && dibujo.BuscarPorId(p.pierna1) != null);
         if (btnPierna2 != null)
-            btnPierna2.Marcar(dibujo != null && dibujo.BuscarPorId(titere.pierna2) != null);
+            btnPierna2.Marcar(p != null && dibujo != null && dibujo.BuscarPorId(p.pierna2) != null);
+        if (btnBrazo1 != null)
+            btnBrazo1.Marcar(p != null && dibujo != null && dibujo.BuscarPorId(p.brazo1) != null);
+        if (btnBrazo2 != null)
+            btnBrazo2.Marcar(p != null && dibujo != null && dibujo.BuscarPorId(p.brazo2) != null);
         if (textoTitere != null)
             textoTitere.text = titere.Posando
                 ? "Acomoda las piernas con el índice y el medio · pellizco IZQUIERDO = guardar clave"
                 : titere.Encendido
-                ? "Mano a los lados = caminar/correr · golpe arriba = saltar · choca esos cinco = apagar"
-                : "Choca esos cinco con el muñeco para encenderlo · pisos: " + titere.pisos.Count + " · tus dibujos: pellizca una línea y toca Pierna, Brazo, Cuerpo o Piso";
+                ? "Lados = caminar/correr · abajo = agacharse · arriba = elevar · agacha y sube rápido = saltar"
+                : "Choca esos cinco con un personaje (derecha o izquierda) · elegido: " + (p != null ? p.nombre : "ninguno") + " · pisos: " + titere.pisos.Count;
     }
 
     void RefrescarAnimar()
@@ -680,6 +688,11 @@ public class PanelArriba : MonoBehaviour
         {
             btnUnirPlano.PonerTexto(dibujo.CapaActual.unido ? "Plano: unido" : "Plano: propio");
             btnUnirPlano.Marcar(dibujo.CapaActual.unido);
+            if (btnIman != null)
+            {
+                btnIman.PonerTexto(dibujo.CapaActual.iman ? "Imán: Sí" : "Imán: No");
+                btnIman.Marcar(dibujo.CapaActual.iman);
+            }
         }
         if (btnImagenesVer != null && referencias != null)
         {

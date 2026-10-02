@@ -725,6 +725,8 @@ public class ControlManos : MonoBehaviour
     // Si el punto está cerca de la punta de otra línea, se pega a ella (para hacer polígonos).
     Vector3 Imantar(Vector3 local, Trazo excluir)
     {
+        if (!dibujo.CapaActual.iman)
+            return local;
         Trazo o;
         int e;
         if (dibujo.BuscarExtremo(local, excluir, out o, out e))
@@ -1172,11 +1174,13 @@ public class ControlManos : MonoBehaviour
                 if (tipo == Objetivo.Nodo)
                 {
                     dibujo.Destello(dibujo.transform.TransformPoint(t.nodos[i]), 0.02f);
+                    Burbuja(dibujo.transform.TransformPoint(t.nodos[i]), 1f);
                     dibujo.QuitarNodo(t, i);
                 }
                 else
                 {
                     dibujo.Destello(punta, 0.04f);
+                    Burbuja(punta, 0.8f);
                     dibujo.QuitarRelleno(t);
                 }
                 armadoBorrar = false;
@@ -1210,6 +1214,7 @@ public class ControlManos : MonoBehaviour
             return;
         dibujo.RestaurarMaterial(t);
         dibujo.GuardarParaDeshacer();
+        Burbuja(punta, 0.65f);
         dibujo.BorrarTrazo(t, true);
         froteTrazo = null;
         froteRecorrido = 0f;
@@ -1610,6 +1615,27 @@ public class ControlManos : MonoBehaviour
             trazoActual = null;
         }
         dibujo.Mensaje(DibujoBloqueado ? "Dibujo bloqueado (doble toque para desbloquear)" : "Dibujo desbloqueado");
+    }
+
+    // ---------- Sonido de burbuja al borrar ----------
+
+    AudioSource fuenteSonidos;
+
+    // tono: 1 = burbuja normal; más bajo = burbuja más grande (más grave).
+    void Burbuja(Vector3 donde, float tono)
+    {
+        if (fuenteSonidos == null)
+        {
+            var go = new GameObject("Sonidos");
+            go.transform.SetParent(transform, false);
+            fuenteSonidos = go.AddComponent<AudioSource>();
+            fuenteSonidos.playOnAwake = false;
+            fuenteSonidos.spatialBlend = 0.7f;
+            fuenteSonidos.minDistance = 0.3f;
+        }
+        fuenteSonidos.transform.position = donde;
+        fuenteSonidos.pitch = tono * Random.Range(0.85f, 1.25f);
+        fuenteSonidos.PlayOneShot(Sonidos.Burbuja, 0.7f);
     }
 
     // ---------- Esconder una mano (cuando se vuelve borrador o flecha) ----------

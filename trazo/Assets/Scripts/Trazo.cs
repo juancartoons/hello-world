@@ -32,6 +32,7 @@ public class Trazo : MonoBehaviour
     public int id;
     public int capa;
     public bool visibleAnim = true;                         // false: no existe en este fotograma de la animación
+    public bool oculto;                                     // línea "hueso": existe pero no se ve
     public bool cerrado;
     public bool relleno;
     public int colorRelleno;
@@ -441,7 +442,8 @@ public class Trazo : MonoBehaviour
             relleno = relleno,
             colorRelleno = colorRelleno,
             ancho = ancho,
-            estilo = (int)estilo
+            estilo = (int)estilo,
+            oculto = oculto
         };
     }
 
@@ -484,6 +486,7 @@ public class Trazo : MonoBehaviour
         }
         cerrado = a.cerrado && n >= 3;
         relleno = a.relleno && cerrado;
+        oculto = a.oculto;
         colorRelleno = a.colorRelleno;
         ancho = mezclar ? Mathf.Lerp(a.ancho, b.ancho, u) : a.ancho;
         if (ancho <= 0f)
@@ -553,6 +556,11 @@ public class Trazo : MonoBehaviour
     public void Reconstruir(bool soloLinea)
     {
         AsegurarMalla();
+        var mr = GetComponent<MeshRenderer>();
+        if (mr != null && mr.forceRenderingOff != oculto)
+            mr.forceRenderingOff = oculto;
+        if (rellenoRenderer != null && rellenoRenderer.forceRenderingOff != oculto)
+            rellenoRenderer.forceRenderingOff = oculto;
         if (!silenciar)
             huboCambio = true;
         if (registrarCambios)

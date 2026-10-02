@@ -57,21 +57,31 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
   **Suavidad** (Suave, Normal, Nervioso) y **Velocidad** (4, 8, 12 o 24 cambios por segundo).
   **Grosor de las hebras**: gesto de grosor (pulgar + anular) y pellizco derecho en el aire, sube/baja.
 - **Boceto** (página Medios): la capa activa se ve como lápiz **gris** o **azul** y **no sale** en fotos ni videos.
+- **Imán: Sí / No** (página Medios, por capa): con el imán apagado las líneas quedan como las dibujas (no se cierran
+  ni se unen). Al poner una capa en boceto, el imán se apaga solo.
+- Al borrar nodos suena una burbujita.
 - **Plano: propio / unido** (página Medios): cada capa tiene su propio plano 2D. Las capas "unidas" comparten el plano,
   cada una 2 mm más cerca de ti (boceto atrás, tinta adelante).
 - Se guardan en las gafas, en `Android/data/<tu app>/files/Dibujos` (con Meta Quest Developer Hub → File Manager).
 
-## Títere que camina, corre y salta
+## Personajes que caminan, corren y saltan (hasta dos a la vez)
 
-1. Panel de arriba → página **Títere** → **Muñeco prueba**: aparece un muñeco listo, parado sobre un piso.
-2. **Encender / apagar**: "choca esos cinco" con el muñeco (mano derecha abierta, palma hacia él, un empujón rápido cerca).
-3. Mueve la mano derecha a los lados: el muñeco va donde la llevas. **Lento = camina, rápido = corre.** Hacia atrás, se voltea.
-4. **Golpe rápido de la mano hacia arriba = salta**: se agacha, se estira, cae por la gravedad, se aplasta al caer y rebota.
-5. **Piso +/-**: pellizca una línea y márcala como piso: el muñeco camina sobre ella (sube rampas, cae si se acaba).
-6. **Grabar**: cuenta 3 segundos y guarda una clave por fotograma. "Choca esos cinco" (o **Parar**) = terminar.
-7. **Ciclo / Guardar ciclo**: elige el caminado (Manual o los tuyos); anima un paso con claves y guárdalo.
-8. **Posar dedos**: el índice y el medio derechos acomodan las piernas; **pellizco izquierdo** = guardar una clave.
-9. Con tus dibujos: pellizca una línea y toca **Pierna 1/2**, **Brazo 1/2** o **Cuerpo +/-**. **Voltear** = el otro lado.
+1. Panel de arriba → página **Títere** → **Tipo** (Palito, Musculoso, Gordito, Flaco, Niño) → **Crear**.
+   Aparece frente a ti sobre un piso. Los personajes dibujados tienen huesos invisibles y sus partes pegadas a ellos.
+2. **Encender / apagar**: "choca esos cinco" con el personaje (mano abierta, palma hacia él, empujón rápido cerca).
+   Con la mano **derecha** lo controlas con la derecha; con la **izquierda**, otro personaje con la izquierda.
+3. Mano a los lados = **caminar** (lento) o **correr** (rápido; pasa por caminar antes de correr). Hacia atrás, se voltea.
+   Al frenar de golpe, la cabeza y el tronco siguen un poquito (inercia).
+4. Mano **abajo** = agacharse (dobla las rodillas). Mano **arriba** = elevarlo (tan alto como quieras).
+5. **Saltar**: agáchalo y sube rápido. Despega estirado, se recoge arriba, cae estirado, se agacha al caer (más si cayó
+   de más alto) y rebota. Si subes rápido sin agacharte, hace una anticipación corta solo.
+6. **Piso +/-**: la línea elegida es piso o plataforma (sube rampas, cae si se acaba).
+7. **Grabar**: cuenta 3 segundos y guarda una clave por fotograma de todos los personajes encendidos.
+   "Choca esos cinco" con tu personaje (o **Parar**) = terminar. Luego corrige en la línea de tiempo y exporta con Video anim.
+8. **Ciclo**: Normal, **Con estilo** (Richard Williams: paso alto, brazos grandes, mano arrastrada, codo quebrado)
+   o tus ciclos (**Guardar ciclo** toma tus claves).
+9. **Posar dedos**: el índice y el medio derechos acomodan las piernas; **pellizco izquierdo** = guardar una clave.
+10. Con tus dibujos: pellizca una línea y toca **Pierna 1/2**, **Brazo 1/2** o **Cuerpo +/-**. **Voltear** = el otro lado.
 
 ## Imágenes de referencia
 

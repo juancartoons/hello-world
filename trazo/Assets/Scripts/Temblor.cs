@@ -95,6 +95,8 @@ public class Temblor : MonoBehaviour
     {
         if (Capa == null) return;
         Capa.boceto = (Mathf.Clamp(Capa.boceto, 0, 2) + 1) % 3;
+        // Al bocetar el imán estorba: se apaga solo (y se enciende al volver a tinta).
+        Capa.iman = Capa.boceto == 0;
         Cambio(Capa.boceto == 0 ? "tinta (sale en fotos y videos)" : "boceto " + NombreBoceto.ToLower() + " (no sale en fotos ni videos)");
     }
 
