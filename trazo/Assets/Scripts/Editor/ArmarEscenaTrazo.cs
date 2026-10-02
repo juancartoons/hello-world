@@ -128,11 +128,17 @@ public static class ArmarEscenaTrazo
         caja.materialCaja = matCaja;
 
         var panel = CrearPanel(raiz.transform, control, dibujo, escenario, matPanel, matBoton, matBotonMarcado);
-        CrearPanelArriba(raiz.transform, control, dibujo, animacion, matPanel, matBoton, matBotonMarcado, matClave, matCabezal, matBarra);
+        CrearPanelArriba(raiz.transform, control, dibujo, animacion, escenario, matPanel, matBoton, matBotonMarcado, matClave, matCabezal, matBarra);
         var aviso = Texto(raiz.transform, "", new Vector3(0f, 1.4f, 0.6f), new Vector2(0.4f, 0.05f), new Color(0.1f, 0.1f, 0.12f));
         aviso.gameObject.name = "Aviso";
         aviso.fontSizeMax = 0.3f;
         panel.textoAviso = aviso;
+
+        // Etiqueta que flota sobre la mano con el nombre del gesto (para aprender).
+        var ayuda = Texto(raiz.transform, "", new Vector3(0f, 1.3f, 0.5f), new Vector2(0.22f, 0.05f), new Color(0.1f, 0.25f, 0.6f));
+        ayuda.gameObject.name = "AyudaGesto";
+        ayuda.fontSizeMax = 0.25f;
+        control.textoGesto = ayuda;
 
         // ---------- Cámara: fondo blanco ----------
         var camara = rig.centerEyeAnchor != null ? rig.centerEyeAnchor.GetComponent<Camera>() : null;
@@ -299,7 +305,7 @@ public static class ArmarEscenaTrazo
 
     // ---------- Panel de arriba: animación y capas ----------
 
-    static void CrearPanelArriba(Transform raiz, ControlManos control, Dibujo dibujo, Animacion animacion,
+    static void CrearPanelArriba(Transform raiz, ControlManos control, Dibujo dibujo, Animacion animacion, Escenario escenario,
                                  Material matPanel, Material matBoton, Material matBotonMarcado,
                                  Material matClave, Material matCabezal, Material matBarra)
     {
@@ -310,6 +316,7 @@ public static class ArmarEscenaTrazo
         panel.control = control;
         panel.dibujo = dibujo;
         panel.animacion = animacion;
+        panel.escenario = escenario;
         panel.materialClave = matClave;
 
         var contenido = new GameObject("Contenido");
@@ -320,18 +327,18 @@ public static class ArmarEscenaTrazo
         fondo.name = "Fondo";
         Object.DestroyImmediate(fondo.GetComponent<Collider>());
         fondo.transform.SetParent(contenido.transform, false);
-        fondo.transform.localPosition = new Vector3(0f, 0f, 0.006f);
-        fondo.transform.localScale = new Vector3(0.5f, 0.24f, 1f);
+        fondo.transform.localPosition = new Vector3(0f, 0.01f, 0.006f);
+        fondo.transform.localScale = new Vector3(0.5f, 0.27f, 1f);
         SinSombras(fondo.GetComponent<Renderer>(), matPanel);
 
-        panel.textoFotograma = Texto(contenido.transform, "Fotograma 1 / 200", new Vector3(0f, 0.097f, -0.001f), new Vector2(0.3f, 0.022f), Color.black);
+        panel.textoFotograma = Texto(contenido.transform, "Fotograma 1 / 200", new Vector3(0f, 0.125f, -0.001f), new Vector2(0.3f, 0.022f), Color.black);
 
         // Línea de tiempo
         var barra = GameObject.CreatePrimitive(PrimitiveType.Cube);
         barra.name = "BarraTiempo";
         Object.DestroyImmediate(barra.GetComponent<Collider>());
         barra.transform.SetParent(contenido.transform, false);
-        barra.transform.localPosition = new Vector3(0f, 0.06f, 0f);
+        barra.transform.localPosition = new Vector3(0f, 0.09f, 0f);
         barra.transform.localScale = new Vector3(0.44f, 0.02f, 0.008f);
         SinSombras(barra.GetComponent<Renderer>(), matBarra);
         panel.barra = barra.transform;
@@ -340,7 +347,7 @@ public static class ArmarEscenaTrazo
         cabezal.name = "Cabezal";
         Object.DestroyImmediate(cabezal.GetComponent<Collider>());
         cabezal.transform.SetParent(contenido.transform, false);
-        cabezal.transform.localPosition = new Vector3(-0.22f, 0.06f, -0.006f);
+        cabezal.transform.localPosition = new Vector3(-0.22f, 0.09f, -0.006f);
         cabezal.transform.localScale = new Vector3(0.004f, 0.036f, 0.004f);
         SinSombras(cabezal.GetComponent<Renderer>(), matCabezal);
         panel.cabezal = cabezal.transform;
@@ -351,7 +358,7 @@ public static class ArmarEscenaTrazo
         for (int i = 0; i < controles.Length; i++)
         {
             float x = -0.192f + i * 0.064f;
-            b[i] = Boton(contenido.transform, controles[i], new Vector3(x, 0.02f, 0f), matBoton, matBotonMarcado);
+            b[i] = Boton(contenido.transform, controles[i], new Vector3(x, 0.05f, 0f), matBoton, matBotonMarcado);
         }
         panel.btnInicio = b[0];
         panel.btnAnterior = b[1];
@@ -367,10 +374,26 @@ public static class ArmarEscenaTrazo
         for (int i = 0; i < Dibujo.NumeroDeCapas; i++)
         {
             float x = -0.165f + i * 0.11f;
-            panel.btnCapas[i] = Boton(contenido.transform, "Capa " + (i + 1), new Vector3(x, -0.03f, 0f), matBoton, matBotonMarcado);
-            panel.btnVer[i] = Boton(contenido.transform, "Ver", new Vector3(x, -0.058f, 0f), matBoton, matBotonMarcado);
+            panel.btnCapas[i] = Boton(contenido.transform, "Capa " + (i + 1), new Vector3(x, 0f, 0f), matBoton, matBotonMarcado);
+            panel.btnVer[i] = Boton(contenido.transform, "Ver", new Vector3(x, -0.028f, 0f), matBoton, matBotonMarcado);
         }
-        Texto(contenido.transform, "Toca la barra = ir a un fotograma · pellizca una clave = moverla · si editas, se guarda una clave", new Vector3(0f, -0.095f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.3f, 0.3f, 0.35f));
+        // Copia del menú de la mano + exportar
+        string[] menu = { "Libre (3D)", "Fondo", "Guardar", "Cargar", "Borrar todo", "SVG", "Foto" };
+        var m = new BotonTocable[menu.Length];
+        for (int i = 0; i < menu.Length; i++)
+        {
+            float x = -0.192f + i * 0.064f;
+            m[i] = Boton(contenido.transform, menu[i], new Vector3(x, -0.07f, 0f), matBoton, matBotonMarcado);
+        }
+        panel.btnPlano = m[0];
+        panel.btnFondo = m[1];
+        panel.btnGuardar = m[2];
+        panel.btnCargar = m[3];
+        panel.btnBorrarTodo = m[4];
+        panel.btnSvg = m[5];
+        panel.btnFoto = m[6];
+
+        Texto(contenido.transform, "Toca la barra = ir a un fotograma · pellizca una clave = moverla · si editas, se guarda una clave", new Vector3(0f, -0.105f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.3f, 0.3f, 0.35f));
     }
 
     static bool PonerEnum(SerializedProperty prop, string nombre)

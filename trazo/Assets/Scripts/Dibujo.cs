@@ -248,12 +248,30 @@ public class Dibujo : MonoBehaviour
             capas[capaActual].visible = true;
             ActualizarVisibilidad();
         }
-        var t = CrearTrazo(anchoPincel / EscalaMundo);
+        var t = CrearTrazo(AnchoNuevoLocal());
         t.id = siguienteId++;
         t.capa = capaActual;
         trazos.Add(t);
         return t;
     }
+
+    // Grosor de las líneas nuevas: el promedio de las líneas que se ven (así siempre combinan,
+    // aunque hayas agrandado o achicado todo). Si no hay líneas, el del pincel.
+    public float AnchoNuevoLocal()
+    {
+        float suma = 0f;
+        int cuenta = 0;
+        foreach (var t in trazos)
+        {
+            if (!Editable(t) || t.Dibujando)
+                continue;
+            suma += t.ancho;
+            cuenta++;
+        }
+        return cuenta > 0 ? suma / cuenta : anchoPincel / EscalaMundo;
+    }
+
+    public float AnchoNuevoMundo => AnchoNuevoLocal() * EscalaMundo;
 
     // Termina la línea; si su final toca su inicio se cierra, y si toca otra línea se une a ella.
     public void TerminarTrazo(Trazo t)
@@ -281,6 +299,13 @@ public class Dibujo : MonoBehaviour
                 Unir(t, 1, otro, extremo);
             if (BuscarExtremo(t.nodos[0], t, out otro, out extremo))
                 Unir(t, 0, otro, extremo);
+            // Si al unirse las puntas quedaron juntas (por ejemplo, un triángulo de rectas), se cierra.
+            int m = t.nodos.Count;
+            if (!t.cerrado && m >= 4 && Vector3.Distance(t.nodos[0], t.nodos[m - 1]) < iman)
+            {
+                if (t.Cerrar(true))
+                    Mensaje("Figura cerrada");
+            }
         }
         Avisar();
     }
@@ -324,10 +349,32 @@ public class Dibujo : MonoBehaviour
     {
         if (t == null)
             return;
+        int antes = t.nodos.Count;
         t.QuitarNodo(indice);
+        if (animacion != null)
+            animacion.QuitarNodoEnClaves(t.id, indice, antes);
         if (t.nodos.Count < 2)
             Desaparecer(t, false);
         Avisar();
+    }
+
+    // Agrega un nodo en la línea (y en todas las claves de la animación).
+    public void InsertarNodo(Trazo t, int segmento, float posicion)
+    {
+        if (t == null)
+            return;
+        int antes = t.nodos.Count;
+        t.InsertarNodo(segmento, posicion);
+        if (animacion != null)
+            animacion.InsertarNodoEnClaves(t.id, segmento, posicion, antes);
+        Avisar();
+    }
+
+    // Vuelve a poner el color normal de la línea (azul si está seleccionada).
+    public void RestaurarMaterial(Trazo t)
+    {
+        if (t != null)
+            t.PonerMaterialLinea(t == seleccion && materialSeleccion != null ? materialSeleccion : materialLinea);
     }
 
     public void BorrarTrazo(Trazo t, bool conDestello)
@@ -847,6 +894,83 @@ public class Dibujo : MonoBehaviour
         {
             Debug.LogWarning("TrazoVR: no se pudo leer: " + e.Message);
             return null;
+        }
+    }
+
+    // ---------- Exportar (SVG y foto) ----------
+
+    // Dirección desde la que se exporta: en Plano, de frente al plano; en 3D, desde tu cabeza hacia el dibujo.
+    void VistaExportar(out Vector3 adelante, out Vector3 posicion)
+    {
+        var control = ControlManos.Instancia;
+        Transform cabeza = control != null ? control.Cabeza : null;
+        posicion = cabeza != null ? cabeza.position : transform.position - Vector3.forward;
+        adelante = cabeza != null ? cabeza.forward : Vector3.forward;
+        Bounds caja;
+        if (Caja(out caja))
+        {
+            Vector3 centro = transform.TransformPoint(caja.center);
+            Vector3 dir = centro - posicion;
+            if (dir.sqrMagnitude > 1e-4f)
+                adelante = dir.normalized;
+        }
+        if (PlanoActivo)
+            adelante = transform.TransformDirection(planoNormal).normalized;
+    }
+
+    public void ExportarSVG()
+    {
+        Vector3 adelante, posicion;
+        VistaExportar(out adelante, out posicion);
+        string svg = Exportar.Svg(this, adelante);
+        if (svg == null)
+        {
+            Mensaje("No hay líneas para exportar");
+            return;
+        }
+        string nombre = "dibujo_" + System.DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".svg";
+        Mensaje(Escribir(Path.Combine(Carpeta, nombre), svg) ? "SVG guardado: " + nombre : "No se pudo guardar el SVG");
+    }
+
+    public void TomarFoto()
+    {
+        var control = ControlManos.Instancia;
+        Transform cabeza = control != null ? control.Cabeza : null;
+        Camera origen = cabeza != null ? cabeza.GetComponent<Camera>() : Camera.main;
+        if (origen == null)
+        {
+            Mensaje("No encontré la cámara");
+            return;
+        }
+        Vector3 adelante, posicion;
+        VistaExportar(out adelante, out posicion);
+        float fov = 60f;
+        Bounds caja;
+        if (Caja(out caja))
+        {
+            float distancia = Vector3.Distance(transform.TransformPoint(caja.center), posicion);
+            float radio = caja.extents.magnitude * EscalaMundo;
+            if (distancia > 0.05f)
+                fov = Mathf.Clamp(2f * Mathf.Atan(radio / distancia) * Mathf.Rad2Deg * 1.15f, 20f, 100f);
+        }
+        Vector3 arriba = Mathf.Abs(Vector3.Dot(adelante, Vector3.up)) > 0.95f ? Vector3.forward : Vector3.up;
+        byte[] png = Exportar.Foto(origen, posicion, Quaternion.LookRotation(adelante, arriba), fov, 2560, 1440, Color.white);
+        if (png == null)
+        {
+            Mensaje("No se pudo tomar la foto");
+            return;
+        }
+        string nombre = "foto_" + System.DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".png";
+        try
+        {
+            Directory.CreateDirectory(Carpeta);
+            File.WriteAllBytes(Path.Combine(Carpeta, nombre), png);
+            Mensaje("Foto guardada: " + nombre);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("TrazoVR: no se pudo guardar la foto: " + e.Message);
+            Mensaje("No se pudo guardar la foto");
         }
     }
 

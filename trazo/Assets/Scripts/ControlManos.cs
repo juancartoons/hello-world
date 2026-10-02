@@ -1,13 +1,16 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 // Los gestos de TrazoVR (todo con las manos):
 //  Izquierda pulgar + ÍNDICE (sostener)  -> dibujar con la punta del índice derecho.
+//  Izquierda pulgar + MEÑIQUE (sostener) -> línea recta (del punto donde empiezas hasta tu dedo).
 //  Izquierda pulgar + MEDIO  (sostener)  -> modo nodos: pellizca con la derecha para mover nodos y asas.
 //       Arrastra la punta de una línea sobre otra punta: se unen como imán (o se cierra la figura).
 //  Izquierda pulgar + ANULAR (sostener)  -> grosor: sube/baja la mano izquierda = todo más grueso/delgado;
 //       pellizca un nodo con la derecha y súbela/bájala = grosor solo de ese nodo.
-//  Izquierda PUÑO (pulgar sobre los dedos o al lado) -> borrador: lo que toques con el índice derecho se borra.
+//  Izquierda PUÑO (pulgar sobre los dedos o al lado) -> borrador: tocar un nodo lo borra;
+//       la línea entera solo se borra si la FROTAS (ida y vuelta) lejos de sus nodos.
 //  Izquierda puño con el PULGAR hacia tu izquierda -> deshacer (la mano destella).
 //  Izquierda abierta con el pulgar tocando la base de los dedos -> menú.
 //  LAS DOS manos pellizcando (índice + pulgar) -> escalar, girar (como volante) y mover todo.
@@ -40,13 +43,21 @@ public class ControlManos : MonoBehaviour
     [Tooltip("Más alto = sigue más rápido al dedo; más bajo = más suave")]
     public float suavizado = 16f;
     public float radioAgarreNodo = 0.025f;
-    public float radioBorrarNodo = 0.015f;
+    [Tooltip("Cerca de un nodo (esta distancia), el borrador borra el nodo y nunca la línea")]
+    public float radioBorrarNodo = 0.03f;
+    [Tooltip("Cuánto hay que frotar una línea (metros de ida y vuelta) para borrarla entera")]
+    public float distanciaFrote = 0.06f;
     public float tamanoNodo = 0.008f;
     [Tooltip("Cuánto cambia el grosor al subir/bajar la mano")]
     public float sensibilidadGrosor = 4f;
 
-    public enum Gesto { Ninguno, Dibujar, Nodos, Grosor, Transformar, Borrar }
+    public enum Gesto { Ninguno, Dibujar, Nodos, Grosor, Transformar, Borrar, Recta }
     public Gesto GestoIzq { get; private set; }
+
+    [Header("Ayudas")]
+    [Tooltip("Texto que flota sobre la mano con el nombre del gesto")]
+    public TMP_Text textoGesto;
+    public bool mostrarAyudas = true;
 
     public ManoSeguida Izq { get; } = new ManoSeguida(true);
     public ManoSeguida Der { get; } = new ManoSeguida(false);
@@ -105,11 +116,30 @@ public class ControlManos : MonoBehaviour
     float alturaDerGrosor;
 
     // Borrador, deshacer, rellenos
-    bool tocandoBorrar;
     float tiempoDeshacer;
     bool esperarSoltarDeshacer;
     bool tocandoRelleno;
     float proximoToque;
+
+    // Menú (se queda abierto aunque la mano derecha tape un momento a la izquierda)
+    bool menuAbierto;
+    float menuFueraDesde = -1f;
+    Vector3 posMenu;
+    Quaternion rotMenu = Quaternion.identity;
+
+    // Borrador
+    bool armadoBorrar;
+    Vector3 posUltimoBorrado;
+    Trazo froteTrazo;
+    float froteRecorrido;
+    Vector3 froteAncla;
+
+    // Línea recta
+    Vector3 inicioRecta;
+
+    // Etiqueta sobre la mano
+    string etiquetaTemporal;
+    float etiquetaHasta;
 
     // Mover una línea con el pellizco derecho
     Trazo lineaMovida;
@@ -190,18 +220,23 @@ public class ControlManos : MonoBehaviour
         LeerPoseIzquierda();
 
         ActualizarGestoIzquierdo();
+        ActualizarMenu();
 
         switch (GestoIzq)
         {
             case Gesto.Dibujar: Dibujar(); break;
+            case Gesto.Recta: Recta(); break;
             case Gesto.Nodos: EditarNodos(); break;
             case Gesto.Grosor: CambiarGrosor(); break;
             case Gesto.Borrar: Borrar(); break;
             case Gesto.Transformar: if (caja != null) caja.Actualizar(Izq, Der); break;
             default:
                 RevisarDeshacer();
-                RevisarAgarreLinea();
-                RevisarToqueRelleno();
+                if (!menuAbierto)
+                {
+                    RevisarAgarreLinea();
+                    RevisarToqueRelleno();
+                }
                 break;
         }
 
@@ -210,6 +245,7 @@ public class ControlManos : MonoBehaviour
         ActualizarCursor();
         if (finDestelloMano > 0f && Time.time > finDestelloMano)
             RestaurarMano();
+        ActualizarEtiqueta();
     }
 
     // ---------- Pose de la mano izquierda ----------
@@ -302,6 +338,7 @@ public class ControlManos : MonoBehaviour
         float dIndice = Vector3.Distance(Izq.pulgar, Izq.indice);
         float dMedio = Vector3.Distance(Izq.pulgar, Izq.medio);
         float dAnular = Vector3.Distance(Izq.pulgar, Izq.anular);
+        float dMenique = Vector3.Distance(Izq.pulgar, Izq.menique);
 
         if (GestoIzq == Gesto.Borrar)
         {
@@ -312,7 +349,10 @@ public class ControlManos : MonoBehaviour
         }
         if (GestoIzq != Gesto.Ninguno)
         {
-            float d = GestoIzq == Gesto.Dibujar ? dIndice : GestoIzq == Gesto.Nodos ? dMedio : dAnular;
+            float d = GestoIzq == Gesto.Dibujar ? dIndice
+                    : GestoIzq == Gesto.Nodos ? dMedio
+                    : GestoIzq == Gesto.Recta ? dMenique
+                    : dAnular;
             if (d > pellizcoSale)
                 SalirDeGesto();
             return;
@@ -320,7 +360,7 @@ public class ControlManos : MonoBehaviour
 
         if (esperarSoltarIzq)
         {
-            if (dIndice > pellizcoSale && dMedio > pellizcoSale && dAnular > pellizcoSale)
+            if (dIndice > pellizcoSale && dMedio > pellizcoSale && dAnular > pellizcoSale && dMenique > pellizcoSale)
                 esperarSoltarIzq = false;
             return;
         }
@@ -337,11 +377,13 @@ public class ControlManos : MonoBehaviour
         }
         else if (!poseValida || curvaIndice > 1.15f)
         {
-            // Medio o anular con el índice estirado (así no se confunde con el puño).
-            if (dMedio < pellizcoEntra && dMedio <= dAnular)
+            // Medio, anular o meñique con el índice estirado (así no se confunde con el puño).
+            if (dMedio < pellizcoEntra && dMedio <= dAnular && dMedio <= dMenique)
                 nuevo = Gesto.Nodos;
-            else if (dAnular < pellizcoEntra)
+            else if (dAnular < pellizcoEntra && dAnular <= dMenique)
                 nuevo = Gesto.Grosor;
+            else if (dMenique < pellizcoEntra)
+                nuevo = Gesto.Recta;
         }
 
         if (nuevo != candidato)
@@ -349,7 +391,9 @@ public class ControlManos : MonoBehaviour
             candidato = nuevo;
             candidatoDesde = Time.time;
         }
-        if (nuevo == Gesto.Ninguno || Time.time - candidatoDesde < confirmarGesto)
+        // Con el menú abierto se pide sostener más, para no cerrarlo por un salto del seguimiento.
+        float confirmar = menuAbierto ? 0.25f : confirmarGesto;
+        if (nuevo == Gesto.Ninguno || Time.time - candidatoDesde < confirmar)
             return;
 
         if (nuevo == Gesto.Dibujar && Der.pellizco && Izq.pellizco)
@@ -393,7 +437,9 @@ public class ControlManos : MonoBehaviour
         }
         else if (g == Gesto.Borrar)
         {
-            tocandoBorrar = true; // no borra lo que ya estaba tocando al cerrar el puño
+            armadoBorrar = false; // no borra lo que ya estaba tocando al cerrar el puño
+            posUltimoBorrado = Der.indice;
+            froteTrazo = null;
             PintarMano(Izq, materialBorrarMano, 0f); // mano roja mientras dure el borrador
         }
     }
@@ -410,7 +456,10 @@ public class ControlManos : MonoBehaviour
         if (GestoIzq == Gesto.Transformar && caja != null)
             caja.Terminar();
         if (GestoIzq == Gesto.Borrar)
+        {
             RestaurarMano();
+            CancelarFrote();
+        }
         if (arrastre != Objetivo.Nada)
             TerminarArrastre();
         selTrazo = null;
@@ -437,6 +486,35 @@ public class ControlManos : MonoBehaviour
             inicioTrazo = Time.time;
         }
         trazoActual.AgregarPuntoCrudo(dibujo.ProyectarEnPlano(local));
+    }
+
+    // ---------- Línea recta (pulgar + meñique izquierdo) ----------
+
+    void Recta()
+    {
+        if (!Der.valida)
+            return;
+        Vector3 local = dibujo.transform.InverseTransformPoint(Der.indice);
+        if (trazoActual == null)
+        {
+            if (dibujo.plano && !dibujo.HayPlano && Cabeza != null)
+                dibujo.DefinirPlano(local, Cabeza.forward);
+            dibujo.Seleccionar(null);
+            inicioRecta = Imantar(dibujo.ProyectarEnPlano(local), null);
+            trazoActual = dibujo.NuevoTrazo();
+            inicioTrazo = Time.time;
+        }
+        trazoActual.PonerRecta(inicioRecta, Imantar(dibujo.ProyectarEnPlano(local), trazoActual));
+    }
+
+    // Si el punto está cerca de la punta de otra línea, se pega a ella (para hacer polígonos).
+    Vector3 Imantar(Vector3 local, Trazo excluir)
+    {
+        Trazo o;
+        int e;
+        if (dibujo.BuscarExtremo(local, excluir, out o, out e))
+            return e == 0 ? o.nodos[0] : o.nodos[o.nodos.Count - 1];
+        return local;
     }
 
     // ---------- Modo nodos (mover nodos y asas, imán) ----------
@@ -489,13 +567,39 @@ public class ControlManos : MonoBehaviour
             }
             else
             {
-                // Pellizcar otra línea la selecciona (y muestra solo sus nodos).
+                // Pellizcar la línea seleccionada (lejos de sus nodos) = agregar un nodo ahí.
+                // Pellizcar otra línea = seleccionarla (y ver solo sus nodos).
                 var otra = LineaBajo(pinza, Der.indice);
-                if (otra != null)
+                if (otra != null && otra == dibujo.Seleccion)
+                    AgregarNodoEn(otra, pinza);
+                else if (otra != null)
                     dibujo.Seleccionar(otra);
             }
         }
         MostrarModoNodos(true, dibujo.Seleccion);
+    }
+
+    // Agrega un nodo en el punto de la línea más cercano a la pinza y empieza a arrastrarlo.
+    bool AgregarNodoEn(Trazo linea, Vector3 pinza)
+    {
+        Transform raiz = dibujo.transform;
+        int seg1, seg2;
+        float t1, t2, d1, d2;
+        bool ok1 = linea.PuntoEnCurva(raiz.InverseTransformPoint(pinza), out seg1, out t1, out d1);
+        bool ok2 = linea.PuntoEnCurva(raiz.InverseTransformPoint(Der.indice), out seg2, out t2, out d2);
+        if (!ok1 && !ok2)
+            return false;
+        bool usarPinza = ok1 && (!ok2 || d1 <= d2);
+        int segmento = usarPinza ? seg1 : seg2;
+        float posicion = usarPinza ? t1 : t2;
+        if (segmento < 0 || posicion < 0.03f || posicion > 0.97f)
+            return false;
+        dibujo.GuardarParaDeshacer();
+        dibujo.InsertarNodo(linea, segmento, posicion);
+        EmpezarArrastre(Objetivo.Nodo, linea, segmento + 1, false, pinza);
+        deshacerPendiente = false;
+        dibujo.Mensaje("Nodo agregado");
+        return true;
     }
 
     bool BuscarNodoCercano(Vector3 a, Vector3 b, float radio, Trazo solo, out Trazo trazo, out int indice)
@@ -687,13 +791,15 @@ public class ControlManos : MonoBehaviour
     }
 
     // ---------- Borrador: puño izquierdo + tocar con el índice derecho ----------
+    // Nodo y relleno: se borran al tocarlos. Cerca de un nodo, nunca se borra la línea.
+    // Línea entera: hay que frotarla (ida y vuelta) lejos de sus nodos; se pone roja mientras.
 
     void Borrar()
     {
         hoverTipo = Objetivo.Nada;
         if (!Der.valida)
         {
-            tocandoBorrar = false;
+            CancelarFrote();
             MostrarModoNodos(false, null);
             return;
         }
@@ -702,9 +808,17 @@ public class ControlManos : MonoBehaviour
         float escala = dibujo.EscalaMundo;
 
         Objetivo tipo = Objetivo.Nada;
-        Trazo t;
-        int i;
-        if (BuscarNodoCercano(punta, punta, radioBorrarNodo, null, out t, out i))
+        Trazo t = null;
+        int i = -1;
+        bool frotando = froteTrazo != null && froteRecorrido > 0.012f && Dibujo.Editable(froteTrazo)
+                        && froteTrazo.DistanciaACurva(local) * escala < froteTrazo.ancho * escala * 0.5f + 0.015f;
+        if (frotando)
+        {
+            // Si ya empezaste a frotar, sigues frotando esa línea aunque pases cerca de un nodo.
+            t = froteTrazo;
+            tipo = Objetivo.Linea;
+        }
+        else if (BuscarNodoCercano(punta, punta, radioBorrarNodo, null, out t, out i))
         {
             tipo = Objetivo.Nodo;
         }
@@ -741,29 +855,77 @@ public class ControlManos : MonoBehaviour
         hoverTrazo = t;
         hoverIndice = i;
 
-        bool toca = tipo != Objetivo.Nada;
-        if (toca && !tocandoBorrar && t != null)
+        if (tipo == Objetivo.Nada || t == null)
         {
-            // Solo borra al "entrar" en algo: así no se borra la línea entera después de un nodo.
-            dibujo.GuardarParaDeshacer();
-            if (tipo == Objetivo.Nodo)
-            {
-                dibujo.Destello(dibujo.transform.TransformPoint(t.nodos[i]), 0.02f);
-                dibujo.QuitarNodo(t, i);
-            }
-            else if (tipo == Objetivo.Linea)
-            {
-                dibujo.BorrarTrazo(t, true);
-            }
-            else
-            {
-                dibujo.Destello(punta, 0.04f);
-                dibujo.QuitarRelleno(t);
-            }
-            hoverTipo = Objetivo.Nada;
+            armadoBorrar = true; // el dedo salió de todo: ya puede borrar otra vez
+            CancelarFrote();
         }
-        tocandoBorrar = toca;
+        else if (tipo == Objetivo.Linea)
+        {
+            Frotar(t, punta);
+        }
+        else
+        {
+            CancelarFrote();
+            // Para borrar otro nodo sin sacar el dedo, hay que moverlo un poquito.
+            bool movido = Vector3.Distance(punta, posUltimoBorrado) > 0.012f;
+            if (armadoBorrar || movido)
+            {
+                dibujo.GuardarParaDeshacer();
+                if (tipo == Objetivo.Nodo)
+                {
+                    dibujo.Destello(dibujo.transform.TransformPoint(t.nodos[i]), 0.02f);
+                    dibujo.QuitarNodo(t, i);
+                }
+                else
+                {
+                    dibujo.Destello(punta, 0.04f);
+                    dibujo.QuitarRelleno(t);
+                }
+                armadoBorrar = false;
+                posUltimoBorrado = punta;
+                hoverTipo = Objetivo.Nada;
+            }
+        }
         MostrarModoNodos(false, null);
+    }
+
+    void Frotar(Trazo t, Vector3 punta)
+    {
+        if (froteTrazo != t)
+        {
+            CancelarFrote();
+            froteTrazo = t;
+            froteRecorrido = 0f;
+            froteAncla = punta;
+            return;
+        }
+        // Solo cuentan movimientos de más de 1 cm (así el temblor de la mano no borra nada).
+        float paso = Vector3.Distance(punta, froteAncla);
+        if (paso > 0.01f)
+        {
+            froteRecorrido += paso;
+            froteAncla = punta;
+        }
+        if (froteRecorrido > 0.012f && dibujo.materialBorrado != null)
+            t.PonerMaterialLinea(dibujo.materialBorrado);
+        if (froteRecorrido < distanciaFrote)
+            return;
+        dibujo.RestaurarMaterial(t);
+        dibujo.GuardarParaDeshacer();
+        dibujo.BorrarTrazo(t, true);
+        froteTrazo = null;
+        froteRecorrido = 0f;
+        armadoBorrar = false;
+        posUltimoBorrado = punta;
+    }
+
+    void CancelarFrote()
+    {
+        if (froteTrazo != null)
+            dibujo.RestaurarMaterial(froteTrazo);
+        froteTrazo = null;
+        froteRecorrido = 0f;
     }
 
     // ---------- Ver nodos y asas ----------
@@ -970,7 +1132,10 @@ public class ControlManos : MonoBehaviour
             return;
         esperarSoltarDeshacer = true;
         if (dibujo.Deshacer())
+        {
             PintarMano(Izq, materialDestelloMano, 0.3f);
+            MostrarEtiqueta("Deshacer");
+        }
     }
 
     bool PoseDeshacer()
@@ -1132,29 +1297,115 @@ public class ControlManos : MonoBehaviour
         var mat = borrando && materialCursorBorrar != null ? materialCursorBorrar : materialCursor;
         if (mat != null && cursorRender.sharedMaterial != mat)
             cursorRender.sharedMaterial = mat;
-        cursor.localScale = Vector3.one * (borrando ? 0.012f : Mathf.Max(0.003f, dibujo.anchoPincel));
+        cursor.localScale = Vector3.one * (borrando ? 0.012f : Mathf.Max(0.003f, dibujo.AnchoNuevoMundo));
     }
 
     // Menú: mano izquierda abierta con la punta del pulgar en la base de los dedos.
-    // Los botones aparecen unos centímetros hacia ti y siguen a la mano.
-    public bool PuedeVerPanel(bool yaVisible, out Vector3 posicion, out Quaternion rotacion)
+    // Una vez abierto, se queda aunque la mano derecha tape un momento a la izquierda
+    // (eso pasa al tocar los botones). Se cierra al hacer otro gesto o al quitar el pulgar un rato.
+    void ActualizarMenu()
     {
-        posicion = Vector3.zero;
-        rotacion = Quaternion.identity;
-        if (GestoIzq != Gesto.Ninguno || !poseValida || Cabeza == null)
-            return false;
-        if (!DedosAbiertos())
-            return false;
-        if (distanciaMenu > (yaVisible ? 0.06f : 0.045f))
-            return false;
+        if (GestoIzq != Gesto.Ninguno || Cabeza == null)
+        {
+            menuAbierto = false;
+            return;
+        }
+        bool pose = poseValida
+                    && distanciaMenu < (menuAbierto ? 0.09f : 0.045f)
+                    && (menuAbierto || DedosAbiertos());
+        if (pose)
+        {
+            menuAbierto = true;
+            menuFueraDesde = -1f;
+            PosicionarMenu();
+            return;
+        }
+        if (!menuAbierto)
+            return;
+        if (menuFueraDesde < 0f)
+            menuFueraDesde = Time.time;
+        float espera = poseValida ? 0.7f : 1.5f;
+        if (Time.time - menuFueraDesde > espera)
+            menuAbierto = false;
+        else if (poseValida)
+            PosicionarMenu();
+    }
+
+    void PosicionarMenu()
+    {
         Vector3 haciaCabeza = Cabeza.position - palmaIzq.centro;
         if (haciaCabeza.sqrMagnitude < 1e-6f)
-            return false;
-        posicion = palmaIzq.centro + haciaCabeza.normalized * 0.08f + Vector3.up * 0.02f;
-        Vector3 mirar = posicion - Cabeza.position;
+            return;
+        // Unos centímetros hacia ti y un poco arriba, para que la mano derecha no tape a la izquierda.
+        Vector3 pos = palmaIzq.centro + haciaCabeza.normalized * 0.1f + Vector3.up * 0.06f;
+        Vector3 mirar = pos - Cabeza.position;
         if (mirar.sqrMagnitude < 1e-6f)
-            return false;
-        rotacion = Quaternion.LookRotation(mirar, Vector3.up);
-        return true;
+            return;
+        posMenu = pos;
+        rotMenu = Quaternion.LookRotation(mirar, Vector3.up);
+    }
+
+    public bool PuedeVerPanel(bool yaVisible, out Vector3 posicion, out Quaternion rotacion)
+    {
+        posicion = posMenu;
+        rotacion = rotMenu;
+        return menuAbierto;
+    }
+
+    // ---------- Etiqueta sobre la mano (para aprender los gestos) ----------
+
+    void MostrarEtiqueta(string texto)
+    {
+        etiquetaTemporal = texto;
+        etiquetaHasta = Time.time + 0.9f;
+    }
+
+    void ActualizarEtiqueta()
+    {
+        if (textoGesto == null)
+            return;
+        string texto = null;
+        ManoSeguida sobre = Izq;
+        bool entreManos = false;
+        bool hayLinea = dibujo.Seleccion != null;
+        switch (GestoIzq)
+        {
+            case Gesto.Dibujar: texto = "Dibujar"; break;
+            case Gesto.Recta: texto = "Línea recta"; break;
+            case Gesto.Nodos: texto = hayLinea ? "Editar nodos (esta línea)" : "Editar nodos"; break;
+            case Gesto.Grosor: texto = hayLinea ? "Grosor (esta línea)" : "Grosor (todo)"; break;
+            case Gesto.Borrar: texto = "Borrar\n(frota la línea para borrarla entera)"; break;
+            case Gesto.Transformar:
+                texto = hayLinea ? "Girar / escalar línea" : "Girar / escalar todo";
+                entreManos = true;
+                break;
+        }
+        if (texto == null)
+        {
+            if (Time.time < etiquetaHasta)
+            {
+                texto = etiquetaTemporal;
+            }
+            else if (lineaMovida != null)
+            {
+                texto = "Mover línea";
+                sobre = Der;
+            }
+        }
+        bool ver = mostrarAyudas && texto != null && Cabeza != null
+                   && (entreManos ? Izq.valida && Der.valida : sobre.valida);
+        if (textoGesto.gameObject.activeSelf != ver)
+            textoGesto.gameObject.SetActive(ver);
+        if (!ver)
+            return;
+        if (textoGesto.text != texto)
+            textoGesto.text = texto;
+        Vector3 pos = entreManos
+            ? (Izq.PuntoPellizco + Der.PuntoPellizco) * 0.5f
+            : (sobre.indice + sobre.pulgar + sobre.medio) / 3f;
+        pos += Vector3.up * 0.09f;
+        Vector3 mirar = pos - Cabeza.position;
+        if (mirar.sqrMagnitude > 1e-6f)
+            textoGesto.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(mirar, Vector3.up));
     }
 }

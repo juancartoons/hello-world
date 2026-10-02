@@ -263,6 +263,37 @@ public class Animacion : MonoBehaviour
         dibujo.ActualizarVisibilidad();
     }
 
+    // Al borrar un nodo, se borra en TODAS las claves (así el morph sigue funcionando).
+    public void QuitarNodoEnClaves(int id, int indice, int nodosAntes)
+    {
+        foreach (var c in claves)
+        {
+            var p = BuscarPose(c, id);
+            if (p == null || p.nodos == null || p.nodos.Count != nodosAntes)
+                continue;
+            NodosUtil.Quitar(p.nodos, p.asaEntrada, p.asaSalida, p.asaManual, p.grosorNodo, indice);
+            if (p.cerrado && p.nodos.Count < 3)
+            {
+                p.cerrado = false;
+                p.relleno = false;
+            }
+            if (p.nodos.Count < 2)
+                c.trazos.Remove(p);
+        }
+    }
+
+    // Al agregar un nodo, se agrega en el mismo lugar de la curva en TODAS las claves.
+    public void InsertarNodoEnClaves(int id, int segmento, float t, int nodosAntes)
+    {
+        foreach (var c in claves)
+        {
+            var p = BuscarPose(c, id);
+            if (p == null || p.nodos == null || p.nodos.Count != nodosAntes)
+                continue;
+            NodosUtil.Insertar(p.nodos, p.asaEntrada, p.asaSalida, p.asaManual, p.grosorNodo, p.cerrado, segmento, t);
+        }
+    }
+
     static DatosTrazo BuscarPose(Clave c, int id)
     {
         foreach (var p in c.trazos)

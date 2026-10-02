@@ -8,6 +8,7 @@ using UnityEngine.Events;
 //  - Pellizca una clave (marca naranja) y arrástrala para moverla a otro fotograma.
 //  - Botones: Inicio, <, Play/Pausa, >, + Clave, - Clave, fps (12/24/30/60).
 //  - Capas 1 a 4: tocar el nombre = dibujar en esa capa; "Ver/Oculta" = mostrar u ocultar.
+//  - Copia del menú (Libre/Plano, Fondo, Guardar, Cargar, Borrar todo) y Exportar: SVG y Foto.
 public class PanelArriba : MonoBehaviour
 {
     public ControlManos control;
@@ -20,6 +21,8 @@ public class PanelArriba : MonoBehaviour
     public Material materialClave;
     public TMP_Text textoFotograma;
     public BotonTocable btnInicio, btnAnterior, btnPlay, btnSiguiente, btnClave, btnQuitarClave, btnFps;
+    public Escenario escenario;
+    public BotonTocable btnPlano, btnFondo, btnGuardar, btnCargar, btnBorrarTodo, btnSvg, btnFoto;
     public BotonTocable[] btnCapas = new BotonTocable[0];
     public BotonTocable[] btnVer = new BotonTocable[0];
     [Tooltip("Qué tanto hay que mirar hacia arriba para que aparezca (0 a 1)")]
@@ -51,8 +54,16 @@ public class PanelArriba : MonoBehaviour
             Conectar(btnQuitarClave, animacion.QuitarClave);
             Conectar(btnFps, animacion.CambiarFps);
         }
+        if (escenario == null) escenario = FindFirstObjectByType<Escenario>();
+        Conectar(btnFondo, SiguienteFondo);
+        Conectar(btnFoto, TomarFoto);
         if (dibujo != null)
         {
+            Conectar(btnPlano, dibujo.AlternarPlano);
+            Conectar(btnGuardar, dibujo.Guardar);
+            Conectar(btnCargar, dibujo.Cargar);
+            Conectar(btnBorrarTodo, dibujo.BorrarTodo);
+            Conectar(btnSvg, dibujo.ExportarSVG);
             for (int i = 0; i < btnCapas.Length; i++)
             {
                 int capa = i;
@@ -66,6 +77,28 @@ public class PanelArriba : MonoBehaviour
         }
         if (contenido != null)
             contenido.SetActive(false);
+    }
+
+    void SiguienteFondo()
+    {
+        if (escenario == null)
+            return;
+        escenario.SiguienteModo();
+        if (dibujo != null)
+            dibujo.Mensaje("Fondo: " + Escenario.Nombres[escenario.modo]);
+    }
+
+    // La foto se toma sin este panel en medio.
+    void TomarFoto()
+    {
+        if (dibujo == null)
+            return;
+        bool estaba = contenido != null && contenido.activeSelf;
+        if (estaba)
+            contenido.SetActive(false);
+        dibujo.TomarFoto();
+        if (estaba)
+            contenido.SetActive(true);
     }
 
     static void Conectar(BotonTocable boton, UnityAction accion)
@@ -234,6 +267,13 @@ public class PanelArriba : MonoBehaviour
             btnPlay.PonerTexto(animacion.Reproduciendo ? "Pausa" : "Play");
         if (btnFps != null)
             btnFps.PonerTexto(animacion.fotogramasPorSegundo + " fps");
+        if (btnPlano != null && dibujo != null)
+        {
+            btnPlano.PonerTexto(dibujo.plano ? "Plano (2D)" : "Libre (3D)");
+            btnPlano.Marcar(dibujo.plano);
+        }
+        if (btnFondo != null && escenario != null)
+            btnFondo.PonerTexto("Fondo: " + Escenario.Nombres[escenario.modo]);
 
         if (dibujo != null)
         {

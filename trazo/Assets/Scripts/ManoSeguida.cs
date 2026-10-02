@@ -9,7 +9,7 @@ public class ManoSeguida
 
     public bool valida;          // la mano se ve bien en este momento
     public float sinSenal;       // segundos desde que se perdió la mano
-    public Vector3 indice, pulgar, medio, anular; // puntas de los dedos (suavizadas)
+    public Vector3 indice, pulgar, medio, anular, menique; // puntas de los dedos (suavizadas)
 
     // Pellizco índice + pulgar (con histéresis: entra con poca distancia, sale con más).
     public bool pellizco, empezoPellizco, soltoPellizco;
@@ -45,6 +45,7 @@ public class ManoSeguida
         Transform tPulgar = ManosUtil.Hueso(esqueleto, "ThumbTip");
         Transform tMedio = ManosUtil.Hueso(esqueleto, "MiddleTip");
         Transform tAnular = ManosUtil.Hueso(esqueleto, "RingTip");
+        Transform tMenique = ManosUtil.Hueso(esqueleto, "PinkyTip", "LittleTip");
         bool ok = hand != null && hand.IsTracked && tIndice != null && tPulgar != null && tMedio != null && tAnular != null;
         if (!ok)
         {
@@ -65,6 +66,9 @@ public class ManoSeguida
         pulgar = Vector3.Lerp(pulgar, tPulgar.position, a);
         medio = Vector3.Lerp(medio, tMedio.position, a);
         anular = Vector3.Lerp(anular, tAnular.position, a);
+        // Si no encuentra el meñique, lo deja lejos del pulgar (así nunca cuenta como pellizco).
+        Vector3 objetivoMenique = tMenique != null ? tMenique.position : pulgar + Vector3.up;
+        menique = teniaDatos ? Vector3.Lerp(menique, objetivoMenique, a) : objetivoMenique;
         teniaDatos = true;
         valida = true;
 

@@ -41,6 +41,8 @@ public class Trazo : MonoBehaviour
 
     // La curva ya calculada (local), para tocarla y medirla.
     public readonly List<Vector3> curva = new List<Vector3>();
+    readonly List<int> curvaSegmento = new List<int>();   // en qué tramo (entre dos nodos) cae cada punto
+    readonly List<float> curvaT = new List<float>();      // y en qué parte del tramo (0 a 1)
     public bool PoligonoValido { get; private set; }
 
     // La animación aplica poses sin que cuenten como "cambios del usuario".
@@ -131,6 +133,15 @@ public class Trazo : MonoBehaviour
     }
 
     public float LargoCrudo => LargoDe(crudos);
+
+    // Línea recta mientras se dibuja: solo dos puntos, inicio y fin.
+    public void PonerRecta(Vector3 a, Vector3 b)
+    {
+        crudos.Clear();
+        crudos.Add(a);
+        crudos.Add(b);
+        Reconstruir();
+    }
 
     // Convierte el trazo crudo en nodos. Devuelve false si quedó demasiado corto.
     public bool Terminar()
@@ -423,6 +434,35 @@ public class Trazo : MonoBehaviour
 
     // ---------- Tocar ----------
 
+    // Agrega un nodo en el tramo "segmento" (en la parte t, de 0 a 1) sin cambiar la forma.
+    public void InsertarNodo(int segmento, float t)
+    {
+        AsegurarAsas();
+        NodosUtil.Insertar(nodos, asaEntrada, asaSalida, asaManual, grosorNodo, cerrado, segmento, t);
+        Reconstruir();
+    }
+
+    // Busca el punto de la curva más cercano: en qué tramo está y a qué distancia (local).
+    public bool PuntoEnCurva(Vector3 local, out int segmento, out float t, out float distancia)
+    {
+        segmento = -1;
+        t = 0f;
+        distancia = float.MaxValue;
+        if (crudos.Count > 0 || curvaSegmento.Count != curva.Count)
+            return false;
+        for (int i = 0; i < curva.Count; i++)
+        {
+            float d = Vector3.Distance(local, curva[i]);
+            if (d < distancia)
+            {
+                distancia = d;
+                segmento = curvaSegmento[i];
+                t = curvaT[i];
+            }
+        }
+        return segmento >= 0;
+    }
+
     public float DistanciaACurva(Vector3 local)
     {
         float mejor = float.MaxValue;
@@ -471,6 +511,11 @@ public class Trazo : MonoBehaviour
         }
         curva.Clear();
         curva.AddRange(muestras);
+        if (crudos.Count > 0)
+        {
+            curvaSegmento.Clear();
+            curvaT.Clear();
+        }
 
         if (!soloLinea)
             ConstruirRelleno();
@@ -798,10 +843,14 @@ public class Trazo : MonoBehaviour
         int n = nodos.Count;
         if (n == 0)
             return;
+        curvaSegmento.Clear();
+        curvaT.Clear();
         if (n == 1)
         {
             salida.Add(nodos[0]);
             multiplicadores.Add(1f);
+            curvaSegmento.Add(-1);
+            curvaT.Add(0f);
             return;
         }
         float paso = pasoMuestras / Escala;
@@ -820,10 +869,14 @@ public class Trazo : MonoBehaviour
             {
                 salida.Add(Bezier(p0, p1, p2, p3, k / (float)pasos));
                 multiplicadores.Add(Mathf.Lerp(grosorNodo[a], grosorNodo[b], k / (float)pasos));
+                curvaSegmento.Add(s);
+                curvaT.Add(k / (float)pasos);
             }
         }
         salida.Add(cerrado ? nodos[0] : nodos[n - 1]);
         multiplicadores.Add(cerrado ? grosorNodo[0] : grosorNodo[n - 1]);
+        curvaSegmento.Add(segmentos - 1);
+        curvaT.Add(1f);
     }
 
     static Vector3 Bezier(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t)
