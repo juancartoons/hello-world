@@ -67,6 +67,7 @@ public class DatosDibujo
     public float fps = 12f;
     public List<PoseBoca> bocas = new List<PoseBoca>();
     public string audio = "";
+    public int temblor;
 }
 
 // El dibujo completo: crea las líneas, une, cierra, borra, deshace, guarda y carga.
@@ -84,6 +85,7 @@ public class Dibujo : MonoBehaviour
     public Material materialBorrado;
     public Animacion animacion;
     public Lipsync lipsync;
+    public Temblor temblor;
     [Tooltip("Grosor máximo (en el centro) de las líneas nuevas, en metros")]
     public float anchoPincel = 0.008f;
     [Tooltip("Dibujar sobre un plano (2D) en vez de libre en 3D")]
@@ -133,6 +135,10 @@ public class Dibujo : MonoBehaviour
         AsegurarCapas();
         if (animacion == null)
             animacion = GetComponent<Animacion>();
+        if (temblor == null)
+            temblor = GetComponent<Temblor>();
+        if (temblor == null)
+            temblor = gameObject.AddComponent<Temblor>();
     }
 
     void Start()
@@ -822,7 +828,8 @@ public class Dibujo : MonoBehaviour
             capaActual = capaActual,
             siguienteId = siguienteId,
             fotograma = animacion != null ? animacion.Fotograma : 0,
-            fps = animacion != null ? animacion.fotogramasPorSegundo : 12f
+            fps = animacion != null ? animacion.fotogramasPorSegundo : 12f,
+            temblor = temblor != null ? temblor.nivel : 0
         };
         foreach (var c in capas)
             d.capas.Add(new DatosCapa { nombre = c.nombre, visible = c.visible });
@@ -888,6 +895,8 @@ public class Dibujo : MonoBehaviour
         Trazo.huboCambio = false;
         if (lipsync != null)
             lipsync.Restaurar(d.bocas, d.audio, incluirFondo);
+        if (temblor != null)
+            temblor.nivel = Mathf.Clamp(d.temblor, 0, Temblor.Nombres.Length - 1);
         if (incluirFondo && escenario != null)
             escenario.PonerModo(d.fondo);
         ActualizarVisibilidad();

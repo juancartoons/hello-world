@@ -49,6 +49,7 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
   **Video proceso** lo convierte en MP4 (líneas + manos en gris). **Vel** = x1, x2, x4 u x8.
 - Si el MP4 falla, se guarda una carpeta con imágenes PNG y un `hacer_video.bat` (necesita ffmpeg en el PC).
 - Ni los paneles, ni los nodos, ni las imágenes de referencia salen en fotos ni videos.
+- **Temblor** (página Medios): las líneas vibran como dibujadas a mano (No, Suave, Medio, Fuerte). Sale en los videos y se guarda con el dibujo.
 - Se guardan en las gafas, en `Android/data/<tu app>/files/Dibujos` (con Meta Quest Developer Hub → File Manager).
 
 ## Imágenes de referencia

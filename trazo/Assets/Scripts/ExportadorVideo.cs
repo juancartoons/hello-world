@@ -113,6 +113,8 @@ public class ExportadorVideo : MonoBehaviour
         {
             animacion.IrA(f);
             animacion.MostrarFotograma();
+            if (dibujo.temblor != null)
+                dibujo.temblor.PonerTiempo(f / (float)fps);
             ok = codificador.AgregarCuadro(captura.CapturarRgba());
             if (Time.time > avisoEn)
             {
@@ -122,6 +124,8 @@ public class ExportadorVideo : MonoBehaviour
             yield return null;
         }
         captura.Liberar();
+        if (dibujo.temblor != null)
+            dibujo.temblor.PonerTiempo(-1f);
         bool listo = codificador.Terminar() && ok;
         animacion.IrA(volver);
         animacion.MostrarFotograma();
@@ -225,6 +229,8 @@ public class ExportadorVideo : MonoBehaviour
                 PonerMano(dedos, 1, actual.manoDer, puntos);
             }
             Trazo.silenciar = silencio;
+            if (dibujo.temblor != null)
+                dibujo.temblor.PonerTiempo(t);
             ok = codificador.AgregarCuadro(captura.CapturarRgba());
             if (Time.time > avisoEn)
             {
@@ -236,6 +242,8 @@ public class ExportadorVideo : MonoBehaviour
         Trazo.silenciar = silencio;
         Trazo.huboCambio = false;
         captura.Liberar();
+        if (dibujo.temblor != null)
+            dibujo.temblor.PonerTiempo(-1f);
         bool listo = codificador.Terminar() && ok;
         Destroy(raiz);
         Destroy(manos);

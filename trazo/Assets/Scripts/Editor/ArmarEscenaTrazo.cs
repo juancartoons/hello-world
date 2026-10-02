@@ -109,6 +109,7 @@ public static class ArmarEscenaTrazo
         goDibujo.layer = CapaDibujo;
         var dibujo = goDibujo.AddComponent<Dibujo>();
         var animacion = goDibujo.AddComponent<Animacion>();
+        dibujo.temblor = goDibujo.AddComponent<Temblor>();
         animacion.dibujo = dibujo;
         dibujo.animacion = animacion;
         dibujo.materialBorrado = matBorrado;
@@ -478,7 +479,8 @@ public static class ArmarEscenaTrazo
         panel.btnVideoAnim = f2[0];
         panel.btnImagenMas = f2[1];
         panel.btnImagenMenos = f2[2];
-        panel.textoMedios = Texto(medios, "", new Vector3(0f, -0.045f, -0.001f), new Vector2(0.46f, 0.03f), new Color(0.2f, 0.2f, 0.25f));
+        panel.btnTemblor = BotonAncho(medios, "Temblor: No", new Vector3(-0.13f, -0.03f, 0f), matBoton, matBotonMarcado);
+        panel.textoMedios = Texto(medios, "", new Vector3(0.065f, -0.03f, -0.001f), new Vector2(0.3f, 0.03f), new Color(0.2f, 0.2f, 0.25f));
         Texto(medios, "Los videos y fotos se guardan en Dibujos · las imágenes no salen en los videos", new Vector3(0f, -0.09f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.3f, 0.3f, 0.35f));
 
         // ----- Página Bocas -----

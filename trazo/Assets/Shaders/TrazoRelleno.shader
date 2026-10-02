@@ -23,6 +23,7 @@ Shader "TrazoVR/Relleno"
             #pragma fragment Frag
             #pragma multi_compile_instancing
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "TrazoTemblor.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseColor;
@@ -47,7 +48,7 @@ Shader "TrazoVR/Relleno"
                 Varyings o;
                 UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
-                o.positionCS = TransformObjectToHClip(v.positionOS.xyz);
+                o.positionCS = TransformWorldToHClip(TrazoTemblar(TransformObjectToWorld(v.positionOS.xyz)));
                 o.color = v.color;
                 return o;
             }

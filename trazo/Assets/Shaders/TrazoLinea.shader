@@ -26,6 +26,7 @@ Shader "TrazoVR/Linea"
             #pragma fragment Frag
             #pragma multi_compile_instancing
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "TrazoTemblor.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseColor;
@@ -54,7 +55,7 @@ Shader "TrazoVR/Linea"
                 UNITY_SETUP_INSTANCE_ID(v);
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
 
-                float3 posWS = TransformObjectToWorld(v.positionOS.xyz);
+                float3 posWS = TrazoTemblar(TransformObjectToWorld(v.positionOS.xyz));
                 float3 nWS = float3(0, 1, 0);
                 if (v.uv.y < 0.5)
                 {

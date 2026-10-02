@@ -44,7 +44,7 @@ public class PanelArriba : MonoBehaviour
     public BotonTocable[] btnVer = new BotonTocable[0];
 
     [Header("Medios")]
-    public BotonTocable btnGrabar, btnVideoProceso, btnVelocidad, btnVideoAnim, btnImagenMas, btnImagenMenos;
+    public BotonTocable btnGrabar, btnVideoProceso, btnVelocidad, btnVideoAnim, btnImagenMas, btnImagenMenos, btnTemblor;
     public TMP_Text textoMedios;
 
     [Header("Bocas")]
@@ -133,6 +133,8 @@ public class PanelArriba : MonoBehaviour
             Conectar(btnVelocidad, exportador.CambiarVelocidad);
             Conectar(btnVideoAnim, exportador.ExportarAnimacion);
         }
+        if (dibujo != null && dibujo.temblor != null)
+            Conectar(btnTemblor, dibujo.temblor.Siguiente);
         if (referencias != null)
         {
             Conectar(btnImagenMas, () => referencias.AgregarSiguiente(control != null ? control.Cabeza : null));
@@ -563,6 +565,11 @@ public class PanelArriba : MonoBehaviour
         }
         if (btnVelocidad != null && exportador != null)
             btnVelocidad.PonerTexto("Vel x" + exportador.velocidad);
+        if (btnTemblor != null && dibujo != null && dibujo.temblor != null)
+        {
+            btnTemblor.PonerTexto("Temblor: " + dibujo.temblor.NombreNivel);
+            btnTemblor.Marcar(dibujo.temblor.nivel > 0);
+        }
         if (textoMedios == null)
             return;
         string texto;
