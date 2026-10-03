@@ -1,11 +1,15 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using Unity.Collections;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 // Videos MP4 (se guardan en Dibujos, junto a las fotos):
 //  - "Video anim": la animación (con el audio del lipsync, si hay).
-//  - "Video proceso": repite lo que grabaste (líneas apareciendo + tus manos en gris).
+//  - "Video proceso": repite lo que grabaste (líneas apareciendo + tus manos, con forma de mano de verdad).
+// Modo rápido: el color se convierte al formato del video en la tarjeta gráfica y se hacen varios cuadros
+// por paso (sin esperar a que la tarjeta termine cada uno).
 //    "Vel" cambia la velocidad de la repetición: x1, x2, x4 u x8.
 // Ni los paneles, ni los nodos, ni las imágenes de referencia salen en el video.
 public class ExportadorVideo : MonoBehaviour
@@ -21,6 +25,12 @@ public class ExportadorVideo : MonoBehaviour
     public ControlManos control;
     [Tooltip("Material gris para las manos en el video del proceso")]
     public Material materialManoFantasma;
+    [Tooltip("Material de las manos con volumen del video del proceso (shader TrazoVR/ManoVideo)")]
+    public Material materialManoVideo;
+    [Tooltip("Conversión rápida a NV12 en la tarjeta gráfica (shader TrazoVR/Nv12)")]
+    public Material materialNv12;
+    [Tooltip("Segundos de trabajo por cuadro de la app (más = video más rápido, pero la vista se congela más)")]
+    public float tiempoPorPaso = 0.06f;
     public int ancho = 1280;
     public int alto = 720;
     public int fpsProceso = 30;
@@ -105,10 +115,12 @@ public class ExportadorVideo : MonoBehaviour
         var captura = new Exportar.Captura(ancho, alto, dibujo.MascaraExportar, Color.white);
         captura.Poner(posicion, rotacion, campoVision);
         bool ok = codificador.Iniciar(dibujo.CarpetaDibujos, NombreArchivo("animacion"), ancho, alto, fps, audio);
+        var envio = new Envio(codificador, captura, materialNv12);
         Mensaje("Haciendo el video... no te muevas mucho");
         yield return null;
 
         float avisoEn = Time.time + 1.2f;
+        float lote = Time.realtimeSinceStartup;
         for (int f = 0; f <= fin && ok; f++)
         {
             animacion.IrA(f);
@@ -117,14 +129,20 @@ public class ExportadorVideo : MonoBehaviour
                 dibujo.temblor.PonerTiempo(f / (float)fps);
             if (dibujo.figuras != null)
                 dibujo.figuras.PonerVista(posicion);
-            ok = codificador.AgregarCuadro(captura.CapturarRgba());
+            ok = envio.Cuadro();
             if (Time.time > avisoEn)
             {
                 avisoEn = Time.time + 1.2f;
                 Mensaje("Video: " + Mathf.RoundToInt(100f * f / fin) + "%");
             }
-            yield return null;
+            // Varios cuadros por paso (así tarda mucho menos).
+            if (Time.realtimeSinceStartup - lote > tiempoPorPaso)
+            {
+                yield return null;
+                lote = Time.realtimeSinceStartup;
+            }
         }
+        ok = envio.Terminar() && ok;
         captura.Liberar();
         if (dibujo.temblor != null)
             dibujo.temblor.PonerTiempo(-1f);
@@ -195,17 +213,30 @@ public class ExportadorVideo : MonoBehaviour
         var manos = new GameObject("ManosRepeticion");
         manos.layer = CapaRepeticion;
         var lineas = new Dictionary<int, Trazo>();
-        var dedos = new Trazo[2, Cadenas.Length];
-        for (int m = 0; m < 2; m++)
-            for (int c = 0; c < Cadenas.Length; c++)
-                dedos[m, c] = CrearTrazo(manos.transform, materialManoFantasma != null ? materialManoFantasma : dibujo.materialLinea, 0.012f);
+        // Manos con volumen (como manos de verdad). Si falta el material, las de antes (líneas).
+        ManoVideo[] manosVideo = null;
+        Trazo[,] dedos = null;
+        if (materialManoVideo != null)
+        {
+            manosVideo = new[] { new ManoVideo(manos.transform, materialManoVideo, CapaRepeticion),
+                                 new ManoVideo(manos.transform, materialManoVideo, CapaRepeticion) };
+        }
+        else
+        {
+            dedos = new Trazo[2, Cadenas.Length];
+            for (int m = 0; m < 2; m++)
+                for (int c = 0; c < Cadenas.Length; c++)
+                    dedos[m, c] = CrearTrazo(manos.transform, materialManoFantasma != null ? materialManoFantasma : dibujo.materialLinea, 0.012f);
+        }
 
         var codificador = new CodificadorVideo();
         var captura = new Exportar.Captura(ancho, alto, 1 << CapaRepeticion, Color.white);
         captura.Poner(posicion, rotacion, campoVision);
         bool ok = codificador.Iniciar(dibujo.CarpetaDibujos, NombreArchivo("proceso"), ancho, alto, fpsProceso, null);
+        var envio = new Envio(codificador, captura, materialNv12);
         Mensaje("Haciendo el video del proceso (x" + velocidad + ")...");
         yield return null;
+        float lote = Time.realtimeSinceStartup;
 
         bool silencio = Trazo.silenciar;
         float duracion = muestras[muestras.Count - 1].tiempo;
@@ -236,23 +267,39 @@ public class ExportadorVideo : MonoBehaviour
                     if (par.Value.gameObject.activeSelf != visible)
                         par.Value.gameObject.SetActive(visible);
                 }
-                PonerMano(dedos, 0, actual.manoIzq, puntos);
-                PonerMano(dedos, 1, actual.manoDer, puntos);
+                if (manosVideo != null)
+                {
+                    manosVideo[0].Poner(actual.manoIzq);
+                    manosVideo[1].Poner(actual.manoDer);
+                }
+                else
+                {
+                    PonerMano(dedos, 0, actual.manoIzq, puntos);
+                    PonerMano(dedos, 1, actual.manoDer, puntos);
+                }
             }
             Trazo.silenciar = silencio;
             if (dibujo.temblor != null)
                 dibujo.temblor.PonerTiempo(t);
-            ok = codificador.AgregarCuadro(captura.CapturarRgba());
+            ok = envio.Cuadro();
             if (Time.time > avisoEn)
             {
                 avisoEn = Time.time + 1.2f;
                 Mensaje("Video del proceso: " + Mathf.RoundToInt(100f * cuadro / totalCuadros) + "%");
             }
-            yield return null;
+            if (Time.realtimeSinceStartup - lote > tiempoPorPaso)
+            {
+                yield return null;
+                lote = Time.realtimeSinceStartup;
+            }
         }
+        ok = envio.Terminar() && ok;
         Trazo.silenciar = silencio;
         Trazo.huboCambio = false;
         captura.Liberar();
+        if (manosVideo != null)
+            foreach (var mv in manosVideo)
+                mv.Destruir();
         if (dibujo.temblor != null)
             dibujo.temblor.PonerTiempo(-1f);
         bool listo = codificador.Terminar() && ok;
@@ -313,6 +360,99 @@ public class ExportadorVideo : MonoBehaviour
             foreach (int i in Cadenas[c])
                 puntos.Add(articulaciones[i]);
             t.PonerCrudos(puntos);
+        }
+    }
+
+    // Manda cada cuadro al video. Modo rápido: convierte a NV12 en la tarjeta gráfica y deja hasta 3 cuadros
+    // "en camino" (no espera a la tarjeta en cada uno). Si el visor no puede, usa el modo normal.
+    sealed class Envio
+    {
+        readonly CodificadorVideo codificador;
+        readonly Exportar.Captura captura;
+        readonly bool rapido;
+        readonly Queue<AsyncGPUReadbackRequest> pendientes = new Queue<AsyncGPUReadbackRequest>();
+        readonly byte[] buffer;
+        readonly byte[] fila;
+        readonly int filas;
+        int volteado = -1; // -1 = aún no se sabe; 1 = las filas llegan al revés
+
+        public Envio(CodificadorVideo codificador, Exportar.Captura captura, Material materialNv12)
+        {
+            this.codificador = codificador;
+            this.captura = captura;
+            rapido = codificador.AceptaNv12 && captura.PrepararNv12(materialNv12);
+            if (rapido)
+            {
+                buffer = new byte[captura.TamanoNv12];
+                fila = new byte[captura.ancho];
+                filas = captura.alto * 3 / 2;
+            }
+        }
+
+        public bool Cuadro()
+        {
+            if (!rapido)
+                return codificador.AgregarCuadro(captura.CapturarRgba());
+            pendientes.Enqueue(captura.PedirNv12());
+            return Vaciar(pendientes.Count > 3, false);
+        }
+
+        public bool Terminar()
+        {
+            return !rapido || Vaciar(true, true);
+        }
+
+        bool Vaciar(bool esperarUno, bool todo)
+        {
+            while (pendientes.Count > 0)
+            {
+                var pedido = pendientes.Peek();
+                if (!pedido.done)
+                {
+                    if (!esperarUno && !todo)
+                        return true;
+                    pedido.WaitForCompletion();
+                }
+                pendientes.Dequeue();
+                esperarUno = false;
+                if (pedido.hasError)
+                    return false;
+                var datos = pedido.GetData<byte>();
+                if (datos.Length < buffer.Length)
+                    return false;
+                NativeArray<byte>.Copy(datos, buffer, buffer.Length);
+                Orientar();
+                if (!codificador.AgregarCuadroNv12(buffer))
+                    return false;
+            }
+            return true;
+        }
+
+        // El fondo es blanco: el brillo (Y, arriba en NV12) es alto y el color (UV, abajo) vale ~128.
+        // Si llega al revés (depende del visor), se dan vuelta las filas.
+        void Orientar()
+        {
+            if (volteado < 0)
+            {
+                int n = captura.ancho * 8;
+                long inicio = 0, final = 0;
+                for (int i = 0; i < n; i++)
+                {
+                    inicio += buffer[i];
+                    final += buffer[buffer.Length - 1 - i];
+                }
+                volteado = inicio < final - 20L * n ? 1 : 0;
+            }
+            if (volteado == 0)
+                return;
+            int w = captura.ancho;
+            for (int r = 0; r < filas / 2; r++)
+            {
+                int a = r * w, b = (filas - 1 - r) * w;
+                System.Buffer.BlockCopy(buffer, a, fila, 0, w);
+                System.Buffer.BlockCopy(buffer, b, buffer, a, w);
+                System.Buffer.BlockCopy(fila, 0, buffer, b, w);
+            }
         }
     }
 }

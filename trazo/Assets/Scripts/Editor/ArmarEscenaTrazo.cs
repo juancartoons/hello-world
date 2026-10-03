@@ -237,6 +237,13 @@ public static class ArmarEscenaTrazo
         exportador.grabador = grabador;
         exportador.control = control;
         exportador.materialManoFantasma = matManoFantasma;
+        // Video: manos con volumen y conversión rápida en la tarjeta gráfica (si faltan los shaders, modo de antes).
+        var shaderManoVideo = Shader.Find("TrazoVR/ManoVideo");
+        if (shaderManoVideo != null)
+            exportador.materialManoVideo = Mat("ManoVideo", shaderManoVideo, new Color(0.82f, 0.78f, 0.75f));
+        var shaderNv12 = Shader.Find("TrazoVR/Nv12");
+        if (shaderNv12 != null)
+            exportador.materialNv12 = Mat("Nv12", shaderNv12, Color.white);
 
         var panel = CrearPanel(raiz.transform, control, dibujo, escenario, matPanel, matBoton, matBotonMarcado);
         panel.figuras = figuras;

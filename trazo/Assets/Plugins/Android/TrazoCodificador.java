@@ -167,6 +167,70 @@ public class TrazoCodificador {
         }
     }
 
+    // Cuadro ya convertido a NV12 en la tarjeta gráfica (Y y luego UV intercalados, filas de arriba hacia abajo).
+    // Es mucho más rápido: aquí solo se copia, sin convertir píxel por píxel.
+    public boolean agregarCuadroNv12(byte[] datos) {
+        try {
+            int indice = -1;
+            for (int intento = 0; intento < 200 && indice < 0; intento++) {
+                indice = video.dequeueInputBuffer(ESPERA);
+                if (indice < 0)
+                    drenarVideo(false);
+            }
+            if (indice < 0) {
+                error = "el codificador no recibe cuadros";
+                return false;
+            }
+            Image imagen = video.getInputImage(indice);
+            if (imagen != null) {
+                llenarImagenNv12(imagen, datos);
+            } else {
+                ByteBuffer b = video.getInputBuffer(indice);
+                b.clear();
+                b.put(datos, 0, Math.min(datos.length, b.remaining()));
+            }
+            long pts = cuadros * 1000000L / fps;
+            video.queueInputBuffer(indice, 0, ancho * alto * 3 / 2, pts, 0);
+            cuadros++;
+            drenarVideo(false);
+            return true;
+        } catch (Exception e) {
+            error = "cuadro nv12: " + e;
+            return false;
+        }
+    }
+
+    private void llenarImagenNv12(Image imagen, byte[] datos) {
+        Image.Plane[] planos = imagen.getPlanes();
+        ByteBuffer pY = planos[0].getBuffer();
+        int filaY = planos[0].getRowStride();
+        int pasoY = planos[0].getPixelStride();
+        if (pasoY == 1) {
+            for (int j = 0; j < alto; j++) {
+                pY.position(j * filaY);
+                pY.put(datos, j * ancho, ancho);
+            }
+        } else {
+            for (int j = 0; j < alto; j++)
+                for (int i = 0; i < ancho; i++)
+                    pY.put(j * filaY + i * pasoY, datos[j * ancho + i]);
+        }
+        ByteBuffer pU = planos[1].getBuffer();
+        ByteBuffer pV = planos[2].getBuffer();
+        int filaU = planos[1].getRowStride();
+        int pasoU = planos[1].getPixelStride();
+        int filaV = planos[2].getRowStride();
+        int pasoV = planos[2].getPixelStride();
+        int tamY = ancho * alto;
+        for (int j = 0; j < alto / 2; j++) {
+            int base = tamY + j * ancho;
+            for (int i = 0; i < ancho / 2; i++) {
+                pU.put(j * filaU + i * pasoU, datos[base + 2 * i]);
+                pV.put(j * filaV + i * pasoV, datos[base + 2 * i + 1]);
+            }
+        }
+    }
+
     public boolean terminar() {
         try {
             int indice = -1;

@@ -79,6 +79,36 @@ public class CodificadorVideo
         return true;
     }
 
+    // ¿Puede recibir cuadros NV12 ya convertidos (modo rápido)? Solo el codificador del visor.
+    public bool AceptaNv12
+    {
+        get
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            return java != null;
+#else
+            return false;
+#endif
+        }
+    }
+
+    // nv12: ancho * alto * 1.5 bytes, filas de arriba hacia abajo.
+    public bool AgregarCuadroNv12(byte[] nv12)
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        if (java != null && nv12 != null && nv12.Length >= ancho * alto * 3 / 2)
+        {
+            bool ok = java.Call<bool>("agregarCuadroNv12", nv12);
+            if (!ok)
+                Error = java.Call<string>("obtenerError");
+            else
+                Cuadros++;
+            return ok;
+        }
+#endif
+        return false;
+    }
+
     // rgba: ancho * alto * 4 bytes, de abajo hacia arriba (como Texture2D).
     public bool AgregarCuadro(byte[] rgba)
     {

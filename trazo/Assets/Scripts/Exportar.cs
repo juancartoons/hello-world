@@ -173,7 +173,36 @@ public static class Exportar
             cam.fieldOfView = Mathf.Clamp(campoVision, 10f, 120f);
         }
 
-        void Dibujar()
+        // ---------- Modo rápido: NV12 en la tarjeta gráfica + lectura sin esperar ----------
+        Material materialNv12;
+        RenderTexture rtNv12;
+        static readonly int idTam = Shader.PropertyToID("_Tam");
+
+        // true si este visor puede usar el modo rápido (si no, se usa el modo normal).
+        public bool PrepararNv12(Material material)
+        {
+            if (material == null || !SystemInfo.supportsAsyncGPUReadback
+                || !SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.R8) || ancho % 2 != 0 || alto % 2 != 0)
+                return false;
+            materialNv12 = material;
+            rtNv12 = new RenderTexture(ancho, alto * 3 / 2, 0, RenderTextureFormat.R8, RenderTextureReadWrite.Linear);
+            rtNv12.filterMode = FilterMode.Point;
+            rtNv12.Create();
+            return true;
+        }
+
+        public int TamanoNv12 => ancho * alto * 3 / 2;
+
+        // Dibuja el cuadro, lo convierte a NV12 y pide leerlo (la respuesta llega después).
+        public AsyncGPUReadbackRequest PedirNv12()
+        {
+            Renderizar();
+            materialNv12.SetVector(idTam, new Vector4(ancho, alto, 0f, 0f));
+            Graphics.Blit(rt, rtNv12, materialNv12);
+            return AsyncGPUReadback.Request(rtNv12, 0, TextureFormat.R8);
+        }
+
+        void Renderizar()
         {
             var pedido = new RenderPipeline.StandardRequest { destination = rt };
             if (RenderPipeline.SupportsRenderRequest(cam, pedido))
@@ -186,6 +215,11 @@ public static class Exportar
                 cam.Render();
                 cam.targetTexture = null;
             }
+        }
+
+        void Dibujar()
+        {
+            Renderizar();
             var anterior = RenderTexture.active;
             RenderTexture.active = rt;
             tex.ReadPixels(new Rect(0, 0, ancho, alto), 0, 0);
@@ -208,6 +242,11 @@ public static class Exportar
 
         public void Liberar()
         {
+            if (rtNv12 != null)
+            {
+                rtNv12.Release();
+                Object.Destroy(rtNv12);
+            }
             rt.Release();
             Object.Destroy(rt);
             Object.Destroy(tex);
