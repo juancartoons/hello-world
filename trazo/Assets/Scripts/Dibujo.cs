@@ -1228,8 +1228,47 @@ public class Dibujo : MonoBehaviour
             Debug.LogWarning("TrazoVR: no se pudo guardar: " + e.Message);
         }
         if (ok)
+        {
             Escribir(RutaGuardado, json); // el último guardado (para el menú de la mano)
+            GuardarMiniatura(Path.Combine(CarpetaArchivos, NombreArchivo + ".json"));
+        }
         Mensaje(ok ? "Guardado: " + NombreArchivo : "No se pudo guardar");
+    }
+
+    // ---------- Miniaturas (para el explorador de archivos) ----------
+
+    public string CarpetaMiniaturas => Path.Combine(Carpeta, "Miniaturas");
+    public string CarpetaArchivosDibujo => CarpetaArchivos;
+    public string RutaGuardadoAnterior => RutaGuardado;
+
+    public string RutaMiniatura(string ruta)
+    {
+        return Path.Combine(CarpetaMiniaturas, Path.GetFileName(ruta) + ".png");
+    }
+
+    // Una foto pequeña del dibujo, para verla en el explorador de archivos.
+    public void GuardarMiniatura(string rutaArchivo)
+    {
+        try
+        {
+            Vector3 posicion;
+            Quaternion rotacion;
+            float campoVision;
+            EncuadreExportar(1.15f, out posicion, out rotacion, out campoVision);
+            if (figuras != null)
+                figuras.PonerVista(posicion);
+            byte[] png = Exportar.Foto(posicion, rotacion, campoVision, 320, 180, Color.white, MascaraExportar);
+            if (figuras != null)
+                figuras.PonerVista(null);
+            if (png == null)
+                return;
+            Directory.CreateDirectory(CarpetaMiniaturas);
+            File.WriteAllBytes(RutaMiniatura(rutaArchivo), png);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("TrazoVR: no se pudo guardar la miniatura: " + e.Message);
+        }
     }
 
     string NombreLibre()
@@ -1566,6 +1605,7 @@ public class Dibujo : MonoBehaviour
             Directory.CreateDirectory(Carpeta);
             string ruta = Path.Combine(Carpeta, nombre);
             File.WriteAllBytes(ruta, png);
+            GuardarMiniatura(ruta);
             string publico = Galeria.Publicar(ruta, "image/png", "Pictures/TrazoVR");
             Galeria.UltimoGuardado = "Foto " + nombre + ": " + Galeria.Donde(publico, ruta);
             Mensaje("Foto guardada. Búscala en la " + Galeria.Donde(publico, ruta));

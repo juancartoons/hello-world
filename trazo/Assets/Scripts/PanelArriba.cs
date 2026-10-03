@@ -159,7 +159,7 @@ public class PanelArriba : MonoBehaviour
         {
             Conectar(btnPlano, dibujo.AlternarPlano);
             Conectar(btnGuardar, dibujo.Guardar);
-            Conectar(btnCargar, AlternarArchivos);
+            Conectar(btnCargar, AbrirMisArchivos);
             Conectar(btnBorrarTodo, dibujo.BorrarTodo);
             Conectar(btnSvg, dibujo.ExportarSVG);
             Conectar(btnUnirPlano, dibujo.AlternarUnirPlano);
@@ -894,6 +894,16 @@ public class PanelArriba : MonoBehaviour
 
     GameObject listaArchivos;
 
+    // "Archivos": abre "Mis archivos" (dibujos, videos, fotos y SVG con miniatura).
+    void AbrirMisArchivos()
+    {
+        var nav = FindFirstObjectByType<NavegadorArchivos>();
+        if (nav != null)
+            nav.Abrir(control != null ? control.Cabeza : null);
+        else
+            AlternarArchivos();
+    }
+
     void AlternarArchivos()
     {
         if (listaArchivos != null && listaArchivos.activeSelf)
@@ -1150,7 +1160,7 @@ public class PanelArriba : MonoBehaviour
         Poner(d, btnPlano, "LIBRE (3D) / PLANO (2D)\nPlano: dibujas sobre una hoja invisible frente a ti (si alejas el dedo más de ~2.5 cm, la línea se corta, como levantar el lápiz). Libre: dibujas en el aire, en 3D.\nCon una capa de Boceto en Plano, dibujas con lápiz sobre papel.");
         Poner(d, btnFondo, "FONDO\nCambia el fondo: blanco, cuadrícula o tu cuarto real (passthrough).");
         Poner(d, btnGuardar, "GUARDAR\nGuarda el dibujo con su propio nombre (Dibujo 1, Dibujo 2...). Si ya tiene nombre, lo actualiza.\nPara empezar uno NUEVO: Borrar todo y luego Guardar (recibe otro nombre).");
-        Poner(d, btnCargar, "CARGAR\nMuestra abajo la lista de tus dibujos (el más reciente primero, con la fecha). Toca uno para abrirlo. Cargar otra vez = cerrar la lista.\nGuarda antes lo que tienes (Guardar). Si te arrepientes: deshacer.");
+        Poner(d, btnCargar, "ARCHIVOS\nAbre \"Mis archivos\": tus dibujos, videos, fotos y SVG con una miniatura. Filtros arriba. Toca uno para elegirlo y luego Abrir (o Ver) o Borrar (pide tocar otra vez).\nGuarda antes lo que tienes (Guardar). Si te arrepientes de abrir otro: deshacer.");
         Poner(d, btnBorrarTodo, "BORRAR TODO\nBorra todo el dibujo y empieza uno nuevo (al guardar recibe otro nombre). Se puede deshacer.");
         Poner(d, btnSvg, "SVG\nExporta las líneas como curvas vectoriales (para Illustrator, Inkscape...). En Plano se ve de frente al plano; en 3D, desde donde estás.");
         Poner(d, btnFoto, "FOTO\nGuarda una imagen PNG del dibujo desde donde estás. Los paneles, nodos, imágenes y capas de boceto no salen.\nDÓNDE QUEDA: app Archivos del Quest → Pictures → TrazoVR.");

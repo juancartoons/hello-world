@@ -42,7 +42,7 @@ public class PanelMuneca : MonoBehaviour
         {
             Conectar(btnPlano, dibujo.AlternarPlano);
             Conectar(btnGuardar, dibujo.Guardar);
-            Conectar(btnCargar, dibujo.Cargar);
+            Conectar(btnCargar, AbrirMisArchivos);
             Conectar(btnBorrar, dibujo.BorrarTodo);
             Conectar(btnIman, dibujo.AlternarIman);
             dibujo.alCambiar += Refrescar;
@@ -81,6 +81,15 @@ public class PanelMuneca : MonoBehaviour
             dibujo.alCambiar -= Refrescar;
             dibujo.alMensaje -= Mensaje;
         }
+    }
+
+    void AbrirMisArchivos()
+    {
+        var nav = FindFirstObjectByType<NavegadorArchivos>();
+        if (nav != null)
+            nav.Abrir(control != null ? control.Cabeza : null);
+        else if (dibujo != null)
+            dibujo.Cargar();
     }
 
     static void Conectar(BotonTocable boton, UnityAction accion)

@@ -12,7 +12,7 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 | Izquierda: **pulgar + medio** (sostener) | **Modo nodos**: pellizca un nodo con la derecha y arrástralo. El nodo tocado muestra sus **asas** (verdes): pellízcalas para curvar. Pellizcar la **línea seleccionada** lejos de sus nodos = **agregar un nodo** |
 | Modo nodos: arrastrar una **punta** sobre otra punta | Imán: se unen en una sola línea, o se **cierra la figura** y se rellena |
 | Izquierda: **pulgar + anular** (sostener) | **Grosor**: sube/baja la mano izquierda = más grueso/delgado (solo la línea seleccionada, o todo si no hay selección). Pellizca un **nodo** con la derecha y súbela/bájala = grosor solo de ese nodo. **Gira el índice derecho en un círculo pequeño** (como un teléfono de disco) = grosor de las **líneas nuevas**: hacia la derecha más grueso, hacia la izquierda más delgado |
-| Izquierda: **puño de lado o con el dorso hacia ti** (pulgar sobre los dedos; con la palma hacia ti no cuenta) | **Borrador** (la mano se vuelve una goma de borrar; se borra con el índice derecho; un aro alrededor del dedo muestra cuánto borra. **Pellizca con la derecha y gira la mano como una perilla** = tamaño del borrador: como el reloj más grande, al revés más chico; mientras pellizcas no se borra nada y un aro muestra el tamaño): tocar un **nodo** o un **relleno** lo borra. La **línea entera** solo se borra si la **frotas** (ida y vuelta, ~6 cm) lejos de sus nodos; se pone roja mientras |
+| Izquierda: **puño de lado o con el dorso hacia ti** (pulgar sobre los dedos; con la palma hacia ti no cuenta) | **Borrador** (la mano se vuelve una goma de borrar; se borra con el índice derecho; un aro alrededor del dedo muestra cuánto borra. el **punto rojo es el borrador**: su tamaño es lo que borra. **Pellizca con la derecha y haz círculos pequeños** = tamaño: como el reloj más grande, al revés más chico; mientras pellizcas no se borra nada): tocar un **nodo** o un **relleno** lo borra. La **línea entera** solo se borra si la **frotas** (ida y vuelta, ~6 cm) lejos de sus nodos; se pone roja mientras |
 | **Pellizcar una línea** con la derecha (sin gesto izquierdo) | La **selecciona** (se pone azul) y la **mueves**. **Gira la muñeca** mientras la tienes = **girarla** (en Plano 2D gira dentro del plano; en 3D, hacia cualquier lado; los primeros 8° no cuentan). Se suelta con solo abrir un poco los dedos. Pellizcar en el aire = quitar la selección |
 | Con algo elegido: **toque corto** (pellizco rápido sin mover) sobre otra línea | **Selección múltiple**: la suma (o la quita). Arrastrar cualquiera de las azules **mueve todas**; con las dos manos cerca de ellas, se escalan y giran juntas |
 | **Las dos manos pellizcando lejos** de lo elegido | Se transforma **todo el dibujo** (aunque haya una línea, figura o imagen elegida) |
@@ -20,7 +20,7 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 | **Derecha**: **puño con el pulgar hacia tu derecha** | La mano derecha se vuelve una flecha: toca la **diana verde** = **Rehacer** |
 | Izquierda: **doble toque rápido** de pulgar + índice | **Candado (modo seguro)**: no se dibuja, borra, cambia grosor, editan nodos ni mueven líneas o figuras. Sí puedes girar/mover todo para mirar, usar los paneles, deshacer y rehacer. Se ve un candado arriba a la derecha |
 | Menú de la mano: **Esfera / Cubo / Cilindro** | **Figura 3D** que se ve como dibujo (relleno + contorno desde donde la mires). Pellízcala para moverla; con las dos manos: tamaño y giro. Gesto de grosor = suavizar esquinas. Modo nodos = deformarla (pellizca la superficie = nodo nuevo). **A líneas** = convertirla en líneas normales |
-| Izquierda abierta, **punta del pulgar en la base de los dedos** (sobre la palma) | **Menú**: Libre 3D / Plano 2D, Fondo, Guardar, Cargar, Borrar todo |
+| Izquierda abierta, **punta del pulgar en la base de los dedos** (sobre la palma) | **Menú**: Libre 3D / Plano 2D, Fondo, Guardar, Archivos, Borrar todo, Imán y figuras. La **X** de arriba lo cierra |
 | **Las dos manos pellizcando** (índice + pulgar) | Separar/juntar = escalar · girar como un volante = rotar · mover = trasladar (solo la línea seleccionada, o todo si no hay selección) |
 | Tocar un **relleno** con el índice derecho | Cambia su color |
 | **Mirar hacia arriba** | Panel de arriba: línea de tiempo (2000 fotogramas), capas, menú, exportar, videos, imágenes y bocas |
@@ -36,6 +36,11 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 ## Animación (morph)
 
 El reproductor (**Inicio, <, Play, >, + Clave, - Clave, fps**) está siempre visible justo debajo de la línea de tiempo.
+
+**Cada capa tiene sus propias claves** (como en Flash): si editas en la Capa 2, la clave se guarda solo en la Capa 2.
+La barra grande muestra las claves de la capa activa. El botón **"+ Capa N"** (encima de la línea de tiempo) abre la
+lista de capas: en cada fila eliges la capa, **Ver/Oculta** y ves **sus claves**. Play reproduce todas juntas.
+Un personaje en su capa guarda todos sus movimientos ahí; el lipsync clava solo en la capa de la boca.
 
 1. Mira hacia arriba y toca la **barra** para ir a otro fotograma (por ejemplo, el 40).
    El botón **Zoom** cambia cuántos fotogramas caben en la barra: Todo, 400, 100 o 25.
@@ -54,7 +59,8 @@ El reproductor (**Inicio, <, Play, >, + Clave, - Clave, fps**) está siempre vis
 - **Foto**: imagen PNG del dibujo desde donde estás.
 - **Video anim** (página Medios): la animación en MP4 (1280x720), con el audio de las bocas si hay.
 - **Grabar** (página Medios) graba tu proceso: tus manos y cómo aparecen las líneas. **Detener** para.
-  **Video proceso** lo convierte en MP4 (líneas + tus manos con forma de mano, suaves y sombreadas).
+  **Video proceso** lo convierte en MP4 (líneas + tus manos con forma de mano, con **guantes negros sin dedos** y
+  **manga** de ropa).
   El video se arma varias veces más rápido (la conversión se hace en la tarjeta gráfica). **Vel** = x1, x2, x4 u x8.
 - Si el MP4 falla, se guarda una carpeta con imágenes PNG y un `hacer_video.bat` (necesita ffmpeg en el PC).
 - Ni los paneles, ni los nodos, ni las imágenes de referencia salen en fotos ni videos.
@@ -103,7 +109,9 @@ El reproductor (**Inicio, <, Play, >, + Clave, - Clave, fps**) está siempre vis
 ## Guardar y abrir
 
 - **Guardar**: cada dibujo se guarda con su propio nombre (Dibujo 1, Dibujo 2...) en `Dibujos/Archivos`.
-- **Cargar**: abajo aparece la lista de tus dibujos (el más reciente primero, con fecha). Toca uno para abrirlo.
+- **Archivos** (panel de arriba o menú de la mano): **Mis archivos**, con miniatura de todo lo que has hecho:
+  dibujos, videos, fotos y SVG (filtros arriba, < > para cambiar de página). Toca uno para elegirlo:
+  **Abrir dibujo**, **Ver** (fotos y videos en grande; **Volver** regresa) o **Borrar** (toca otra vez para confirmar).
 - **Borrar todo** empieza un dibujo nuevo: al guardarlo recibe otro nombre.
 
 ## Imágenes de referencia

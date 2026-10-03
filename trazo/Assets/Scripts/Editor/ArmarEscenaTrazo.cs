@@ -245,6 +245,17 @@ public static class ArmarEscenaTrazo
         if (shaderNv12 != null)
             exportador.materialNv12 = Mat("Nv12", shaderNv12, Color.white);
 
+        // "Mis archivos": dibujos, videos, fotos y SVG con miniatura (abrir, ver y borrar).
+        var goNav = new GameObject("NavegadorArchivos");
+        goNav.transform.SetParent(raiz.transform, false);
+        var navegador = goNav.AddComponent<NavegadorArchivos>();
+        navegador.dibujo = dibujo;
+        navegador.control = control;
+        navegador.materialPanel = matPanel;
+        navegador.materialBoton = matBoton;
+        navegador.materialBotonMarcado = matBotonMarcado;
+        navegador.materialImagen = matImagen;
+
         var panel = CrearPanel(raiz.transform, control, dibujo, escenario, matPanel, matBoton, matBotonMarcado);
         panel.figuras = figuras;
         var arriba = CrearPanelArriba(raiz.transform, control, dibujo, animacion, escenario, matPanel, matBoton, matBotonMarcado, matClave, matCabezal, matBarra, matAsaPanel);
@@ -418,7 +429,7 @@ public static class ArmarEscenaTrazo
         panel.textoEstado = Texto(contenido.transform, "", new Vector3(0f, -0.105f, -0.001f), new Vector2(0.098f, 0.02f), new Color(0.2f, 0.2f, 0.25f));
 
         // Dos columnas: Plano / Fondo · Guardar / Cargar · Borrar todo / Imán · Esfera / Cubo · Cilindro / A líneas · Quitar figura
-        string[] nombres = { "Libre (3D)", "Fondo: Cuadrícula", "Guardar", "Cargar", "Borrar todo", "Esfera", "Cubo", "Cilindro", "A líneas", "Quitar figura", "Imán: Sí" };
+        string[] nombres = { "Libre (3D)", "Fondo: Cuadrícula", "Guardar", "Archivos", "Borrar todo", "Esfera", "Cubo", "Cilindro", "A líneas", "Quitar figura", "Imán: Sí" };
         Vector2[] lugares =
         {
             new Vector2(-0.025f, 0.064f), new Vector2(0.025f, 0.064f),
@@ -580,7 +591,7 @@ public static class ArmarEscenaTrazo
         panel.btnQuitarClave = b[5];
         panel.btnFps = b[6];
 
-        string[] menu = { "Libre (3D)", "Fondo", "Guardar", "Cargar", "Borrar todo", "SVG", "Foto" };
+        string[] menu = { "Libre (3D)", "Fondo", "Guardar", "Archivos", "Borrar todo", "SVG", "Foto" };
         var m = new BotonTocable[menu.Length];
         for (int i = 0; i < menu.Length; i++)
             m[i] = Boton(animar, menu[i], new Vector3(-0.192f + i * 0.064f, 0.03f, 0f), matBoton, matBotonMarcado);

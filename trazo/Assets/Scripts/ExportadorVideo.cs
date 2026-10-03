@@ -143,6 +143,8 @@ public class ExportadorVideo : MonoBehaviour
             }
         }
         ok = envio.Terminar() && ok;
+        if (ok)
+            GuardarMiniatura(captura, codificador);
         captura.Liberar();
         if (dibujo.temblor != null)
             dibujo.temblor.PonerTiempo(-1f);
@@ -153,6 +155,23 @@ public class ExportadorVideo : MonoBehaviour
         animacion.MostrarFotograma();
         Exportando = false;
         Avisar(listo, codificador);
+    }
+
+    // El último cuadro, en pequeño, para el explorador de archivos.
+    void GuardarMiniatura(Exportar.Captura captura, CodificadorVideo codificador)
+    {
+        if (codificador.UsaPng || string.IsNullOrEmpty(codificador.Ruta))
+            return;
+        try
+        {
+            byte[] png = captura.CapturarPng();
+            Directory.CreateDirectory(dibujo.CarpetaMiniaturas);
+            File.WriteAllBytes(dibujo.RutaMiniatura(codificador.Ruta), png);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("TrazoVR: no se pudo guardar la miniatura del video: " + e.Message);
+        }
     }
 
     void Avisar(bool listo, CodificadorVideo codificador)
@@ -294,6 +313,8 @@ public class ExportadorVideo : MonoBehaviour
             }
         }
         ok = envio.Terminar() && ok;
+        if (ok)
+            GuardarMiniatura(captura, codificador);
         Trazo.silenciar = silencio;
         Trazo.huboCambio = false;
         captura.Liberar();
