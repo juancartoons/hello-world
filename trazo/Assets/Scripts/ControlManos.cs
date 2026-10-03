@@ -227,7 +227,19 @@ public class ControlManos : MonoBehaviour
     // Selección múltiple: un toque corto (pellizco rápido sin mover) suma o quita una línea.
     // Pellizcar y arrastrar una línea seleccionada mueve todas las seleccionadas.
     readonly List<Trazo> grupoMovido = new List<Trazo>();
-    readonly List<List<Vector3>> basesGrupo = new List<List<Vector3>>();
+    readonly List<DatosTrazo> basesGrupo = new List<DatosTrazo>();
+    // Girar la línea con la misma mano que la mueve (girando la muñeca). En Plano (2D) gira solo
+    // dentro del plano; en 3D, hacia cualquier lado. Los primeros 8° no cuentan (así no gira sin querer).
+    Quaternion rotManoInicio = Quaternion.identity, rotManoSuave = Quaternion.identity;
+    bool tieneRotMano;
+    float anguloGiro;
+    const float ZonaMuertaGiro = 8f;
+    // Tamaño del borrador: con el puño izquierdo, PELLIZCA con la derecha y gira en círculo.
+    [Tooltip("Tamaño del borrador (1 = normal)")]
+    public float tamanoBorrador = 1f;
+    bool dialBorrarPrevioValido, dialBorrarUsado;
+    Vector3 dialBorrarCentro, dialBorrarPrevio;
+    float dialBorrarAngulo, tamanoBorradorInicio = 1f;
     readonly List<Trazo> seleccionPrevia = new List<Trazo>();
     float toqueLineaDesde;
     bool toqueYaSeleccionada, toqueMovio;
@@ -376,7 +388,12 @@ public class ControlManos : MonoBehaviour
         // Mientras un muñeco se mueve, el candado se pone solo (y vuelve como estaba al pararlo).
         simbolos.Candado(DibujoBloqueado || Titere.Activo, Cabeza);
         bool dial = GestoIzq == Gesto.Grosor && dialUsado && Cabeza != null;
-        simbolos.Dial(dial, dialCentro, Cabeza != null ? Cabeza.position : Vector3.zero, Mathf.Clamp(dialRadio * 2f, 0.02f, 0.08f));
+        // Con el borrador: un aro alrededor del dedo muestra cuánto borra.
+        bool aroBorrador = !dial && GestoIzq == Gesto.Borrar && Der.valida && Cabeza != null && !Ocupado;
+        if (aroBorrador)
+            simbolos.Dial(true, Der.pellizco ? Der.PuntoPellizco : Der.indice, Cabeza.position, radioBorrarNodo * tamanoBorrador * 2f);
+        else
+            simbolos.Dial(dial, dialCentro, Cabeza != null ? Cabeza.position : Vector3.zero, Mathf.Clamp(dialRadio * 2f, 0.02f, 0.08f));
     }
 
     // ---------- Pose de la mano izquierda ----------
@@ -1229,6 +1246,40 @@ public class ControlManos : MonoBehaviour
         dialPrevioValido = true;
     }
 
+    // Dial del borrador: pellizco derecho y girar en círculo. Como el reloj = más grande; al revés = más chico.
+    void DialBorrador()
+    {
+        if (Cabeza == null)
+            return;
+        Vector3 p = Der.PuntoPellizco;
+        if (!dialBorrarPrevioValido && !dialBorrarUsado)
+        {
+            dialBorrarCentro = p;
+            dialBorrarAngulo = 0f;
+            tamanoBorradorInicio = tamanoBorrador;
+        }
+        dialBorrarCentro = Vector3.Lerp(dialBorrarCentro, p, 1f - Mathf.Exp(-1f * Time.deltaTime));
+        Vector3 eje = Cabeza.forward;
+        Vector3 r = Vector3.ProjectOnPlane(p - dialBorrarCentro, eje);
+        if (r.magnitude < 0.005f || r.magnitude > 0.06f)
+        {
+            dialBorrarPrevioValido = false;
+            return;
+        }
+        if (dialBorrarPrevioValido)
+        {
+            float paso = -Vector3.SignedAngle(dialBorrarPrevio, r, eje);
+            if (Mathf.Abs(paso) < 45f)
+                dialBorrarAngulo += paso;
+            if (!dialBorrarUsado && Mathf.Abs(dialBorrarAngulo) > 40f)
+                dialBorrarUsado = true;
+            if (dialBorrarUsado)
+                tamanoBorrador = Mathf.Clamp(tamanoBorradorInicio * Mathf.Pow(2f, dialBorrarAngulo / 360f), 0.3f, 5f);
+        }
+        dialBorrarPrevio = r;
+        dialBorrarPrevioValido = true;
+    }
+
     // ---------- Borrador: puño izquierdo + tocar con el índice derecho ----------
     // Nodo y relleno: se borran al tocarlos. Cerca de un nodo, nunca se borra la línea.
     // Línea entera: hay que frotarla (ida y vuelta) lejos de sus nodos; se pone roja mientras.
@@ -1242,25 +1293,42 @@ public class ControlManos : MonoBehaviour
             MostrarModoNodos(false, null);
             return;
         }
+        // Pellizco derecho + girar en círculo = tamaño del borrador. Mientras pellizcas no se borra nada.
+        if (Der.pellizco)
+        {
+            CancelarFrote();
+            DialBorrador();
+            return;
+        }
+        dialBorrarPrevioValido = false;
+        if (dialBorrarUsado)
+        {
+            dialBorrarUsado = false;
+            MostrarEtiqueta("Borrador x" + tamanoBorrador.ToString("0.0"));
+        }
         Vector3 punta = Der.indice;
         Vector3 local = dibujo.transform.InverseTransformPoint(punta);
         float escala = dibujo.EscalaMundo;
+        float tb = tamanoBorrador;
         // En la hoja del lápiz de boceto, el borrador es una goma que aclara el grafito.
         if (dibujo.UsaHoja && dibujo.HayPlano)
+        {
+            dibujo.hojas.radioGoma = 0.012f * tb;
             LapizHoja(local, true);
+        }
 
         Objetivo tipo = Objetivo.Nada;
         Trazo t = null;
         int i = -1;
         bool frotando = froteTrazo != null && froteRecorrido > 0.012f && Dibujo.Editable(froteTrazo)
-                        && froteTrazo.DistanciaACurva(local) * escala < froteTrazo.ancho * escala * 0.5f + 0.015f;
+                        && froteTrazo.DistanciaACurva(local) * escala < froteTrazo.ancho * escala * 0.5f + 0.015f * tb;
         if (frotando)
         {
             // Si ya empezaste a frotar, sigues frotando esa línea aunque pases cerca de un nodo.
             t = froteTrazo;
             tipo = Objetivo.Linea;
         }
-        else if (BuscarNodoCercano(punta, punta, radioBorrarNodo, null, out t, out i))
+        else if (BuscarNodoCercano(punta, punta, radioBorrarNodo * tb, null, out t, out i))
         {
             tipo = Objetivo.Nodo;
         }
@@ -1272,7 +1340,7 @@ public class ControlManos : MonoBehaviour
                 if (!Dibujo.Editable(o))
                     continue;
                 float d = o.DistanciaACurva(local) * escala;
-                float limite = o.ancho * escala * 0.5f + 0.008f;
+                float limite = o.ancho * escala * 0.5f + 0.008f * tb;
                 if (d < limite && d < mejor)
                 {
                     mejor = d;
@@ -1284,7 +1352,7 @@ public class ControlManos : MonoBehaviour
             {
                 foreach (var o in dibujo.trazos)
                 {
-                    if (Dibujo.Editable(o) && o.relleno && o.DentroDeRelleno(local, 0.012f / escala))
+                    if (Dibujo.Editable(o) && o.relleno && o.DentroDeRelleno(local, 0.012f * tb / escala))
                     {
                         t = o;
                         tipo = Objetivo.Relleno;
@@ -1887,18 +1955,22 @@ public class ControlManos : MonoBehaviour
             Transform raiz = dibujo.transform;
             Vector3 delta = raiz.InverseTransformPoint(Der.PuntoPellizco) - raiz.InverseTransformPoint(inicioLinea);
             delta = dibujo.ProyectarVectorEnPlano(delta);
-            if (delta.magnitude * dibujo.EscalaMundo > 0.006f)
+            Quaternion giro = GiroManoLocal();
+            if (delta.magnitude * dibujo.EscalaMundo > 0.006f || anguloGiro > 2f)
                 toqueMovio = true;
             if (deshacerLineaPendiente)
             {
-                if (delta.magnitude * dibujo.EscalaMundo < 0.003f)
+                if (delta.magnitude * dibujo.EscalaMundo < 0.003f && anguloGiro < 0.5f)
                     return;
                 dibujo.GuardarParaDeshacer();
                 deshacerLineaPendiente = false;
             }
+            // Mover y girar alrededor de la pinza.
+            Vector3 pivote = dibujo.ProyectarEnPlano(raiz.InverseTransformPoint(inicioLinea));
+            Matrix4x4 m = Matrix4x4.Translate(pivote + delta) * Matrix4x4.Rotate(giro) * Matrix4x4.Translate(-pivote);
             for (int k = 0; k < grupoMovido.Count; k++)
                 if (Dibujo.Editable(grupoMovido[k]))
-                    grupoMovido[k].Desplazar(basesGrupo[k], delta);
+                    grupoMovido[k].TransformarDesde(basesGrupo[k], m, 1f);
             return;
         }
         if (figuraMovida != null)
@@ -1979,17 +2051,58 @@ public class ControlManos : MonoBehaviour
         foreach (var g in dibujo.Seleccionadas())
         {
             grupoMovido.Add(g);
-            basesGrupo.Add(new List<Vector3>(g.nodos));
+            basesGrupo.Add(g.CrearDatos());
         }
         if (!grupoMovido.Contains(t))
         {
             grupoMovido.Add(t);
-            basesGrupo.Add(new List<Vector3>(t.nodos));
+            basesGrupo.Add(t.CrearDatos());
         }
+        var muneca = ManosUtil.Hueso(Der.esqueleto, Titere.Muneca);
+        tieneRotMano = muneca != null;
+        if (tieneRotMano)
+            rotManoInicio = rotManoSuave = muneca.rotation;
+        anguloGiro = 0f;
         inicioLinea = Der.PuntoPellizco;
         deshacerLineaPendiente = true;
         toqueLineaDesde = Time.time;
         toqueMovio = false;
+    }
+
+    // Cuánto giró la muñeca derecha desde que pellizcaste la línea (en coordenadas del dibujo).
+    Quaternion GiroManoLocal()
+    {
+        anguloGiro = 0f;
+        if (!tieneRotMano)
+            return Quaternion.identity;
+        var muneca = ManosUtil.Hueso(Der.esqueleto, Titere.Muneca);
+        if (muneca == null)
+            return Quaternion.identity;
+        rotManoSuave = Quaternion.Slerp(rotManoSuave, muneca.rotation, 1f - Mathf.Exp(-15f * Time.deltaTime));
+        Quaternion raiz = dibujo.transform.rotation;
+        Quaternion dl = Quaternion.Inverse(raiz) * (rotManoSuave * Quaternion.Inverse(rotManoInicio)) * raiz;
+        Vector3 punto, normalMundo;
+        if (dibujo.PlanoMundo(out punto, out normalMundo))
+        {
+            // Plano 2D: solo la parte del giro alrededor de la normal del plano ("twist").
+            Vector3 n = dibujo.transform.InverseTransformDirection(normalMundo).normalized;
+            Vector3 v = new Vector3(dl.x, dl.y, dl.z);
+            Vector3 p = n * Vector3.Dot(v, n);
+            float largo = Mathf.Sqrt(p.sqrMagnitude + dl.w * dl.w);
+            if (largo < 1e-6f)
+                return Quaternion.identity;
+            dl = new Quaternion(p.x / largo, p.y / largo, p.z / largo, dl.w / largo);
+        }
+        float angulo;
+        Vector3 eje;
+        dl.ToAngleAxis(out angulo, out eje);
+        if (angulo > 180f)
+            angulo -= 360f;
+        if (float.IsNaN(eje.x) || float.IsInfinity(eje.x) || eje.sqrMagnitude < 1e-6f || Mathf.Abs(angulo) < 1e-3f)
+            return Quaternion.identity;
+        float util = Mathf.Sign(angulo) * Mathf.Max(0f, Mathf.Abs(angulo) - ZonaMuertaGiro);
+        anguloGiro = Mathf.Abs(util);
+        return Quaternion.AngleAxis(util, eje.normalized);
     }
 
     bool LineasCerca(List<Trazo> lineas, Vector3 mundo, float distancia)

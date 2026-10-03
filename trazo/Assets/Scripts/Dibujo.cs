@@ -1562,8 +1562,11 @@ public class Dibujo : MonoBehaviour
         try
         {
             Directory.CreateDirectory(Carpeta);
-            File.WriteAllBytes(Path.Combine(Carpeta, nombre), png);
-            Mensaje("Foto guardada: " + nombre);
+            string ruta = Path.Combine(Carpeta, nombre);
+            File.WriteAllBytes(ruta, png);
+            string publico = Galeria.Publicar(ruta, "image/png", "Pictures/TrazoVR");
+            Galeria.UltimoGuardado = "Foto " + nombre + ": " + Galeria.Donde(publico, ruta);
+            Mensaje("Foto guardada. Búscala en la " + Galeria.Donde(publico, ruta));
         }
         catch (System.Exception e)
         {

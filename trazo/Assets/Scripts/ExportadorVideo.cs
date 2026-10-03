@@ -146,7 +146,14 @@ public class ExportadorVideo : MonoBehaviour
             return;
         }
         string nombre = Path.GetFileName(codificador.Ruta);
-        Mensaje(codificador.UsaPng ? "Cuadros PNG guardados en " + nombre + " (usa hacer_video.bat)" : "Video guardado: " + nombre);
+        if (codificador.UsaPng)
+        {
+            Galeria.UltimoGuardado = "Cuadros PNG: " + Galeria.Donde("", codificador.Ruta) + " (usa hacer_video.bat)";
+            Mensaje("Cuadros PNG guardados en " + nombre + " (usa hacer_video.bat)");
+            return;
+        }
+        Galeria.UltimoGuardado = "Video " + nombre + ": " + Galeria.Donde(codificador.RutaPublica, codificador.Ruta);
+        Mensaje("Video listo. Búscalo en la " + Galeria.Donde(codificador.RutaPublica, codificador.Ruta));
     }
 
     // ---------- Video del proceso ----------

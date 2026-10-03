@@ -12,8 +12,8 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 | Izquierda: **pulgar + medio** (sostener) | **Modo nodos**: pellizca un nodo con la derecha y arrástralo. El nodo tocado muestra sus **asas** (verdes): pellízcalas para curvar. Pellizcar la **línea seleccionada** lejos de sus nodos = **agregar un nodo** |
 | Modo nodos: arrastrar una **punta** sobre otra punta | Imán: se unen en una sola línea, o se **cierra la figura** y se rellena |
 | Izquierda: **pulgar + anular** (sostener) | **Grosor**: sube/baja la mano izquierda = más grueso/delgado (solo la línea seleccionada, o todo si no hay selección). Pellizca un **nodo** con la derecha y súbela/bájala = grosor solo de ese nodo. **Gira el índice derecho en un círculo pequeño** (como un teléfono de disco) = grosor de las **líneas nuevas**: hacia la derecha más grueso, hacia la izquierda más delgado |
-| Izquierda: **puño de lado o con el dorso hacia ti** (pulgar sobre los dedos; con la palma hacia ti no cuenta) | **Borrador** (la mano se vuelve una goma de borrar; se borra con el índice derecho): tocar un **nodo** o un **relleno** lo borra. La **línea entera** solo se borra si la **frotas** (ida y vuelta, ~6 cm) lejos de sus nodos; se pone roja mientras |
-| **Pellizcar una línea** con la derecha (sin gesto izquierdo) | La **selecciona** (se pone azul) y la **mueves**. Se suelta con solo abrir un poco los dedos. Pellizcar en el aire = quitar la selección |
+| Izquierda: **puño de lado o con el dorso hacia ti** (pulgar sobre los dedos; con la palma hacia ti no cuenta) | **Borrador** (la mano se vuelve una goma de borrar; se borra con el índice derecho; un aro alrededor del dedo muestra cuánto borra. **Pellizca con la derecha y gira en círculo** = tamaño del borrador: como el reloj más grande, al revés más chico; mientras pellizcas no se borra nada): tocar un **nodo** o un **relleno** lo borra. La **línea entera** solo se borra si la **frotas** (ida y vuelta, ~6 cm) lejos de sus nodos; se pone roja mientras |
+| **Pellizcar una línea** con la derecha (sin gesto izquierdo) | La **selecciona** (se pone azul) y la **mueves**. **Gira la muñeca** mientras la tienes = **girarla** (en Plano 2D gira dentro del plano; en 3D, hacia cualquier lado; los primeros 8° no cuentan). Se suelta con solo abrir un poco los dedos. Pellizcar en el aire = quitar la selección |
 | Con algo elegido: **toque corto** (pellizco rápido sin mover) sobre otra línea | **Selección múltiple**: la suma (o la quita). Arrastrar cualquiera de las azules **mueve todas**; con las dos manos cerca de ellas, se escalan y giran juntas |
 | **Las dos manos pellizcando lejos** de lo elegido | Se transforma **todo el dibujo** (aunque haya una línea, figura o imagen elegida) |
 | Izquierda: **puño con el pulgar hacia tu izquierda** (sostener 0.3 s, quieta) | La mano se vuelve una **flecha** (la punta en tu pulgar): toca la **diana roja** = **Deshacer** (retírala y vuelve a tocar para deshacer otra vez) |
@@ -43,7 +43,7 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 - "+ Clave" copia la forma actual en el fotograma; "- Clave" la quita.
 - **Pellizca una clave** (marca naranja) y arrástrala para moverla a otro fotograma.
 - El botón **fps** cambia la velocidad: 12, 24, 30 o 60 cuadros por segundo.
-- Una línea dibujada en el fotograma 40 aparece desde ahí.
+- Una línea **nueva** (dibujada en cualquier fotograma) existe en **toda** la animación, con la misma forma; después la animas.
 - Si **borras o agregas un nodo**, pasa en **todas** las claves (así el morph sigue funcionando).
 
 ## Exportar
@@ -65,7 +65,9 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 - Al borrar nodos suena una burbujita.
 - **Plano: propio / unido** (página Medios): cada capa tiene su propio plano 2D. Las capas "unidas" comparten el plano,
   cada una 2 mm más cerca de ti (boceto atrás, tinta adelante).
-- Se guardan en las gafas, en `Android/data/<tu app>/files/Dibujos` (con Meta Quest Developer Hub → File Manager).
+- **Dónde quedan:** los videos se copian a **Movies/TrazoVR** y las fotos a **Pictures/TrazoVR**: ábrelos con la app
+  **Archivos** del Quest (o conecta el cable al PC). El último guardado se ve escrito en la página **Medios**.
+  Todo queda también en `Android/data/<tu app>/files/Dibujos`.
 
 ## Personajes que caminan, corren y saltan (hasta dos a la vez)
 
@@ -112,6 +114,9 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
    **Ver** (100%, 50%, 20%, oculta). En Medios, **Imágenes: ver / ocultas** las esconde todas a la vez.
 
 ## Bocas automáticas (lipsync)
+
+**Muestra lista:** si abres la página **Bocas** sin bocas guardadas, aparece una cara de ejemplo (Capa 3) con todas las
+bocas listas. Toca **Voz**, habla, **Voz** otra vez, **Lipsync** y **Play**. (Deshacer la quita.)
 
 1. Dibuja la boca en **su propia capa** (por ejemplo, Capa 2) y deja esa capa elegida.
 2. Página **Bocas**, **Modo: Guardar**: mueve los nodos de la boca y toca **Reposo, A, E, I, O, U o M**

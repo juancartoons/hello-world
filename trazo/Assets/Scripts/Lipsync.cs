@@ -80,6 +80,118 @@ public class Lipsync : MonoBehaviour
             dibujo.Mensaje(texto);
     }
 
+    // ---------- Muestra lista para probar ----------
+    // Una cara con TODAS las bocas ya guardadas (Reposo, A, E, I, O, U, M), en la Capa 3.
+    // Aparece sola al abrir la página Bocas si aún no hay bocas. Solo falta: Voz → hablar → Voz → Lipsync → Play.
+
+    // Media apertura (ancho, alto) en metros y cuánto suben las comisuras (sonrisa) para cada boca.
+    static readonly Vector3[] FormaMuestra =
+    {
+        new Vector3(0.034f, 0.004f, 0.000f),  // Reposo
+        new Vector3(0.032f, 0.034f, 0.000f),  // A
+        new Vector3(0.040f, 0.016f, 0.004f),  // E
+        new Vector3(0.044f, 0.008f, 0.006f),  // I
+        new Vector3(0.021f, 0.027f, 0.000f),  // O
+        new Vector3(0.012f, 0.015f, 0.000f),  // U
+        new Vector3(0.033f, 0.0015f, -0.001f), // M
+    };
+
+    public bool HayBocas
+    {
+        get
+        {
+            for (int i = 0; i < poses.Length; i++)
+                if (TieneBoca(i))
+                    return true;
+            return false;
+        }
+    }
+
+    public void CrearMuestra(Transform cabeza)
+    {
+        if (dibujo == null || cabeza == null)
+            return;
+        Vector3 frente = cabeza.forward;
+        frente.y = 0f;
+        frente = frente.sqrMagnitude > 1e-4f ? frente.normalized : Vector3.forward;
+        Vector3 derecha = Vector3.Cross(Vector3.up, frente).normalized;
+        Vector3 centro = cabeza.position + frente * 0.5f - Vector3.up * 0.05f;
+
+        dibujo.GuardarParaDeshacer();
+        dibujo.SeleccionarCapa(2);
+        // Cara, ojos y boca.
+        var cara = Linea(Ovalo(centro, derecha, 0.11f, 0.14f, 12, 0f), true, 0, 1f);
+        Linea(Ovalo(centro + derecha * -0.04f + Vector3.up * 0.035f, derecha, 0.009f, 0.013f, 8, 0f), true, 7, 0.7f);
+        Linea(Ovalo(centro + derecha * 0.04f + Vector3.up * 0.035f, derecha, 0.009f, 0.013f, 8, 0f), true, 7, 0.7f);
+        Vector3 centroBoca = centro - Vector3.up * 0.06f;
+        var boca = Linea(Boca(centroBoca, derecha, 0), true, 7, 0.8f);
+        if (cara == null || boca == null)
+            return;
+        // Guarda las 7 bocas (misma línea, mismos nodos, distinta forma: así el morph sale suave).
+        var baseDatos = boca.CrearDatos();
+        for (int i = 0; i < poses.Length; i++)
+        {
+            var d = JsonUtility.FromJson<DatosTrazo>(JsonUtility.ToJson(baseDatos));
+            d.nodos.Clear();
+            foreach (var w in Boca(centroBoca, derecha, i))
+                d.nodos.Add(w);
+            d.asaEntrada.Clear();
+            d.asaSalida.Clear();
+            d.asaManual.Clear();
+            poses[i] = new PoseBoca { nombre = Nombres[i] };
+            poses[i].trazos.Add(d);
+        }
+        PonerBoca(0);
+        modoGuardar = false;
+        Avisar();
+        Mensaje("Muestra de bocas lista (Capa 3). Toca Voz, habla, Voz otra vez, luego Lipsync y Play");
+    }
+
+    Trazo Linea(List<Vector3> local, bool cerrada, int color, float grosor)
+    {
+        var d = new DatosTrazo
+        {
+            ancho = dibujo.AnchoNuevoLocal() * grosor,
+            cerrado = cerrada,
+            relleno = cerrada,
+            colorRelleno = color,
+        };
+        d.nodos.AddRange(local);
+        return dibujo.AgregarTrazo(d);
+    }
+
+    List<Vector3> Ovalo(Vector3 centro, Vector3 derecha, float ancho, float alto, int n, float sonrisa)
+    {
+        var l = new List<Vector3>(n);
+        for (int k = 0; k < n; k++)
+        {
+            float a = k * Mathf.PI * 2f / n;
+            float x = Mathf.Cos(a) * ancho * 0.5f;
+            float y = Mathf.Sin(a) * alto * 0.5f;
+            y += sonrisa * Mathf.Abs(Mathf.Cos(a)); // las comisuras suben
+            Vector3 mundo = centro + derecha * x + Vector3.up * y;
+            l.Add(dibujo.ProyectarEnPlano(dibujo.transform.InverseTransformPoint(mundo)));
+        }
+        return l;
+    }
+
+    // La boca i: 8 nodos (siempre los mismos), el labio de arriba un poco más plano.
+    List<Vector3> Boca(Vector3 centro, Vector3 derecha, int i)
+    {
+        var f = FormaMuestra[Mathf.Clamp(i, 0, FormaMuestra.Length - 1)];
+        var l = new List<Vector3>(8);
+        for (int k = 0; k < 8; k++)
+        {
+            float a = k * Mathf.PI * 2f / 8f;
+            float x = Mathf.Cos(a) * f.x;
+            float y = Mathf.Sin(a) * f.y * (Mathf.Sin(a) > 0f ? 0.7f : 1f);
+            y += f.z * Mathf.Abs(Mathf.Cos(a));
+            Vector3 mundo = centro + derecha * x + Vector3.up * y;
+            l.Add(dibujo.ProyectarEnPlano(dibujo.transform.InverseTransformPoint(mundo)));
+        }
+        return l;
+    }
+
     // ---------- Biblioteca de bocas ----------
 
     public bool TieneBoca(int i)

@@ -6,6 +6,7 @@ using UnityEngine;
 // - Entre dos claves, cada línea con los mismos nodos se transforma suavemente de una forma a otra.
 // - Si estás en un fotograma y editas algo, se crea/actualiza la clave de ese fotograma (automático).
 // - Si nunca tocas la línea de tiempo, el dibujo es normal (sin animación).
+// - Una línea NUEVA (dibujada en cualquier fotograma) aparece en toda la animación.
 public class Animacion : MonoBehaviour
 {
     public const int TotalFotogramas = 2000;
@@ -124,11 +125,31 @@ public class Animacion : MonoBehaviour
                 i++;
             claves.Insert(i, c);
         }
+        // Las líneas que ya existían en alguna clave (las demás son líneas NUEVAS).
+        var conocidas = new HashSet<int>();
+        foreach (var k in claves)
+            foreach (var p in k.trazos)
+                if (p != null)
+                    conocidas.Add(p.id);
         c.cache = null;
         c.trazos.Clear();
         foreach (var t in dibujo.trazos)
             if (t != null && t.visibleAnim && t.nodos.Count >= 2)
                 c.trazos.Add(t.CrearDatos());
+        // Una línea nueva existe en TODA la animación (con la misma forma en todas las claves),
+        // así no desaparece en otros fotogramas y después la puedes animar.
+        foreach (var t in dibujo.trazos)
+        {
+            if (t == null || !t.visibleAnim || t.Dibujando || t.nodos.Count < 2 || conocidas.Contains(t.id))
+                continue;
+            foreach (var k in claves)
+            {
+                if (k == c)
+                    continue;
+                k.trazos.Add(t.CrearDatos());
+                k.cache = null;
+            }
+        }
     }
 
     // Para deshacer: cada clave en texto. Las que no cambiaron reutilizan su texto (no se copian otra vez).

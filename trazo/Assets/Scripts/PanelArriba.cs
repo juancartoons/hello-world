@@ -225,8 +225,16 @@ public class PanelArriba : MonoBehaviour
             contenido.SetActive(false);
     }
 
+    bool muestraBocasHecha;
+
     void PonerPagina(int p)
     {
+        // Bocas sin ninguna boca guardada: aparece una muestra lista para probar (una vez por sesión).
+        if (p == 2 && !esAyuda && !muestraBocasHecha && lipsync != null && !lipsync.HayBocas && control != null && control.Cabeza != null)
+        {
+            muestraBocasHecha = true;
+            lipsync.CrearMuestra(control.Cabeza);
+        }
         pagina = p;
         if (paginaAnimar != null) paginaAnimar.SetActive(p == 0);
         if (paginaMedios != null) paginaMedios.SetActive(p == 1);
@@ -747,6 +755,8 @@ public class PanelArriba : MonoBehaviour
             texto = "Grabando el proceso: " + GrabadorProceso.Formato(grabador.Duracion);
         else if (grabador != null && grabador.muestras.Count > 1)
             texto = "Grabación lista: " + GrabadorProceso.Formato(grabador.Duracion) + " · toca Video proceso";
+        else if (!string.IsNullOrEmpty(Galeria.UltimoGuardado))
+            texto = Galeria.UltimoGuardado;
         else
             texto = dibujo != null ? "Las líneas vivas y el boceto son de la capa activa: " + dibujo.CapaActual.nombre : "";
         textoMedios.text = texto;
@@ -1036,13 +1046,13 @@ public class PanelArriba : MonoBehaviour
         Poner(d, btnCargar, "CARGAR\nMuestra abajo la lista de tus dibujos (el más reciente primero, con la fecha). Toca uno para abrirlo. Cargar otra vez = cerrar la lista.\nGuarda antes lo que tienes (Guardar). Si te arrepientes: deshacer.");
         Poner(d, btnBorrarTodo, "BORRAR TODO\nBorra todo el dibujo y empieza uno nuevo (al guardar recibe otro nombre). Se puede deshacer.");
         Poner(d, btnSvg, "SVG\nExporta las líneas como curvas vectoriales (para Illustrator, Inkscape...). En Plano se ve de frente al plano; en 3D, desde donde estás.");
-        Poner(d, btnFoto, "FOTO\nGuarda una imagen PNG del dibujo desde donde estás. Los paneles, nodos, imágenes y capas de boceto no salen.");
+        Poner(d, btnFoto, "FOTO\nGuarda una imagen PNG del dibujo desde donde estás. Los paneles, nodos, imágenes y capas de boceto no salen.\nDÓNDE QUEDA: app Archivos del Quest → Pictures → TrazoVR.");
 
         // Medios
         Poner(d, btnGrabar, "GRABAR (proceso)\nGraba cómo dibujas: tus manos y cómo aparecen las líneas. Toca otra vez (Detener) para parar.\nDespués: Video proceso lo convierte en MP4.");
-        Poner(d, btnVideoProceso, "VIDEO PROCESO\nConvierte tu grabación (botón Grabar) en un video MP4: líneas + manos en gris. Elige antes la velocidad con Vel.");
+        Poner(d, btnVideoProceso, "VIDEO PROCESO\nConvierte tu grabación (botón Grabar) en un video MP4: líneas + manos en gris. Elige antes la velocidad con Vel.\nDÓNDE QUEDA: app Archivos del Quest → Movies → TrazoVR (también lo dice abajo en esta página).");
         Poner(d, btnVelocidad, "VEL x1 / x2 / x4 / x8\nQué tan rápido se ve el video del proceso.");
-        Poner(d, btnVideoAnim, "VIDEO ANIM\nExporta la animación como MP4 (1280x720), con el audio de las bocas si hay. Necesitas al menos 2 claves.");
+        Poner(d, btnVideoAnim, "VIDEO ANIM\nExporta la animación como MP4 (1280x720), con el audio de las bocas si hay. Necesitas al menos 2 claves.\nDÓNDE QUEDA: app Archivos del Quest → Movies → TrazoVR.");
         Poner(d, btnImagenMas, "IMAGEN +\nPone frente a ti la siguiente imagen de la carpeta Dibujos/Imagenes (cópialas con el cable o Meta Quest Developer Hub).\nPara calcar: en Plano, suelta la imagen cerca del plano y se pega detrás.");
         Poner(d, btnImagenMenos, "IMAGEN -\nQuita la imagen seleccionada (la que tiene tono azul). Pellizca una imagen para elegirla.");
         Poner(d, btnImagenesVer, "IMÁGENES: VER / OCULTAS\nEsconde o muestra todas las imágenes de referencia a la vez.");
@@ -1063,7 +1073,7 @@ public class PanelArriba : MonoBehaviour
         Poner(d, btnModoBoca, "MODO: GUARDAR / PROBAR\nGuardar: tocar una forma la guarda. Probar: tocar una forma la pone en el fotograma actual (para corregir a mano).");
         Poner(d, btnVoz, "VOZ\nGraba tu voz con el micrófono de las gafas. Toca otra vez para parar. Después toca Lipsync.");
         Poner(d, btnAudio, "AUDIO\nElige un audio de la carpeta Dibujos/Audio (wav o mp3) en vez de grabar tu voz.");
-        Poner(d, btnLipsync, "LIPSYNC\nCrea las claves de la boca según el audio. Antes: guarda las formas (Reposo, A, E, I, O, U, M) y graba Voz o elige Audio. Luego Play.");
+        Poner(d, btnLipsync, "LIPSYNC\nCrea las claves de la boca según el audio. Antes: guarda las formas (Reposo, A, E, I, O, U, M) y graba Voz o elige Audio. Luego Play.\nSi no tienes bocas, al abrir esta página aparece una cara de muestra con todas listas.");
         Poner(d, btnQuitarAudio, "QUITAR AUDIO\nQuita el audio de la animación.");
 
         // Títere
