@@ -124,10 +124,51 @@ public class Animacion : MonoBehaviour
                 i++;
             claves.Insert(i, c);
         }
+        c.cache = null;
         c.trazos.Clear();
         foreach (var t in dibujo.trazos)
             if (t != null && t.visibleAnim && t.nodos.Count >= 2)
                 c.trazos.Add(t.CrearDatos());
+    }
+
+    // Para deshacer: cada clave en texto. Las que no cambiaron reutilizan su texto (no se copian otra vez).
+    public List<string> Instantanea()
+    {
+        var lista = new List<string>(claves.Count);
+        foreach (var c in claves)
+        {
+            if (c.cache == null)
+                c.cache = JsonUtility.ToJson(c);
+            lista.Add(c.cache);
+        }
+        return lista;
+    }
+
+    // Vuelve a las claves de una foto de deshacer. Las claves que no cambiaron se quedan como están.
+    public void RestaurarInstantanea(List<string> lista, int f)
+    {
+        var nuevas = new List<Clave>(lista.Count);
+        foreach (var texto in lista)
+        {
+            Clave igual = null;
+            foreach (var c in claves)
+            {
+                if (c.cache != null && ReferenceEquals(c.cache, texto))
+                {
+                    igual = c;
+                    break;
+                }
+            }
+            if (igual == null)
+            {
+                igual = JsonUtility.FromJson<Clave>(texto);
+                if (igual == null)
+                    continue;
+                igual.cache = texto;
+            }
+            nuevas.Add(igual);
+        }
+        Restaurar(nuevas, f);
     }
 
     // ---------- Botones de la línea de tiempo ----------
@@ -208,6 +249,7 @@ public class Animacion : MonoBehaviour
         if (otra != null)
             claves.Remove(otra);
         c.fotograma = hasta;
+        c.cache = null;
         claves.Sort((a, b) => a.fotograma.CompareTo(b.fotograma));
         Fotograma = hasta;
         MostrarFotograma();
@@ -301,6 +343,7 @@ public class Animacion : MonoBehaviour
             var p = BuscarPose(c, id);
             if (p == null || p.nodos == null || p.nodos.Count != nodosAntes)
                 continue;
+            c.cache = null;
             NodosUtil.Quitar(p.nodos, p.asaEntrada, p.asaSalida, p.asaManual, p.grosorNodo, indice);
             if (p.cerrado && p.nodos.Count < 3)
             {
@@ -320,6 +363,7 @@ public class Animacion : MonoBehaviour
             var p = BuscarPose(c, id);
             if (p == null || p.nodos == null || p.nodos.Count != nodosAntes)
                 continue;
+            c.cache = null;
             NodosUtil.Insertar(p.nodos, p.asaEntrada, p.asaSalida, p.asaManual, p.grosorNodo, p.cerrado, segmento, t);
         }
     }

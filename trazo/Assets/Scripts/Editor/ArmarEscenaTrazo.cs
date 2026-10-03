@@ -512,6 +512,9 @@ public static class ArmarEscenaTrazo
         panel.btnPaginaTitere = p[3];
         panel.btnZoom = p[4];
         panel.btnSeguir = p[5];
+        // Ayuda: "?" en la esquina de arriba a la derecha (abre abajo una copia azul que explica cada botón).
+        panel.btnAyuda = Boton(c, "?", new Vector3(0.215f, 0.195f, 0f), matBoton, matBotonMarcado);
+        panel.btnAyuda.transform.localScale = new Vector3(0.03f, 0.022f, 0.008f);
 
         // ----- Página Animar -----
         var animar = Pagina(c, "PaginaAnimar");
@@ -635,7 +638,7 @@ public static class ArmarEscenaTrazo
         panel.btnBrazo2 = t3[3];
         panel.btnCuerpo = t3[4];
         panel.textoTitere = Texto(tit, "", new Vector3(0f, -0.052f, -0.001f), new Vector2(0.46f, 0.02f), new Color(0.2f, 0.2f, 0.25f));
-        Texto(tit, "Choca esos cinco = encender/apagar · mano a los lados = caminar/correr · golpe arriba = saltar", new Vector3(0f, -0.09f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.3f, 0.3f, 0.35f));
+        Texto(tit, "Crear = se enciende solo · mano a los lados = caminar/correr · golpe arriba = saltar · palma arriba = apagar", new Vector3(0f, -0.09f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.3f, 0.3f, 0.35f));
         return panel;
     }
 

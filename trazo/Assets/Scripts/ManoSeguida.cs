@@ -10,6 +10,7 @@ public class ManoSeguida
     public bool valida;          // la mano se ve bien en este momento
     public float sinSenal;       // segundos desde que se perdió la mano
     public Vector3 indice, pulgar, medio, anular, menique; // puntas de los dedos (suavizadas)
+    public Vector3 indiceCrudo;  // punta del índice SIN suavizar (para el lápiz: va pegado al dedo)
 
     // Pellizco índice + pulgar (con histéresis: entra con poca distancia, sale con más).
     public bool pellizco, empezoPellizco, soltoPellizco;
@@ -62,6 +63,7 @@ public class ManoSeguida
 
         sinSenal = 0f;
         float a = teniaDatos ? 1f - Mathf.Exp(-suavizado * Time.deltaTime) : 1f;
+        indiceCrudo = tIndice.position;
         indice = Vector3.Lerp(indice, tIndice.position, a);
         pulgar = Vector3.Lerp(pulgar, tPulgar.position, a);
         medio = Vector3.Lerp(medio, tMedio.position, a);

@@ -120,15 +120,34 @@ public class HojasLapiz : MonoBehaviour
     // Sellos del lápiz entre dos puntos (bien juntitos, para que la línea salga continua).
     void Sellar(Hoja h, TrazoLapiz t, Vector4 a, Vector4 b)
     {
-        float largo = Vector3.Distance(a, b);
-        float paso = Mathf.Max(1e-5f, t.radio * 0.25f);
-        int n = Mathf.Max(1, Mathf.CeilToInt(largo / paso));
+        var prev = EmpezarSellos(h, t);
+        SellosEntre(h, t, a, b);
+        TerminarSellos(prev);
+    }
+
+    RenderTexture EmpezarSellos(Hoja h, TrazoLapiz t)
+    {
         var prev = RenderTexture.active;
         RenderTexture.active = h.rt;
         GL.PushMatrix();
         GL.LoadOrtho();
         materialSello.SetPass(t.borra ? 1 : 0);
         GL.Begin(GL.QUADS);
+        return prev;
+    }
+
+    static void TerminarSellos(RenderTexture prev)
+    {
+        GL.End();
+        GL.PopMatrix();
+        RenderTexture.active = prev;
+    }
+
+    void SellosEntre(Hoja h, TrazoLapiz t, Vector4 a, Vector4 b)
+    {
+        float largo = Vector3.Distance(a, b);
+        float paso = Mathf.Max(1e-5f, t.radio * 0.25f);
+        int n = Mathf.Max(1, Mathf.CeilToInt(largo / paso));
         for (int i = 0; i <= n; i++)
         {
             if (largo < 1e-6f && i > 0)
@@ -137,9 +156,6 @@ public class HojasLapiz : MonoBehaviour
             Vector4 q = Vector4.Lerp(a, b, u);
             Sello(h, new Vector3(q.x, q.y, q.z), q.w, t);
         }
-        GL.End();
-        GL.PopMatrix();
-        RenderTexture.active = prev;
     }
 
     void Sello(Hoja h, Vector3 p, float presion, TrazoLapiz t)
@@ -257,13 +273,18 @@ public class HojasLapiz : MonoBehaviour
     {
         foreach (var h in hojas.Values)
             Limpiar(h);
+        if (materialSello == null)
+            return;
+        // Un solo "pase" por trazo (mucho más rápido que sello por sello).
         foreach (var t in trazos)
         {
             var h = HojaDe(t.capa);
             if (h == null || t.puntos.Count == 0)
                 continue;
+            var prev = EmpezarSellos(h, t);
             for (int i = 0; i < t.puntos.Count; i++)
-                Sellar(h, t, t.puntos[Mathf.Max(0, i - 1)], t.puntos[i]);
+                SellosEntre(h, t, t.puntos[Mathf.Max(0, i - 1)], t.puntos[i]);
+            TerminarSellos(prev);
         }
     }
 
@@ -285,11 +306,29 @@ public class HojasLapiz : MonoBehaviour
     public void Restaurar(DatosDibujo d)
     {
         actual = null;
-        trazos.Clear();
+        var nuevos = new List<TrazoLapiz>();
         if (d.lapiz != null)
             foreach (var t in d.lapiz)
                 if (t != null && t.puntos != null)
-                    trazos.Add(t);
-        RedibujarTodo();
+                    nuevos.Add(t);
+        // Si el lápiz no cambió (deshiciste otra cosa), no hace falta volver a pintar las hojas.
+        bool igual = nuevos.Count == trazos.Count;
+        for (int i = 0; igual && i < nuevos.Count; i++)
+            igual = Iguales(nuevos[i], trazos[i]);
+        trazos.Clear();
+        trazos.AddRange(nuevos);
+        if (!igual)
+            RedibujarTodo();
+        else
+            foreach (var capa in new List<int>(hojas.Keys))
+                HojaDe(capa); // solo acomoda las hojas (por si cambió el plano)
+    }
+
+    static bool Iguales(TrazoLapiz a, TrazoLapiz b)
+    {
+        if (a.capa != b.capa || a.borra != b.borra || a.puntos.Count != b.puntos.Count)
+            return false;
+        int n = a.puntos.Count;
+        return n == 0 || (a.puntos[0] == b.puntos[0] && a.puntos[n - 1] == b.puntos[n - 1] && a.puntos[n / 2] == b.puntos[n / 2]);
     }
 }

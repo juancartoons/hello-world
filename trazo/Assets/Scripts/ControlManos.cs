@@ -322,17 +322,19 @@ public class ControlManos : MonoBehaviour
         ActualizarGestoIzquierdo();
         ActualizarMenu();
 
+        // Mano abierta yendo a chocar los cinco con un personaje: no se edita nada en ese momento.
+        bool protegido = DibujoBloqueado || Titere.ManoCerca;
         switch (GestoIzq)
         {
-            case Gesto.Dibujar: Dibujar(); break;
-            case Gesto.Recta: Recta(); break;
+            case Gesto.Dibujar: if (!Titere.ManoCerca) Dibujar(); break;
+            case Gesto.Recta: if (!Titere.ManoCerca) Recta(); break;
             // Con el candado ("modo seguro") no se edita nada: solo se puede mirar y navegar.
-            case Gesto.Nodos: if (!DibujoBloqueado) EditarNodos(); break;
-            case Gesto.Grosor: if (!DibujoBloqueado) CambiarGrosor(); break;
-            case Gesto.Borrar: if (!DibujoBloqueado) Borrar(); break;
+            case Gesto.Nodos: if (!protegido) EditarNodos(); break;
+            case Gesto.Grosor: if (!protegido) CambiarGrosor(); break;
+            case Gesto.Borrar: if (!protegido) Borrar(); break;
             case Gesto.Transformar: if (caja != null) caja.Actualizar(Izq, Der); break;
             default:
-                if (!menuAbierto && !DibujoBloqueado)
+                if (!menuAbierto && !protegido)
                 {
                     RevisarAgarreLinea();
                     RevisarToqueRelleno();
@@ -424,6 +426,27 @@ public class ControlManos : MonoBehaviour
         return promedio < 1.15f && maximo < 1.3f && pulgarANudillo < 0.065f;
     }
 
+    // La flecha de deshacer tiene prioridad sobre el borrador.
+    bool PoseDeshacer()
+    {
+        Vector3 dir;
+        return PoseFlecha(Izq, true, false, out dir);
+    }
+
+    // El borrador solo con el puño de lado o con el dorso hacia ti (no con la palma hacia ti),
+    // y nunca si el pulgar está estirado (eso es deshacer).
+    bool BorradorPermitido()
+    {
+        if (PoseDeshacer())
+            return false;
+        if (Cabeza == null || !palmaIzq.valida)
+            return true;
+        Vector3 aCabeza = Cabeza.position - palmaIzq.centro;
+        if (aCabeza.sqrMagnitude < 1e-6f)
+            return true;
+        return Vector3.Dot(palmaIzq.normal, aCabeza.normalized) < 0.35f;
+    }
+
     bool DedosAbiertos()
     {
         return poseValida && curvaIndice > 1.1f && curvaMedio > 1.1f;
@@ -465,8 +488,8 @@ public class ControlManos : MonoBehaviour
 
         if (GestoIzq == Gesto.Borrar)
         {
-            // Se sale del borrador al abrir la mano o sacar el pulgar.
-            if (poseValida && !EsPuno(true))
+            // Se sale del borrador al abrir la mano o sacar el pulgar (la flecha de deshacer gana).
+            if (poseValida && (!EsPuno(true) || PoseDeshacer()))
                 SalirDeGesto();
             return;
         }
@@ -509,7 +532,7 @@ public class ControlManos : MonoBehaviour
         {
             nuevo = Gesto.Dibujar;
         }
-        else if (EsPuno(false))
+        else if (EsPuno(false) && BorradorPermitido())
         {
             nuevo = Gesto.Borrar;
         }
@@ -530,7 +553,8 @@ public class ControlManos : MonoBehaviour
             candidatoDesde = Time.time;
         }
         // Con el menú abierto se pide sostener más, para no cerrarlo por un salto del seguimiento.
-        float confirmar = menuAbierto ? 0.25f : confirmarGesto;
+        // El borrador espera un poquito más: así, si era la flecha de deshacer, no aparece antes.
+        float confirmar = menuAbierto ? 0.25f : nuevo == Gesto.Borrar ? 0.18f : confirmarGesto;
         if (nuevo == Gesto.Ninguno || Time.time - candidatoDesde < confirmar)
             return;
 
@@ -641,6 +665,7 @@ public class ControlManos : MonoBehaviour
         }
         if (dibujo.hojas != null)
             dibujo.hojas.Terminar();
+        lapizTiene = false;
         if (GestoIzq != Gesto.Ninguno)
             finGestoIzq = Time.time;
         if (arrastre != Objetivo.Nada)
@@ -682,8 +707,49 @@ public class ControlManos : MonoBehaviour
 
     // Lápiz de boceto sobre la hoja (capa de Boceto en Plano 2D): pinta grafito o lo borra con la goma.
     // Más cerca del plano = más presión (línea más oscura y gruesa). Lejos del plano = lápiz levantado.
+    // Filtro "One Euro" para el lápiz: con el dedo lento quita el temblor; con el dedo rápido casi
+    // no filtra (la línea va pegada al dedo). Además adelanta un poquito el punto según la velocidad,
+    // para compensar el pequeño retraso del seguimiento de manos.
+    [Header("Lápiz de boceto")]
+    [Tooltip("Suavizado con el dedo quieto (Hz). Más alto = más inmediato, más temblor")]
+    public float lapizCorteMinimo = 2.5f;
+    [Tooltip("Cuánto deja de suavizar al ir rápido")]
+    public float lapizBeta = 45f;
+    [Tooltip("Segundos que se adelanta el punto (compensa el retraso del seguimiento)")]
+    public float lapizPrediccion = 0.012f;
+    Vector3 lapizFiltrado, lapizVelocidad, lapizCrudoPrevio;
+    bool lapizTiene;
+
+    static float AlfaFiltro(float dt, float corte)
+    {
+        float tau = 1f / (2f * Mathf.PI * Mathf.Max(0.01f, corte));
+        return 1f / (1f + tau / dt);
+    }
+
+    Vector3 FiltrarLapiz(Vector3 crudo)
+    {
+        float dt = Mathf.Max(1e-4f, Time.deltaTime);
+        if (!lapizTiene)
+        {
+            lapizTiene = true;
+            lapizFiltrado = crudo;
+            lapizCrudoPrevio = crudo;
+            lapizVelocidad = Vector3.zero;
+            return crudo;
+        }
+        Vector3 v = (crudo - lapizCrudoPrevio) / dt;
+        lapizCrudoPrevio = crudo;
+        lapizVelocidad = Vector3.Lerp(lapizVelocidad, v, AlfaFiltro(dt, 8f));
+        float corte = lapizCorteMinimo + lapizBeta * lapizVelocidad.magnitude;
+        lapizFiltrado = Vector3.Lerp(lapizFiltrado, crudo, AlfaFiltro(dt, corte));
+        return lapizFiltrado + Vector3.ClampMagnitude(lapizVelocidad * lapizPrediccion, 0.008f);
+    }
+
     void LapizHoja(Vector3 local, bool goma)
     {
+        // El lápiz usa la punta del dedo sin el suavizado normal (va pegado al dedo).
+        if (!goma && Der.valida)
+            local = dibujo.transform.InverseTransformPoint(FiltrarLapiz(Der.indiceCrudo));
         if (trazoActual != null)
         {
             dibujo.TerminarTrazo(trazoActual);
@@ -697,6 +763,7 @@ public class ControlManos : MonoBehaviour
         if (lejosDelPlano)
         {
             hojas.Terminar();
+            lapizTiene = false;
             return;
         }
         dibujo.Seleccionar(null);
@@ -1514,7 +1581,7 @@ public class ControlManos : MonoBehaviour
         float adelanteDiana = Vector3.Dot(rel, e.dirDiana);
         float aLado = (rel - e.dirDiana * adelanteDiana).magnitude;
         float radio = diametroDiana * 0.5f;
-        if (e.armada && adelanteDiana > 0f && aLado < radio + 0.012f)
+        if (e.armada && adelanteDiana > -0.002f && aLado < radio + 0.016f)
         {
             e.armada = false;
             bool rehacer = !izquierda;
@@ -1591,17 +1658,20 @@ public class ControlManos : MonoBehaviour
         if (!palma.valida || nudillo == null || basePul == null)
             return false;
         float tam = palma.tamano;
-        float curva = yaActiva ? 1.45f : 1.3f;
+        // La mano derecha (rehacer) es más tolerante: el visor ve peor ese pulgar.
+        float curva = izquierda ? (yaActiva ? 1.45f : 1.3f) : (yaActiva ? 1.55f : 1.42f);
         if (Vector3.Distance(mano.indice, palma.centro) / tam > curva
             || Vector3.Distance(mano.medio, palma.centro) / tam > curva
             || Vector3.Distance(mano.anular, palma.centro) / tam > curva)
             return false;
         Vector3 d = mano.pulgar - basePul.position;
-        if (d.magnitude < 0.045f || Vector3.Distance(mano.pulgar, nudillo.position) < (yaActiva ? 0.06f : 0.07f))
+        float minimoNudillo = izquierda ? (yaActiva ? 0.06f : 0.07f) : (yaActiva ? 0.05f : 0.058f);
+        if (d.magnitude < (izquierda ? 0.045f : 0.038f) || Vector3.Distance(mano.pulgar, nudillo.position) < minimoNudillo)
             return false;
         // El pulgar hacia el lado (también en diagonal hacia arriba).
         float lado = Vector3.Dot(d.normalized, LadoHorizontal(izquierda ? -1 : 1));
-        if (lado < (yaActiva ? 0.15f : 0.3f) || d.normalized.y < -0.6f)
+        float minimoLado = izquierda ? (yaActiva ? 0.15f : 0.3f) : (yaActiva ? 0.08f : 0.2f);
+        if (lado < minimoLado || d.normalized.y < -0.6f)
             return false;
         dirPulgar = d.normalized;
         return true;

@@ -12,7 +12,7 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 | Izquierda: **pulgar + medio** (sostener) | **Modo nodos**: pellizca un nodo con la derecha y arrástralo. El nodo tocado muestra sus **asas** (verdes): pellízcalas para curvar. Pellizcar la **línea seleccionada** lejos de sus nodos = **agregar un nodo** |
 | Modo nodos: arrastrar una **punta** sobre otra punta | Imán: se unen en una sola línea, o se **cierra la figura** y se rellena |
 | Izquierda: **pulgar + anular** (sostener) | **Grosor**: sube/baja la mano izquierda = más grueso/delgado (solo la línea seleccionada, o todo si no hay selección). Pellizca un **nodo** con la derecha y súbela/bájala = grosor solo de ese nodo. **Gira el índice derecho en un círculo pequeño** (como un teléfono de disco) = grosor de las **líneas nuevas**: hacia la derecha más grueso, hacia la izquierda más delgado |
-| Izquierda: **puño** (pulgar sobre los dedos o al lado) | **Borrador** (la mano se vuelve una goma de borrar; se borra con el índice derecho): tocar un **nodo** o un **relleno** lo borra. La **línea entera** solo se borra si la **frotas** (ida y vuelta, ~6 cm) lejos de sus nodos; se pone roja mientras |
+| Izquierda: **puño de lado o con el dorso hacia ti** (pulgar sobre los dedos; con la palma hacia ti no cuenta) | **Borrador** (la mano se vuelve una goma de borrar; se borra con el índice derecho): tocar un **nodo** o un **relleno** lo borra. La **línea entera** solo se borra si la **frotas** (ida y vuelta, ~6 cm) lejos de sus nodos; se pone roja mientras |
 | **Pellizcar una línea** con la derecha (sin gesto izquierdo) | La **selecciona** (se pone azul) y la **mueves**. Pellizcar en el aire = quitar la selección |
 | Izquierda: **puño con el pulgar hacia tu izquierda** (sostener 0.3 s, quieta) | La mano se vuelve una **flecha** (la punta en tu pulgar): toca la **diana roja** = **Deshacer** (retírala y vuelve a tocar para deshacer otra vez) |
 | **Derecha**: **puño con el pulgar hacia tu derecha** | La mano derecha se vuelve una flecha: toca la **diana verde** = **Rehacer** |
@@ -22,6 +22,7 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 | **Las dos manos pellizcando** (índice + pulgar) | Separar/juntar = escalar · girar como un volante = rotar · mover = trasladar (solo la línea seleccionada, o todo si no hay selección) |
 | Tocar un **relleno** con el índice derecho | Cambia su color |
 | **Mirar hacia arriba** | Panel de arriba: línea de tiempo (2000 fotogramas), capas, menú, exportar, videos, imágenes y bocas |
+| Panel de arriba: botón **?** (esquina) | **Ayuda**: abajo aparece una copia **azul** del panel. Toca cualquier botón de la copia y te explica para qué sirve y cómo se usa (no cambia nada). **?** otra vez = cerrar |
 | Pellizcar el **asa azul** del panel de arriba | Moverlo a donde quieras (queda fijo). Pellizcando también con la izquierda: separar/juntar = **tamaño** |
 | Pellizcar una **imagen** con la derecha | Moverla (queda seleccionada). Con las dos manos: escalarla y girarla |
 
@@ -67,18 +68,21 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 ## Personajes que caminan, corren y saltan (hasta dos a la vez)
 
 1. Panel de arriba → página **Títere** → **Tipo** (Palito, Musculoso, Gordito, Flaco, Niño) → **Crear**.
-   Aparece frente a ti sobre un piso. Los personajes dibujados tienen huesos invisibles y sus partes pegadas a ellos.
-2. **Encender**: "choca esos cinco" con el personaje (mano abierta, palma hacia él, empujón rápido cerca).
+   Aparece frente a ti sobre un piso y **se enciende solo** con tu mano derecha (ponla frente a ti un segundo).
+   Los personajes dibujados tienen huesos invisibles y sus partes pegadas a ellos.
+2. **Encender** otro: "choca esos cinco" con el personaje (mano abierta, palma hacia él, empujón rápido cerca).
+   Mientras tu mano abierta va hacia un personaje, no se edita nada (no borra nodos ni cambia rellenos sin querer).
    Con la mano **derecha** lo controlas con la derecha; con la **izquierda**, otro personaje con la izquierda.
    **Apagar**: choca esos cinco con la **otra mano** (la libre). Si las dos manos tienen personaje: **palma hacia
    arriba** medio segundo (el muñeco se queda quieto y el aro se llena). O el botón **Parar** (donde dice Crear).
    Mientras un personaje se mueve, el dibujo se bloquea solo (candado) y vuelve como estaba al apagarlo.
 3. Mano a los lados = **caminar** (lento) o **correr** (rápido; pasa por caminar antes de correr). Hacia atrás, se voltea.
-   Al frenar **después de correr**, la cabeza y el tronco siguen un poquito (inercia). "Arriba" es la gravedad real.
-4. Mano **abajo** = agacharse (dobla las rodillas). Mano **arriba** = elevarlo (tan alto como quieras).
-5. **Saltar**: cierra la mano en **puño** = carga (se agacha y se llena el aro naranja); **abre** la mano = salta
-   (más carga, más alto). Se recoge arriba, cae, se agacha al caer (más si cayó de más alto) y rebota.
-6. **Piso +/-**: la línea elegida es piso o plataforma (sube rampas, cae si se acaba).
+   Al frenar **después de correr**, la cabeza y el tronco siguen un poquito (inercia).
+4. La **altura** de la mano no lo mueve: así no flota ni se agacha solo.
+5. **Saltar**: **golpe rápido de la mano hacia arriba**. Se agacha solo un instante, despega, se recoge arriba,
+   cae, se aplasta al caer y rebota.
+6. **Piso +/-**: la línea elegida es piso o plataforma (sube rampas, cae si se acaba). Cada personaje solo pisa
+   los pisos que están a su misma profundidad (en Plano 2D, todos los del plano).
 7. **Grabar**: cuenta 3 segundos y guarda una clave por fotograma de todos los personajes encendidos.
    "Choca esos cinco" con tu personaje (o **Parar**) = terminar. Luego corrige en la línea de tiempo y exporta con Video anim.
 8. **Ciclo**: Normal, **Con estilo** (Richard Williams: paso alto, brazos grandes, mano arrastrada, codo quebrado)

@@ -63,6 +63,16 @@ public class Clave
 {
     public int fotograma;
     public List<DatosTrazo> trazos = new List<DatosTrazo>();
+    // Copia en texto (para deshacer rápido). Se borra cada vez que la clave cambia.
+    [System.NonSerialized] public string cache;
+}
+
+// Una "foto" para deshacer: el dibujo (sin la animación) y cada clave por separado.
+// Las claves que no cambiaron se comparten entre fotos (no se copian otra vez).
+public class FotoDeshacer
+{
+    public string datos;
+    public List<string> claves;
 }
 
 // Todo lo que se guarda de un dibujo (archivo .json). También sirve para "Deshacer".
@@ -159,9 +169,9 @@ public class Dibujo : MonoBehaviour
     float anchoSoloInicio;
 
     const int maxHistorial = 40;
-    readonly List<string> historial = new List<string>();
-    readonly List<string> rehacer = new List<string>();
-    readonly List<string> rehacerRespaldo = new List<string>();
+    readonly List<FotoDeshacer> historial = new List<FotoDeshacer>();
+    readonly List<FotoDeshacer> rehacer = new List<FotoDeshacer>();
+    readonly List<FotoDeshacer> rehacerRespaldo = new List<FotoDeshacer>();
     readonly List<float> anchosInicio = new List<float>();
     float pincelInicio;
 
@@ -1003,7 +1013,7 @@ public class Dibujo : MonoBehaviour
         rehacerRespaldo.Clear();
         rehacerRespaldo.AddRange(rehacer);
         rehacer.Clear();
-        historial.Add(JsonUtility.ToJson(CrearDatos()));
+        historial.Add(Foto());
         if (historial.Count > maxHistorial)
             historial.RemoveAt(0);
         if (animacion != null)
@@ -1026,15 +1036,13 @@ public class Dibujo : MonoBehaviour
             Mensaje("Nada que deshacer");
             return false;
         }
-        string json = historial[historial.Count - 1];
+        var foto = historial[historial.Count - 1];
         historial.RemoveAt(historial.Count - 1);
-        rehacer.Add(JsonUtility.ToJson(CrearDatos()));
+        rehacer.Add(Foto());
         if (rehacer.Count > maxHistorial)
             rehacer.RemoveAt(0);
         rehacerRespaldo.Clear();
-        var d = JsonUtility.FromJson<DatosDibujo>(json);
-        if (d != null)
-            Aplicar(d, false);
+        AplicarFoto(foto);
         Mensaje("Deshecho");
         return true;
     }
@@ -1046,16 +1054,39 @@ public class Dibujo : MonoBehaviour
             Mensaje("Nada que rehacer");
             return false;
         }
-        string json = rehacer[rehacer.Count - 1];
+        var foto = rehacer[rehacer.Count - 1];
         rehacer.RemoveAt(rehacer.Count - 1);
-        historial.Add(JsonUtility.ToJson(CrearDatos()));
+        historial.Add(Foto());
         if (historial.Count > maxHistorial)
             historial.RemoveAt(0);
-        var d = JsonUtility.FromJson<DatosDibujo>(json);
-        if (d != null)
-            Aplicar(d, false);
+        AplicarFoto(foto);
         Mensaje("Rehecho");
         return true;
+    }
+
+    // ¿La línea ya está exactamente así? (Entonces no hace falta volver a armarla.)
+    static bool MismoTrazo(Trazo t, DatosTrazo d)
+    {
+        return JsonUtility.ToJson(t.CrearDatos()) == JsonUtility.ToJson(d);
+    }
+
+    // Foto para deshacer: el dibujo sin animación + las claves (cada una guardada una sola vez).
+    FotoDeshacer Foto()
+    {
+        return new FotoDeshacer
+        {
+            datos = JsonUtility.ToJson(CrearDatos(false)),
+            claves = animacion != null ? animacion.Instantanea() : null,
+        };
+    }
+
+    void AplicarFoto(FotoDeshacer foto)
+    {
+        if (foto == null)
+            return;
+        var d = JsonUtility.FromJson<DatosDibujo>(foto.datos);
+        if (d != null)
+            Aplicar(d, false, foto.claves ?? new List<string>());
     }
 
     public void BorrarTodo()
@@ -1133,7 +1164,7 @@ public class Dibujo : MonoBehaviour
         Mensaje("Cargado");
     }
 
-    DatosDibujo CrearDatos()
+    DatosDibujo CrearDatos(bool conClaves = true)
     {
         AsegurarCapas();
         var d = new DatosDibujo
@@ -1164,7 +1195,7 @@ public class Dibujo : MonoBehaviour
         foreach (var t in trazos)
             if (t != null && t.nodos.Count >= 2)
                 d.trazos.Add(t.CrearDatos());
-        if (animacion != null)
+        if (animacion != null && conClaves)
             d.claves.AddRange(animacion.claves);
         if (lipsync != null)
         {
@@ -1174,10 +1205,23 @@ public class Dibujo : MonoBehaviour
         return d;
     }
 
-    void Aplicar(DatosDibujo d, bool incluirFondo)
+    // claves = null: usa las claves de "d" (al cargar). Si no, son las claves de una foto de deshacer.
+    void Aplicar(DatosDibujo d, bool incluirFondo, List<string> clavesFoto = null)
     {
         Trazo.silenciar = true;
-        LimpiarTrazos();
+        // Las líneas que no cambiaron se quedan como están (no se vuelven a armar): deshacer es rápido.
+        var viejos = new Dictionary<int, Trazo>();
+        foreach (var t in trazos)
+        {
+            if (t == null)
+                continue;
+            if (t.id > 0 && !viejos.ContainsKey(t.id))
+                viejos[t.id] = t;
+            else
+                Destroy(t.gameObject);
+        }
+        trazos.Clear();
+        seleccion = null;
         anchoPincel = d.anchoPincel > 0f ? d.anchoPincel : 0.008f;
         transform.localPosition = d.posicion;
         var q = d.rotacion;
@@ -1225,6 +1269,15 @@ public class Dibujo : MonoBehaviour
             {
                 if (dt == null || dt.nodos == null || dt.nodos.Count < 2)
                     continue;
+                Trazo viejo;
+                if (dt.id > 0 && viejos.TryGetValue(dt.id, out viejo) && viejo != null && MismoTrazo(viejo, dt))
+                {
+                    viejos.Remove(dt.id);
+                    AplicarCapaVisual(viejo);
+                    siguienteId = Mathf.Max(siguienteId, viejo.id + 1);
+                    trazos.Add(viejo);
+                    continue;
+                }
                 var t = CrearTrazo(dt.ancho > 0f ? dt.ancho : 0.008f);
                 t.id = dt.id > 0 ? dt.id : siguienteId++;
                 t.capa = Mathf.Clamp(dt.capa, 0, capas.Count - 1);
@@ -1234,12 +1287,18 @@ public class Dibujo : MonoBehaviour
                 trazos.Add(t);
             }
         }
+        foreach (var t in viejos.Values)
+            if (t != null)
+                Destroy(t.gameObject);
         seleccion = null;
         if (animacion != null)
         {
             if (d.fps > 0f)
                 animacion.fotogramasPorSegundo = d.fps;
-            animacion.Restaurar(d.claves, d.fotograma);
+            if (clavesFoto != null)
+                animacion.RestaurarInstantanea(clavesFoto, d.fotograma);
+            else
+                animacion.Restaurar(d.claves, d.fotograma);
         }
         Trazo.silenciar = false;
         Trazo.huboCambio = false;
