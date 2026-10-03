@@ -89,6 +89,11 @@ public sealed class ManoVideo
         }
         triangulos = partes[Guante];
         PalmaGruesa(a);
+        // Relleno del dorso y la palma (redondeado, ni flaco ni gordo).
+        Esfera(Vector3.Lerp(a[0], a[9], 0.5f), 0.019f);
+        Esfera(Vector3.Lerp(a[0], a[5], 0.55f), 0.0165f);
+        Esfera(Vector3.Lerp(a[0], a[13], 0.55f), 0.0165f);
+        Esfera(Vector3.Lerp(a[0], a[17], 0.5f), 0.0145f);
         // Manga: desde la muñeca hacia atrás, larga y cerrada al final.
         Vector3 atras = a[0] - a[9];
         if (atras.sqrMagnitude > 1e-8f)
@@ -97,9 +102,10 @@ public sealed class ManoVideo
             triangulos = partes[Manga];
             Vector3 inicio = a[0] + atras * 0.012f;
             Vector3 fin = a[0] + atras * LargoManga;
-            Tubo(inicio, Radio[0] * 1.35f, fin, Radio[0] * 1.7f);
-            Tapa(inicio, -atras, Radio[0] * 1.35f);
-            Tapa(fin, atras, Radio[0] * 1.7f);
+            // Manga ajustada al brazo (un poquito más ancha que la muñeca).
+            Tubo(inicio, Radio[0] * 1.12f, fin, Radio[0] * 1.35f);
+            Tapa(inicio, -atras, Radio[0] * 1.12f);
+            Tapa(fin, atras, Radio[0] * 1.35f);
         }
         malla.Clear();
         malla.subMeshCount = 3;
@@ -235,7 +241,7 @@ public sealed class ManoVideo
         if (normal.sqrMagnitude < 1e-10f)
             return;
         normal.Normalize();
-        const float grosor = 0.011f;
+        const float grosor = 0.0145f;
         for (int cara = 0; cara < 2; cara++)
         {
             Vector3 lado = normal * (cara == 0 ? grosor : -grosor);

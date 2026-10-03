@@ -74,7 +74,7 @@ public class BotonTocable : MonoBehaviour
     public void PonerTexto(string texto)
     {
         if (etiqueta != null)
-            etiqueta.text = texto;
+            Idioma.Poner(etiqueta, texto); // en el idioma elegido (Español / English)
     }
 
     // Pequeña animación de "presionado".

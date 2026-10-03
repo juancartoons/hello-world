@@ -581,6 +581,140 @@ public class Figuras : MonoBehaviour
     void LateUpdate()
     {
         ActualizarTodas();
+        ActualizarEquis();
+    }
+
+    // ---------- Borrar figuras (borrador y X) ----------
+
+    public bool HayFiguras => figuras.Count > 0;
+
+    // El nodo de figura más cercano a un punto (a menos de "radio" metros). Devuelve false si no hay.
+    public bool NodoCerca(Vector3 mundo, float radio, out Vector3 lugar)
+    {
+        Figura f;
+        int i;
+        return BuscarNodo(mundo, radio, out f, out i, out lugar);
+    }
+
+    bool BuscarNodo(Vector3 mundo, float radio, out Figura mejor, out int indice, out Vector3 lugar)
+    {
+        mejor = null;
+        indice = -1;
+        lugar = Vector3.zero;
+        float mejorDist = radio;
+        foreach (var f in figuras)
+        {
+            if (f.raiz == null || !f.raiz.gameObject.activeInHierarchy)
+                continue;
+            for (int i = 0; i < f.d.nodos.Count; i++)
+            {
+                Vector3 m = f.raiz.TransformPoint(Deformar(f, f.d.nodos[i].punto));
+                float d = Vector3.Distance(m, mundo);
+                if (d < mejorDist)
+                {
+                    mejorDist = d;
+                    mejor = f;
+                    indice = i;
+                    lugar = m;
+                }
+            }
+        }
+        return mejor != null;
+    }
+
+    // Borrador sobre un nodo de figura: si estaba deformado, vuelve a su lugar; si no, el nodo se quita.
+    public bool BorrarNodoCerca(Vector3 mundo, float radio)
+    {
+        Figura f;
+        int i;
+        Vector3 lugar;
+        if (!BuscarNodo(mundo, radio, out f, out i, out lugar))
+            return false;
+        dibujo.GuardarParaDeshacer();
+        var n = f.d.nodos[i];
+        if (n.desplazamiento.sqrMagnitude > 1e-10f)
+            n.desplazamiento = Vector3.zero;
+        else if (f.d.nodos.Count > 1)
+            f.d.nodos.RemoveAt(i);
+        f.sucia = true;
+        arrastre = -1;
+        return true;
+    }
+
+    // Quita una figura entera (con el borrador frotando, o con su X). Se puede deshacer.
+    public void Quitar(Transform raiz)
+    {
+        var f = Buscar(raiz);
+        if (f == null)
+            return;
+        dibujo.GuardarParaDeshacer();
+        if (seleccionada == f)
+            seleccionada = null;
+        figuras.Remove(f);
+        Destruir(f);
+        OcultarNodos();
+        Mensaje("Figura borrada (deshacer la devuelve)");
+    }
+
+    // Mientras la frotas con el borrador, su contorno se pone rojo.
+    public void MarcarBorrando(Transform raiz, bool borrando)
+    {
+        var f = Buscar(raiz);
+        if (f == null || f.rLinea == null)
+            return;
+        if (borrando && dibujo.materialBorrado != null)
+            f.rLinea.sharedMaterial = dibujo.materialBorrado;
+        else
+            AplicarCapa(f);
+    }
+
+    // La X arriba a la derecha de la figura elegida: tocarla con el índice derecho = borrarla.
+    Transform equis;
+    float equisBloqueo;
+
+    void ActualizarEquis()
+    {
+        var control = ControlManos.Instancia;
+        var f = seleccionada;
+        bool ver = f != null && f.raiz != null && f.raiz.gameObject.activeInHierarchy && f.rRelleno != null
+                   && control != null && control.Cabeza != null && !Titere.Activo;
+        if (!ver)
+        {
+            if (equis != null && equis.gameObject.activeSelf)
+                equis.gameObject.SetActive(false);
+            return;
+        }
+        if (equis == null)
+        {
+            equis = new GameObject("XFigura").transform;
+            for (int k = 0; k < 2; k++)
+            {
+                var palo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                Destroy(palo.GetComponent<Collider>());
+                palo.transform.SetParent(equis, false);
+                palo.transform.localRotation = Quaternion.Euler(0f, 0f, k == 0 ? 45f : -45f);
+                palo.transform.localScale = new Vector3(0.022f, 0.004f, 0.002f);
+                var r = palo.GetComponent<Renderer>();
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                if (materialNodoActivo != null)
+                    r.sharedMaterial = materialNodoActivo;
+            }
+        }
+        if (!equis.gameObject.activeSelf)
+            equis.gameObject.SetActive(true);
+        var caja = f.rRelleno.bounds;
+        Vector3 derecha = control.Cabeza.right;
+        derecha.y = 0f;
+        derecha = derecha.sqrMagnitude > 1e-6f ? derecha.normalized : Vector3.right;
+        float lado = Mathf.Abs(Vector3.Dot(caja.extents, new Vector3(Mathf.Abs(derecha.x), 0f, Mathf.Abs(derecha.z))));
+        Vector3 pos = caja.center + derecha * (lado + 0.02f) + Vector3.up * (caja.extents.y + 0.02f);
+        equis.position = pos;
+        equis.rotation = Quaternion.LookRotation(pos - control.Cabeza.position, Vector3.up);
+        if (control.Der.valida && Time.time > equisBloqueo && Vector3.Distance(control.Der.indice, pos) < 0.018f)
+        {
+            equisBloqueo = Time.time + 1f;
+            Quitar(f.raiz);
+        }
     }
 
     void ActualizarTodas()

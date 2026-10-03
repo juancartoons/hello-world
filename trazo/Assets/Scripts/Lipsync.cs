@@ -59,6 +59,7 @@ public class Lipsync : MonoBehaviour
     int frecuenciaMicrofono = 44100;
 
     string Carpeta => Path.Combine(Application.persistentDataPath, "Dibujos", "Audio");
+    public string CarpetaAudio => Carpeta;
 
     void Awake()
     {

@@ -55,6 +55,31 @@ public class GrabadorProceso : MonoBehaviour
 
     float inicio;
     float proxima;
+    float pausaDesde;
+
+    // Pausa: deja de grabar un momento (lo que hagas mientras tanto aparece de una vez al reanudar).
+    public bool Pausado { get; private set; }
+    public float TiempoGrabado => Grabando ? (Pausado ? pausaDesde : Time.time) - inicio : Duracion;
+
+    public void AlternarPausa()
+    {
+        if (!Grabando)
+        {
+            Mensaje("Primero toca Grabar");
+            return;
+        }
+        if (!Pausado)
+        {
+            Pausado = true;
+            pausaDesde = Time.time;
+            Mensaje("Grabación en pausa (toca Reanudar)");
+            return;
+        }
+        inicio += Time.time - pausaDesde; // el tiempo en pausa no cuenta
+        Pausado = false;
+        proxima = 0f;
+        Mensaje("Grabando otra vez");
+    }
 
     void Start()
     {
@@ -91,6 +116,7 @@ public class GrabadorProceso : MonoBehaviour
     void Detener()
     {
         Grabando = false;
+        Pausado = false;
         Trazo.registrarCambios = false;
         Trazo.modificados.Clear();
     }
@@ -109,7 +135,7 @@ public class GrabadorProceso : MonoBehaviour
 
     void LateUpdate()
     {
-        if (!Grabando)
+        if (!Grabando || Pausado)
             return;
         float t = Time.time - inicio;
         if (t > maximoMinutos * 60f)

@@ -19,7 +19,7 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 | Izquierda: **puño con el pulgar hacia tu izquierda** (sostener 0.3 s, quieta) | La mano se vuelve una **flecha** (la punta en tu pulgar): toca la **diana roja** = **Deshacer** (retírala y vuelve a tocar para deshacer otra vez) |
 | **Derecha**: **puño con el pulgar hacia tu derecha** | La mano derecha se vuelve una flecha: toca la **diana verde** = **Rehacer** |
 | Izquierda: **doble toque rápido** de pulgar + índice | **Candado (modo seguro)**: no se dibuja, borra, cambia grosor, editan nodos ni mueven líneas o figuras. Sí puedes girar/mover todo para mirar, usar los paneles, deshacer y rehacer. Se ve un candado arriba a la derecha |
-| Menú de la mano: **Esfera / Cubo / Cilindro** | **Figura 3D** que se ve como dibujo (relleno + contorno desde donde la mires). Pellízcala para moverla; con las dos manos: tamaño y giro. Gesto de grosor = suavizar esquinas. Modo nodos = deformarla (pellizca la superficie = nodo nuevo). **A líneas** = convertirla en líneas normales |
+| Menú de la mano: **Esfera / Cubo / Cilindro** | **Figura 3D** que se ve como dibujo (relleno + contorno desde donde la mires). Pellízcala para moverla; con las dos manos: tamaño y giro. Gesto de grosor = suavizar esquinas. Modo nodos = deformarla (pellizca la superficie = nodo nuevo). **A líneas** = convertirla en líneas normales. **Borrarla**: la **X** de su esquina (cuando está elegida), o **frotarla** con el borrador; tocar un nodo con el borrador le quita la deformación (o el nodo) |
 | Izquierda abierta, **punta del pulgar en la base de los dedos** (sobre la palma) | **Menú**: Libre 3D / Plano 2D, Fondo, Guardar, Archivos, Borrar todo, Imán y figuras. La **X** de arriba lo cierra |
 | **Las dos manos pellizcando** (índice + pulgar) | Separar/juntar = escalar · girar como un volante = rotar · mover = trasladar (solo la línea seleccionada, o todo si no hay selección) |
 | Tocar un **relleno** con el índice derecho | Cambia su color |
@@ -55,10 +55,14 @@ Un personaje en su capa guarda todos sus movimientos ahí; el lipsync clava solo
 
 ## Exportar
 
+La página **Animar** reúne lo que antes eran Animar y Medios (sin repetir lo del menú de la mano):
+Grabar, Pausa, Video proceso, Vel, Video anim, Foto, **Crear SVG**, imágenes y el estilo de la capa activa.
+
 - **SVG**: cada línea es una curva con los mismos nodos que en la app. En Plano se ve de frente al plano; en 3D, desde donde estás.
 - **Foto**: imagen PNG del dibujo desde donde estás.
 - **Video anim** (página Medios): la animación en MP4 (1280x720), con el audio de las bocas si hay.
-- **Grabar** (página Medios) graba tu proceso: tus manos y cómo aparecen las líneas. **Detener** para.
+- **Grabar** (página Animar) graba tu proceso: tus manos y cómo aparecen las líneas. **Pausa / Reanudar** mientras
+  grabas (el tiempo en pausa no sale en el video). **Detener** para.
   **Video proceso** lo convierte en MP4 (líneas + tus manos con forma de mano, con **guantes negros sin dedos** y
   **manga** de ropa).
   El video se arma varias veces más rápido (la conversión se hace en la tarjeta gráfica). **Vel** = x1, x2, x4 u x8.
@@ -108,7 +112,14 @@ Un personaje en su capa guarda todos sus movimientos ahí; el lipsync clava solo
 
 ## Guardar y abrir
 
-- **Guardar**: cada dibujo se guarda con su propio nombre (Dibujo 1, Dibujo 2...) en `Dibujos/Archivos`.
+- **Proyecto `.jc`**: cada dibujo es UN archivo `.jc` con todo adentro (capas, líneas, animación, lápiz, figuras,
+  personajes, bocas, **imágenes de referencia y audio**). Se puede copiar a otro visor o al PC y abre igual.
+  Se guarda en `Dibujos/Archivos`. Los `.json` de antes se abren y al guardarlos pasan a `.jc`.
+- Autoguardado del proyecto actual cada 3 minutos (si ya tiene nombre y hubo cambios).
+- **Guardar**: cada dibujo se guarda con su propio nombre (Dibujo 1, Dibujo 2...).
+- En **Mis archivos**, arriba: el **archivo actual** (nombre y si tiene cambios sin guardar) con **Guardar**,
+  **Guardar copia** y **Renombrar** (teclado del visor), y el botón **Idioma: ESP / Language: ENG** (toda la app
+  en español o en inglés; no cambia nada más).
 - **Archivos** (panel de arriba o menú de la mano): **Mis archivos**, con miniatura de todo lo que has hecho:
   dibujos, videos, fotos y SVG (filtros arriba, < > para cambiar de página). Toca uno para elegirlo:
   **Abrir dibujo**, **Ver** (fotos y videos en grande; **Volver** regresa) o **Borrar** (toca otra vez para confirmar).

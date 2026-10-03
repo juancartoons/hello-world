@@ -1369,6 +1369,14 @@ public class ControlManos : MonoBehaviour
                 }
             }
         }
+        // Figuras 3D: tocar un nodo lo borra (o le quita la deformación); frotarlas las borra enteras.
+        if (tipo == Objetivo.Nada && figuras != null && BorrarEnFiguras(punta, rb))
+        {
+            CancelarFrote();
+            return;
+        }
+        CancelarFroteFigura();
+
         hoverTipo = tipo;
         hoverTrazo = t;
         hoverIndice = i;
@@ -1439,6 +1447,66 @@ public class ControlManos : MonoBehaviour
         froteRecorrido = 0f;
         armadoBorrar = false;
         posUltimoBorrado = punta;
+    }
+
+    // ---------- Borrador con figuras 3D ----------
+    Transform froteFigura;
+    float froteFiguraRecorrido;
+    Vector3 froteFiguraAncla;
+
+    bool BorrarEnFiguras(Vector3 punta, float rb)
+    {
+        Vector3 lugar;
+        if (figuras.NodoCerca(punta, rb + 0.005f, out lugar))
+        {
+            CancelarFroteFigura();
+            bool movido = Vector3.Distance(punta, posUltimoBorrado) > 0.012f;
+            if ((armadoBorrar || movido) && figuras.BorrarNodoCerca(punta, rb + 0.005f))
+            {
+                dibujo.Destello(lugar, 0.02f);
+                Burbuja(lugar, 1f);
+                armadoBorrar = false;
+                posUltimoBorrado = punta;
+            }
+            return true;
+        }
+        var figura = figuras.BuscarBajo(punta);
+        if (figura == null)
+            return false;
+        if (froteFigura != figura)
+        {
+            CancelarFroteFigura();
+            froteFigura = figura;
+            froteFiguraRecorrido = 0f;
+            froteFiguraAncla = punta;
+            return true;
+        }
+        float paso = Vector3.Distance(punta, froteFiguraAncla);
+        if (paso > 0.01f)
+        {
+            froteFiguraRecorrido += paso;
+            froteFiguraAncla = punta;
+        }
+        if (froteFiguraRecorrido > 0.012f)
+            figuras.MarcarBorrando(figura, true);
+        if (froteFiguraRecorrido >= distanciaFrote)
+        {
+            Burbuja(punta, 0.65f);
+            froteFigura = null;
+            froteFiguraRecorrido = 0f;
+            figuras.Quitar(figura);
+            armadoBorrar = false;
+            posUltimoBorrado = punta;
+        }
+        return true;
+    }
+
+    void CancelarFroteFigura()
+    {
+        if (froteFigura != null && figuras != null)
+            figuras.MarcarBorrando(froteFigura, false);
+        froteFigura = null;
+        froteFiguraRecorrido = 0f;
     }
 
     void CancelarFrote()
@@ -2378,7 +2446,7 @@ public class ControlManos : MonoBehaviour
         if (!ver)
             return;
         if (textoGesto.text != texto)
-            textoGesto.text = texto;
+            textoGesto.text = Idioma.T(texto);
         Vector3 pos = entreManos
             ? (Izq.PuntoPellizco + Der.PuntoPellizco) * 0.5f
             : (sobre.indice + sobre.pulgar + sobre.medio) / 3f;

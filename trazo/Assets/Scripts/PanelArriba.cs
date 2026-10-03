@@ -59,6 +59,7 @@ public class PanelArriba : MonoBehaviour
     readonly List<Transform>[] marcasCapa = new List<Transform>[Dibujo.NumeroDeCapas];
 
     [Header("Medios")]
+    public BotonTocable btnPausaGrabar;
     public BotonTocable btnGrabar, btnVideoProceso, btnVelocidad, btnVideoAnim, btnImagenMas, btnImagenMenos, btnTemblor;
     public BotonTocable btnHebras, btnGrosorVivo, btnCicloTemblor, btnImagenesVer;
     public BotonTocable btnSuavidad, btnVelocidadTemblor, btnBoceto, btnUnirPlano, btnIman;
@@ -177,7 +178,10 @@ public class PanelArriba : MonoBehaviour
         }
 
         if (grabador != null)
+        {
             Conectar(btnGrabar, grabador.Alternar);
+            Conectar(btnPausaGrabar, grabador.AlternarPausa);
+        }
         if (exportador != null)
         {
             Conectar(btnVideoProceso, exportador.ExportarProceso);
@@ -701,7 +705,7 @@ public class PanelArriba : MonoBehaviour
                     texto += "  (clave de " + (dibujo != null ? dibujo.CapaActual.nombre : "") + ")";
                 if (Ventanas[zoom] > 0)
                     texto += "   ·   barra " + (inicioVentana + 1) + "-" + (inicioVentana + Ventana);
-                textoFotograma.text = texto;
+                textoFotograma.text = Idioma.T(texto);
             }
             if (btnPlay != null)
                 btnPlay.PonerTexto(animacion.Reproduciendo ? "Pausa" : "Play");
@@ -720,7 +724,11 @@ public class PanelArriba : MonoBehaviour
 
         RefrescarCapas();
         if (pagina == 0)
+        {
+            // Animar y Medios son una sola página.
             RefrescarAnimar();
+            RefrescarMedios();
+        }
         else if (pagina == 1)
             RefrescarMedios();
         else if (pagina == 2)
@@ -765,11 +773,11 @@ public class PanelArriba : MonoBehaviour
         if (btnBrazo2 != null)
             btnBrazo2.Marcar(p != null && dibujo != null && dibujo.BuscarPorId(p.brazo2) != null);
         if (textoTitere != null)
-            textoTitere.text = titere.Posando
+            textoTitere.text = Idioma.T(titere.Posando
                 ? "Acomoda las piernas con el índice y el medio · pellizco IZQUIERDO = guardar clave"
                 : titere.Encendido
                 ? "Mano a los lados = caminar/correr · golpe rápido hacia arriba = saltar · palma arriba (o Parar) = apagar"
-                : "Crear = aparece y se enciende solo · choca esos cinco para encender otro · elegido: " + (p != null ? p.nombre : "ninguno") + " · pisos: " + titere.pisos.Count;
+                : "Crear = aparece y se enciende solo · choca esos cinco para encender otro · elegido: " + (p != null ? p.nombre : "ninguno") + " · pisos: " + titere.pisos.Count);
     }
 
     void RefrescarAnimar()
@@ -804,6 +812,21 @@ public class PanelArriba : MonoBehaviour
         {
             btnGrabar.PonerTexto(grabando ? "Detener" : "Grabar");
             btnGrabar.Marcar(grabando);
+        }
+        if (btnPausaGrabar != null)
+        {
+            // Solo mientras grabas: Pausa / Reanudar.
+            if (btnPausaGrabar.gameObject.activeSelf != grabando)
+            {
+                btnPausaGrabar.gameObject.SetActive(grabando);
+                if (btnPausaGrabar.etiqueta != null)
+                    btnPausaGrabar.etiqueta.gameObject.SetActive(grabando);
+            }
+            if (grabando)
+            {
+                btnPausaGrabar.PonerTexto(grabador.Pausado ? "Reanudar" : "Pausa");
+                btnPausaGrabar.Marcar(grabador.Pausado);
+            }
         }
         if (btnVelocidad != null && exportador != null)
             btnVelocidad.PonerTexto("Vel x" + exportador.velocidad);
@@ -858,14 +881,14 @@ public class PanelArriba : MonoBehaviour
         if (ExportadorVideo.Exportando)
             texto = "Haciendo el video... (mira los avisos)";
         else if (grabando)
-            texto = "Grabando el proceso: " + GrabadorProceso.Formato(grabador.Duracion);
+            texto = (grabador.Pausado ? "En pausa: " : "Grabando el proceso: ") + GrabadorProceso.Formato(grabador.TiempoGrabado);
         else if (grabador != null && grabador.muestras.Count > 1)
             texto = "Grabación lista: " + GrabadorProceso.Formato(grabador.Duracion) + " · toca Video proceso";
         else if (!string.IsNullOrEmpty(Galeria.UltimoGuardado))
             texto = Galeria.UltimoGuardado;
         else
             texto = dibujo != null ? "Las líneas vivas y el boceto son de la capa activa: " + dibujo.CapaActual.nombre : "";
-        textoMedios.text = texto;
+        textoMedios.text = Idioma.T(texto);
     }
 
     void RefrescarBocas()
@@ -885,8 +908,8 @@ public class PanelArriba : MonoBehaviour
         if (textoBocas == null)
             return;
         string audio = lipsync.Clip != null ? lipsync.Clip.name + " (" + lipsync.Clip.length.ToString("0.0") + " s)" : "sin audio";
-        textoBocas.text = "Capa de la boca: " + (dibujo != null ? dibujo.capaActual + 1 : 1) + " · Audio: " + audio
-                          + "\nGuardar: mueve los nodos de la boca y toca una forma · Lipsync crea las claves";
+        textoBocas.text = Idioma.T("Capa de la boca: " + (dibujo != null ? dibujo.capaActual + 1 : 1) + " · Audio: " + audio
+                          + "\nGuardar: mueve los nodos de la boca y toca una forma · Lipsync crea las claves");
     }
 
     // ==================== Abrir dibujos guardados ====================
@@ -988,6 +1011,11 @@ public class PanelArriba : MonoBehaviour
                 creandoAyuda = false;
             }
             copia.name = "PanelAyuda";
+            // Los textos de la copia cambian de idioma igual que los del panel.
+            var originales = GetComponentsInChildren<TMP_Text>(true);
+            var copias = copia.GetComponentsInChildren<TMP_Text>(true);
+            for (int i = 0; i < originales.Length && i < copias.Length; i++)
+                Idioma.Copiar(originales[i], copias[i]);
             ayuda = copia.GetComponent<PanelArriba>();
             ayuda.original = this;
             ayudaAbierta = true;
@@ -1025,6 +1053,7 @@ public class PanelArriba : MonoBehaviour
 
     void PrepararAyuda()
     {
+        Idioma.alCambiar += AlCambiarIdioma;
         var copiaLista = contenido != null ? contenido.transform.Find("ListaArchivos") : null;
         if (copiaLista != null)
         {
@@ -1100,11 +1129,88 @@ public class PanelArriba : MonoBehaviour
             contenido.SetActive(true);
     }
 
+    string ayudaActual = "";
+
     void MostrarAyuda(string texto)
     {
-        if (textoAyuda != null)
-            textoAyuda.text = texto;
+        ayudaActual = texto ?? "";
+        if (textoAyuda == null)
+            return;
+        // En inglés: la explicación completa traducida (si la hay); si no, por partes.
+        string titulo = ayudaActual.Split('\n')[0];
+        string en;
+        textoAyuda.text = Idioma.Ingles && AyudaIngles.TryGetValue(titulo, out en) ? en : Idioma.T(ayudaActual);
     }
+
+    void AlCambiarIdioma()
+    {
+        if (esAyuda)
+            MostrarAyuda(ayudaActual);
+    }
+
+    void OnDestroy()
+    {
+        Idioma.alCambiar -= AlCambiarIdioma;
+    }
+
+    // La ayuda en inglés (la clave es el título, la primera línea en español).
+    static readonly Dictionary<string, string> AyudaIngles = new Dictionary<string, string>
+    {
+        { "AYUDA", "HELP\nThis blue panel is a copy of the one above. Tap any button here and I'll explain what it does and how to use it. Here the buttons don't change your drawing.\nTap \"?\" to close help." },
+        { "ANIMAR (página)", "ANIMATE (page)\nVideos, photo, SVG, reference images and the style of the active layer (wobble, strands, sketch, plane). Plane 2D/3D, Background, Save, Files and Clear all are in the left hand menu." },
+        { "BOCAS (página)", "MOUTHS (page)\nLipsync: save mouth shapes (A, E, I, O, U, M...) and the app makes the keys from your voice or an audio." },
+        { "TÍTERE (página)", "PUPPET (page)\nCharacters that walk, run and jump with your hand. Create, record, walk cycles and build your own characters." },
+        { "ZOOM", "ZOOM\nHow many frames fit on the timeline: All, 400, 100 or 25. With fewer frames the keys (orange marks) are farther apart and easier to touch." },
+        { "FIJAR AQUÍ / SEGUIRME", "PIN HERE / FOLLOW ME\nPin here: the panel stays in place and always visible. Follow me: it appears again only when you look up.\nAlso: pinch the blue handle to move it; pinching with your left hand too, spread your hands = bigger." },
+        { "INICIO", "START\nGoes to frame 1." },
+        { "< (ANTERIOR)", "< (PREVIOUS)\nGoes back one frame. You can also touch the timeline with your right index finger." },
+        { "> (SIGUIENTE)", "> (NEXT)\nGoes forward one frame." },
+        { "PLAY / PAUSA", "PLAY / PAUSE\nPlays the animation: lines morph between keys.\nTo animate: 1) go to another frame (touch the bar), 2) move the nodes (left thumb + middle), 3) a key is saved by itself, 4) Play." },
+        { "+ CLAVE", "+ KEY\nSaves the current shape of the active layer's lines at this frame (orange mark). Usually not needed: editing on a frame saves the key by itself." },
+        { "- CLAVE", "- KEY\nRemoves the active layer's key at this frame.\nTo MOVE a key: pinch it on the bar and drag it." },
+        { "FPS", "FPS\nAnimation speed: 12, 24, 30 or 60 frames per second." },
+        { "CAPAS (lista plegable)", "LAYERS (folding list)\nOpens or closes the list of layers above the timeline. Each row: pick the layer, Show/Hidden and ITS keys (each layer has its own keys).\nThe big bar shows the active layer's keys." },
+        { "CAPA 1-4", "LAYER 1-4\nChoose the layer you draw on. Each layer has its own style (wobble, strands, sketch, plane, magnet) and its own keys.\nTip: sketch on layer 1 (Sketch: Gray) and ink on layer 2." },
+        { "VER / OCULTA", "SHOW / HIDDEN\nShows or hides that layer. A hidden layer can't be edited." },
+        { "ARCHIVOS", "FILES\nOpens \"My files\": your drawings, videos, photos and SVG with a thumbnail. Filters on top. Tap one to select it, then Open (or View) or Delete (tap again to confirm).\nAt the top: the current file with Save, Save copy and Rename, and the language button." },
+        { "CREAR SVG", "CREATE SVG\nExports the lines as vector curves (for Illustrator, Inkscape...). In Plane mode it's seen straight on; in 3D, from where you are." },
+        { "FOTO", "PHOTO\nSaves a PNG image of the drawing from where you are. Panels, nodes, images and sketch layers don't appear.\nWHERE: Quest Files app → Pictures → TrazoVR." },
+        { "GRABAR (proceso)", "RECORD (process)\nRecords how you draw: your hands and the lines appearing. Tap again (Stop) to finish.\nThen: Process video turns it into an MP4." },
+        { "PAUSA / REANUDAR", "PAUSE / RESUME\nOnly shows while recording the process. Pause stops recording for a moment (that time isn't in the video); Resume keeps recording. What you do while paused appears all at once when you resume." },
+        { "VIDEO PROCESO", "PROCESS VIDEO\nTurns your recording into an MP4: lines + your hands (gloves and sleeves). Choose the speed first with Speed.\nWHERE: Quest Files app → Movies → TrazoVR." },
+        { "VEL x1 / x2 / x4 / x8", "SPEED x1 / x2 / x4 / x8\nHow fast the process video plays." },
+        { "VIDEO ANIM", "ANIM VIDEO\nExports the animation as an MP4 (1280x720), with the mouths' audio if there is one. You need at least 2 keys.\nWHERE: Quest Files app → Movies → TrazoVR." },
+        { "IMAGEN +", "IMAGE +\nPuts the next image from Dibujos/Imagenes in front of you (copy them with the cable or Meta Quest Developer Hub).\nTo trace: in Plane mode, drop the image near the plane and it sticks behind it." },
+        { "IMAGEN -", "IMAGE -\nRemoves the selected image (bluish one). Pinch an image to select it, or tap the X on its corner." },
+        { "IMÁGENES: VER / OCULTAS", "IMAGES: SHOW / HIDDEN\nHides or shows all reference images at once." },
+        { "TEMBLOR (capa activa)", "WOBBLE (active layer)\nLive lines, like hand-drawn animation: No, Soft, Medium, Strong. It doesn't change your nodes, only how they look." },
+        { "HEBRAS (capa activa)", "STRANDS (active layer)\n1, 3 or 5 thin strands per line (they join at the ends).\nStrand width: width gesture (left thumb + ring) + right pinch in the air, up or down." },
+        { "GROSOR VIVO (capa activa)", "LIVE WIDTH (active layer)\nThe width goes up and down along the line, like brush pressure." },
+        { "CICLO DE 3 / LIBRE (capa activa)", "CYCLE OF 3 / FREE (active layer)\nCycle of 3: the wobble repeats 3 drawings (classic style). Free: always different." },
+        { "SUAVIDAD (capa activa)", "SMOOTHNESS (active layer)\nHow wavy the wobble is: Soft, Normal or Nervous." },
+        { "VELOCIDAD (capa activa)", "SPEED (active layer)\nHow many times per second the wobble changes: 4, 8, 12 or 24." },
+        { "BOCETO (capa activa)", "SKETCH (active layer)\nThe layer looks like gray or blue pencil and does NOT appear in photos or videos.\nIn Plane (2D) you draw with a real pencil on a sheet: closer to the plane = darker. The left fist (sideways) is the eraser." },
+        { "PLANO: UNIDO / PROPIO (capa activa)", "PLANE: JOINED / OWN (active layer)\nJoined: the layer shares the sheet with the others, half a millimeter in front (like acetate over paper). Own: the layer has its own plane.\nWhen joining, its lines stick to the plane." },
+        { "FORMA DE BOCA", "MOUTH SHAPE\nSave mode: 1) draw the mouth on its own layer and pick it, 2) move its nodes for this shape, 3) tap this button: it's saved (looks dark).\nTest mode: tapping it puts that mouth on the current frame." },
+        { "MODO: GUARDAR / PROBAR", "MODE: SAVE / TEST\nSave: tapping a shape saves it. Test: tapping a shape puts it on the current frame (to fix by hand)." },
+        { "VOZ", "VOICE\nRecords your voice with the headset microphone. Tap again to stop. Then tap Lipsync." },
+        { "AUDIO", "AUDIO\nChoose an audio from the Dibujos/Audio folder (wav or mp3) instead of recording your voice." },
+        { "LIPSYNC", "LIPSYNC\nMakes the mouth keys from the audio. First: save the shapes (Rest, A, E, I, O, U, M) and record Voice or pick Audio. Then Play.\nIf you have no mouths, a sample face with all of them appears when you open this page." },
+        { "QUITAR AUDIO", "REMOVE AUDIO\nRemoves the audio from the animation." },
+        { "TIPO", "TYPE\nChoose which character Create makes: Stick, Muscular, Chubby, Skinny or Kid." },
+        { "CREAR / PARAR", "CREATE / STOP\nCreate: the character appears (on Layer 4) and turns on with your RIGHT hand (hold it in front of you for a second). Sideways = walk/run · hand down = crouch · flick up = jump.\nTurn off: Stop, palm up or high five with the other hand. Hide them: Show/Hidden of Layer 4. Delete one: bring your hand close and tap the X on its frame." },
+        { "GRABAR (títere)", "RECORD (puppet)\nCounts 3 seconds and saves one key per frame of the characters that are on (in their layer). Stop = finish. Then: Play, fix keys and export with Anim video." },
+        { "POSAR DEDOS", "POSE FINGERS\nYour right index and middle fingers pose the character's legs; LEFT pinch = save a key. Tap again to finish." },
+        { "CICLO", "CYCLE\nThe walk: Normal, With style (Richard Williams: high step, big arms), Sneaky (Ken Harris: crouched, the foot passes fast through the middle and lands carefully) or your saved cycles." },
+        { "GUARDAR CICLO", "SAVE CYCLE\nSave your own walk: 1) animate at least 3 keys of a step with the character's legs (the last equal to the first), 2) tap Save cycle, 3) pick it with Cycle." },
+        { "VOLTEAR", "FLIP\nThe selected character faces the other way." },
+        { "PISO +/-", "FLOOR +/-\nPinch a line (it turns blue) and tap Floor: that line becomes a floor or platform (climbs ramps, falls if it ends). Again = it stops being a floor.\nIt only walks on floors at its own depth." },
+        { "PIERNA 1 / 2", "LEG 1 / 2\nTo build your own character: 1) draw a leg (hip to foot), 2) pinch it, 3) tap Leg 1. Do the same with the other one (Leg 2). With both legs it can walk." },
+        { "PIERNA 2", "LEG 2\nYour character's second leg: pinch it and tap this button. (See also Leg 1.)" },
+        { "BRAZO 1 / 2", "ARM 1 / 2\nPinch an arm line (shoulder to hand) and tap Arm 1 or Arm 2. Arms swing while walking." },
+        { "BRAZO 2", "ARM 2\nThe second arm: pinch it and tap this button." },
+        { "CUERPO +/-", "BODY +/-\nPinch a line (torso, head, hat...) and tap Body: it moves with the hip. Again = removes it from the body." },
+    };
 
     // Un color azul con la misma claridad que el original (blanco → celeste, negro → azul oscuro).
     static Material Azul(Material m, Dictionary<Material, Material> mapa)
@@ -1135,7 +1241,7 @@ public class PanelArriba : MonoBehaviour
     {
         var d = new Dictionary<BotonTocable, string>();
         // Pestañas y barra de arriba
-        Poner(d, btnPaginaAnimar, "ANIMAR (página)\nControles de la animación, capas y menú (Plano, Fondo, Guardar, Cargar, Borrar todo, SVG, Foto).");
+        Poner(d, btnPaginaAnimar, "ANIMAR (página)\nVideos, foto, SVG, imágenes de referencia y el estilo de la capa activa (temblor, hebras, boceto, plano). Plano 2D/3D, Fondo, Guardar, Archivos y Borrar todo están en el menú de la mano izquierda.");
         Poner(d, btnPaginaMedios, "MEDIOS (página)\nVideos, grabar tu proceso, imágenes de referencia y el estilo de la capa activa: líneas vivas, boceto, plano e imán.");
         Poner(d, btnPaginaBocas, "BOCAS (página)\nLipsync: guarda formas de boca (A, E, I, O, U, M...) y la app crea las claves según tu voz o un audio.");
         Poner(d, btnPaginaTitere, "TÍTERE (página)\nPersonajes que caminan, corren y saltan con tu mano. Crear, grabar, ciclos de caminado y armar tus propios personajes.");
@@ -1162,11 +1268,12 @@ public class PanelArriba : MonoBehaviour
         Poner(d, btnGuardar, "GUARDAR\nGuarda el dibujo con su propio nombre (Dibujo 1, Dibujo 2...). Si ya tiene nombre, lo actualiza.\nPara empezar uno NUEVO: Borrar todo y luego Guardar (recibe otro nombre).");
         Poner(d, btnCargar, "ARCHIVOS\nAbre \"Mis archivos\": tus dibujos, videos, fotos y SVG con una miniatura. Filtros arriba. Toca uno para elegirlo y luego Abrir (o Ver) o Borrar (pide tocar otra vez).\nGuarda antes lo que tienes (Guardar). Si te arrepientes de abrir otro: deshacer.");
         Poner(d, btnBorrarTodo, "BORRAR TODO\nBorra todo el dibujo y empieza uno nuevo (al guardar recibe otro nombre). Se puede deshacer.");
-        Poner(d, btnSvg, "SVG\nExporta las líneas como curvas vectoriales (para Illustrator, Inkscape...). En Plano se ve de frente al plano; en 3D, desde donde estás.");
+        Poner(d, btnSvg, "CREAR SVG\nExporta las líneas como curvas vectoriales (para Illustrator, Inkscape...). En Plano se ve de frente al plano; en 3D, desde donde estás.");
         Poner(d, btnFoto, "FOTO\nGuarda una imagen PNG del dibujo desde donde estás. Los paneles, nodos, imágenes y capas de boceto no salen.\nDÓNDE QUEDA: app Archivos del Quest → Pictures → TrazoVR.");
 
         // Medios
         Poner(d, btnGrabar, "GRABAR (proceso)\nGraba cómo dibujas: tus manos y cómo aparecen las líneas. Toca otra vez (Detener) para parar.\nDespués: Video proceso lo convierte en MP4.");
+        Poner(d, btnPausaGrabar, "PAUSA / REANUDAR\nSolo aparece mientras grabas el proceso. Pausa deja de grabar un momento (ese tiempo no sale en el video); Reanudar sigue grabando. Lo que hagas en pausa aparece de una vez al reanudar.");
         Poner(d, btnVideoProceso, "VIDEO PROCESO\nConvierte tu grabación (botón Grabar) en un video MP4: líneas + manos en gris. Elige antes la velocidad con Vel.\nDÓNDE QUEDA: app Archivos del Quest → Movies → TrazoVR (también lo dice abajo en esta página).");
         Poner(d, btnVelocidad, "VEL x1 / x2 / x4 / x8\nQué tan rápido se ve el video del proceso.");
         Poner(d, btnVideoAnim, "VIDEO ANIM\nExporta la animación como MP4 (1280x720), con el audio de las bocas si hay. Necesitas al menos 2 claves.\nDÓNDE QUEDA: app Archivos del Quest → Movies → TrazoVR.");

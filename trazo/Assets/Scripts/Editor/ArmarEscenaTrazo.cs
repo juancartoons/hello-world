@@ -331,6 +331,14 @@ public static class ArmarEscenaTrazo
             if (cfg == null)
                 continue;
             var soCfg = new SerializedObject(cfg);
+            // Teclado del visor (para ponerle nombre a los dibujos).
+            var teclado = soCfg.FindProperty("requiresSystemKeyboard");
+            if (teclado != null && teclado.propertyType == SerializedPropertyType.Boolean && !teclado.boolValue)
+            {
+                teclado.boolValue = true;
+                soCfg.ApplyModifiedProperties();
+                EditorUtility.SetDirty(cfg);
+            }
             // Seguimiento de manos más frecuente (el lápiz va más pegado al dedo).
             if (PonerEnum(soCfg.FindProperty("handTrackingFrequency"), "HIGH")
                 || PonerEnum(soCfg.FindProperty("_handTrackingFrequency"), "HIGH"))
@@ -429,7 +437,7 @@ public static class ArmarEscenaTrazo
         panel.textoEstado = Texto(contenido.transform, "", new Vector3(0f, -0.105f, -0.001f), new Vector2(0.098f, 0.02f), new Color(0.2f, 0.2f, 0.25f));
 
         // Dos columnas: Plano / Fondo · Guardar / Cargar · Borrar todo / Imán · Esfera / Cubo · Cilindro / A líneas · Quitar figura
-        string[] nombres = { "Libre (3D)", "Fondo: Cuadrícula", "Guardar", "Archivos", "Borrar todo", "Esfera", "Cubo", "Cilindro", "A líneas", "Quitar figura", "Imán: Sí" };
+        string[] nombres = { "Libre (3D)", "Fondo: Cuadrícula", "Guardar", "Archivos", "Borrar todo", "Esfera", "Cubo", "Cilindro", "A líneas", "", "Imán: Sí" };
         Vector2[] lugares =
         {
             new Vector2(-0.025f, 0.064f), new Vector2(0.025f, 0.064f),
@@ -452,7 +460,10 @@ public static class ArmarEscenaTrazo
         panel.btnCubo = botones[6];
         panel.btnCilindro = botones[7];
         panel.btnALineas = botones[8];
-        panel.btnQuitarFigura = botones[9];
+        // "Quitar figura" ya no hace falta: la figura elegida tiene su X (y el borrador la borra).
+        Object.DestroyImmediate(botones[9].etiqueta.gameObject);
+        Object.DestroyImmediate(botones[9].gameObject);
+        panel.btnQuitarFigura = null;
         panel.btnIman = botones[10];
         // X arriba a la derecha: cerrar el menú a mano.
         panel.btnCerrar = Boton(contenido.transform, "X", new Vector3(0.04f, 0.09f, 0f), matBoton, matBotonMarcado);
@@ -560,27 +571,24 @@ public static class ArmarEscenaTrazo
         SinSombras(cabezal.GetComponent<Renderer>(), matCabezal);
         panel.cabezal = cabezal.transform;
 
-        // Pestañas
-        string[] pestanas = { "Animar", "Medios", "Bocas", "Títere", "Zoom: 100", "Fijar aquí" };
+        // Pestañas (Animar y Medios ahora son una sola página: "Animar")
+        string[] pestanas = { "Animar", "Bocas", "Títere", "Zoom: 100", "Fijar aquí" };
         var p = new BotonTocable[pestanas.Length];
         for (int i = 0; i < pestanas.Length; i++)
             p[i] = Boton(c, pestanas[i], new Vector3(-0.2f + i * 0.08f, 0.079f, 0f), matBoton, matBotonMarcado);
         panel.btnPaginaAnimar = p[0];
-        panel.btnPaginaMedios = p[1];
-        panel.btnPaginaBocas = p[2];
-        panel.btnPaginaTitere = p[3];
-        panel.btnZoom = p[4];
-        panel.btnSeguir = p[5];
+        panel.btnPaginaMedios = null;
+        panel.btnPaginaBocas = p[1];
+        panel.btnPaginaTitere = p[2];
+        panel.btnZoom = p[3];
+        panel.btnSeguir = p[4];
         // Ayuda: "?" en la esquina de arriba a la derecha (abre abajo una copia azul que explica cada botón).
         panel.btnAyuda = Boton(c, "?", new Vector3(0.215f, 0.195f, 0f), matBoton, matBotonMarcado);
         panel.btnAyuda.transform.localScale = new Vector3(0.03f, 0.022f, 0.008f);
 
-        // ----- Página Animar -----
-        var animar = Pagina(c, "PaginaAnimar");
-        panel.paginaAnimar = animar.gameObject;
+        // Reproductor: siempre visible justo debajo de la línea de tiempo (no está dentro de ninguna página).
         string[] controles = { "Inicio", "<", "Play", ">", "+ Clave", "- Clave", "12 fps" };
         var b = new BotonTocable[controles.Length];
-        // Reproductor: siempre visible justo debajo de la línea de tiempo (no está dentro de ninguna página).
         for (int i = 0; i < controles.Length; i++)
             b[i] = Boton(c, controles[i], new Vector3(-0.192f + i * 0.064f, 0.11f, 0f), matBoton, matBotonMarcado);
         panel.btnInicio = b[0];
@@ -591,56 +599,53 @@ public static class ArmarEscenaTrazo
         panel.btnQuitarClave = b[5];
         panel.btnFps = b[6];
 
-        string[] menu = { "Libre (3D)", "Fondo", "Guardar", "Archivos", "Borrar todo", "SVG", "Foto" };
-        var m = new BotonTocable[menu.Length];
-        for (int i = 0; i < menu.Length; i++)
-            m[i] = Boton(animar, menu[i], new Vector3(-0.192f + i * 0.064f, 0.03f, 0f), matBoton, matBotonMarcado);
-        panel.btnPlano = m[0];
-        panel.btnFondo = m[1];
-        panel.btnGuardar = m[2];
-        panel.btnCargar = m[3];
-        panel.btnBorrarTodo = m[4];
-        panel.btnSvg = m[5];
-        panel.btnFoto = m[6];
-        Texto(animar, "Toca la barra = ir a un fotograma · pellizca una clave = moverla · si editas, se guarda una clave en tu capa", new Vector3(0f, -0.09f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.3f, 0.3f, 0.35f));
-
-        // ----- Página Medios -----
-        var medios = Pagina(c, "PaginaMedios");
-        panel.paginaMedios = medios.gameObject;
-        string[] fila1 = { "Grabar", "Video proceso", "Vel x1" };
-        string[] fila2 = { "Video anim", "Imagen +", "Imagen -" };
-        var f1 = new BotonTocable[3];
-        var f2 = new BotonTocable[3];
-        for (int i = 0; i < 3; i++)
+        // ----- Página Animar (con lo que antes era Medios). Plano, Fondo, Guardar, Archivos y Borrar todo
+        //       están en el menú de la mano (no se repiten aquí). -----
+        var animar = Pagina(c, "PaginaAnimar");
+        panel.paginaAnimar = animar.gameObject;
+        panel.paginaMedios = null;
+        string[] fila1 = { "Grabar", "Pausa", "Video proceso", "Vel x1", "Video anim", "Foto", "Crear SVG" };
+        var f1 = new BotonTocable[fila1.Length];
+        for (int i = 0; i < fila1.Length; i++)
         {
-            f1[i] = BotonAncho(medios, fila1[i], new Vector3(-0.13f + i * 0.13f, 0.056f, 0f), matBoton, matBotonMarcado);
-            f2[i] = BotonAncho(medios, fila2[i], new Vector3(-0.13f + i * 0.13f, 0.024f, 0f), matBoton, matBotonMarcado);
+            f1[i] = Boton(animar, fila1[i], new Vector3(-0.204f + i * 0.068f, 0.048f, 0f), matBoton, matBotonMarcado);
+            f1[i].transform.localScale = new Vector3(0.062f, 0.022f, 0.008f);
+            if (f1[i].etiqueta != null)
+                f1[i].etiqueta.rectTransform.sizeDelta = new Vector2(0.058f, 0.018f);
         }
         panel.btnGrabar = f1[0];
-        panel.btnVideoProceso = f1[1];
-        panel.btnVelocidad = f1[2];
-        panel.btnVideoAnim = f2[0];
-        panel.btnImagenMas = f2[1];
-        panel.btnImagenMenos = f2[2];
-        string[] fila3 = { "Temblor: No", "Hebras: 1", "Grosor vivo", "Ciclo de 3", "Imágenes: ver" };
+        panel.btnPausaGrabar = f1[1];
+        panel.btnVideoProceso = f1[2];
+        panel.btnVelocidad = f1[3];
+        panel.btnVideoAnim = f1[4];
+        panel.btnFoto = f1[5];
+        panel.btnSvg = f1[6];
+        string[] fila2 = { "Imagen +", "Imagen -", "Imágenes: ver", "Boceto: No", "Plano: propio" };
+        var f2 = new BotonTocable[fila2.Length];
+        for (int i = 0; i < fila2.Length; i++)
+            f2[i] = Boton(animar, fila2[i], new Vector3(-0.2f + i * 0.1f, 0.018f, 0f), matBoton, matBotonMarcado);
+        panel.btnImagenMas = f2[0];
+        panel.btnImagenMenos = f2[1];
+        panel.btnImagenesVer = f2[2];
+        panel.btnBoceto = f2[3];
+        panel.btnUnirPlano = f2[4];
+        string[] fila3 = { "Temblor: No", "Hebras: 1", "Grosor vivo", "Ciclo de 3", "Suavidad: Normal", "Velocidad: 8" };
         var f3 = new BotonTocable[fila3.Length];
         for (int i = 0; i < fila3.Length; i++)
-            f3[i] = Boton(medios, fila3[i], new Vector3(-0.2f + i * 0.1f, -0.008f, 0f), matBoton, matBotonMarcado);
+            f3[i] = Boton(animar, fila3[i], new Vector3(-0.2f + i * 0.08f, -0.012f, 0f), matBoton, matBotonMarcado);
         panel.btnTemblor = f3[0];
         panel.btnHebras = f3[1];
         panel.btnGrosorVivo = f3[2];
         panel.btnCicloTemblor = f3[3];
-        panel.btnImagenesVer = f3[4];
-        string[] fila4 = { "Suavidad: Normal", "Velocidad: 8", "Boceto: No", "Plano: propio" };
-        var f4 = new BotonTocable[fila4.Length];
-        for (int i = 0; i < fila4.Length; i++)
-            f4[i] = Boton(medios, fila4[i], new Vector3(-0.2f + i * 0.1f, -0.038f, 0f), matBoton, matBotonMarcado);
-        panel.btnSuavidad = f4[0];
-        panel.btnVelocidadTemblor = f4[1];
-        panel.btnBoceto = f4[2];
-        panel.btnUnirPlano = f4[3];
-        panel.textoMedios = Texto(medios, "", new Vector3(0f, -0.068f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.2f, 0.2f, 0.25f));
-        Texto(medios, "Videos y fotos en Dibujos · las imágenes y las capas de boceto no salen en ellos", new Vector3(0f, -0.095f, -0.001f), new Vector2(0.46f, 0.016f), new Color(0.3f, 0.3f, 0.35f));
+        panel.btnSuavidad = f3[4];
+        panel.btnVelocidadTemblor = f3[5];
+        panel.btnPlano = null;
+        panel.btnFondo = null;
+        panel.btnGuardar = null;
+        panel.btnCargar = null;
+        panel.btnBorrarTodo = null;
+        panel.textoMedios = Texto(animar, "", new Vector3(0f, -0.048f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.2f, 0.2f, 0.25f));
+        Texto(animar, "Toca la barra = ir a un fotograma · pellizca una clave = moverla · las imágenes y el boceto no salen en videos ni fotos", new Vector3(0f, -0.085f, -0.001f), new Vector2(0.46f, 0.016f), new Color(0.3f, 0.3f, 0.35f));
 
         // ----- Página Bocas -----
         var bocas = Pagina(c, "PaginaBocas");

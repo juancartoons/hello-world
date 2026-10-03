@@ -64,7 +64,7 @@ public class PanelMuneca : MonoBehaviour
 
         CrearIconoIman();
         if (textoEstado != null)
-            textoEstado.text = textoAyuda;
+            textoEstado.text = Idioma.T(textoAyuda);
         if (textoAviso != null)
             textoAviso.gameObject.SetActive(false);
         Refrescar();
@@ -136,7 +136,7 @@ public class PanelMuneca : MonoBehaviour
         {
             ocultarMensajeEn = 0f;
             if (textoEstado != null)
-                textoEstado.text = textoAyuda;
+                textoEstado.text = Idioma.T(textoAyuda);
         }
         ActualizarAviso();
     }

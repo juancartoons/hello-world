@@ -78,9 +78,21 @@ public class FotoDeshacer
 
 // Todo lo que se guarda de un dibujo (archivo .json). También sirve para "Deshacer".
 [System.Serializable]
+public class ArchivoIncluido
+{
+    public string nombre;  // nombre del archivo (imagen o audio)
+    public string tipo;    // "imagen" o "audio"
+    public string datos;   // el archivo completo, en texto (base64)
+}
+
+// Todo lo que se guarda de un dibujo. El proyecto (.jc) lleva además adentro las imágenes de referencia y el audio.
+[System.Serializable]
 public class DatosDibujo
 {
     public int version = 6;
+    public bool conReferencias;                                   // true = el proyecto trae sus imágenes
+    public List<DatosImagen> referencias = new List<DatosImagen>();
+    public List<ArchivoIncluido> incluidos = new List<ArchivoIncluido>();
     public string nombre = "";   // nombre del archivo ("Dibujo 3"); vacío = dibujo nuevo sin guardar
     public List<DatosTrazo> trazos = new List<DatosTrazo>();
     public int fondo;
@@ -234,6 +246,14 @@ public class Dibujo : MonoBehaviour
 
     void Update()
     {
+        // Autoguardado del proyecto actual cada 3 minutos (si tiene nombre y hubo cambios).
+        if (Time.time > proximoAutoguardado)
+        {
+            proximoAutoguardado = Time.time + 180f;
+            if (HayCambios && !string.IsNullOrEmpty(NombreArchivo) && !Titere.Activo && !ExportadorVideo.Exportando
+                && (animacion == null || !animacion.Reproduciendo))
+                GuardarProyecto(true);
+        }
         // Los destellos rojos se encogen y desaparecen.
         for (int i = 0; i < destellos.Count; i++)
         {
@@ -1094,6 +1114,7 @@ public class Dibujo : MonoBehaviour
         historial.Add(Foto());
         if (historial.Count > maxHistorial)
             historial.RemoveAt(0);
+        HayCambios = true;
         if (animacion != null)
             animacion.AntesDeEditar();
     }
@@ -1174,7 +1195,7 @@ public class Dibujo : MonoBehaviour
             Mensaje("Primero suelta los personajes");
             return;
         }
-        if (trazos.Count == 0 && (hojas == null || !hojas.HayAlgo))
+        if (trazos.Count == 0 && (hojas == null || !hojas.HayAlgo) && (figuras == null || !figuras.HayFiguras))
         {
             Mensaje("No hay nada que borrar");
             return;
@@ -1210,18 +1231,48 @@ public class Dibujo : MonoBehaviour
 
     // ---------- Guardar y cargar ----------
 
+    // ---------- El proyecto (.jc) ----------
+    // Un archivo .jc es TODO el proyecto: capas, líneas, animación, lápiz, figuras, personajes, bocas
+    // y además, adentro, las imágenes de referencia y el audio (así se puede copiar a otro visor o al PC).
+    public const string Extension = ".jc";
+    public bool HayCambios { get; private set; }
+    float proximoAutoguardado = 180f;
+    Referencias refs;
+    Referencias Refs => refs != null ? refs : (refs = FindFirstObjectByType<Referencias>());
+
+    string RutaProyecto(string nombre)
+    {
+        return Path.Combine(CarpetaArchivos, nombre + Extension);
+    }
+
     // Guarda el dibujo con SU nombre. Un dibujo nuevo recibe el siguiente nombre libre (Dibujo 1, 2, 3...).
     public void Guardar()
     {
+        GuardarProyecto(false);
+    }
+
+    void GuardarProyecto(bool silencioso)
+    {
         if (string.IsNullOrEmpty(NombreArchivo))
             NombreArchivo = NombreLibre();
-        string json = JsonUtility.ToJson(CrearDatos(), true);
+        var d = CrearDatos();
+        IncluirArchivos(d);
+        string json = JsonUtility.ToJson(d);
         bool ok = false;
         try
         {
             Directory.CreateDirectory(CarpetaArchivos);
-            File.WriteAllText(Path.Combine(CarpetaArchivos, NombreArchivo + ".json"), json);
+            File.WriteAllText(RutaProyecto(NombreArchivo), json);
             ok = true;
+            // Si venía de un .json de antes con el mismo nombre, ya quedó convertido a .jc.
+            string viejo = Path.Combine(CarpetaArchivos, NombreArchivo + ".json");
+            if (File.Exists(viejo))
+            {
+                File.Delete(viejo);
+                string miniVieja = RutaMiniatura(viejo);
+                if (File.Exists(miniVieja))
+                    File.Delete(miniVieja);
+            }
         }
         catch (System.Exception e)
         {
@@ -1230,9 +1281,130 @@ public class Dibujo : MonoBehaviour
         if (ok)
         {
             Escribir(RutaGuardado, json); // el último guardado (para el menú de la mano)
-            GuardarMiniatura(Path.Combine(CarpetaArchivos, NombreArchivo + ".json"));
+            GuardarMiniatura(RutaProyecto(NombreArchivo));
+            HayCambios = false;
         }
-        Mensaje(ok ? "Guardado: " + NombreArchivo : "No se pudo guardar");
+        if (!silencioso || !ok)
+            Mensaje(ok ? "Guardado: " + NombreArchivo : "No se pudo guardar");
+        else
+            Mensaje("Autoguardado: " + NombreArchivo);
+    }
+
+    // Mete adentro del proyecto las imágenes de referencia y el audio que usa.
+    void IncluirArchivos(DatosDibujo d)
+    {
+        d.incluidos.Clear();
+        d.referencias.Clear();
+        var r = Refs;
+        if (r != null)
+        {
+            d.conReferencias = true;
+            d.referencias.AddRange(r.EstadoActual());
+            var hechos = new HashSet<string>();
+            foreach (var img in d.referencias)
+                if (img != null && !string.IsNullOrEmpty(img.archivo) && hechos.Add(img.archivo))
+                    Incluir(d, Path.Combine(r.CarpetaImagenes, img.archivo), "imagen");
+        }
+        if (lipsync != null && !string.IsNullOrEmpty(lipsync.ArchivoAudio))
+            Incluir(d, Path.Combine(lipsync.CarpetaAudio, lipsync.ArchivoAudio), "audio");
+    }
+
+    static void Incluir(DatosDibujo d, string ruta, string tipo)
+    {
+        try
+        {
+            if (File.Exists(ruta))
+                d.incluidos.Add(new ArchivoIncluido
+                {
+                    nombre = Path.GetFileName(ruta),
+                    tipo = tipo,
+                    datos = System.Convert.ToBase64String(File.ReadAllBytes(ruta)),
+                });
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("TrazoVR: no se pudo incluir " + ruta + ": " + e.Message);
+        }
+    }
+
+    // Al abrir un proyecto: saca sus imágenes y su audio a sus carpetas (si aún no están).
+    void SacarArchivos(DatosDibujo d)
+    {
+        if (d.incluidos == null)
+            return;
+        foreach (var a in d.incluidos)
+        {
+            if (a == null || string.IsNullOrEmpty(a.nombre) || string.IsNullOrEmpty(a.datos))
+                continue;
+            string carpeta = a.tipo == "audio"
+                ? (lipsync != null ? lipsync.CarpetaAudio : null)
+                : (Refs != null ? Refs.CarpetaImagenes : null);
+            if (carpeta == null)
+                continue;
+            try
+            {
+                string ruta = Path.Combine(carpeta, Path.GetFileName(a.nombre));
+                if (File.Exists(ruta))
+                    continue;
+                Directory.CreateDirectory(carpeta);
+                File.WriteAllBytes(ruta, System.Convert.FromBase64String(a.datos));
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("TrazoVR: no se pudo sacar " + a.nombre + ": " + e.Message);
+            }
+        }
+    }
+
+    // Cambia el nombre del proyecto actual (y de su archivo, si ya estaba guardado).
+    public void Renombrar(string nuevo)
+    {
+        nuevo = LimpiarNombre(nuevo);
+        if (string.IsNullOrEmpty(nuevo) || nuevo == NombreArchivo)
+            return;
+        if (File.Exists(RutaProyecto(nuevo)))
+        {
+            Mensaje("Ya existe un dibujo llamado " + nuevo);
+            return;
+        }
+        try
+        {
+            if (!string.IsNullOrEmpty(NombreArchivo) && File.Exists(RutaProyecto(NombreArchivo)))
+            {
+                File.Move(RutaProyecto(NombreArchivo), RutaProyecto(nuevo));
+                string mini = RutaMiniatura(RutaProyecto(NombreArchivo));
+                if (File.Exists(mini))
+                    File.Move(mini, RutaMiniatura(RutaProyecto(nuevo)));
+            }
+            NombreArchivo = nuevo;
+            Mensaje("Ahora se llama: " + nuevo);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("TrazoVR: no se pudo renombrar: " + e.Message);
+            Mensaje("No se pudo cambiar el nombre");
+        }
+    }
+
+    // Guarda una copia con otro nombre ("Dibujo 3 (copia)") y sigues trabajando en la copia.
+    public void GuardarCopia()
+    {
+        string baseNombre = string.IsNullOrEmpty(NombreArchivo) ? NombreLibre() : NombreArchivo;
+        string nombre = baseNombre + " (copia)";
+        for (int k = 2; File.Exists(RutaProyecto(nombre)); k++)
+            nombre = baseNombre + " (copia " + k + ")";
+        NombreArchivo = nombre;
+        Guardar();
+    }
+
+    static string LimpiarNombre(string nombre)
+    {
+        if (nombre == null)
+            return "";
+        foreach (char c in Path.GetInvalidFileNameChars())
+            nombre = nombre.Replace(c.ToString(), "");
+        nombre = nombre.Trim();
+        return nombre.Length > 40 ? nombre.Substring(0, 40) : nombre;
     }
 
     // ---------- Miniaturas (para el explorador de archivos) ----------
@@ -1277,6 +1449,8 @@ public class Dibujo : MonoBehaviour
         foreach (var ruta in ListaArchivos(1000))
         {
             string n = Path.GetFileNameWithoutExtension(ruta);
+            if (ruta == RutaGuardado)
+                continue;
             int k;
             if (n.StartsWith("Dibujo ") && int.TryParse(n.Substring(7), out k))
                 mayor = Mathf.Max(mayor, k);
@@ -1291,7 +1465,10 @@ public class Dibujo : MonoBehaviour
         try
         {
             if (Directory.Exists(CarpetaArchivos))
-                lista.AddRange(Directory.GetFiles(CarpetaArchivos, "*.json"));
+            {
+                lista.AddRange(Directory.GetFiles(CarpetaArchivos, "*" + Extension));
+                lista.AddRange(Directory.GetFiles(CarpetaArchivos, "*.json")); // dibujos de antes
+            }
         }
         catch (System.Exception e)
         {
@@ -1319,8 +1496,12 @@ public class Dibujo : MonoBehaviour
             return;
         }
         GuardarParaDeshacer();
+        SacarArchivos(d);
         Aplicar(d, true);
+        if (d.conReferencias && Refs != null)
+            Refs.Reemplazar(d.referencias);
         NombreArchivo = ruta == RutaGuardado ? "" : Path.GetFileNameWithoutExtension(ruta);
+        HayCambios = false;
         Mensaje("Abierto: " + (string.IsNullOrEmpty(NombreArchivo) ? "guardado anterior" : NombreArchivo));
     }
 
@@ -1661,6 +1842,6 @@ public class Dibujo : MonoBehaviour
 
     public void Mensaje(string texto)
     {
-        alMensaje?.Invoke(texto);
+        alMensaje?.Invoke(Idioma.T(texto));
     }
 }

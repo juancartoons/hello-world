@@ -249,7 +249,7 @@ public class Referencias : MonoBehaviour
         texto.transform.SetParent(contenedor, false);
         texto.transform.localPosition = new Vector3(x, 0f, -0.0035f);
         var tmp = texto.AddComponent<TextMeshPro>();
-        tmp.text = nombre;
+        Idioma.Poner(tmp, nombre);
         tmp.enableAutoSizing = true;
         tmp.fontSizeMin = 0.01f;
         tmp.fontSizeMax = 0.2f;
@@ -546,6 +546,43 @@ public class Referencias : MonoBehaviour
     }
 
     // Guarda dónde quedó cada imagen (se llama al soltarlas).
+    // ---------- Para el archivo del proyecto (.jc) ----------
+
+    public string CarpetaImagenes => Carpeta;
+
+    // Dónde está cada imagen ahora (copias, para guardarlas dentro del proyecto).
+    public List<DatosImagen> EstadoActual()
+    {
+        var lista = new List<DatosImagen>();
+        foreach (var img in imagenes)
+        {
+            if (img.raiz == null)
+                continue;
+            img.datos.posicion = img.raiz.position;
+            img.datos.rotacion = img.raiz.rotation;
+            img.datos.escala = img.raiz.lossyScale.x;
+            img.datos.posicionLocal = img.raiz.localPosition;
+            img.datos.rotacionLocal = img.raiz.localRotation;
+            img.datos.escalaLocal = img.raiz.localScale.x;
+            lista.Add(JsonUtility.FromJson<DatosImagen>(JsonUtility.ToJson(img.datos)));
+        }
+        return lista;
+    }
+
+    // Al abrir un proyecto: sus imágenes reemplazan a las que había.
+    public void Reemplazar(List<DatosImagen> lista)
+    {
+        foreach (var img in imagenes)
+            Destruir(img);
+        imagenes.Clear();
+        seleccionada = null;
+        if (lista != null)
+            foreach (var d in lista)
+                if (d != null)
+                    Crear(d);
+        Guardar();
+    }
+
     public void Guardar()
     {
         var estado = new DatosReferencias { ocultas = ocultas };

@@ -5,7 +5,9 @@ using UnityEngine;
 using UnityEngine.Video;
 
 // "Mis archivos": todo lo que has hecho (dibujos, videos, fotos y SVG), con una miniatura de cada uno.
-//  - Arriba: filtros (Todos, Dibujos, Videos, Fotos, SVG) y la X para cerrar.
+//  - Arriba: filtros (Todos, Dibujos, Videos, Fotos, Ver SVG) y la X para cerrar.
+//  - Debajo: el ARCHIVO ACTUAL (su nombre y si tiene cambios sin guardar) con Guardar, Copia y Renombrar,
+//    y el botón de idioma (Español / English) para toda la app.
 //  - Toca un archivo para elegirlo; abajo: Abrir y Borrar (Borrar pide tocar otra vez para confirmar).
 //  - Abrir: un dibujo se abre para seguir editándolo; una foto o un video se ven en grande (Volver = regresar).
 //  - < y > cambian de página.
@@ -20,7 +22,7 @@ public class NavegadorArchivos : MonoBehaviour
     [Tooltip("Material sin luz para mostrar imágenes (las miniaturas)")]
     public Material materialImagen;
 
-    static readonly string[] Filtros = { "Todos", "Dibujos", "Videos", "Fotos", "SVG" };
+    static readonly string[] Filtros = { "Todos", "Dibujos", "Videos", "Fotos", "Ver SVG" };
     const int Columnas = 4, Filas = 3, PorPagina = Columnas * Filas;
 
     class Archivo
@@ -45,7 +47,9 @@ public class NavegadorArchivos : MonoBehaviour
     readonly Ficha[] fichas = new Ficha[PorPagina];
     readonly BotonTocable[] botonesFiltro = new BotonTocable[Filtros.Length];
     BotonTocable btnAbrir, btnBorrar, btnAnterior, btnSiguiente, btnCerrar, btnVolver;
-    TMP_Text textoPagina, textoEstado;
+    BotonTocable btnGuardar, btnCopia, btnRenombrar, btnIdioma;
+    TMP_Text textoPagina, textoEstado, textoActual;
+    TouchScreenKeyboard teclado;
     GameObject grilla;
     Renderer visor;
     Material materialVisor;
@@ -58,6 +62,7 @@ public class NavegadorArchivos : MonoBehaviour
 
     void Start()
     {
+        Idioma.alCambiar += () => { if (Abierto) Mostrar(); };
         if (dibujo == null) dibujo = FindFirstObjectByType<Dibujo>();
         if (control == null) control = FindFirstObjectByType<ControlManos>();
     }
@@ -99,6 +104,29 @@ public class NavegadorArchivos : MonoBehaviour
     {
         if (!Abierto)
             return;
+        // El archivo actual: nombre y si hay cambios sin guardar.
+        if (textoActual != null)
+        {
+            string nombre = string.IsNullOrEmpty(dibujo.NombreArchivo) ? Idioma.T("(sin nombre)") : dibujo.NombreArchivo;
+            textoActual.text = Idioma.T("Actual: ") + nombre + (dibujo.HayCambios ? Idioma.T(" · sin guardar") : "");
+        }
+        if (btnIdioma != null)
+            btnIdioma.PonerTexto(Idioma.Ingles ? "Language: ENG" : "Idioma: ESP");
+        // Teclado del visor (Renombrar).
+        if (teclado != null)
+        {
+            if (teclado.status == TouchScreenKeyboard.Status.Done)
+            {
+                dibujo.Renombrar(teclado.text);
+                teclado = null;
+                Listar();
+                Mostrar();
+            }
+            else if (teclado.status != TouchScreenKeyboard.Status.Visible)
+            {
+                teclado = null;
+            }
+        }
         if (confirmarBorrarHasta > 0f && Time.time > confirmarBorrarHasta)
         {
             confirmarBorrarHasta = -1f;
@@ -118,8 +146,12 @@ public class NavegadorArchivos : MonoBehaviour
             {
                 int antes = archivos.Count;
                 if (Directory.Exists(dibujo.CarpetaArchivosDibujo))
+                {
+                    foreach (var f in Directory.GetFiles(dibujo.CarpetaArchivosDibujo, "*" + Dibujo.Extension))
+                        Agregar(f, "Dibujo");
                     foreach (var f in Directory.GetFiles(dibujo.CarpetaArchivosDibujo, "*.json"))
                         Agregar(f, "Dibujo");
+                }
                 // El "guardado" de antes solo si aún no hay dibujos con nombre (si no, sería una copia repetida).
                 if (archivos.Count == antes && File.Exists(dibujo.RutaGuardadoAnterior))
                     Agregar(dibujo.RutaGuardadoAnterior, "Dibujo");
@@ -170,7 +202,7 @@ public class NavegadorArchivos : MonoBehaviour
             if (!hay)
                 continue;
             var a = archivos[k];
-            f.texto.text = a.tipo + " · " + Path.GetFileNameWithoutExtension(a.ruta) + "\n" + a.fecha.ToString("dd/MM HH:mm");
+            f.texto.text = Idioma.T(a.tipo) + " · " + Path.GetFileNameWithoutExtension(a.ruta) + "\n" + a.fecha.ToString("dd/MM HH:mm");
             f.textura = CargarMiniatura(a);
             if (f.textura != null)
             {
@@ -182,14 +214,14 @@ public class NavegadorArchivos : MonoBehaviour
             }
             else
             {
-                f.grande.text = a.tipo;
+                f.grande.text = Idioma.T(a.tipo);
                 f.grande.gameObject.SetActive(true);
             }
             f.boton.Marcar(k == elegido);
         }
         foreach (var x in botonesFiltro)
             x.Marcar(System.Array.IndexOf(botonesFiltro, x) == filtro);
-        textoPagina.text = archivos.Count == 0 ? "Vacío" : (pagina + 1) + " / " + Paginas;
+        textoPagina.text = archivos.Count == 0 ? Idioma.T("Vacío") : (pagina + 1) + " / " + Paginas;
         RefrescarBotones();
     }
 
@@ -211,7 +243,7 @@ public class NavegadorArchivos : MonoBehaviour
         }
         else
         {
-            textoEstado.text = archivos.Count + " archivos";
+            textoEstado.text = archivos.Count + Idioma.T(" archivos");
         }
     }
 
@@ -372,6 +404,16 @@ public class NavegadorArchivos : MonoBehaviour
         Mostrar();
     }
 
+    void AbrirTeclado()
+    {
+        if (!TouchScreenKeyboard.isSupported)
+        {
+            dibujo.Mensaje("Este visor no tiene teclado aquí (vuelve a tocar ★ Armar escena en Unity)");
+            return;
+        }
+        teclado = TouchScreenKeyboard.Open(dibujo.NombreArchivo ?? "", TouchScreenKeyboardType.Default, false, false, false, false, Idioma.T("Nombre del dibujo"));
+    }
+
     // ---------- Ver en grande ----------
 
     void VerFoto(string ruta)
@@ -464,13 +506,25 @@ public class NavegadorArchivos : MonoBehaviour
         btnCerrar = Boton(raiz, "X", new Vector3(0.295f, 0.205f, 0f), new Vector2(0.024f, 0.022f));
         btnCerrar.alTocar.AddListener(Cerrar);
 
+        // El archivo actual (el que estás haciendo) y el idioma de la app.
+        textoActual = Texto(raiz, "", new Vector3(-0.17f, 0.172f, -0.002f), new Vector2(0.27f, 0.018f), 0.12f);
+        textoActual.alignment = TextAlignmentOptions.Left;
+        btnGuardar = Boton(raiz, "Guardar", new Vector3(0.035f, 0.172f, 0f), new Vector2(0.06f, 0.02f));
+        btnGuardar.alTocar.AddListener(() => { dibujo.Guardar(); Listar(); Mostrar(); });
+        btnCopia = Boton(raiz, "Guardar copia", new Vector3(0.11f, 0.172f, 0f), new Vector2(0.08f, 0.02f));
+        btnCopia.alTocar.AddListener(() => { dibujo.GuardarCopia(); Listar(); Mostrar(); });
+        btnRenombrar = Boton(raiz, "Renombrar", new Vector3(0.195f, 0.172f, 0f), new Vector2(0.08f, 0.02f));
+        btnRenombrar.alTocar.AddListener(AbrirTeclado);
+        btnIdioma = Boton(raiz, "Idioma: ESP", new Vector3(0.28f, 0.172f, 0f), new Vector2(0.075f, 0.02f));
+        btnIdioma.alTocar.AddListener(Idioma.Alternar);
+
         grilla = new GameObject("Grilla");
         grilla.transform.SetParent(raiz, false);
         for (int i = 0; i < PorPagina; i++)
         {
             int col = i % Columnas, fila = i / Columnas;
             float x = -0.225f + col * 0.15f;
-            float y = 0.12f - fila * 0.115f;
+            float y = 0.1f - fila * 0.112f;
             var f = new Ficha();
             f.boton = Boton(grilla.transform, "", new Vector3(x, y, 0f), new Vector2(0.138f, 0.105f));
             int indice = i;
@@ -536,7 +590,7 @@ public class NavegadorArchivos : MonoBehaviour
         go.transform.SetParent(padre, false);
         go.transform.localPosition = pos;
         var t = go.AddComponent<TextMeshPro>();
-        t.text = texto;
+        Idioma.Poner(t, texto);
         t.enableAutoSizing = true;
         t.fontSizeMin = 0.01f;
         t.fontSizeMax = maximo;
