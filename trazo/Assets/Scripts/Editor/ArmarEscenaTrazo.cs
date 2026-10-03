@@ -417,16 +417,17 @@ public static class ArmarEscenaTrazo
         Texto(contenido.transform, "TrazoVR", new Vector3(0f, 0.09f, -0.001f), new Vector2(0.09f, 0.014f), Color.black);
         panel.textoEstado = Texto(contenido.transform, "", new Vector3(0f, -0.105f, -0.001f), new Vector2(0.098f, 0.02f), new Color(0.2f, 0.2f, 0.25f));
 
-        // Dos columnas: Plano / Fondo · Guardar / Cargar · Borrar todo / (vacío) · Esfera / Cubo · Cilindro / A líneas · Quitar figura
-        string[] nombres = { "Libre (3D)", "Fondo: Cuadrícula", "Guardar", "Cargar", "Borrar todo", "Esfera", "Cubo", "Cilindro", "A líneas", "Quitar figura" };
+        // Dos columnas: Plano / Fondo · Guardar / Cargar · Borrar todo / Imán · Esfera / Cubo · Cilindro / A líneas · Quitar figura
+        string[] nombres = { "Libre (3D)", "Fondo: Cuadrícula", "Guardar", "Cargar", "Borrar todo", "Esfera", "Cubo", "Cilindro", "A líneas", "Quitar figura", "Imán: Sí" };
         Vector2[] lugares =
         {
             new Vector2(-0.025f, 0.064f), new Vector2(0.025f, 0.064f),
             new Vector2(-0.025f, 0.038f), new Vector2(0.025f, 0.038f),
-            new Vector2(0f, 0.012f),
+            new Vector2(-0.025f, 0.012f),
             new Vector2(-0.025f, -0.022f), new Vector2(0.025f, -0.022f),
             new Vector2(-0.025f, -0.048f), new Vector2(0.025f, -0.048f),
             new Vector2(0f, -0.074f),
+            new Vector2(0.025f, 0.012f),
         };
         var botones = new BotonTocable[nombres.Length];
         for (int i = 0; i < nombres.Length; i++)
@@ -441,6 +442,7 @@ public static class ArmarEscenaTrazo
         panel.btnCilindro = botones[7];
         panel.btnALineas = botones[8];
         panel.btnQuitarFigura = botones[9];
+        panel.btnIman = botones[10];
         Texto(contenido.transform, "Figuras 3D", new Vector3(0f, -0.004f, -0.001f), new Vector2(0.09f, 0.01f), new Color(0.3f, 0.3f, 0.35f));
         return panel;
     }
@@ -494,14 +496,14 @@ public static class ArmarEscenaTrazo
         panel.asaAbajo = asaAbajo.transform;
         Texto(c, "pellizca aquí para mover · + otra mano = tamaño", new Vector3(0f, 0.195f, -0.006f), new Vector2(0.13f, 0.012f), Color.white);
 
-        panel.textoFotograma = Texto(c, "Fotograma 1 / 2000", new Vector3(0f, 0.16f, -0.001f), new Vector2(0.4f, 0.02f), Color.black);
+        panel.textoFotograma = Texto(c, "Fotograma 1 / 2000", new Vector3(0f, 0.168f, -0.001f), new Vector2(0.4f, 0.018f), Color.black);
 
         // Línea de tiempo
         var barra = GameObject.CreatePrimitive(PrimitiveType.Cube);
         barra.name = "BarraTiempo";
         Object.DestroyImmediate(barra.GetComponent<Collider>());
         barra.transform.SetParent(c, false);
-        barra.transform.localPosition = new Vector3(0f, 0.128f, 0f);
+        barra.transform.localPosition = new Vector3(0f, 0.142f, 0f);
         barra.transform.localScale = new Vector3(0.44f, 0.02f, 0.008f);
         SinSombras(barra.GetComponent<Renderer>(), matBarra);
         panel.barra = barra.transform;
@@ -510,7 +512,7 @@ public static class ArmarEscenaTrazo
         cabezal.name = "Cabezal";
         Object.DestroyImmediate(cabezal.GetComponent<Collider>());
         cabezal.transform.SetParent(c, false);
-        cabezal.transform.localPosition = new Vector3(-0.22f, 0.128f, -0.006f);
+        cabezal.transform.localPosition = new Vector3(-0.22f, 0.142f, -0.006f);
         cabezal.transform.localScale = new Vector3(0.004f, 0.036f, 0.004f);
         SinSombras(cabezal.GetComponent<Renderer>(), matCabezal);
         panel.cabezal = cabezal.transform;
@@ -519,7 +521,7 @@ public static class ArmarEscenaTrazo
         string[] pestanas = { "Animar", "Medios", "Bocas", "Títere", "Zoom: 100", "Fijar aquí" };
         var p = new BotonTocable[pestanas.Length];
         for (int i = 0; i < pestanas.Length; i++)
-            p[i] = Boton(c, pestanas[i], new Vector3(-0.2f + i * 0.08f, 0.092f, 0f), matBoton, matBotonMarcado);
+            p[i] = Boton(c, pestanas[i], new Vector3(-0.2f + i * 0.08f, 0.079f, 0f), matBoton, matBotonMarcado);
         panel.btnPaginaAnimar = p[0];
         panel.btnPaginaMedios = p[1];
         panel.btnPaginaBocas = p[2];
@@ -535,8 +537,9 @@ public static class ArmarEscenaTrazo
         panel.paginaAnimar = animar.gameObject;
         string[] controles = { "Inicio", "<", "Play", ">", "+ Clave", "- Clave", "12 fps" };
         var b = new BotonTocable[controles.Length];
+        // Reproductor: siempre visible justo debajo de la línea de tiempo (no está dentro de ninguna página).
         for (int i = 0; i < controles.Length; i++)
-            b[i] = Boton(animar, controles[i], new Vector3(-0.192f + i * 0.064f, 0.055f, 0f), matBoton, matBotonMarcado);
+            b[i] = Boton(c, controles[i], new Vector3(-0.192f + i * 0.064f, 0.11f, 0f), matBoton, matBotonMarcado);
         panel.btnInicio = b[0];
         panel.btnAnterior = b[1];
         panel.btnPlay = b[2];
@@ -593,7 +596,7 @@ public static class ArmarEscenaTrazo
         panel.btnGrosorVivo = f3[2];
         panel.btnCicloTemblor = f3[3];
         panel.btnImagenesVer = f3[4];
-        string[] fila4 = { "Suavidad: Normal", "Velocidad: 8", "Boceto: No", "Plano: propio", "Imán: Sí" };
+        string[] fila4 = { "Suavidad: Normal", "Velocidad: 8", "Boceto: No", "Plano: propio" };
         var f4 = new BotonTocable[fila4.Length];
         for (int i = 0; i < fila4.Length; i++)
             f4[i] = Boton(medios, fila4[i], new Vector3(-0.2f + i * 0.1f, -0.038f, 0f), matBoton, matBotonMarcado);
@@ -601,7 +604,6 @@ public static class ArmarEscenaTrazo
         panel.btnVelocidadTemblor = f4[1];
         panel.btnBoceto = f4[2];
         panel.btnUnirPlano = f4[3];
-        panel.btnIman = f4[4];
         panel.textoMedios = Texto(medios, "", new Vector3(0f, -0.068f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.2f, 0.2f, 0.25f));
         Texto(medios, "Videos y fotos en Dibujos · las imágenes y las capas de boceto no salen en ellos", new Vector3(0f, -0.095f, -0.001f), new Vector2(0.46f, 0.016f), new Color(0.3f, 0.3f, 0.35f));
 

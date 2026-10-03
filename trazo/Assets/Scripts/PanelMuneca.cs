@@ -12,6 +12,10 @@ public class PanelMuneca : MonoBehaviour
     public Escenario escenario;
     public GameObject contenido;
     public BotonTocable btnPlano, btnFondo, btnGuardar, btnCargar, btnBorrar;
+    [Tooltip("Imán de la capa activa (con su ícono de imán encendido o apagado)")]
+    public BotonTocable btnIman;
+    Renderer[] iconoIman;
+    Material imanEncendido, imanApagado;
     [Header("Figuras 3D")]
     public Figuras figuras;
     public BotonTocable btnEsfera, btnCubo, btnCilindro, btnALineas, btnQuitarFigura;
@@ -38,6 +42,7 @@ public class PanelMuneca : MonoBehaviour
             Conectar(btnGuardar, dibujo.Guardar);
             Conectar(btnCargar, dibujo.Cargar);
             Conectar(btnBorrar, dibujo.BorrarTodo);
+            Conectar(btnIman, dibujo.AlternarIman);
             dibujo.alCambiar += Refrescar;
             dibujo.alMensaje += Mensaje;
         }
@@ -53,6 +58,7 @@ public class PanelMuneca : MonoBehaviour
             Conectar(btnQuitarFigura, figuras.QuitarSeleccionada);
         }
 
+        CrearIconoIman();
         if (textoEstado != null)
             textoEstado.text = textoAyuda;
         if (textoAviso != null)
@@ -64,6 +70,8 @@ public class PanelMuneca : MonoBehaviour
 
     void OnDestroy()
     {
+        if (imanEncendido != null) Destroy(imanEncendido);
+        if (imanApagado != null) Destroy(imanApagado);
         if (dibujo != null)
         {
             dibujo.alCambiar -= Refrescar;
@@ -149,6 +157,57 @@ public class PanelMuneca : MonoBehaviour
         }
         if (btnFondo != null && escenario != null)
             btnFondo.PonerTexto("Fondo: " + Escenario.Nombres[escenario.modo]);
+        if (btnIman != null && dibujo != null)
+        {
+            bool iman = dibujo.CapaActual.iman;
+            btnIman.PonerTexto(iman ? "     Imán: Sí" : "     Imán: No");
+            btnIman.Marcar(iman);
+            if (iconoIman != null)
+                foreach (var r in iconoIman)
+                    if (r != null)
+                        r.sharedMaterial = iman ? imanEncendido : imanApagado;
+        }
+    }
+
+    // Ícono de imán (herradura): rojo = encendido, gris = apagado.
+    void CrearIconoIman()
+    {
+        if (btnIman == null || btnIman.materialNormal == null)
+            return;
+        imanEncendido = new Material(btnIman.materialNormal);
+        imanApagado = new Material(btnIman.materialNormal);
+        Pintar(imanEncendido, new Color(0.9f, 0.15f, 0.15f));
+        Pintar(imanApagado, new Color(0.55f, 0.55f, 0.58f));
+        var icono = new GameObject("IconoIman").transform;
+        icono.SetParent(btnIman.transform.parent, false);
+        icono.localPosition = btnIman.transform.localPosition + new Vector3(-0.0145f, 0f, -0.006f);
+        icono.localRotation = Quaternion.identity;
+        // Dos patas y la curva de abajo (una U).
+        var piezas = new[]
+        {
+            new[] { -0.003f, 0.001f, 0.0022f, 0.009f },
+            new[] { 0.003f, 0.001f, 0.0022f, 0.009f },
+            new[] { 0f, -0.0035f, 0.0082f, 0.0022f },
+        };
+        iconoIman = new Renderer[piezas.Length];
+        for (int k = 0; k < piezas.Length; k++)
+        {
+            var cubo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            Destroy(cubo.GetComponent<Collider>());
+            cubo.transform.SetParent(icono, false);
+            cubo.transform.localPosition = new Vector3(piezas[k][0], piezas[k][1], 0f);
+            cubo.transform.localScale = new Vector3(piezas[k][2], piezas[k][3], 0.002f);
+            var r = cubo.GetComponent<Renderer>();
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            r.receiveShadows = false;
+            iconoIman[k] = r;
+        }
+    }
+
+    static void Pintar(Material m, Color c)
+    {
+        if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
+        if (m.HasProperty("_Color")) m.SetColor("_Color", c);
     }
 
     public void Mensaje(string texto)

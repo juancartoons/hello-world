@@ -12,7 +12,7 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 | Izquierda: **pulgar + medio** (sostener) | **Modo nodos**: pellizca un nodo con la derecha y arrástralo. El nodo tocado muestra sus **asas** (verdes): pellízcalas para curvar. Pellizcar la **línea seleccionada** lejos de sus nodos = **agregar un nodo** |
 | Modo nodos: arrastrar una **punta** sobre otra punta | Imán: se unen en una sola línea, o se **cierra la figura** y se rellena |
 | Izquierda: **pulgar + anular** (sostener) | **Grosor**: sube/baja la mano izquierda = más grueso/delgado (solo la línea seleccionada, o todo si no hay selección). Pellizca un **nodo** con la derecha y súbela/bájala = grosor solo de ese nodo. **Gira el índice derecho en un círculo pequeño** (como un teléfono de disco) = grosor de las **líneas nuevas**: hacia la derecha más grueso, hacia la izquierda más delgado |
-| Izquierda: **puño de lado o con el dorso hacia ti** (pulgar sobre los dedos; con la palma hacia ti no cuenta) | **Borrador** (la mano se vuelve una goma de borrar; se borra con el índice derecho; un aro alrededor del dedo muestra cuánto borra. **Pellizca con la derecha y gira en círculo** = tamaño del borrador: como el reloj más grande, al revés más chico; mientras pellizcas no se borra nada): tocar un **nodo** o un **relleno** lo borra. La **línea entera** solo se borra si la **frotas** (ida y vuelta, ~6 cm) lejos de sus nodos; se pone roja mientras |
+| Izquierda: **puño de lado o con el dorso hacia ti** (pulgar sobre los dedos; con la palma hacia ti no cuenta) | **Borrador** (la mano se vuelve una goma de borrar; se borra con el índice derecho; un aro alrededor del dedo muestra cuánto borra. **Pellizca con la derecha y gira la mano como una perilla** = tamaño del borrador: como el reloj más grande, al revés más chico; mientras pellizcas no se borra nada y un aro muestra el tamaño): tocar un **nodo** o un **relleno** lo borra. La **línea entera** solo se borra si la **frotas** (ida y vuelta, ~6 cm) lejos de sus nodos; se pone roja mientras |
 | **Pellizcar una línea** con la derecha (sin gesto izquierdo) | La **selecciona** (se pone azul) y la **mueves**. **Gira la muñeca** mientras la tienes = **girarla** (en Plano 2D gira dentro del plano; en 3D, hacia cualquier lado; los primeros 8° no cuentan). Se suelta con solo abrir un poco los dedos. Pellizcar en el aire = quitar la selección |
 | Con algo elegido: **toque corto** (pellizco rápido sin mover) sobre otra línea | **Selección múltiple**: la suma (o la quita). Arrastrar cualquiera de las azules **mueve todas**; con las dos manos cerca de ellas, se escalan y giran juntas |
 | **Las dos manos pellizcando lejos** de lo elegido | Se transforma **todo el dibujo** (aunque haya una línea, figura o imagen elegida) |
@@ -35,6 +35,8 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 
 ## Animación (morph)
 
+El reproductor (**Inicio, <, Play, >, + Clave, - Clave, fps**) está siempre visible justo debajo de la línea de tiempo.
+
 1. Mira hacia arriba y toca la **barra** para ir a otro fotograma (por ejemplo, el 40).
    El botón **Zoom** cambia cuántos fotogramas caben en la barra: Todo, 400, 100 o 25.
 2. Mueve los nodos (pulgar + medio). Se guarda una **clave** sola en ese fotograma.
@@ -52,7 +54,8 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 - **Foto**: imagen PNG del dibujo desde donde estás.
 - **Video anim** (página Medios): la animación en MP4 (1280x720), con el audio de las bocas si hay.
 - **Grabar** (página Medios) graba tu proceso: tus manos y cómo aparecen las líneas. **Detener** para.
-  **Video proceso** lo convierte en MP4 (líneas + manos en gris). **Vel** = x1, x2, x4 u x8.
+  **Video proceso** lo convierte en MP4 (líneas + tus manos con forma de mano, suaves y sombreadas).
+  El video se arma varias veces más rápido (la conversión se hace en la tarjeta gráfica). **Vel** = x1, x2, x4 u x8.
 - Si el MP4 falla, se guarda una carpeta con imágenes PNG y un `hacer_video.bat` (necesita ffmpeg en el PC).
 - Ni los paneles, ni los nodos, ni las imágenes de referencia salen en fotos ni videos.
 - **Líneas vivas** (página Medios, **por capa**: cambian solo la capa activa): **Temblor** (No, Suave, Medio, Fuerte),
@@ -60,7 +63,7 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
   **Suavidad** (Suave, Normal, Nervioso) y **Velocidad** (4, 8, 12 o 24 cambios por segundo).
   **Grosor de las hebras**: gesto de grosor (pulgar + anular) y pellizco derecho en el aire, sube/baja.
 - **Boceto** (página Medios): la capa activa se ve como lápiz **gris** o **azul** y **no sale** en fotos ni videos.
-- **Imán: Sí / No** (página Medios, por capa): con el imán apagado las líneas quedan como las dibujas (no se cierran
+- **Imán: Sí / No** (menú de la mano, con ícono de imán rojo = encendido, gris = apagado; por capa): con el imán apagado las líneas quedan como las dibujas (no se cierran
   ni se unen). Al poner una capa en boceto, el imán se apaga solo.
 - Al borrar nodos suena una burbujita.
 - **Plano: propio / unido** (página Medios): cada capa tiene su propio plano 2D. Las capas "unidas" comparten el plano,
