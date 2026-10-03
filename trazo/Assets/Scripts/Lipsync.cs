@@ -249,6 +249,22 @@ public class Lipsync : MonoBehaviour
         return -1;
     }
 
+    // La capa donde está la boca (las claves del lipsync van solo ahí).
+    int CapaBocas()
+    {
+        foreach (var p in poses)
+            if (p != null && p.trazos.Count > 0)
+                foreach (var d in p.trazos)
+                {
+                    if (d == null)
+                        continue;
+                    var t = dibujo.BuscarPorId(d.id);
+                    if (t != null)
+                        return t.capa;
+                }
+        return dibujo.capaActual;
+    }
+
     // Pone la forma de la boca en las líneas (con los mismos ids).
     void PonerBoca(int i)
     {
@@ -547,7 +563,7 @@ public class Lipsync : MonoBehaviour
         animacion.IrA(f);
         animacion.MostrarFotograma();
         PonerBoca(boca);
-        animacion.GuardarClaveEn(f);
+        animacion.GuardarClaveEn(f, CapaBocas());
     }
 
     // Una boca por fotograma, según el volumen y las frecuencias de la voz.

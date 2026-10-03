@@ -2,7 +2,9 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Una mano "normal" para el video del proceso (en vez de las líneas de los huesos):
-// dedos redondeados que se afinan hacia la punta, una palma con grosor y un poco de antebrazo.
+// dedos redondeados que se afinan hacia la punta y una palma con grosor.
+// Lleva un GUANTE NEGRO SIN DEDOS (los dedos quedan descubiertos desde su base) y una MANGA de ropa
+// larga y cerrada (así el brazo no se ve hueco).
 // Se arma con las 21 articulaciones que guardó GrabadorProceso (en coordenadas del mundo).
 public sealed class ManoVideo
 {
@@ -29,11 +31,19 @@ public sealed class ManoVideo
     const int Lados = 10;
     const int Paralelos = 6;
 
+    // Partes: 0 = piel (dedos), 1 = guante (palma, muñeca, base de los dedos), 2 = manga.
+    const int Piel = 0, Guante = 1, Manga = 2;
+    static readonly Color ColorGuante = new Color(0.07f, 0.07f, 0.08f);
+    static readonly Color ColorManga = new Color(0.22f, 0.25f, 0.32f);
+    const float LargoManga = 0.26f;
+
     readonly GameObject go;
     readonly Mesh malla;
+    readonly Material materialGuante, materialManga;
     readonly List<Vector3> vertices = new List<Vector3>();
     readonly List<Vector3> normales = new List<Vector3>();
-    readonly List<int> triangulos = new List<int>();
+    readonly List<int>[] partes = { new List<int>(), new List<int>(), new List<int>() };
+    List<int> triangulos;
     static Vector3[] esfera;
     static int[] esferaTri;
 
@@ -46,7 +56,9 @@ public sealed class ManoVideo
         malla.MarkDynamic();
         go.AddComponent<MeshFilter>().sharedMesh = malla;
         var mr = go.AddComponent<MeshRenderer>();
-        mr.sharedMaterial = material;
+        materialGuante = Copia(material, ColorGuante);
+        materialManga = Copia(material, ColorManga);
+        mr.sharedMaterials = new[] { material, materialGuante, materialManga };
         mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         mr.receiveShadows = false;
         ArmarEsfera();
@@ -61,28 +73,85 @@ public sealed class ManoVideo
             return;
         vertices.Clear();
         normales.Clear();
-        triangulos.Clear();
+        foreach (var l in partes)
+            l.Clear();
         for (int i = 0; i < Radio.Length; i++)
+        {
+            triangulos = partes[DeGuante(i) ? Guante : Piel];
             Esfera(a[i], Radio[i]);
+        }
         for (int k = 0; k + 1 < Segmentos.Length; k += 2)
-            Tubo(a[Segmentos[k]], Radio[Segmentos[k]], a[Segmentos[k + 1]], Radio[Segmentos[k + 1]]);
-        // Antebrazo: un poquito, hacia atrás de la muñeca.
+        {
+            int i0 = Segmentos[k], i1 = Segmentos[k + 1];
+            // El tubo va con guante si sus dos puntas están dentro del guante (palma y base del pulgar).
+            triangulos = partes[DeGuante(i0) && DeGuante(i1) ? Guante : Piel];
+            Tubo(a[i0], Radio[i0], a[i1], Radio[i1]);
+        }
+        triangulos = partes[Guante];
+        PalmaGruesa(a);
+        // Manga: desde la muñeca hacia atrás, larga y cerrada al final.
         Vector3 atras = a[0] - a[9];
         if (atras.sqrMagnitude > 1e-8f)
         {
-            Vector3 codo = a[0] + atras.normalized * 0.07f;
-            Tubo(a[0], Radio[0], codo, Radio[0] * 1.1f);
+            atras.Normalize();
+            triangulos = partes[Manga];
+            Vector3 inicio = a[0] + atras * 0.012f;
+            Vector3 fin = a[0] + atras * LargoManga;
+            Tubo(inicio, Radio[0] * 1.35f, fin, Radio[0] * 1.7f);
+            Tapa(inicio, -atras, Radio[0] * 1.35f);
+            Tapa(fin, atras, Radio[0] * 1.7f);
         }
-        PalmaGruesa(a);
         malla.Clear();
+        malla.subMeshCount = 3;
         malla.SetVertices(vertices);
         malla.SetNormals(normales);
-        malla.SetTriangles(triangulos, 0);
+        for (int k = 0; k < 3; k++)
+            malla.SetTriangles(partes[k], k);
         malla.RecalculateBounds();
+    }
+
+    // Con guante: la muñeca, la base del pulgar y los nudillos (la base de cada dedo). Lo demás es piel.
+    static bool DeGuante(int i)
+    {
+        return i == 0 || i == 1 || i == 2 || i == 5 || i == 9 || i == 13 || i == 17;
+    }
+
+    static Material Copia(Material m, Color c)
+    {
+        var copia = new Material(m);
+        if (copia.HasProperty("_BaseColor")) copia.SetColor("_BaseColor", c);
+        if (copia.HasProperty("_Color")) copia.SetColor("_Color", c);
+        return copia;
+    }
+
+    // Un círculo que cierra el tubo (así la manga no se ve hueca).
+    void Tapa(Vector3 centro, Vector3 normal, float radio)
+    {
+        Vector3 u = Vector3.Cross(normal, Mathf.Abs(normal.y) < 0.9f ? Vector3.up : Vector3.right).normalized;
+        Vector3 w = Vector3.Cross(normal, u);
+        int c = vertices.Count;
+        vertices.Add(centro);
+        normales.Add(normal);
+        for (int k = 0; k < Lados; k++)
+        {
+            float ang = 2f * Mathf.PI * k / Lados;
+            vertices.Add(centro + (u * Mathf.Cos(ang) + w * Mathf.Sin(ang)) * radio);
+            normales.Add(normal);
+        }
+        for (int k = 0; k < Lados; k++)
+        {
+            triangulos.Add(c);
+            triangulos.Add(c + 1 + k);
+            triangulos.Add(c + 1 + (k + 1) % Lados);
+        }
     }
 
     public void Destruir()
     {
+        if (materialGuante != null)
+            Object.Destroy(materialGuante);
+        if (materialManga != null)
+            Object.Destroy(materialManga);
         if (malla != null)
             Object.Destroy(malla);
         if (go != null)

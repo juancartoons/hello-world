@@ -14,6 +14,8 @@ public class PanelMuneca : MonoBehaviour
     public BotonTocable btnPlano, btnFondo, btnGuardar, btnCargar, btnBorrar;
     [Tooltip("Imán de la capa activa (con su ícono de imán encendido o apagado)")]
     public BotonTocable btnIman;
+    [Tooltip("X para cerrar el menú")]
+    public BotonTocable btnCerrar;
     Renderer[] iconoIman;
     Material imanEncendido, imanApagado;
     [Header("Figuras 3D")]
@@ -47,6 +49,8 @@ public class PanelMuneca : MonoBehaviour
             dibujo.alMensaje += Mensaje;
         }
         Conectar(btnFondo, SiguienteFondo);
+        if (control != null)
+            Conectar(btnCerrar, control.CerrarMenu);
         if (figuras == null && dibujo != null)
             figuras = dibujo.figuras;
         if (figuras != null)

@@ -85,7 +85,7 @@ public class ExportadorVideo : MonoBehaviour
     {
         if (Exportando || dibujo == null || animacion == null)
             return;
-        if (animacion.claves.Count < 2)
+        if (animacion.claves.Count < 2 || animacion.UltimaClave <= 0)
         {
             Mensaje("Necesitas al menos 2 claves para el video");
             return;
@@ -98,7 +98,7 @@ public class ExportadorVideo : MonoBehaviour
         Exportando = true;
         int fps = Mathf.RoundToInt(animacion.fotogramasPorSegundo);
         AudioClip audio = lipsync != null ? lipsync.Clip : null;
-        int fin = animacion.claves[animacion.claves.Count - 1].fotograma;
+        int fin = animacion.UltimaClave;
         if (audio != null)
             fin = Mathf.Max(fin, Mathf.CeilToInt(audio.length * fps));
         fin = Mathf.Clamp(fin, 1, Animacion.TotalFotogramas - 1);

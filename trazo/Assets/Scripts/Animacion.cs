@@ -2,11 +2,11 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Animación por "morph" (como las interpolaciones de forma de Flash), hasta 2000 fotogramas.
-// - Una CLAVE guarda la forma de todas las líneas en un fotograma.
-// - Entre dos claves, cada línea con los mismos nodos se transforma suavemente de una forma a otra.
-// - Si estás en un fotograma y editas algo, se crea/actualiza la clave de ese fotograma (automático).
-// - Si nunca tocas la línea de tiempo, el dibujo es normal (sin animación).
-// - Una línea NUEVA (dibujada en cualquier fotograma) aparece en toda la animación.
+// - CADA CAPA TIENE SUS PROPIAS CLAVES (como en Flash): una clave guarda la forma de las líneas de su capa.
+// - Entre dos claves de una capa, cada línea con los mismos nodos se transforma suavemente.
+// - Si estás en un fotograma y editas algo, se crea/actualiza la clave de ESA capa en ese fotograma (automático).
+// - Una capa sin claves no se anima (se queda quieta). Play reproduce todas las capas juntas.
+// - Una línea NUEVA (dibujada en cualquier fotograma) aparece en toda la animación de su capa.
 public class Animacion : MonoBehaviour
 {
     public const int TotalFotogramas = 2000;
@@ -17,13 +17,15 @@ public class Animacion : MonoBehaviour
     [Tooltip("Audio que suena junto con la animación (voz para el lipsync)")]
     public AudioSource fuenteAudio;
 
-    public readonly List<Clave> claves = new List<Clave>(); // ordenadas por fotograma
+    public readonly List<Clave> claves = new List<Clave>(); // de todas las capas, ordenadas por fotograma
     public int Fotograma { get; private set; }
     public bool Reproduciendo { get; private set; }
     public bool Activa => claves.Count > 0;
     public event System.Action alCambiar;
 
     float acumulado;
+
+    int CapaActiva => dibujo != null ? dibujo.capaActual : 0;
 
     void Awake()
     {
@@ -49,19 +51,32 @@ public class Animacion : MonoBehaviour
                 Avisar();
             }
             Trazo.huboCambio = false;
+            Trazo.cambiadosAnim.Clear();
             return;
         }
 
-        // Clave automática: lo que edites queda guardado en el fotograma actual.
+        // Clave automática: lo que edites queda guardado en el fotograma actual, en la capa de esas líneas.
         if (Trazo.huboCambio)
         {
             Trazo.huboCambio = false;
-            if (claves.Count > 0)
+            var capas = new HashSet<int>();
+            foreach (var t in Trazo.cambiadosAnim)
+                if (t != null)
+                    capas.Add(t.capa);
+            if (capas.Count == 0)
+                capas.Add(CapaActiva);
+            bool alguna = false;
+            foreach (int capa in capas)
             {
-                GuardarClave(Fotograma);
-                Avisar();
+                if (!CapaAnimada(capa))
+                    continue;
+                GuardarClave(Fotograma, capa);
+                alguna = true;
             }
+            if (alguna)
+                Avisar();
         }
+        Trazo.cambiadosAnim.Clear();
     }
 
     // Pone a sonar el audio desde el fotograma indicado (si hay audio).
@@ -79,72 +94,124 @@ public class Animacion : MonoBehaviour
         fuenteAudio.Play();
     }
 
+    // La última clave (de cualquier capa). 0 si no hay.
+    public int UltimaClave
+    {
+        get
+        {
+            int fin = 0;
+            foreach (var c in claves)
+                fin = Mathf.Max(fin, c.fotograma);
+            return fin;
+        }
+    }
+
     public int UltimoFotograma()
     {
-        int fin = claves.Count > 0 ? claves[claves.Count - 1].fotograma : 0;
+        int fin = UltimaClave;
         return fin > 0 ? fin : TotalFotogramas - 1;
     }
 
+    public bool CapaAnimada(int capa)
+    {
+        foreach (var c in claves)
+            if (c.capa == capa)
+                return true;
+        return false;
+    }
+
+    // Las claves de una capa (para las marcas de la línea de tiempo).
+    public List<Clave> ClavesDe(int capa)
+    {
+        var l = new List<Clave>();
+        foreach (var c in claves)
+            if (c.capa == capa)
+                l.Add(c);
+        return l;
+    }
+
+    bool CapaTieneLineas(int capa)
+    {
+        foreach (var t in dibujo.trazos)
+            if (t != null && t.capa == capa && t.nodos.Count >= 2)
+                return true;
+        return false;
+    }
+
     // Lo llama el Dibujo justo antes de cualquier cambio.
-    // Si es la primera edición fuera del fotograma 1, guarda el dibujo original como clave en el fotograma 1.
+    // Si editas fuera del fotograma 1, cada capa que aún no estaba animada guarda su dibujo original
+    // como clave en el fotograma 1 (así el cambio de ahora se vuelve un movimiento).
     public void AntesDeEditar()
     {
         Pausar();
-        if (claves.Count == 0 && Fotograma != 0)
-            GuardarClave(0);
+        if (Fotograma == 0)
+            return;
+        for (int capa = 0; capa < Dibujo.NumeroDeCapas; capa++)
+            if (!CapaAnimada(capa) && CapaTieneLineas(capa))
+                GuardarClave(0, capa);
     }
 
     public bool EsClave(int f)
     {
-        return BuscarClave(f) != null;
+        return BuscarClave(f, CapaActiva) != null;
     }
 
-    Clave BuscarClave(int f)
+    public bool EsClave(int f, int capa)
+    {
+        return BuscarClave(f, capa) != null;
+    }
+
+    Clave BuscarClave(int f, int capa)
     {
         foreach (var c in claves)
-            if (c.fotograma == f)
+            if (c.fotograma == f && c.capa == capa)
                 return c;
         return null;
     }
 
-    // Guarda (o reemplaza) la clave del fotograma f con la forma actual de todas las líneas.
+    // Guarda (o reemplaza) la clave del fotograma f de la capa activa.
     public void GuardarClaveEn(int f)
     {
-        GuardarClave(Mathf.Clamp(f, 0, TotalFotogramas - 1));
+        GuardarClaveEn(f, CapaActiva);
+    }
+
+    public void GuardarClaveEn(int f, int capa)
+    {
+        GuardarClave(Mathf.Clamp(f, 0, TotalFotogramas - 1), capa);
         Avisar();
     }
 
-    void GuardarClave(int f)
+    void GuardarClave(int f, int capa)
     {
-        var c = BuscarClave(f);
+        var c = BuscarClave(f, capa);
         if (c == null)
         {
-            c = new Clave { fotograma = f };
+            c = new Clave { fotograma = f, capa = capa };
             int i = 0;
-            while (i < claves.Count && claves[i].fotograma < f)
+            while (i < claves.Count && claves[i].fotograma <= f)
                 i++;
             claves.Insert(i, c);
         }
-        // Las líneas que ya existían en alguna clave (las demás son líneas NUEVAS).
+        // Las líneas que ya existían en alguna clave de esta capa (las demás son líneas NUEVAS).
         var conocidas = new HashSet<int>();
         foreach (var k in claves)
-            foreach (var p in k.trazos)
-                if (p != null)
-                    conocidas.Add(p.id);
+            if (k.capa == capa)
+                foreach (var p in k.trazos)
+                    if (p != null)
+                        conocidas.Add(p.id);
         c.cache = null;
         c.trazos.Clear();
         foreach (var t in dibujo.trazos)
-            if (t != null && t.visibleAnim && t.nodos.Count >= 2)
+            if (t != null && t.capa == capa && t.visibleAnim && t.nodos.Count >= 2)
                 c.trazos.Add(t.CrearDatos());
-        // Una línea nueva existe en TODA la animación (con la misma forma en todas las claves),
-        // así no desaparece en otros fotogramas y después la puedes animar.
+        // Una línea nueva existe en TODA la animación de su capa (con la misma forma en todas sus claves).
         foreach (var t in dibujo.trazos)
         {
-            if (t == null || !t.visibleAnim || t.Dibujando || t.nodos.Count < 2 || conocidas.Contains(t.id))
+            if (t == null || t.capa != capa || !t.visibleAnim || t.Dibujando || t.nodos.Count < 2 || conocidas.Contains(t.id))
                 continue;
             foreach (var k in claves)
             {
-                if (k == c)
+                if (k == c || k.capa != capa)
                     continue;
                 k.trazos.Add(t.CrearDatos());
                 k.cache = null;
@@ -192,30 +259,31 @@ public class Animacion : MonoBehaviour
         Restaurar(nuevas, f);
     }
 
-    // ---------- Botones de la línea de tiempo ----------
+    // ---------- Botones de la línea de tiempo (trabajan en la capa activa) ----------
 
     public void AgregarClave()
     {
         dibujo.GuardarParaDeshacer();
-        GuardarClave(Fotograma);
+        GuardarClave(Fotograma, CapaActiva);
         Trazo.huboCambio = false;
+        Trazo.cambiadosAnim.Clear();
         Avisar();
-        dibujo.Mensaje("Clave en el fotograma " + (Fotograma + 1));
+        dibujo.Mensaje("Clave en el fotograma " + (Fotograma + 1) + " (" + dibujo.CapaActual.nombre + ")");
     }
 
     public void QuitarClave()
     {
-        var c = BuscarClave(Fotograma);
+        var c = BuscarClave(Fotograma, CapaActiva);
         if (c == null)
         {
-            dibujo.Mensaje("Aquí no hay clave");
+            dibujo.Mensaje("Aquí no hay clave de " + dibujo.CapaActual.nombre);
             return;
         }
         dibujo.GuardarParaDeshacer();
         claves.Remove(c);
         MostrarFotograma();
         Avisar();
-        dibujo.Mensaje("Clave quitada");
+        dibujo.Mensaje("Clave quitada (" + dibujo.CapaActual.nombre + ")");
     }
 
     public void AlternarReproducir()
@@ -262,11 +330,11 @@ public class Animacion : MonoBehaviour
     public void MoverClave(int desde, int hasta)
     {
         hasta = Mathf.Clamp(hasta, 0, TotalFotogramas - 1);
-        var c = BuscarClave(desde);
+        var c = BuscarClave(desde, CapaActiva);
         if (c == null || desde == hasta)
             return;
         dibujo.GuardarParaDeshacer();
-        var otra = BuscarClave(hasta);
+        var otra = BuscarClave(hasta, CapaActiva);
         if (otra != null)
             claves.Remove(otra);
         c.fotograma = hasta;
@@ -299,10 +367,17 @@ public class Animacion : MonoBehaviour
     {
         Reproduciendo = false;
         claves.Clear();
+        bool viejas = false;
         if (lista != null)
             foreach (var c in lista)
                 if (c != null && c.trazos != null)
+                {
                     claves.Add(c);
+                    if (c.capa < 0)
+                        viejas = true;
+                }
+        if (viejas)
+            SepararPorCapas();
         claves.Sort((a, b) => a.fotograma.CompareTo(b.fotograma));
         Fotograma = Mathf.Clamp(f, 0, TotalFotogramas - 1);
         if (claves.Count == 0)
@@ -315,26 +390,56 @@ public class Animacion : MonoBehaviour
         Avisar();
     }
 
-    // Pone cada línea en la forma que le toca en el fotograma actual.
+    // Animaciones de antes (una clave para todo el dibujo): cada clave se reparte en sus capas.
+    void SepararPorCapas()
+    {
+        var viejas = claves.FindAll(c => c.capa < 0);
+        claves.RemoveAll(c => c.capa < 0);
+        var capas = new HashSet<int>();
+        foreach (var v in viejas)
+            foreach (var p in v.trazos)
+                if (p != null)
+                    capas.Add(p.capa);
+        foreach (var v in viejas)
+            foreach (int capa in capas)
+            {
+                var k = new Clave { fotograma = v.fotograma, capa = capa };
+                foreach (var p in v.trazos)
+                    if (p != null && p.capa == capa)
+                        k.trazos.Add(p);
+                claves.Add(k);
+            }
+    }
+
+    // Pone cada línea en la forma que le toca en el fotograma actual (cada capa con sus claves).
     public void MostrarFotograma()
     {
         if (claves.Count == 0)
             return;
-        Clave a = null;
-        Clave b = null;
+        var anterior = new Dictionary<int, Clave>();
+        var siguiente = new Dictionary<int, Clave>();
+        var conocidas = new Dictionary<int, HashSet<int>>();
         foreach (var c in claves)
         {
+            HashSet<int> ids;
+            if (!conocidas.TryGetValue(c.capa, out ids))
+                conocidas[c.capa] = ids = new HashSet<int>();
+            foreach (var p in c.trazos)
+                if (p != null)
+                    ids.Add(p.id);
             if (c.fotograma <= Fotograma)
-                a = c;
-            else if (b == null)
-                b = c;
+                anterior[c.capa] = c;
+            else if (!siguiente.ContainsKey(c.capa))
+                siguiente[c.capa] = c;
         }
-        if (a == null)
+        // Antes de la primera clave de una capa, la capa se ve como en esa primera clave.
+        foreach (int capa in conocidas.Keys)
         {
-            a = claves[0];
-            b = null;
+            if (anterior.ContainsKey(capa))
+                continue;
+            anterior[capa] = siguiente[capa];
+            siguiente.Remove(capa);
         }
-        float u = b != null ? (Fotograma - a.fotograma) / (float)(b.fotograma - a.fotograma) : 0f;
 
         bool antes = Trazo.silenciar;
         Trazo.silenciar = true;
@@ -342,14 +447,24 @@ public class Animacion : MonoBehaviour
         {
             if (t == null)
                 continue;
+            HashSet<int> ids;
+            if (!conocidas.TryGetValue(t.capa, out ids) || !ids.Contains(t.id))
+            {
+                t.visibleAnim = true; // su capa no está animada (o la línea no está en sus claves): se queda quieta
+                continue;
+            }
+            Clave a = anterior[t.capa];
+            Clave b;
+            siguiente.TryGetValue(t.capa, out b);
             var pa = BuscarPose(a, t.id);
             if (pa == null)
             {
                 t.visibleAnim = false;
                 continue;
             }
+            float u = b != null && b.fotograma > a.fotograma ? (Fotograma - a.fotograma) / (float)(b.fotograma - a.fotograma) : 0f;
             t.visibleAnim = true;
-            t.AplicarPose(pa, b != null ? BuscarPose(b, t.id) : null, u);
+            t.AplicarPose(pa, b != null ? BuscarPose(b, t.id) : null, Mathf.Clamp01(u));
         }
         Trazo.silenciar = antes;
         Trazo.huboCambio = false;

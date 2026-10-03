@@ -63,6 +63,7 @@ public class Clave
 {
     public int fotograma;
     public List<DatosTrazo> trazos = new List<DatosTrazo>();
+    public int capa = -1; // la capa de esta clave (-1 = animación de antes: una clave para todo el dibujo)
     // Copia en texto (para deshacer rápido). Se borra cada vez que la clave cambia.
     [System.NonSerialized] public string cache;
 }
@@ -682,11 +683,12 @@ public class Dibujo : MonoBehaviour
     // Con animación, la línea solo se esconde desde este fotograma; sin animación, se elimina.
     void Desaparecer(Trazo t, bool conDestello)
     {
-        bool esconder = AnimacionActiva;
+        bool esconder = animacion != null && animacion.CapaAnimada(t.capa);
         if (esconder)
         {
             t.visibleAnim = false;
             Trazo.huboCambio = true;
+            Trazo.cambiadosAnim.Add(t);
         }
         else
         {

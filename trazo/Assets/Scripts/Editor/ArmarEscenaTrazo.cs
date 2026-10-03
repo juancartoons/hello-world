@@ -443,6 +443,11 @@ public static class ArmarEscenaTrazo
         panel.btnALineas = botones[8];
         panel.btnQuitarFigura = botones[9];
         panel.btnIman = botones[10];
+        // X arriba a la derecha: cerrar el menú a mano.
+        panel.btnCerrar = Boton(contenido.transform, "X", new Vector3(0.04f, 0.09f, 0f), matBoton, matBotonMarcado);
+        panel.btnCerrar.transform.localScale = new Vector3(0.016f, 0.016f, 0.008f);
+        if (panel.btnCerrar.etiqueta != null)
+            panel.btnCerrar.etiqueta.rectTransform.sizeDelta = new Vector2(0.014f, 0.014f);
         Texto(contenido.transform, "Figuras 3D", new Vector3(0f, -0.004f, -0.001f), new Vector2(0.09f, 0.01f), new Color(0.3f, 0.3f, 0.35f));
         return panel;
     }
@@ -496,7 +501,34 @@ public static class ArmarEscenaTrazo
         panel.asaAbajo = asaAbajo.transform;
         Texto(c, "pellizca aquí para mover · + otra mano = tamaño", new Vector3(0f, 0.195f, -0.006f), new Vector2(0.13f, 0.012f), Color.white);
 
-        panel.textoFotograma = Texto(c, "Fotograma 1 / 2000", new Vector3(0f, 0.168f, -0.001f), new Vector2(0.4f, 0.018f), Color.black);
+        panel.textoFotograma = Texto(c, "Fotograma 1 / 2000", new Vector3(0.045f, 0.168f, -0.001f), new Vector2(0.34f, 0.018f), Color.black);
+
+        // Capas: un botón plegable ("+ Capa 1") y, al abrirlo, una fila por capa encima del panel
+        // (elegir la capa, Ver/Oculta y las claves de esa capa alineadas con la línea de tiempo).
+        panel.btnCapasPlegar = Boton(c, "+ Capa 1", new Vector3(-0.19f, 0.168f, 0f), matBoton, matBotonMarcado);
+        panel.btnCapasPlegar.transform.localScale = new Vector3(0.075f, 0.02f, 0.008f);
+        if (panel.btnCapasPlegar.etiqueta != null)
+            panel.btnCapasPlegar.etiqueta.rectTransform.sizeDelta = new Vector2(0.07f, 0.016f);
+        var capasGo = new GameObject("CapasDesplegable");
+        capasGo.transform.SetParent(c, false);
+        panel.capasDesplegable = capasGo;
+        var fondoCapas = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        fondoCapas.name = "FondoCapas";
+        Object.DestroyImmediate(fondoCapas.GetComponent<Collider>());
+        fondoCapas.transform.SetParent(capasGo.transform, false);
+        float filasAlto = Dibujo.NumeroDeCapas * panel.pasoCapasY;
+        fondoCapas.transform.localPosition = new Vector3(-0.045f, panel.filaCapasY + filasAlto * 0.5f - panel.pasoCapasY * 0.5f, 0.006f);
+        fondoCapas.transform.localScale = new Vector3(0.6f, filasAlto + 0.01f, 1f);
+        SinSombras(fondoCapas.GetComponent<Renderer>(), matPanel);
+        panel.btnCapas = new BotonTocable[Dibujo.NumeroDeCapas];
+        panel.btnVer = new BotonTocable[Dibujo.NumeroDeCapas];
+        for (int i = 0; i < Dibujo.NumeroDeCapas; i++)
+        {
+            float y = panel.filaCapasY + i * panel.pasoCapasY;
+            panel.btnCapas[i] = Boton(capasGo.transform, "Capa " + (i + 1), new Vector3(-0.3f, y, 0f), matBoton, matBotonMarcado);
+            panel.btnVer[i] = Boton(capasGo.transform, "Ver", new Vector3(-0.25f, y, 0f), matBoton, matBotonMarcado);
+            panel.btnVer[i].transform.localScale = new Vector3(0.042f, 0.022f, 0.008f);
+        }
 
         // Línea de tiempo
         var barra = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -548,18 +580,10 @@ public static class ArmarEscenaTrazo
         panel.btnQuitarClave = b[5];
         panel.btnFps = b[6];
 
-        panel.btnCapas = new BotonTocable[Dibujo.NumeroDeCapas];
-        panel.btnVer = new BotonTocable[Dibujo.NumeroDeCapas];
-        for (int i = 0; i < Dibujo.NumeroDeCapas; i++)
-        {
-            float x = -0.165f + i * 0.11f;
-            panel.btnCapas[i] = Boton(animar, "Capa " + (i + 1), new Vector3(x, 0.018f, 0f), matBoton, matBotonMarcado);
-            panel.btnVer[i] = Boton(animar, "Ver", new Vector3(x, -0.01f, 0f), matBoton, matBotonMarcado);
-        }
         string[] menu = { "Libre (3D)", "Fondo", "Guardar", "Cargar", "Borrar todo", "SVG", "Foto" };
         var m = new BotonTocable[menu.Length];
         for (int i = 0; i < menu.Length; i++)
-            m[i] = Boton(animar, menu[i], new Vector3(-0.192f + i * 0.064f, -0.05f, 0f), matBoton, matBotonMarcado);
+            m[i] = Boton(animar, menu[i], new Vector3(-0.192f + i * 0.064f, 0.03f, 0f), matBoton, matBotonMarcado);
         panel.btnPlano = m[0];
         panel.btnFondo = m[1];
         panel.btnGuardar = m[2];
@@ -567,7 +591,7 @@ public static class ArmarEscenaTrazo
         panel.btnBorrarTodo = m[4];
         panel.btnSvg = m[5];
         panel.btnFoto = m[6];
-        Texto(animar, "Toca la barra = ir a un fotograma · pellizca una clave = moverla · si editas, se guarda una clave", new Vector3(0f, -0.09f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.3f, 0.3f, 0.35f));
+        Texto(animar, "Toca la barra = ir a un fotograma · pellizca una clave = moverla · si editas, se guarda una clave en tu capa", new Vector3(0f, -0.09f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.3f, 0.3f, 0.35f));
 
         // ----- Página Medios -----
         var medios = Pagina(c, "PaginaMedios");

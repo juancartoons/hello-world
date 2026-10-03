@@ -234,12 +234,16 @@ public class ControlManos : MonoBehaviour
     bool tieneRotMano;
     float anguloGiro;
     const float ZonaMuertaGiro = 8f;
-    // Tamaño del borrador: con el puño izquierdo, PELLIZCA con la derecha y gira la mano como una perilla.
+    // Tamaño del borrador: con el puño izquierdo, PELLIZCA con la derecha y haz círculos (como el dial de grosor).
+    // El punto rojo ES el borrador: su tamaño es lo que borra.
     [Tooltip("Tamaño del borrador (1 = normal)")]
     public float tamanoBorrador = 1f;
-    bool dialBorrarActivo, dialBorrarUsado;
-    Quaternion rotBorradorInicio = Quaternion.identity;
-    float tamanoBorradorInicio = 1f;
+    [Tooltip("Radio del borrador con tamaño 1 (metros)")]
+    public float radioBorrador = 0.012f;
+    bool dialBorrarActivo, dialBorrarUsado, dialBorrarPrevioValido;
+    Vector3 dialBorrarCentro, dialBorrarPrevio;
+    float dialBorrarAngulo, tamanoBorradorInicio = 1f;
+    float RadioBorrador => radioBorrador * tamanoBorrador;
     readonly List<Trazo> seleccionPrevia = new List<Trazo>();
     float toqueLineaDesde;
     bool toqueYaSeleccionada, toqueMovio;
@@ -389,12 +393,7 @@ public class ControlManos : MonoBehaviour
         simbolos.Candado(DibujoBloqueado || Titere.Activo, Cabeza);
         bool dial = GestoIzq == Gesto.Grosor && dialUsado && Cabeza != null;
         // Con el borrador: un aro alrededor del dedo muestra cuánto borra.
-        // Solo mientras cambias el tamaño (pellizco derecho): un aro muestra cuánto borra.
-        bool aroBorrador = !dial && GestoIzq == Gesto.Borrar && Der.valida && Der.pellizco && Cabeza != null && !Ocupado;
-        if (aroBorrador)
-            simbolos.Dial(true, Der.PuntoPellizco, Cabeza.position, radioBorrarNodo * tamanoBorrador * 2f);
-        else
-            simbolos.Dial(dial, dialCentro, Cabeza != null ? Cabeza.position : Vector3.zero, Mathf.Clamp(dialRadio * 2f, 0.02f, 0.08f));
+        simbolos.Dial(dial, dialCentro, Cabeza != null ? Cabeza.position : Vector3.zero, Mathf.Clamp(dialRadio * 2f, 0.02f, 0.08f));
     }
 
     // ---------- Pose de la mano izquierda ----------
@@ -1247,42 +1246,46 @@ public class ControlManos : MonoBehaviour
         dialPrevioValido = true;
     }
 
-    // Perilla del borrador: con el pellizco derecho, gira la mano (como una perilla frente a ti).
-    // Como el reloj = más grande; al revés = más chico. Los primeros 10° no cuentan.
+    // Dial del borrador: con el pellizco derecho, haz círculos pequeños (como un teléfono de disco).
+    // Como el reloj = más grande; al revés = más chico. Una vuelta = el doble.
     void DialBorrador()
     {
-        var muneca = ManosUtil.Hueso(Der.esqueleto, Titere.Muneca);
-        if (muneca == null || Cabeza == null)
+        if (Cabeza == null)
             return;
+        Vector3 p = Der.PuntoPellizco;
         if (!dialBorrarActivo)
         {
+            // Solo al empezar el pellizco: aquí queda el centro del dial.
             dialBorrarActivo = true;
-            rotBorradorInicio = muneca.rotation;
+            dialBorrarPrevioValido = false;
+            dialBorrarCentro = p;
+            dialBorrarAngulo = 0f;
             tamanoBorradorInicio = tamanoBorrador;
         }
-        Quaternion dq = muneca.rotation * Quaternion.Inverse(rotBorradorInicio);
+        dialBorrarCentro = Vector3.Lerp(dialBorrarCentro, p, 1f - Mathf.Exp(-1f * Time.deltaTime));
         Vector3 eje = Cabeza.forward;
-        Vector3 v = new Vector3(dq.x, dq.y, dq.z);
-        Vector3 p = eje * Vector3.Dot(v, eje);
-        float largo = Mathf.Sqrt(p.sqrMagnitude + dq.w * dq.w);
-        if (largo < 1e-6f)
+        Vector3 r = Vector3.ProjectOnPlane(p - dialBorrarCentro, eje);
+        if (r.magnitude < 0.004f || r.magnitude > 0.08f)
+        {
+            dialBorrarPrevioValido = false;
             return;
-        var giro = new Quaternion(p.x / largo, p.y / largo, p.z / largo, dq.w / largo);
-        float angulo;
-        Vector3 ejeGiro;
-        giro.ToAngleAxis(out angulo, out ejeGiro);
-        if (angulo > 180f)
-            angulo -= 360f;
-        if (float.IsNaN(ejeGiro.x) || float.IsInfinity(ejeGiro.x))
-            return;
-        // Visto desde tus ojos, un giro positivo alrededor de "adelante" es como el reloj.
-        float a = angulo * (Vector3.Dot(ejeGiro, eje) >= 0f ? 1f : -1f);
-        float util = Mathf.Sign(a) * Mathf.Max(0f, Mathf.Abs(a) - 10f);
-        if (Mathf.Abs(util) > 0f)
-            dialBorrarUsado = true;
-        tamanoBorrador = Mathf.Clamp(tamanoBorradorInicio * Mathf.Pow(2f, util / 90f), 0.3f, 5f);
-        if (dialBorrarUsado)
-            MostrarEtiqueta("Borrador x" + tamanoBorrador.ToString("0.0"));
+        }
+        if (dialBorrarPrevioValido)
+        {
+            // SignedAngle es negativo cuando gira como el reloj (visto desde tus ojos).
+            float paso = -Vector3.SignedAngle(dialBorrarPrevio, r, eje);
+            if (Mathf.Abs(paso) < 45f)
+                dialBorrarAngulo += paso;
+            if (!dialBorrarUsado && Mathf.Abs(dialBorrarAngulo) > 30f)
+                dialBorrarUsado = true;
+            if (dialBorrarUsado)
+            {
+                tamanoBorrador = Mathf.Clamp(tamanoBorradorInicio * Mathf.Pow(2f, dialBorrarAngulo / 360f), 0.3f, 6f);
+                MostrarEtiqueta("Borrador x" + tamanoBorrador.ToString("0.0"));
+            }
+        }
+        dialBorrarPrevio = r;
+        dialBorrarPrevioValido = true;
     }
 
     // ---------- Borrador: puño izquierdo + tocar con el índice derecho ----------
@@ -1314,11 +1317,11 @@ public class ControlManos : MonoBehaviour
         Vector3 punta = Der.indice;
         Vector3 local = dibujo.transform.InverseTransformPoint(punta);
         float escala = dibujo.EscalaMundo;
-        float tb = tamanoBorrador;
+        float rb = RadioBorrador; // lo que se ve (el punto rojo) es lo que borra
         // En la hoja del lápiz de boceto, el borrador es una goma que aclara el grafito.
         if (dibujo.UsaHoja && dibujo.HayPlano)
         {
-            dibujo.hojas.radioGoma = 0.012f * tb;
+            dibujo.hojas.radioGoma = rb;
             LapizHoja(local, true);
         }
 
@@ -1326,14 +1329,14 @@ public class ControlManos : MonoBehaviour
         Trazo t = null;
         int i = -1;
         bool frotando = froteTrazo != null && froteRecorrido > 0.012f && Dibujo.Editable(froteTrazo)
-                        && froteTrazo.DistanciaACurva(local) * escala < froteTrazo.ancho * escala * 0.5f + 0.015f * tb;
+                        && froteTrazo.DistanciaACurva(local) * escala < froteTrazo.ancho * escala * 0.5f + rb + 0.004f;
         if (frotando)
         {
             // Si ya empezaste a frotar, sigues frotando esa línea aunque pases cerca de un nodo.
             t = froteTrazo;
             tipo = Objetivo.Linea;
         }
-        else if (BuscarNodoCercano(punta, punta, radioBorrarNodo * tb, null, out t, out i))
+        else if (BuscarNodoCercano(punta, punta, rb + 0.005f, null, out t, out i))
         {
             tipo = Objetivo.Nodo;
         }
@@ -1345,7 +1348,7 @@ public class ControlManos : MonoBehaviour
                 if (!Dibujo.Editable(o))
                     continue;
                 float d = o.DistanciaACurva(local) * escala;
-                float limite = o.ancho * escala * 0.5f + 0.008f * tb;
+                float limite = o.ancho * escala * 0.5f + rb;
                 if (d < limite && d < mejor)
                 {
                     mejor = d;
@@ -1357,7 +1360,7 @@ public class ControlManos : MonoBehaviour
             {
                 foreach (var o in dibujo.trazos)
                 {
-                    if (Dibujo.Editable(o) && o.relleno && o.DentroDeRelleno(local, 0.012f * tb / escala))
+                    if (Dibujo.Editable(o) && o.relleno && o.DentroDeRelleno(local, rb / escala))
                     {
                         t = o;
                         tipo = Objetivo.Relleno;
@@ -2229,17 +2232,27 @@ public class ControlManos : MonoBehaviour
             cursor.gameObject.SetActive(ver);
         if (!ver)
             return;
-        cursor.position = Der.indice;
         bool borrando = GestoIzq == Gesto.Borrar;
+        // Con el borrador, el punto rojo es el borrador (mientras cambias su tamaño, va entre tus dedos).
+        cursor.position = borrando && Der.pellizco ? Der.PuntoPellizco : Der.indice;
         var mat = borrando && materialCursorBorrar != null ? materialCursorBorrar : materialCursor;
         if (mat != null && cursorRender.sharedMaterial != mat)
             cursorRender.sharedMaterial = mat;
-        cursor.localScale = Vector3.one * (borrando ? 0.012f : Mathf.Max(0.003f, dibujo.AnchoNuevoMundo));
+        cursor.localScale = Vector3.one * (borrando ? RadioBorrador * 2f : Mathf.Max(0.003f, dibujo.AnchoNuevoMundo));
     }
 
     // Menú: mano izquierda abierta con la punta del pulgar en la base de los dedos.
     // Una vez abierto, se queda aunque la mano derecha tape un momento a la izquierda
     // (eso pasa al tocar los botones). Se cierra al hacer otro gesto o al quitar el pulgar un rato.
+    // La X del menú de la mano: lo cierra (y no se vuelve a abrir hasta que quites el pulgar y lo pongas otra vez).
+    bool esperarSoltarMenu;
+
+    public void CerrarMenu()
+    {
+        menuAbierto = false;
+        esperarSoltarMenu = true;
+    }
+
     void ActualizarMenu()
     {
         if (GestoIzq != Gesto.Ninguno || Cabeza == null)
@@ -2250,6 +2263,13 @@ public class ControlManos : MonoBehaviour
         bool pose = poseValida
                     && distanciaMenu < (menuAbierto ? 0.09f : 0.045f)
                     && (menuAbierto || DedosAbiertos());
+        if (esperarSoltarMenu)
+        {
+            menuAbierto = false;
+            if (!poseValida || distanciaMenu > 0.06f)
+                esperarSoltarMenu = false;
+            return;
+        }
         if (pose)
         {
             menuAbierto = true;

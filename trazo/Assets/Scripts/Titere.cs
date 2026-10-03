@@ -718,7 +718,7 @@ public class Titere : MonoBehaviour
                 int f = animacion.Fotograma;
                 dibujo.GuardarParaDeshacer();
                 posando.PoseDedos(dedos, normalPalma, munecaDedos);
-                animacion.GuardarClaveEn(f);
+                animacion.GuardarClaveEn(f, CapaDe(posando.datos));
                 Trazo.huboCambio = false;
                 Mensaje("Clave guardada en el fotograma " + (f + 1));
             }
@@ -866,8 +866,20 @@ public class Titere : MonoBehaviour
         animacion.IrA(f);
         animacion.MostrarFotograma();
         PonerTodas();
-        animacion.GuardarClaveEn(f);
+        // Cada personaje guarda su clave en SU capa.
+        var capas = new HashSet<int>();
+        foreach (var m in manos)
+            if (m != null)
+                capas.Add(CapaDe(m.datos));
+        foreach (int capa in capas)
+            animacion.GuardarClaveEn(f, capa);
         Trazo.huboCambio = false;
+    }
+
+    int CapaDe(DatosPersonaje p)
+    {
+        var t = p != null ? dibujo.BuscarPorId(p.pierna1) : null;
+        return t != null ? t.capa : dibujo.capaActual;
     }
 
     void TerminarGrabacion()

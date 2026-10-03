@@ -79,6 +79,8 @@ public class Trazo : MonoBehaviour
     // Para grabar el proceso: qué líneas cambiaron desde la última muestra.
     public static bool registrarCambios;
     public static readonly HashSet<Trazo> modificados = new HashSet<Trazo>();
+    // Líneas que cambiaron (para saber en qué capa poner la clave automática).
+    public static readonly HashSet<Trazo> cambiadosAnim = new HashSet<Trazo>();
 
     const float separacionCrudos = 0.003f;       // metros entre puntos al dibujar
     const float toleranciaSimplificar = 0.003f;  // cuánto puede alejarse la curva al simplificar
@@ -562,7 +564,10 @@ public class Trazo : MonoBehaviour
         if (rellenoRenderer != null && rellenoRenderer.forceRenderingOff != oculto)
             rellenoRenderer.forceRenderingOff = oculto;
         if (!silenciar)
+        {
             huboCambio = true;
+            cambiadosAnim.Add(this);
+        }
         if (registrarCambios)
             modificados.Add(this);
         muestras.Clear();

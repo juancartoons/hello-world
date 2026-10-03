@@ -47,6 +47,16 @@ public class PanelArriba : MonoBehaviour
     public BotonTocable btnPlano, btnFondo, btnGuardar, btnCargar, btnBorrarTodo, btnSvg, btnFoto;
     public BotonTocable[] btnCapas = new BotonTocable[0];
     public BotonTocable[] btnVer = new BotonTocable[0];
+    [Header("Capas (plegable, encima de la línea de tiempo)")]
+    [Tooltip("Botón \"+ Capa 1\": abre o cierra la lista de capas")]
+    public BotonTocable btnCapasPlegar;
+    [Tooltip("Las filas de capas (Capa, Ver y sus claves)")]
+    public GameObject capasDesplegable;
+    [Tooltip("Altura (local) de la fila de la Capa 1; las demás van encima")]
+    public float filaCapasY = 0.232f;
+    public float pasoCapasY = 0.028f;
+    bool capasAbiertas;
+    readonly List<Transform>[] marcasCapa = new List<Transform>[Dibujo.NumeroDeCapas];
 
     [Header("Medios")]
     public BotonTocable btnGrabar, btnVideoProceso, btnVelocidad, btnVideoAnim, btnImagenMas, btnImagenMenos, btnTemblor;
@@ -130,6 +140,8 @@ public class PanelArriba : MonoBehaviour
         Conectar(btnZoom, CambiarZoom);
         Conectar(btnSeguir, AlternarFijo);
         Conectar(btnAyuda, AlternarAyuda);
+        Conectar(btnCapasPlegar, () => AbrirCapas(!capasAbiertas));
+        PrepararCapas();
 
         if (animacion != null)
         {
@@ -225,6 +237,96 @@ public class PanelArriba : MonoBehaviour
             contenido.SetActive(false);
     }
 
+    // ---------- Capas plegables ----------
+
+    void PrepararCapas()
+    {
+        if (capasDesplegable == null)
+            return;
+        // Una tira por capa (alineada con la línea de tiempo) donde se ven las claves de esa capa.
+        var materialBarra = barra != null ? barra.GetComponent<Renderer>().sharedMaterial : null;
+        for (int i = 0; i < Dibujo.NumeroDeCapas; i++)
+        {
+            var tira = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            tira.name = "TiraCapa" + (i + 1);
+            Destroy(tira.GetComponent<Collider>());
+            tira.transform.SetParent(capasDesplegable.transform, false);
+            tira.transform.localPosition = new Vector3(barra != null ? barra.localPosition.x : 0f, filaCapasY + i * pasoCapasY, 0f);
+            tira.transform.localScale = new Vector3(barra != null ? barra.localScale.x : 0.44f, 0.006f, 0.004f);
+            var r = tira.GetComponent<Renderer>();
+            if (materialBarra != null)
+                r.sharedMaterial = materialBarra;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            marcasCapa[i] = new List<Transform>();
+        }
+        capasDesplegable.SetActive(false);
+    }
+
+    void AbrirCapas(bool abrir)
+    {
+        capasAbiertas = abrir;
+        if (capasDesplegable != null)
+            capasDesplegable.SetActive(abrir);
+    }
+
+    void RefrescarCapas()
+    {
+        if (dibujo == null)
+            return;
+        if (btnCapasPlegar != null)
+        {
+            btnCapasPlegar.PonerTexto((capasAbiertas ? "- " : "+ ") + dibujo.CapaActual.nombre);
+            btnCapasPlegar.Marcar(capasAbiertas);
+        }
+        if (!capasAbiertas || capasDesplegable == null || animacion == null || barra == null)
+            return;
+        for (int i = 0; i < btnCapas.Length && i < dibujo.capas.Count; i++)
+            if (btnCapas[i] != null)
+                btnCapas[i].Marcar(i == dibujo.capaActual);
+        for (int i = 0; i < btnVer.Length && i < dibujo.capas.Count; i++)
+        {
+            if (btnVer[i] == null)
+                continue;
+            bool capaVisible = dibujo.capas[i].visible;
+            btnVer[i].PonerTexto(capaVisible ? "Ver" : "Oculta");
+            btnVer[i].Marcar(!capaVisible);
+        }
+        for (int i = 0; i < Dibujo.NumeroDeCapas; i++)
+        {
+            var lista = marcasCapa[i];
+            if (lista == null)
+                continue;
+            int n = 0;
+            foreach (var c in animacion.ClavesDe(i))
+            {
+                if (!EnVentana(c.fotograma))
+                    continue;
+                if (n >= lista.Count)
+                {
+                    var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    go.name = "MarcaCapa";
+                    Destroy(go.GetComponent<Collider>());
+                    go.transform.SetParent(capasDesplegable.transform, false);
+                    var r = go.GetComponent<Renderer>();
+                    if (materialClave != null)
+                        r.sharedMaterial = materialClave;
+                    r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    lista.Add(go.transform);
+                }
+                var m = lista[n++];
+                if (!m.gameObject.activeSelf)
+                    m.gameObject.SetActive(true);
+                Vector3 pos = PosicionEnBarra(c.fotograma, -0.004f);
+                pos.y = filaCapasY + i * pasoCapasY;
+                m.localPosition = pos;
+                m.localScale = new Vector3(Ventana > 400 ? 0.002f : 0.0035f, 0.016f, 0.004f);
+            }
+            for (int k = n; k < lista.Count; k++)
+                if (lista[k].gameObject.activeSelf)
+                    lista[k].gameObject.SetActive(false);
+        }
+    }
+
     bool muestraBocasHecha;
 
     void PonerPagina(int p)
@@ -315,7 +417,9 @@ public class PanelArriba : MonoBehaviour
             return false;
         Vector3 l = transform.InverseTransformPoint(mundo);
         float abajo = esAyuda || (listaArchivos != null && listaArchivos.activeSelf) ? -0.33f : -0.175f;
-        return Mathf.Abs(l.x) < 0.27f && l.y > abajo && l.y < 0.225f && Mathf.Abs(l.z) < 0.06f;
+        float arriba = capasAbiertas ? filaCapasY + Dibujo.NumeroDeCapas * pasoCapasY : 0.225f;
+        float lado = capasAbiertas ? 0.34f : 0.27f;
+        return Mathf.Abs(l.x) < lado && l.y > abajo && l.y < arriba && Mathf.Abs(l.z) < 0.06f;
     }
 
     void Update()
@@ -481,7 +585,7 @@ public class PanelArriba : MonoBehaviour
                 int mejor = -1;
                 // Tolerancia: unos 1.3 cm de barra, en fotogramas.
                 int tolerancia = Mathf.Max(1, Mathf.RoundToInt(0.03f * Ventana));
-                foreach (var c in animacion.claves)
+                foreach (var c in animacion.ClavesDe(dibujo != null ? dibujo.capaActual : 0))
                 {
                     if (!EnVentana(c.fotograma))
                         continue;
@@ -559,8 +663,9 @@ public class PanelArriba : MonoBehaviour
                     cabezal.localPosition = PosicionEnBarra(animacion.Fotograma, -0.006f);
             }
 
+            // La barra muestra las claves de la CAPA ACTIVA (las de cada capa se ven en la lista de capas).
             int n = 0;
-            foreach (var c in animacion.claves)
+            foreach (var c in animacion.ClavesDe(dibujo != null ? dibujo.capaActual : 0))
             {
                 int fm = c.fotograma == claveArrastrada ? destinoClave : c.fotograma;
                 if (!EnVentana(fm))
@@ -593,7 +698,7 @@ public class PanelArriba : MonoBehaviour
             {
                 string texto = "Fotograma " + (animacion.Fotograma + 1) + " / " + Animacion.TotalFotogramas;
                 if (animacion.EsClave(animacion.Fotograma))
-                    texto += "  (clave)";
+                    texto += "  (clave de " + (dibujo != null ? dibujo.CapaActual.nombre : "") + ")";
                 if (Ventanas[zoom] > 0)
                     texto += "   ·   barra " + (inicioVentana + 1) + "-" + (inicioVentana + Ventana);
                 textoFotograma.text = texto;
@@ -613,6 +718,7 @@ public class PanelArriba : MonoBehaviour
             btnSeguir.Marcar(anclado);
         }
 
+        RefrescarCapas();
         if (pagina == 0)
             RefrescarAnimar();
         else if (pagina == 1)
@@ -1034,6 +1140,7 @@ public class PanelArriba : MonoBehaviour
         Poner(d, btnClave, "+ CLAVE\nGuarda la forma actual de todas las líneas en este fotograma (marca naranja). Normalmente no hace falta: al editar en un fotograma, la clave se guarda sola.");
         Poner(d, btnQuitarClave, "- CLAVE\nQuita la clave de este fotograma.\nPara MOVER una clave: pellízcala en la barra y arrástrala.");
         Poner(d, btnFps, "FPS\nVelocidad de la animación: 12, 24, 30 o 60 cuadros por segundo.");
+        Poner(d, btnCapasPlegar, "CAPAS (lista plegable)\nAbre o cierra la lista de capas, encima de la línea de tiempo. Cada fila: elegir la capa, Ver/Oculta y SUS claves (cada capa tiene sus propias claves).\nLa barra grande muestra las claves de la capa activa.");
         if (btnCapas != null)
             foreach (var b in btnCapas)
                 Poner(d, b, "CAPA 1-4\nElige en qué capa dibujas. Cada capa tiene su estilo (temblor, hebras, boceto, plano, imán) en la página Medios.\nIdea: boceto en la capa 1 (Medios → Boceto: Gris) y tinta encima en la capa 2.");
