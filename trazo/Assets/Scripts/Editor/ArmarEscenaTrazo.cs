@@ -313,6 +313,13 @@ public static class ArmarEscenaTrazo
             if (cfg == null)
                 continue;
             var soCfg = new SerializedObject(cfg);
+            // Seguimiento de manos más frecuente (el lápiz va más pegado al dedo).
+            if (PonerEnum(soCfg.FindProperty("handTrackingFrequency"), "HIGH")
+                || PonerEnum(soCfg.FindProperty("_handTrackingFrequency"), "HIGH"))
+            {
+                soCfg.ApplyModifiedProperties();
+                EditorUtility.SetDirty(cfg);
+            }
             var soporte = soCfg.FindProperty("insightPassthroughSupport");
             if (soporte == null)
                 soporte = soCfg.FindProperty("_insightPassthroughSupport");

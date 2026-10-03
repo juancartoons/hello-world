@@ -4,7 +4,7 @@ using UnityEngine;
 //  - Separar o juntar las manos: más grande o más pequeño.
 //  - Mover las manos como un volante (en cualquier dirección): gira el dibujo.
 //  - Mover las dos manos juntas: lo traslada.
-// Si hay una línea seleccionada, solo se transforma esa línea.
+// Si hay líneas seleccionadas (una o varias), solo se transforman esas líneas.
 // Mientras dura, se ve una caja suave alrededor del dibujo y una línea entre las manos.
 public class CajaTransformar : MonoBehaviour
 {
@@ -18,8 +18,8 @@ public class CajaTransformar : MonoBehaviour
     float escalaInicio;
     Vector3 medioInicio;
     Vector3 vectorInicio;
-    Trazo solo;
-    DatosTrazo origenSolo;
+    readonly System.Collections.Generic.List<Trazo> solos = new System.Collections.Generic.List<Trazo>();
+    readonly System.Collections.Generic.List<DatosTrazo> origenes = new System.Collections.Generic.List<DatosTrazo>();
     Transform objeto;          // una imagen de referencia (en vez del dibujo)
     Vector3 objetoPosicion;
     Quaternion objetoRotacion;
@@ -43,12 +43,21 @@ public class CajaTransformar : MonoBehaviour
         Empezar(izq, der, seleccion, null);
     }
 
-    // Con "imagen" (y sin línea seleccionada) se transforma esa imagen de referencia.
     public void Empezar(ManoSeguida izq, ManoSeguida der, Trazo seleccion, Transform imagen)
+    {
+        var lista = new System.Collections.Generic.List<Trazo>();
+        if (seleccion != null)
+            lista.Add(seleccion);
+        Empezar(izq, der, lista, imagen);
+    }
+
+    // Con "imagen" (y sin líneas seleccionadas) se transforma esa imagen de referencia (o figura).
+    public void Empezar(ManoSeguida izq, ManoSeguida der, System.Collections.Generic.List<Trazo> seleccion, Transform imagen)
     {
         if (dibujo == null)
             return;
-        objeto = seleccion == null ? imagen : null;
+        bool hayLineas = seleccion != null && seleccion.Count > 0;
+        objeto = hayLineas ? null : imagen;
         if (objeto != null)
         {
             objetoPosicion = objeto.position;
@@ -59,8 +68,16 @@ public class CajaTransformar : MonoBehaviour
         {
             dibujo.GuardarParaDeshacer();
         }
-        solo = seleccion;
-        origenSolo = solo != null ? solo.CrearDatos() : null;
+        solos.Clear();
+        origenes.Clear();
+        if (hayLineas)
+            foreach (var t in seleccion)
+            {
+                if (t == null)
+                    continue;
+                solos.Add(t);
+                origenes.Add(t.CrearDatos());
+            }
         Transform raiz = dibujo.transform;
         posicionInicio = raiz.position;
         rotacionInicio = raiz.rotation;
@@ -71,7 +88,7 @@ public class CajaTransformar : MonoBehaviour
 
         CrearPiezas();
         Bounds caja = new Bounds();
-        bool hay = solo == null && objeto == null && dibujo.Caja(out caja);
+        bool hay = solos.Count == 0 && objeto == null && dibujo.Caja(out caja);
         if (hay)
             ConstruirLineas(caja);
         lineas.SetActive(hay);
@@ -105,14 +122,15 @@ public class CajaTransformar : MonoBehaviour
             objeto.localScale = Vector3.one * escalaObjeto;
             return;
         }
-        if (solo != null)
+        if (solos.Count > 0)
         {
-            if (!Dibujo.Editable(solo))
-                return;
             s = Mathf.Clamp(s, 0.05f, 20f);
             Transform r = dibujo.transform;
             Matrix4x4 mundo = Matrix4x4.TRS(medioSolo, giroSolo, Vector3.one * s) * Matrix4x4.Translate(-medioInicio);
-            solo.TransformarDesde(origenSolo, r.worldToLocalMatrix * mundo * r.localToWorldMatrix, s);
+            Matrix4x4 m = r.worldToLocalMatrix * mundo * r.localToWorldMatrix;
+            for (int k = 0; k < solos.Count; k++)
+                if (Dibujo.Editable(solos[k]))
+                    solos[k].TransformarDesde(origenes[k], m, s);
             return;
         }
         float nueva = Mathf.Clamp(escalaInicio * s, 0.02f, 50f);
@@ -131,9 +149,9 @@ public class CajaTransformar : MonoBehaviour
         if (!Activa)
             return;
         Activa = false;
-        solo = null;
+        solos.Clear();
         objeto = null;
-        origenSolo = null;
+        origenes.Clear();
         if (lineas != null)
             lineas.SetActive(false);
         if (volante != null)

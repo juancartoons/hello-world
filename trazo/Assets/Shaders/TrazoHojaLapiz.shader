@@ -5,6 +5,7 @@ Shader "TrazoVR/HojaLapiz"
     {
         _MainTex ("Hoja", 2D) = "black" {}
         _BaseColor ("Color del lápiz", Color) = (0.32, 0.32, 0.36, 1)
+        _Borde ("Grosor del borde (fracción de la hoja)", Float) = 0.0012
     }
 
     SubShader
@@ -31,6 +32,7 @@ Shader "TrazoVR/HojaLapiz"
             CBUFFER_START(UnityPerMaterial)
                 float4 _MainTex_ST;
                 float4 _BaseColor;
+                float _Borde;
             CBUFFER_END
 
             struct Attributes
@@ -61,7 +63,10 @@ Shader "TrazoVR/HojaLapiz"
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
                 float grafito = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv).r;
-                return half4(_BaseColor.rgb, saturate(grafito) * _BaseColor.a);
+                // Borde delgado y semitransparente (siempre visible): así sabes hasta dónde llega la hoja.
+                float2 d = min(i.uv, 1.0 - i.uv);
+                float borde = step(min(d.x, d.y), _Borde) * 0.35;
+                return half4(_BaseColor.rgb, max(saturate(grafito) * _BaseColor.a, borde));
             }
             ENDHLSL
         }

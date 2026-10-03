@@ -147,7 +147,7 @@ public class PanelArriba : MonoBehaviour
         {
             Conectar(btnPlano, dibujo.AlternarPlano);
             Conectar(btnGuardar, dibujo.Guardar);
-            Conectar(btnCargar, dibujo.Cargar);
+            Conectar(btnCargar, AlternarArchivos);
             Conectar(btnBorrarTodo, dibujo.BorrarTodo);
             Conectar(btnSvg, dibujo.ExportarSVG);
             Conectar(btnUnirPlano, dibujo.AlternarUnirPlano);
@@ -306,7 +306,7 @@ public class PanelArriba : MonoBehaviour
         if (contenido == null || !contenido.activeInHierarchy)
             return false;
         Vector3 l = transform.InverseTransformPoint(mundo);
-        float abajo = esAyuda ? -0.31f : -0.175f;
+        float abajo = esAyuda || (listaArchivos != null && listaArchivos.activeSelf) ? -0.33f : -0.175f;
         return Mathf.Abs(l.x) < 0.27f && l.y > abajo && l.y < 0.225f && Mathf.Abs(l.z) < 0.06f;
     }
 
@@ -773,10 +773,82 @@ public class PanelArriba : MonoBehaviour
                           + "\nGuardar: mueve los nodos de la boca y toca una forma · Lipsync crea las claves";
     }
 
+    // ==================== Abrir dibujos guardados ====================
+    // "Cargar" muestra abajo la lista de tus dibujos (el más reciente primero). Toca uno para abrirlo.
+
+    GameObject listaArchivos;
+
+    void AlternarArchivos()
+    {
+        if (listaArchivos != null && listaArchivos.activeSelf)
+        {
+            CerrarArchivos();
+            return;
+        }
+        if (dibujo == null || btnCargar == null || btnCargar.etiqueta == null || contenido == null)
+            return;
+        var rutas = dibujo.ListaArchivos(12);
+        if (rutas.Count == 0)
+        {
+            dibujo.Mensaje("Aún no has guardado ningún dibujo");
+            return;
+        }
+        ayudaAbierta = false;
+        if (listaArchivos != null)
+            Destroy(listaArchivos);
+        listaArchivos = new GameObject("ListaArchivos");
+        listaArchivos.SetActive(false); // así los botones se arman antes de despertar
+        listaArchivos.transform.SetParent(contenido.transform, false);
+
+        var fondo = contenido.transform.Find("Fondo");
+        if (fondo != null)
+        {
+            var hoja = Instantiate(fondo.gameObject, listaArchivos.transform);
+            hoja.transform.localPosition = new Vector3(0f, -0.25f, 0.006f);
+            hoja.transform.localScale = new Vector3(0.5f, 0.15f, 1f);
+        }
+        for (int i = 0; i < rutas.Count; i++)
+        {
+            string ruta = rutas[i];
+            int fila = i / 3, columna = i % 3;
+            var pos = new Vector3(-0.155f + columna * 0.155f, -0.195f - fila * 0.034f, 0f);
+            var go = Instantiate(btnCargar.gameObject, listaArchivos.transform);
+            go.name = "Archivo";
+            go.transform.localPosition = pos;
+            go.transform.localRotation = Quaternion.identity;
+            go.transform.localScale = new Vector3(0.145f, 0.028f, 0.008f);
+            var b = go.GetComponent<BotonTocable>();
+            var texto = Instantiate(btnCargar.etiqueta.gameObject, listaArchivos.transform).GetComponent<TMP_Text>();
+            texto.rectTransform.localPosition = pos + new Vector3(0f, 0f, -0.0046f);
+            texto.rectTransform.localRotation = Quaternion.identity;
+            texto.rectTransform.sizeDelta = new Vector2(0.135f, 0.022f);
+            string nombre = System.IO.Path.GetFileNameWithoutExtension(ruta);
+            string fecha = System.IO.File.GetLastWriteTime(ruta).ToString("dd/MM HH:mm");
+            texto.text = nombre + "  ·  " + fecha;
+            b.etiqueta = texto;
+            b.alTocar.RemoveAllListeners();
+            b.alTocar.AddListener(() =>
+            {
+                CerrarArchivos();
+                dibujo.AbrirArchivo(ruta);
+            });
+            b.Marcar(dibujo.NombreArchivo == nombre);
+        }
+        listaArchivos.SetActive(true);
+        dibujo.Mensaje("Toca un dibujo para abrirlo (Cargar otra vez = cerrar)");
+    }
+
+    void CerrarArchivos()
+    {
+        if (listaArchivos != null)
+            listaArchivos.SetActive(false);
+    }
+
     // ==================== Ayuda (copia azul) ====================
 
     void AlternarAyuda()
     {
+        CerrarArchivos();
         if (ayuda == null)
         {
             GameObject copia;
@@ -827,6 +899,12 @@ public class PanelArriba : MonoBehaviour
 
     void PrepararAyuda()
     {
+        var copiaLista = contenido != null ? contenido.transform.Find("ListaArchivos") : null;
+        if (copiaLista != null)
+        {
+            copiaLista.SetParent(null, false); // fuera de la copia (así sus botones no cuentan)
+            Destroy(copiaLista.gameObject);
+        }
         // 1) Todo en azul.
         var mapa = new Dictionary<Material, Material>();
         foreach (var r in GetComponentsInChildren<Renderer>(true))
@@ -954,9 +1032,9 @@ public class PanelArriba : MonoBehaviour
                 Poner(d, b, "VER / OCULTA\nMuestra o esconde esa capa. Una capa oculta no se puede editar.");
         Poner(d, btnPlano, "LIBRE (3D) / PLANO (2D)\nPlano: dibujas sobre una hoja invisible frente a ti (si alejas el dedo más de ~2.5 cm, la línea se corta, como levantar el lápiz). Libre: dibujas en el aire, en 3D.\nCon una capa de Boceto en Plano, dibujas con lápiz sobre papel.");
         Poner(d, btnFondo, "FONDO\nCambia el fondo: blanco, cuadrícula o tu cuarto real (passthrough).");
-        Poner(d, btnGuardar, "GUARDAR\nGuarda el dibujo (y una copia con la fecha) en la carpeta Dibujos de las gafas.");
-        Poner(d, btnCargar, "CARGAR\nAbre el último dibujo guardado. Si te arrepientes: deshacer (puño izquierdo con el pulgar a tu izquierda → toca la diana roja).");
-        Poner(d, btnBorrarTodo, "BORRAR TODO\nBorra todo el dibujo. Se puede deshacer.");
+        Poner(d, btnGuardar, "GUARDAR\nGuarda el dibujo con su propio nombre (Dibujo 1, Dibujo 2...). Si ya tiene nombre, lo actualiza.\nPara empezar uno NUEVO: Borrar todo y luego Guardar (recibe otro nombre).");
+        Poner(d, btnCargar, "CARGAR\nMuestra abajo la lista de tus dibujos (el más reciente primero, con la fecha). Toca uno para abrirlo. Cargar otra vez = cerrar la lista.\nGuarda antes lo que tienes (Guardar). Si te arrepientes: deshacer.");
+        Poner(d, btnBorrarTodo, "BORRAR TODO\nBorra todo el dibujo y empieza uno nuevo (al guardar recibe otro nombre). Se puede deshacer.");
         Poner(d, btnSvg, "SVG\nExporta las líneas como curvas vectoriales (para Illustrator, Inkscape...). En Plano se ve de frente al plano; en 3D, desde donde estás.");
         Poner(d, btnFoto, "FOTO\nGuarda una imagen PNG del dibujo desde donde estás. Los paneles, nodos, imágenes y capas de boceto no salen.");
 
@@ -990,10 +1068,10 @@ public class PanelArriba : MonoBehaviour
 
         // Títere
         Poner(d, btnTitere, "TIPO\nElige qué personaje crea el botón Crear: Palito, Musculoso, Gordito, Flaco o Niño.");
-        Poner(d, btnMuneco, "CREAR / PARAR\nCrear: aparece el personaje frente a ti, sobre su piso, y se enciende solo con tu mano DERECHA (ponla frente a ti un segundo).\nMano a los lados = caminar (rápido = correr). Golpe rápido hacia arriba = saltar.\nApagar: este botón (Parar), palma hacia arriba medio segundo, o choca los cinco con la otra mano.");
+        Poner(d, btnMuneco, "CREAR / PARAR\nCrear: aparece el personaje (en la Capa 4) y se enciende con tu mano DERECHA (ponla frente a ti un segundo). Lados = caminar/correr · mano abajo = agacharse · golpe arriba = saltar.\nApagar: Parar, palma arriba o choca los cinco con la otra mano. Esconderlos: Ver/Oculta de la Capa 4. Borrar uno: acerca la mano y toca la X de su marco.");
         Poner(d, btnGrabarTitere, "GRABAR (títere)\nCuenta 3 segundos y guarda una clave por fotograma de los personajes encendidos. Parar = terminar. Después: Play, corrige claves y exporta con Video anim (Medios).");
         Poner(d, btnPosar, "POSAR DEDOS\nEl índice y el medio derechos acomodan las piernas del personaje; pellizco IZQUIERDO = guardar una clave. Toca otra vez para terminar.");
-        Poner(d, btnCiclo, "CICLO\nEl caminado: Normal, Con estilo (Richard Williams: paso alto, brazos grandes) o tus ciclos guardados.");
+        Poner(d, btnCiclo, "CICLO\nEl caminado: Normal, Con estilo (Richard Williams: paso alto, brazos grandes), Sigiloso (Ken Harris: agachado, el pie pasa rápido por el medio y se apoya con cuidado) o tus ciclos guardados.");
         Poner(d, btnGuardarCiclo, "GUARDAR CICLO\nGuarda tu propio caminado: 1) anima al menos 3 claves de un paso con las piernas del personaje (la última igual a la primera), 2) toca Guardar ciclo, 3) elígelo con Ciclo.");
         Poner(d, btnVoltear, "VOLTEAR\nEl personaje elegido mira hacia el otro lado.");
         Poner(d, btnPiso, "PISO +/-\nPellizca una línea (queda azul) y toca Piso: esa línea será piso o plataforma (sube rampas, cae si se acaba). Otra vez = deja de ser piso.\nSolo pisa los pisos que están a su misma profundidad.");

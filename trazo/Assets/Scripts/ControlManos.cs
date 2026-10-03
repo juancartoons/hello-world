@@ -224,6 +224,15 @@ public class ControlManos : MonoBehaviour
     readonly List<Vector3> baseLinea = new List<Vector3>();
     Vector3 inicioLinea;
     bool deshacerLineaPendiente;
+    // Selección múltiple: un toque corto (pellizco rápido sin mover) suma o quita una línea.
+    // Pellizcar y arrastrar una línea seleccionada mueve todas las seleccionadas.
+    readonly List<Trazo> grupoMovido = new List<Trazo>();
+    readonly List<List<Vector3>> basesGrupo = new List<List<Vector3>>();
+    readonly List<Trazo> seleccionPrevia = new List<Trazo>();
+    float toqueLineaDesde;
+    bool toqueYaSeleccionada, toqueMovio;
+    [Tooltip("Al mover una línea, se suelta al separar pulgar e índice esta distancia (metros)")]
+    public float soltarLinea = 0.025f;
 
 
     Transform cursor;
@@ -610,20 +619,30 @@ public class ControlManos : MonoBehaviour
             Transform imagen = referencias != null ? referencias.Seleccionada : null;
             Transform figura = figuras != null ? figuras.Seleccionada : null;
             SoltarImagen();
+            // Lo elegido (líneas, figura o imagen) solo se transforma si tus manos están cerca de eso.
+            // Si pellizcas con las dos manos lejos, se transforma TODO el dibujo (aunque haya algo elegido).
+            Vector3 medio = (Izq.PuntoPellizco + Der.PuntoPellizco) * 0.5f;
+            if (imagen != null && Vector3.Distance(imagen.position, medio) > imagen.lossyScale.x * 0.8f + 0.1f)
+                imagen = null;
+            if (figura != null && Vector3.Distance(figura.position, medio) > 0.35f)
+                figura = null;
+            var lineas = dibujo.Seleccionadas();
+            if (lineas.Count > 0 && !LineasCerca(lineas, medio, 0.3f))
+                lineas.Clear();
             if (caja != null)
             {
                 if (DibujoBloqueado)
                 {
-                    caja.Empezar(Izq, Der, null, null); // con candado: solo girar/mover todo para mirar
+                    caja.Empezar(Izq, Der, (Trazo)null, null); // con candado: solo girar/mover todo para mirar
                 }
-                else if (dibujo.Seleccion == null && figura != null)
+                else if (lineas.Count == 0 && figura != null)
                 {
                     dibujo.GuardarParaDeshacer();
-                    caja.Empezar(Izq, Der, null, figura);
+                    caja.Empezar(Izq, Der, (Trazo)null, figura);
                 }
                 else
                 {
-                    caja.Empezar(Izq, Der, dibujo.Seleccion, imagen);
+                    caja.Empezar(Izq, Der, lineas, imagen);
                 }
             }
         }
@@ -666,6 +685,7 @@ public class ControlManos : MonoBehaviour
         if (dibujo.hojas != null)
             dibujo.hojas.Terminar();
         lapizTiene = false;
+        lapizPendiente = false;
         if (GestoIzq != Gesto.Ninguno)
             finGestoIzq = Time.time;
         if (arrastre != Objetivo.Nada)
@@ -712,11 +732,11 @@ public class ControlManos : MonoBehaviour
     // para compensar el pequeño retraso del seguimiento de manos.
     [Header("Lápiz de boceto")]
     [Tooltip("Suavizado con el dedo quieto (Hz). Más alto = más inmediato, más temblor")]
-    public float lapizCorteMinimo = 2.5f;
+    public float lapizCorteMinimo = 3.5f;
     [Tooltip("Cuánto deja de suavizar al ir rápido")]
-    public float lapizBeta = 45f;
+    public float lapizBeta = 70f;
     [Tooltip("Segundos que se adelanta el punto (compensa el retraso del seguimiento)")]
-    public float lapizPrediccion = 0.012f;
+    public float lapizPrediccion = 0.02f;
     Vector3 lapizFiltrado, lapizVelocidad, lapizCrudoPrevio;
     bool lapizTiene;
 
@@ -742,14 +762,36 @@ public class ControlManos : MonoBehaviour
         lapizVelocidad = Vector3.Lerp(lapizVelocidad, v, AlfaFiltro(dt, 8f));
         float corte = lapizCorteMinimo + lapizBeta * lapizVelocidad.magnitude;
         lapizFiltrado = Vector3.Lerp(lapizFiltrado, crudo, AlfaFiltro(dt, corte));
-        return lapizFiltrado + Vector3.ClampMagnitude(lapizVelocidad * lapizPrediccion, 0.008f);
+        return lapizFiltrado + Vector3.ClampMagnitude(lapizVelocidad * lapizPrediccion, 0.012f);
     }
+
+    // El lápiz se pinta al FINAL del cuadro (LateUpdate), con la posición más nueva del dedo.
+    bool lapizPendiente, lapizGomaPendiente;
+    Vector3 lapizLocalPendiente;
 
     void LapizHoja(Vector3 local, bool goma)
     {
-        // El lápiz usa la punta del dedo sin el suavizado normal (va pegado al dedo).
+        lapizPendiente = true;
+        lapizGomaPendiente = goma;
+        lapizLocalPendiente = local;
+    }
+
+    void EjecutarLapiz()
+    {
+        if (!lapizPendiente)
+            return;
+        lapizPendiente = false;
+        if (dibujo == null || dibujo.hojas == null || !dibujo.UsaHoja)
+            return;
+        bool goma = lapizGomaPendiente;
+        Vector3 local = lapizLocalPendiente;
+        // El lápiz usa la punta del dedo de ESTE momento y sin el suavizado normal (va pegado al dedo).
         if (!goma && Der.valida)
-            local = dibujo.transform.InverseTransformPoint(FiltrarLapiz(Der.indiceCrudo));
+        {
+            var punta = ManosUtil.Hueso(Der.esqueleto, "IndexTip");
+            Vector3 crudo = punta != null ? punta.position : Der.indiceCrudo;
+            local = dibujo.transform.InverseTransformPoint(FiltrarLapiz(crudo));
+        }
         if (trazoActual != null)
         {
             dibujo.TerminarTrazo(trazoActual);
@@ -1771,6 +1813,7 @@ public class ControlManos : MonoBehaviour
 
     void LateUpdate()
     {
+        EjecutarLapiz();
         if (!ocultarIzq && !ocultarDer)
             return;
         if (Time.time >= proximaBusquedaManos)
@@ -1833,14 +1876,19 @@ public class ControlManos : MonoBehaviour
     {
         if (lineaMovida != null)
         {
-            if (!Der.valida || !Der.pellizco || !Dibujo.Editable(lineaMovida))
+            // Se suelta fácil: basta con abrir un poco el pulgar y el índice.
+            bool soltar = !Der.valida || !Der.pellizco || Vector3.Distance(Der.indice, Der.pulgar) > soltarLinea
+                          || !Dibujo.Editable(lineaMovida);
+            if (soltar)
             {
-                lineaMovida = null;
+                SoltarLinea();
                 return;
             }
             Transform raiz = dibujo.transform;
             Vector3 delta = raiz.InverseTransformPoint(Der.PuntoPellizco) - raiz.InverseTransformPoint(inicioLinea);
             delta = dibujo.ProyectarVectorEnPlano(delta);
+            if (delta.magnitude * dibujo.EscalaMundo > 0.006f)
+                toqueMovio = true;
             if (deshacerLineaPendiente)
             {
                 if (delta.magnitude * dibujo.EscalaMundo < 0.003f)
@@ -1848,7 +1896,9 @@ public class ControlManos : MonoBehaviour
                 dibujo.GuardarParaDeshacer();
                 deshacerLineaPendiente = false;
             }
-            lineaMovida.Desplazar(baseLinea, delta);
+            for (int k = 0; k < grupoMovido.Count; k++)
+                if (Dibujo.Editable(grupoMovido[k]))
+                    grupoMovido[k].Desplazar(basesGrupo[k], delta);
             return;
         }
         if (figuraMovida != null)
@@ -1886,7 +1936,11 @@ public class ControlManos : MonoBehaviour
         if (panelArriba != null && panelArriba.Contiene(Der.PuntoPellizco))
             return;
         var t = LineaBajo(Der.PuntoPellizco, Der.indice);
-        dibujo.Seleccionar(t);
+        seleccionPrevia.Clear();
+        seleccionPrevia.AddRange(dibujo.Seleccionadas());
+        toqueYaSeleccionada = t != null && dibujo.EstaSeleccionada(t);
+        if (!toqueYaSeleccionada)
+            dibujo.Seleccionar(t);
         if (t == null)
         {
             // ¿Una figura 3D? Se elige y se mueve.
@@ -1920,8 +1974,63 @@ public class ControlManos : MonoBehaviour
         lineaMovida = t;
         baseLinea.Clear();
         baseLinea.AddRange(t.nodos);
+        grupoMovido.Clear();
+        basesGrupo.Clear();
+        foreach (var g in dibujo.Seleccionadas())
+        {
+            grupoMovido.Add(g);
+            basesGrupo.Add(new List<Vector3>(g.nodos));
+        }
+        if (!grupoMovido.Contains(t))
+        {
+            grupoMovido.Add(t);
+            basesGrupo.Add(new List<Vector3>(t.nodos));
+        }
         inicioLinea = Der.PuntoPellizco;
         deshacerLineaPendiente = true;
+        toqueLineaDesde = Time.time;
+        toqueMovio = false;
+    }
+
+    bool LineasCerca(List<Trazo> lineas, Vector3 mundo, float distancia)
+    {
+        Vector3 local = dibujo.transform.InverseTransformPoint(mundo);
+        foreach (var t in lineas)
+            if (t != null && t.DistanciaACurva(local) * dibujo.EscalaMundo < distancia)
+                return true;
+        return false;
+    }
+
+    // Al soltar una línea: si fue un toque corto (sin moverla), suma o quita esa línea de la selección.
+    void SoltarLinea()
+    {
+        var t = lineaMovida;
+        lineaMovida = null;
+        bool toque = !toqueMovio && Time.time - toqueLineaDesde < 0.35f;
+        grupoMovido.Clear();
+        basesGrupo.Clear();
+        if (!toque || t == null)
+            return;
+        if (toqueYaSeleccionada)
+        {
+            // Toque sobre una línea ya elegida (con varias elegidas): se quita del grupo.
+            if (seleccionPrevia.Count > 1)
+                dibujo.AlternarEnGrupo(t);
+        }
+        else if (seleccionPrevia.Count > 0)
+        {
+            // Toque sobre otra línea teniendo ya algo elegido: se suma a la selección.
+            dibujo.Seleccionar(seleccionPrevia[0]);
+            for (int k = 1; k < seleccionPrevia.Count; k++)
+                dibujo.AlternarEnGrupo(seleccionPrevia[k]);
+            dibujo.AlternarEnGrupo(t);
+        }
+        else
+        {
+            return;
+        }
+        int n = dibujo.Seleccionadas().Count;
+        MostrarEtiqueta(n > 1 ? n + " líneas elegidas" : "1 línea elegida");
     }
 
     void SoltarImagen()

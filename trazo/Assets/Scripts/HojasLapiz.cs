@@ -22,9 +22,10 @@ public class HojasLapiz : MonoBehaviour
     public Material materialSello;
     [Tooltip("Cómo se ve la hoja (shader TrazoVR/HojaLapiz)")]
     public Material materialHoja;
-    public int resolucion = 2048;
-    [Tooltip("Tamaño de la hoja (unidades del dibujo)")]
-    public float tamano = 1.2f;
+    [Tooltip("Pixeles por lado de la hoja")]
+    public int resolucion = 4096;
+    [Tooltip("Tamaño de la hoja (unidades del dibujo). Se ve su borde con una línea delgada")]
+    public float tamano = 3f;
     [Tooltip("Radio del lápiz (metros)")]
     public float radioLapiz = 0.0018f;
     [Tooltip("Radio de la goma (metros)")]
@@ -41,7 +42,11 @@ public class HojasLapiz : MonoBehaviour
         public GameObject go;
         public Material material;
         public Vector3 origen, ejeU, ejeV, normal;
+        public bool colocada;
     }
+
+    float avisoBorde = -10f;
+    bool redibujando;
 
     readonly Dictionary<int, Hoja> hojas = new Dictionary<int, Hoja>();
     readonly List<TrazoLapiz> trazos = new List<TrazoLapiz>();
@@ -89,6 +94,14 @@ public class HojasLapiz : MonoBehaviour
             trazos.Add(actual);
         }
         Vector3 p = dibujo.ProyectarEnPlano(local);
+        // ¿Se sale de la hoja? Avisa (la hoja tiene un borde delgado que siempre se ve).
+        Vector3 rel = p - h.origen;
+        if ((Mathf.Abs(Vector3.Dot(rel, h.ejeU)) > tamano * 0.5f || Mathf.Abs(Vector3.Dot(rel, h.ejeV)) > tamano * 0.5f)
+            && Time.time - avisoBorde > 2f)
+        {
+            avisoBorde = Time.time;
+            dibujo.Mensaje("Borde de la hoja del lápiz");
+        }
         var nuevo = new Vector4(p.x, p.y, p.z, presion);
         var lista = actual.puntos;
         if (lista.Count > 0)
@@ -190,7 +203,10 @@ public class HojasLapiz : MonoBehaviour
         if (!hojas.TryGetValue(capa, out h))
         {
             h = new Hoja();
-            h.rt = new RenderTexture(resolucion, resolucion, 0, RenderTextureFormat.ARGB32);
+            // Un solo canal (gris) gasta 4 veces menos memoria; si el visor no lo soporta, color normal más chico.
+            bool r8 = SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.R8);
+            int lado = r8 ? resolucion : Mathf.Min(resolucion, 2560);
+            h.rt = new RenderTexture(lado, lado, 0, r8 ? RenderTextureFormat.R8 : RenderTextureFormat.ARGB32);
             h.rt.wrapMode = TextureWrapMode.Clamp;
             h.rt.useMipMap = false;
             h.rt.Create();
@@ -210,15 +226,29 @@ public class HojasLapiz : MonoBehaviour
             }
             hojas[capa] = h;
         }
-        Colocar(h, capa, punto, normal);
+        // Si la hoja cambió de lugar (otro plano), se vuelve a pintar desde los puntos: así nunca se "corre".
+        if (Colocar(h, capa, punto, normal) && !redibujando)
+            RedibujarTodo();
         return h;
     }
 
-    void Colocar(Hoja h, int capa, Vector3 punto, Vector3 normal)
+    // Acomoda la hoja en su plano. Su giro queda FIJO (no depende de cómo esté girado el dibujo después).
+    // Devuelve true si se movió (entonces hay que volver a pintarla).
+    bool Colocar(Hoja h, int capa, Vector3 punto, Vector3 normal)
     {
-        Vector3 arriba = Vector3.ProjectOnPlane(dibujo.transform.InverseTransformDirection(Vector3.up), normal);
+        if (h.material != null)
+            h.material.SetColor("_BaseColor", dibujo.DatosDeCapa(capa).boceto == 2 ? Azul : Gris);
+        bool igual = h.colocada && Vector3.Dot(h.normal, normal) > 0.99999f && (h.origen - punto).sqrMagnitude < 1e-10f;
+        if (igual)
+            return false;
+        Vector3 arriba = h.colocada ? Vector3.ProjectOnPlane(h.ejeV, normal)
+                                    : Vector3.ProjectOnPlane(dibujo.transform.InverseTransformDirection(Vector3.up), normal);
+        if (arriba.sqrMagnitude < 1e-6f)
+            arriba = Vector3.ProjectOnPlane(Vector3.up, normal);
         if (arriba.sqrMagnitude < 1e-6f)
             arriba = Vector3.Cross(normal, Vector3.right);
+        bool antes = h.colocada;
+        h.colocada = true;
         var rot = Quaternion.LookRotation(normal, arriba.normalized);
         h.origen = punto;
         h.normal = normal;
@@ -227,8 +257,7 @@ public class HojasLapiz : MonoBehaviour
         h.go.transform.localPosition = punto;
         h.go.transform.localRotation = rot;
         h.go.transform.localScale = Vector3.one * tamano;
-        if (h.material != null)
-            h.material.SetColor("_BaseColor", dibujo.DatosDeCapa(capa).boceto == 2 ? Azul : Gris);
+        return antes;
     }
 
     static void Limpiar(Hoja h)
@@ -255,6 +284,9 @@ public class HojasLapiz : MonoBehaviour
     {
         if (dibujo == null)
             return;
+        // La hoja de la capa activa aparece apenas hay plano (así ves su borde desde el principio).
+        if (dibujo.UsaHoja && materialSello != null)
+            HojaDe(dibujo.capaActual);
         foreach (var par in hojas)
         {
             var h = par.Value;
@@ -270,6 +302,19 @@ public class HojasLapiz : MonoBehaviour
 
     // Vuelve a pintar todas las hojas desde los trazos guardados (al cargar, deshacer o mover un plano).
     public void RedibujarTodo()
+    {
+        redibujando = true;
+        try
+        {
+            RedibujarTodoInterno();
+        }
+        finally
+        {
+            redibujando = false;
+        }
+    }
+
+    void RedibujarTodoInterno()
     {
         foreach (var h in hojas.Values)
             Limpiar(h);

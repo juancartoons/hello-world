@@ -79,7 +79,8 @@ public class FotoDeshacer
 [System.Serializable]
 public class DatosDibujo
 {
-    public int version = 5;
+    public int version = 6;
+    public string nombre = "";   // nombre del archivo ("Dibujo 3"); vacío = dibujo nuevo sin guardar
     public List<DatosTrazo> trazos = new List<DatosTrazo>();
     public int fondo;
     public float anchoPincel = 0.008f;
@@ -183,6 +184,9 @@ public class Dibujo : MonoBehaviour
     string Carpeta => Path.Combine(Application.persistentDataPath, "Dibujos");
     string RutaAuto => Path.Combine(Carpeta, "autoguardado.json");
     string RutaGuardado => Path.Combine(Carpeta, "guardado.json");
+    // Cada dibujo guardado con su propio nombre (Dibujo 1, Dibujo 2...).
+    string CarpetaArchivos => Path.Combine(Carpeta, "Archivos");
+    public string NombreArchivo { get; private set; } = "";
 
     public float EscalaMundo => Mathf.Max(0.0001f, transform.lossyScale.x);
     public float RadioImanLocal => radioIman / EscalaMundo;
@@ -323,7 +327,7 @@ public class Dibujo : MonoBehaviour
         if (t.gameObject.layer != capaUnity)
             foreach (var hijo in t.GetComponentsInChildren<Transform>(true))
                 hijo.gameObject.layer = capaUnity;
-        t.PonerMaterialLinea(t == seleccion && materialSeleccion != null ? materialSeleccion : MaterialDe(t));
+        t.PonerMaterialLinea(EstaSeleccionada(t) && materialSeleccion != null ? materialSeleccion : MaterialDe(t));
     }
 
     // Vuelve a armar las líneas (y figuras) de una capa después de cambiar su estilo.
@@ -400,8 +404,68 @@ public class Dibujo : MonoBehaviour
     // La línea seleccionada (null = ninguna: los cambios afectan a todo el dibujo).
     public Trazo Seleccion => Editable(seleccion) ? seleccion : null;
 
+    // Selección múltiple: además de "seleccion", más líneas elegidas con toques cortos.
+    readonly List<Trazo> grupo = new List<Trazo>();
+
+    public bool EstaSeleccionada(Trazo t)
+    {
+        return t != null && (t == seleccion || grupo.Contains(t));
+    }
+
+    // Todas las líneas seleccionadas (la principal primero).
+    public List<Trazo> Seleccionadas()
+    {
+        var l = new List<Trazo>();
+        if (Editable(seleccion))
+            l.Add(seleccion);
+        foreach (var g in grupo)
+            if (Editable(g) && g != seleccion && !l.Contains(g))
+                l.Add(g);
+        return l;
+    }
+
+    // Suma una línea a la selección (o la quita si ya estaba).
+    public void AlternarEnGrupo(Trazo t)
+    {
+        if (t == null)
+            return;
+        if (seleccion == null)
+        {
+            Seleccionar(t);
+            return;
+        }
+        if (t == seleccion)
+        {
+            t.PonerMaterialLinea(MaterialDe(t));
+            seleccion = null;
+            if (grupo.Count > 0)
+            {
+                seleccion = grupo[0];
+                grupo.RemoveAt(0);
+            }
+        }
+        else if (grupo.Remove(t))
+        {
+            t.PonerMaterialLinea(MaterialDe(t));
+        }
+        else
+        {
+            grupo.Add(t);
+            t.PonerMaterialLinea(materialSeleccion != null ? materialSeleccion : materialLinea);
+        }
+    }
+
+    void LimpiarGrupo()
+    {
+        foreach (var g in grupo)
+            if (g != null && g != seleccion)
+                g.PonerMaterialLinea(MaterialDe(g));
+        grupo.Clear();
+    }
+
     public void Seleccionar(Trazo t)
     {
+        LimpiarGrupo();
         if (seleccion == t)
             return;
         var anterior = seleccion;
@@ -592,7 +656,19 @@ public class Dibujo : MonoBehaviour
     public void RestaurarMaterial(Trazo t)
     {
         if (t != null)
-            t.PonerMaterialLinea(t == seleccion && materialSeleccion != null ? materialSeleccion : MaterialDe(t));
+            t.PonerMaterialLinea(EstaSeleccionada(t) && materialSeleccion != null ? materialSeleccion : MaterialDe(t));
+    }
+
+    // Quita la línea por completo (también de la animación). Lo usa la X de los personajes.
+    public void EliminarDelTodo(Trazo t)
+    {
+        if (t == null)
+            return;
+        if (seleccion == t)
+            Seleccionar(null);
+        grupo.Remove(t);
+        QuitarDeLaLista(t);
+        Avisar();
     }
 
     public void BorrarTrazo(Trazo t, bool conDestello)
@@ -1117,6 +1193,7 @@ public class Dibujo : MonoBehaviour
         RefrescarPlano();
         ActualizarGuia();
         Trazo.huboCambio = false;
+        NombreArchivo = ""; // al guardar, será un dibujo nuevo (con otro nombre)
         Avisar();
         Mensaje("Borrado (el pulgar a la izquierda lo recupera)");
     }
@@ -1131,37 +1208,91 @@ public class Dibujo : MonoBehaviour
 
     // ---------- Guardar y cargar ----------
 
+    // Guarda el dibujo con SU nombre. Un dibujo nuevo recibe el siguiente nombre libre (Dibujo 1, 2, 3...).
     public void Guardar()
     {
+        if (string.IsNullOrEmpty(NombreArchivo))
+            NombreArchivo = NombreLibre();
         string json = JsonUtility.ToJson(CrearDatos(), true);
-        if (Escribir(RutaGuardado, json))
+        bool ok = false;
+        try
         {
-            string copia = "dibujo_" + System.DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".json";
-            Escribir(Path.Combine(Carpeta, copia), json);
-            Mensaje("Guardado");
+            Directory.CreateDirectory(CarpetaArchivos);
+            File.WriteAllText(Path.Combine(CarpetaArchivos, NombreArchivo + ".json"), json);
+            ok = true;
         }
-        else
+        catch (System.Exception e)
         {
-            Mensaje("No se pudo guardar");
+            Debug.LogWarning("TrazoVR: no se pudo guardar: " + e.Message);
         }
+        if (ok)
+            Escribir(RutaGuardado, json); // el último guardado (para el menú de la mano)
+        Mensaje(ok ? "Guardado: " + NombreArchivo : "No se pudo guardar");
     }
 
-    public void Cargar()
+    string NombreLibre()
+    {
+        int mayor = 0;
+        foreach (var ruta in ListaArchivos(1000))
+        {
+            string n = Path.GetFileNameWithoutExtension(ruta);
+            int k;
+            if (n.StartsWith("Dibujo ") && int.TryParse(n.Substring(7), out k))
+                mayor = Mathf.Max(mayor, k);
+        }
+        return "Dibujo " + (mayor + 1);
+    }
+
+    // Los dibujos guardados, el más reciente primero (rutas completas).
+    public List<string> ListaArchivos(int maximo)
+    {
+        var lista = new List<string>();
+        try
+        {
+            if (Directory.Exists(CarpetaArchivos))
+                lista.AddRange(Directory.GetFiles(CarpetaArchivos, "*.json"));
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("TrazoVR: no se pudo leer la carpeta: " + e.Message);
+        }
+        lista.Sort((a, b) => File.GetLastWriteTime(b).CompareTo(File.GetLastWriteTime(a)));
+        if (lista.Count == 0 && File.Exists(RutaGuardado))
+            lista.Add(RutaGuardado); // dibujos de antes (un solo archivo)
+        if (lista.Count > maximo)
+            lista.RemoveRange(maximo, lista.Count - maximo);
+        return lista;
+    }
+
+    public void AbrirArchivo(string ruta)
     {
         if (Titere.Activo)
         {
             Mensaje("Primero suelta los personajes");
             return;
         }
-        var d = Leer(RutaGuardado);
+        var d = Leer(ruta);
         if (d == null)
         {
-            Mensaje("No hay nada guardado");
+            Mensaje("No se pudo abrir");
             return;
         }
         GuardarParaDeshacer();
         Aplicar(d, true);
-        Mensaje("Cargado");
+        NombreArchivo = ruta == RutaGuardado ? "" : Path.GetFileNameWithoutExtension(ruta);
+        Mensaje("Abierto: " + (string.IsNullOrEmpty(NombreArchivo) ? "guardado anterior" : NombreArchivo));
+    }
+
+    // Menú de la mano: abre el dibujo guardado más reciente.
+    public void Cargar()
+    {
+        var lista = ListaArchivos(1);
+        if (lista.Count == 0)
+        {
+            Mensaje("No hay nada guardado");
+            return;
+        }
+        AbrirArchivo(lista[0]);
     }
 
     DatosDibujo CrearDatos(bool conClaves = true)
@@ -1182,7 +1313,8 @@ public class Dibujo : MonoBehaviour
             siguienteId = siguienteId,
             fotograma = animacion != null ? animacion.Fotograma : 0,
             fps = animacion != null ? animacion.fotogramasPorSegundo : 12f,
-            pincelElegido = pincelElegido
+            pincelElegido = pincelElegido,
+            nombre = NombreArchivo ?? ""
         };
         if (titere != null)
             titere.GuardarEn(d);
@@ -1222,6 +1354,7 @@ public class Dibujo : MonoBehaviour
         }
         trazos.Clear();
         seleccion = null;
+        grupo.Clear();
         anchoPincel = d.anchoPincel > 0f ? d.anchoPincel : 0.008f;
         transform.localPosition = d.posicion;
         var q = d.rotacion;
@@ -1291,6 +1424,7 @@ public class Dibujo : MonoBehaviour
             if (t != null)
                 Destroy(t.gameObject);
         seleccion = null;
+        grupo.Clear();
         if (animacion != null)
         {
             if (d.fps > 0f)
@@ -1313,6 +1447,8 @@ public class Dibujo : MonoBehaviour
             titere.Restaurar(d);
         if (incluirFondo && escenario != null)
             escenario.PonerModo(d.fondo);
+        if (incluirFondo)
+            NombreArchivo = d.nombre ?? "";
         ActualizarVisibilidad();
         ActualizarGuia();
         Avisar();

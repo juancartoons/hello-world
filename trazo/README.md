@@ -13,7 +13,9 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 | Modo nodos: arrastrar una **punta** sobre otra punta | Imán: se unen en una sola línea, o se **cierra la figura** y se rellena |
 | Izquierda: **pulgar + anular** (sostener) | **Grosor**: sube/baja la mano izquierda = más grueso/delgado (solo la línea seleccionada, o todo si no hay selección). Pellizca un **nodo** con la derecha y súbela/bájala = grosor solo de ese nodo. **Gira el índice derecho en un círculo pequeño** (como un teléfono de disco) = grosor de las **líneas nuevas**: hacia la derecha más grueso, hacia la izquierda más delgado |
 | Izquierda: **puño de lado o con el dorso hacia ti** (pulgar sobre los dedos; con la palma hacia ti no cuenta) | **Borrador** (la mano se vuelve una goma de borrar; se borra con el índice derecho): tocar un **nodo** o un **relleno** lo borra. La **línea entera** solo se borra si la **frotas** (ida y vuelta, ~6 cm) lejos de sus nodos; se pone roja mientras |
-| **Pellizcar una línea** con la derecha (sin gesto izquierdo) | La **selecciona** (se pone azul) y la **mueves**. Pellizcar en el aire = quitar la selección |
+| **Pellizcar una línea** con la derecha (sin gesto izquierdo) | La **selecciona** (se pone azul) y la **mueves**. Se suelta con solo abrir un poco los dedos. Pellizcar en el aire = quitar la selección |
+| Con algo elegido: **toque corto** (pellizco rápido sin mover) sobre otra línea | **Selección múltiple**: la suma (o la quita). Arrastrar cualquiera de las azules **mueve todas**; con las dos manos cerca de ellas, se escalan y giran juntas |
+| **Las dos manos pellizcando lejos** de lo elegido | Se transforma **todo el dibujo** (aunque haya una línea, figura o imagen elegida) |
 | Izquierda: **puño con el pulgar hacia tu izquierda** (sostener 0.3 s, quieta) | La mano se vuelve una **flecha** (la punta en tu pulgar): toca la **diana roja** = **Deshacer** (retírala y vuelve a tocar para deshacer otra vez) |
 | **Derecha**: **puño con el pulgar hacia tu derecha** | La mano derecha se vuelve una flecha: toca la **diana verde** = **Rehacer** |
 | Izquierda: **doble toque rápido** de pulgar + índice | **Candado (modo seguro)**: no se dibuja, borra, cambia grosor, editan nodos ni mueven líneas o figuras. Sí puedes girar/mover todo para mirar, usar los paneles, deshacer y rehacer. Se ve un candado arriba a la derecha |
@@ -68,6 +70,8 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 ## Personajes que caminan, corren y saltan (hasta dos a la vez)
 
 1. Panel de arriba → página **Títere** → **Tipo** (Palito, Musculoso, Gordito, Flaco, Niño) → **Crear**.
+   Los personajes van en la **Capa 4**: su **Ver/Oculta** los esconde. Acerca la mano derecha a un personaje apagado
+   y aparece su **marco con una X**: tócala para borrarlo (se puede deshacer).
    Aparece frente a ti sobre un piso y **se enciende solo** con tu mano derecha (ponla frente a ti un segundo).
    Los personajes dibujados tienen huesos invisibles y sus partes pegadas a ellos.
 2. **Encender** otro: "choca esos cinco" con el personaje (mano abierta, palma hacia él, empujón rápido cerca).
@@ -78,24 +82,31 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
    Mientras un personaje se mueve, el dibujo se bloquea solo (candado) y vuelve como estaba al apagarlo.
 3. Mano a los lados = **caminar** (lento) o **correr** (rápido; pasa por caminar antes de correr). Hacia atrás, se voltea.
    Al frenar **después de correr**, la cabeza y el tronco siguen un poquito (inercia).
-4. La **altura** de la mano no lo mueve: así no flota ni se agacha solo.
+4. Mano **abajo** (más de 4 cm) = **agacharse**, suave. Subir la mano no lo eleva (así no flota).
 5. **Saltar**: **golpe rápido de la mano hacia arriba**. Se agacha solo un instante, despega, se recoge arriba,
    cae, se aplasta al caer y rebota.
 6. **Piso +/-**: la línea elegida es piso o plataforma (sube rampas, cae si se acaba). Cada personaje solo pisa
    los pisos que están a su misma profundidad (en Plano 2D, todos los del plano).
 7. **Grabar**: cuenta 3 segundos y guarda una clave por fotograma de todos los personajes encendidos.
    "Choca esos cinco" con tu personaje (o **Parar**) = terminar. Luego corrige en la línea de tiempo y exporta con Video anim.
-8. **Ciclo**: Normal, **Con estilo** (Richard Williams: paso alto, brazos grandes, mano arrastrada, codo quebrado)
+8. **Ciclo**: Normal, **Con estilo** (Richard Williams: paso alto, brazos grandes, mano arrastrada, codo quebrado),
+   **Sigiloso** (Ken Harris: agachado, inclinado, el pie pasa rápido por el medio y se apoya con cuidado)
    o tus ciclos (**Guardar ciclo** toma tus claves).
 9. **Posar dedos**: el índice y el medio derechos acomodan las piernas; **pellizco izquierdo** = guardar una clave.
 10. Con tus dibujos: pellizca una línea y toca **Pierna 1/2**, **Brazo 1/2** o **Cuerpo +/-**. **Voltear** = el otro lado.
+
+## Guardar y abrir
+
+- **Guardar**: cada dibujo se guarda con su propio nombre (Dibujo 1, Dibujo 2...) en `Dibujos/Archivos`.
+- **Cargar**: abajo aparece la lista de tus dibujos (el más reciente primero, con fecha). Toca uno para abrirlo.
+- **Borrar todo** empieza un dibujo nuevo: al guardarlo recibe otro nombre.
 
 ## Imágenes de referencia
 
 1. Copia imágenes (png o jpg) a `Android/data/<tu app>/files/Dibujos/Imagenes`.
 2. Página **Medios** → **Imagen +**: aparece la siguiente imagen frente a ti.
 3. Pellízcala con la derecha para moverla; con las dos manos, escálala y gírala. Se queda donde la dejes.
-4. **Imagen -** quita la imagen seleccionada (la que tiene tono azul).
+4. **Imagen -** quita la imagen seleccionada (la que tiene tono azul), o toca la **X** de su esquina.
 5. **Para calcar**: en modo Plano (2D), suelta la imagen cerca del plano y **se pega detrás** como imán.
    Si mueves, giras o escalas el dibujo, la imagen lo sigue. Arriba a la derecha de la imagen: **Despegar** y
    **Ver** (100%, 50%, 20%, oculta). En Medios, **Imágenes: ver / ocultas** las esconde todas a la vez.
@@ -115,7 +126,8 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 - Las capas en Plano están **unidas** de fábrica: medio milímetro una de otra (como acetatos sobre papel).
   **Plano** (Medios) une o separa la capa; al unirla, sus líneas se pegan al plano.
 - **Lápiz de boceto**: en una capa de **Boceto** (gris o azul) con **Plano 2D**, dibujar pinta con lápiz sobre una
-  hoja (con grano; más cerca del plano = más oscuro). El puño-borrador es una goma. No sale en fotos ni videos.
+  hoja de **3 m x 3 m** (con grano; más cerca del plano = más oscuro). Su **borde** siempre se ve (línea delgada) y
+  avisa si te sales. El puño-borrador es una goma. No sale en fotos ni videos.
 
 ## Archivos
 

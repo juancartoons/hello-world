@@ -57,6 +57,8 @@ public class Referencias : MonoBehaviour
         public Texture2D textura;
         public float aspecto = 1f;
         public Transform boton;   // botones "Ver" y "Despegar" (solo si está pegada)
+        public Transform quitar;  // la X de la esquina: borra la imagen
+        public BotonTocable botonQuitar;
         public BotonTocable botonVer;
         public Material transparente;
         public Renderer render;
@@ -86,6 +88,26 @@ public class Referencias : MonoBehaviour
 
     void Update()
     {
+        Imagen borrar = null;
+        // La X (arriba a la derecha, afuera de la esquina) de cada imagen: tocarla = quitar la imagen.
+        foreach (var img in imagenes)
+        {
+            if (img.quitar == null || img.raiz == null)
+                continue;
+            bool verX = !ocultas && img.render != null && img.render.enabled;
+            if (img.quitar.gameObject.activeSelf != verX)
+                img.quitar.gameObject.SetActive(verX);
+            if (!verX)
+                continue;
+            Vector3 esquina = img.raiz.TransformPoint(new Vector3(img.aspecto * 0.5f, 0.5f, 0f));
+            img.quitar.SetPositionAndRotation(esquina - img.raiz.forward * 0.01f + img.raiz.right * 0.016f + img.raiz.up * 0.015f,
+                                              img.raiz.rotation);
+            if (img.botonQuitar != null && img.botonQuitar.Tocado)
+                borrar = img;
+        }
+        if (borrar != null)
+            QuitarImagen(borrar);
+
         // El botón "Despegar" sigue la esquina de arriba a la derecha de cada imagen pegada.
         foreach (var img in imagenes)
         {
@@ -365,15 +387,38 @@ public class Referencias : MonoBehaviour
     {
         if (seleccionada == null)
         {
-            Mensaje("Pellizca una imagen para elegirla");
+            Mensaje("Pellizca una imagen para elegirla (o toca la X de su esquina)");
             return;
         }
-        var img = seleccionada;
-        seleccionada = null;
+        QuitarImagen(seleccionada);
+    }
+
+    void QuitarImagen(Imagen img)
+    {
+        if (img == null)
+            return;
+        if (seleccionada == img)
+            seleccionada = null;
         imagenes.Remove(img);
         Destruir(img);
         Guardar();
         Mensaje("Imagen quitada");
+    }
+
+    // La X para quitar la imagen (siempre en su esquina de arriba a la derecha).
+    void AsegurarQuitar(Imagen img)
+    {
+        if (img.quitar != null)
+            return;
+        var contenedor = new GameObject("QuitarImagen").transform;
+        contenedor.SetParent(transform, false);
+        var x = CrearBoton(contenedor, "X", 0f);
+        x.transform.localScale = new Vector3(0.022f, 0.022f, 0.006f);
+        if (x.etiqueta != null)
+            x.etiqueta.rectTransform.sizeDelta = new Vector2(0.018f, 0.018f);
+        x.alTocar.AddListener(() => x.Tocado = true);
+        img.botonQuitar = x;
+        img.quitar = contenedor;
     }
 
     // La imagen que está bajo un punto (o muy cerca de su superficie).
@@ -479,6 +524,7 @@ public class Referencias : MonoBehaviour
         imagenes.Add(img);
         if (d.pegada)
             AsegurarBoton(img);
+        AsegurarQuitar(img);
         Tenir(img, Color.white);
         return img;
     }
@@ -489,6 +535,8 @@ public class Referencias : MonoBehaviour
             Destroy(img.raiz.gameObject);
         if (img.boton != null)
             Destroy(img.boton.gameObject);
+        if (img.quitar != null)
+            Destroy(img.quitar.gameObject);
         if (img.material != null)
             Destroy(img.material);
         if (img.transparente != null)

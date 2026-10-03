@@ -51,7 +51,7 @@ Shader "TrazoVR/SelloLapiz"
             float r = length(i.uv);
             float caida = saturate(1.0 - r);
             caida = caida * caida * (3.0 - 2.0 * caida);
-            float grano = lerp(Grano(i.hoja * 1400.0), Grano(i.hoja * 700.0 + 17.0), 0.4);
+            float grano = lerp(Grano(i.hoja * 3500.0), Grano(i.hoja * 1750.0 + 17.0), 0.4);
             return caida * i.color.a * lerp(0.25, 1.0, grano);
         }
         ENDCG

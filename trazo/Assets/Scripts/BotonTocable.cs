@@ -8,6 +8,7 @@ using UnityEngine.Events;
 public class BotonTocable : MonoBehaviour
 {
     public UnityEvent alTocar = new UnityEvent();
+    [System.NonSerialized] public bool Tocado; // para quien prefiera revisarlo (y bajarlo) después
     public TMP_Text etiqueta;
     public Material materialNormal;
     public Material materialMarcado;

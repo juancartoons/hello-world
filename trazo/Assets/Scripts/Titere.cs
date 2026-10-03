@@ -47,7 +47,8 @@ public class DatosPersonaje
     public List<int> cuerpo = new List<int>();
     public List<PegadoHueso> pegados = new List<PegadoHueso>();
     public bool voltear;
-    public int ciclo; // 0 Normal, 1 Con estilo, 2.. ciclos guardados
+    public int ciclo; // 0 Normal, 1 Con estilo, 2 Sigiloso (Ken Harris), 3.. ciclos guardados
+    public int piso;  // la línea-piso que se creó con él (0 = ninguna)
     public Vector3 arriba; // "arriba" del personaje (en el dibujo) al crearlo; cero = la gravedad actual
 }
 
@@ -67,7 +68,12 @@ public class DatosPersonaje
 //  - "Piso +/-": la línea elegida es piso para los personajes.
 //  - "Grabar": cuenta 3 segundos y guarda una clave por fotograma (todos los personajes encendidos).
 //    "Choca esos cinco" con tu personaje (o "Parar") = terminar.
-//  - "Ciclo": Normal, Con estilo (Richard Williams) o tus ciclos guardados. "Guardar ciclo" toma tus claves.
+//  - "Ciclo": Normal, Con estilo (Richard Williams), Sigiloso (Ken Harris) o tus ciclos guardados.
+//    "Guardar ciclo" toma tus claves.
+//  - Los personajes nuevos van en la ÚLTIMA capa (Capa 4): "Ver/Oculta" de esa capa los esconde.
+//  - Acerca la mano derecha a un personaje apagado: aparece su marco con una X arriba a la derecha.
+//    Toca la X = borrar ese personaje (se puede deshacer).
+//  - Mano ABAJO (más de 4 cm) = agacharse. Golpe rápido hacia arriba = saltar.
 //  - "Posar dedos": el índice y el medio derechos acomodan las piernas; pellizco izquierdo = guardar clave.
 //  - Para tus dibujos: pellizca una línea y toca Pierna 1/2, Brazo 1/2 o Cuerpo +/- ("Voltear" = otro lado).
 public class Titere : MonoBehaviour
@@ -164,23 +170,199 @@ public class Titere : MonoBehaviour
             dibujo.Mensaje(texto);
     }
 
+    public const int CiclosFijos = 3; // Normal, Con estilo, Sigiloso
+
     public string NombreDeCiclo(int c)
     {
         if (c <= 0) return "Normal";
         if (c == 1) return "Con estilo";
-        int i = c - 2;
+        if (c == 2) return "Sigiloso";
+        int i = c - CiclosFijos;
         return i < biblioteca.ciclos.Count ? biblioteca.ciclos[i].nombre : "Normal";
     }
 
     public CicloCaminado CicloGuardado(int c)
     {
-        int i = c - 2;
-        return c >= 2 && i < biblioteca.ciclos.Count ? biblioteca.ciclos[i] : null;
+        int i = c - CiclosFijos;
+        return c >= CiclosFijos && i < biblioteca.ciclos.Count ? biblioteca.ciclos[i] : null;
     }
 
     bool PersonajeValido(DatosPersonaje p)
     {
         return p != null && dibujo.BuscarPorId(p.pierna1) != null && dibujo.BuscarPorId(p.pierna2) != null;
+    }
+
+    // Se ve (su capa no está oculta): solo así se puede encender o borrar con la X.
+    bool PersonajeVisible(DatosPersonaje p)
+    {
+        return PersonajeValido(p) && Dibujo.Editable(dibujo.BuscarPorId(p.pierna1));
+    }
+
+    // Todas las líneas del personaje (huesos, partes y su piso).
+    static List<int> IdsDe(DatosPersonaje p, bool conPiso)
+    {
+        var l = new List<int> { p.pierna1, p.pierna2, p.brazo1, p.brazo2, p.cabeza };
+        l.AddRange(p.cuerpo);
+        foreach (var pg in p.pegados)
+            l.Add(pg.id);
+        if (conPiso && p.piso > 0)
+            l.Add(p.piso);
+        l.RemoveAll(id => id <= 0);
+        return l;
+    }
+
+    // ---------- Marco con X (borrar un personaje) ----------
+
+    class Marco
+    {
+        public LineRenderer linea;
+        public Transform equis;
+    }
+    readonly Dictionary<DatosPersonaje, Marco> marcos = new Dictionary<DatosPersonaje, Marco>();
+    readonly Vector3[] esquinas = new Vector3[4];
+    float equisBloqueo;
+
+    void ActualizarMarcos()
+    {
+        var der = control.Der;
+        bool puede = !Activo && fase == Fase.Libre && !control.Ocupado && der.valida && control.Cabeza != null;
+        DatosPersonaje borrar = null;
+        foreach (var p in personajes)
+        {
+            Marco m;
+            marcos.TryGetValue(p, out m);
+            bool ver = puede && PersonajeVisible(p) && Vector3.Distance(der.indice, Centro(p)) < 0.4f;
+            if (!ver)
+            {
+                if (m != null && m.linea.gameObject.activeSelf)
+                    m.linea.gameObject.SetActive(false);
+                continue;
+            }
+            if (m == null)
+            {
+                m = CrearMarco();
+                marcos[p] = m;
+            }
+            if (!m.linea.gameObject.activeSelf)
+                m.linea.gameObject.SetActive(true);
+            // Caja del personaje vista de frente (hacia tu cabeza).
+            Vector3 c = Centro(p);
+            Vector3 derecha = control.Cabeza.right;
+            derecha.y = 0f;
+            derecha = derecha.sqrMagnitude > 1e-6f ? derecha.normalized : Vector3.right;
+            Vector3 arriba = Vector3.up;
+            float x0 = 0f, x1 = 0f, y0 = 0f, y1 = 0f;
+            bool hay = false;
+            foreach (int id in IdsDe(p, false))
+            {
+                var t = dibujo.BuscarPorId(id);
+                if (t == null)
+                    continue;
+                foreach (var n in t.nodos)
+                {
+                    Vector3 w = dibujo.transform.TransformPoint(n) - c;
+                    float x = Vector3.Dot(w, derecha), y = Vector3.Dot(w, arriba);
+                    if (!hay) { x0 = x1 = x; y0 = y1 = y; hay = true; }
+                    x0 = Mathf.Min(x0, x); x1 = Mathf.Max(x1, x);
+                    y0 = Mathf.Min(y0, y); y1 = Mathf.Max(y1, y);
+                }
+            }
+            const float margen = 0.015f;
+            x0 -= margen; x1 += margen; y0 -= margen; y1 += margen;
+            Vector3 hacia = (control.Cabeza.position - c).normalized * 0.01f;
+            esquinas[0] = c + hacia + derecha * x0 + arriba * y0;
+            esquinas[1] = c + hacia + derecha * x1 + arriba * y0;
+            esquinas[2] = c + hacia + derecha * x1 + arriba * y1;
+            esquinas[3] = c + hacia + derecha * x0 + arriba * y1;
+            m.linea.SetPositions(esquinas);
+            Vector3 posX = esquinas[2] + derecha * 0.012f + arriba * 0.012f;
+            m.equis.position = posX;
+            m.equis.rotation = Quaternion.LookRotation(posX - control.Cabeza.position, Vector3.up);
+            if (Time.time > equisBloqueo && Vector3.Distance(der.indice, posX) < 0.016f)
+            {
+                equisBloqueo = Time.time + 1f;
+                borrar = p;
+            }
+        }
+        // Marcos de personajes que ya no existen.
+        if (marcos.Count > personajes.Count)
+        {
+            var sobran = new List<DatosPersonaje>();
+            foreach (var par in marcos)
+                if (!personajes.Contains(par.Key))
+                    sobran.Add(par.Key);
+            foreach (var p in sobran)
+            {
+                if (marcos[p].linea != null)
+                    Destroy(marcos[p].linea.gameObject);
+                marcos.Remove(p);
+            }
+        }
+        if (borrar != null)
+            BorrarPersonaje(borrar);
+    }
+
+    Marco CrearMarco()
+    {
+        var go = new GameObject("MarcoPersonaje");
+        var linea = go.AddComponent<LineRenderer>();
+        linea.positionCount = 4;
+        linea.loop = true;
+        linea.useWorldSpace = true;
+        linea.widthMultiplier = 0.0015f;
+        linea.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        linea.receiveShadows = false;
+        if (materialIndicador != null)
+            linea.sharedMaterial = materialIndicador;
+        var equis = new GameObject("X").transform;
+        equis.SetParent(go.transform, false);
+        for (int k = 0; k < 2; k++)
+        {
+            var palo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            Destroy(palo.GetComponent<Collider>());
+            palo.transform.SetParent(equis, false);
+            palo.transform.localRotation = Quaternion.Euler(0f, 0f, k == 0 ? 45f : -45f);
+            palo.transform.localScale = new Vector3(0.02f, 0.0035f, 0.002f);
+            var r = palo.GetComponent<Renderer>();
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            r.receiveShadows = false;
+            if (materialIndicador != null)
+                r.sharedMaterial = materialIndicador;
+        }
+        return new Marco { linea = linea, equis = equis };
+    }
+
+    // Borra el personaje con todas sus líneas (y su piso). Se puede deshacer.
+    public void BorrarPersonaje(DatosPersonaje p)
+    {
+        if (p == null || Encendido)
+            return;
+        dibujo.GuardarParaDeshacer();
+        foreach (int id in IdsDe(p, true))
+            dibujo.EliminarDelTodo(dibujo.BuscarPorId(id));
+        if (p.piso > 0)
+            pisos.Remove(p.piso);
+        personajes.Remove(p);
+        elegido = Mathf.Clamp(elegido, 0, Mathf.Max(0, personajes.Count - 1));
+        Trazo.huboCambio = false;
+        Mensaje(p.nombre + " borrado (deshacer lo devuelve)");
+    }
+
+    // Los personajes nuevos van en su propia capa (la última): "Ver/Oculta" de esa capa los esconde.
+    void MoverACapaPersonajes(DatosPersonaje p)
+    {
+        int capa = Dibujo.NumeroDeCapas - 1;
+        var datos = dibujo.DatosDeCapa(capa);
+        datos.visible = true;
+        foreach (int id in IdsDe(p, true))
+        {
+            var t = dibujo.BuscarPorId(id);
+            if (t == null)
+                continue;
+            t.capa = capa;
+            dibujo.AplicarCapaVisual(t);
+        }
+        dibujo.ActualizarVisibilidad();
     }
 
     void ActualizarActivo()
@@ -209,6 +391,9 @@ public class Titere : MonoBehaviour
                 {
                     if (p.cuerpo == null) p.cuerpo = new List<int>();
                     if (p.pegados == null) p.pegados = new List<PegadoHueso>();
+                    // Antes los ciclos guardados empezaban en 2 (ahora el 2 es "Sigiloso").
+                    if (d.version < 6 && p.ciclo >= 2)
+                        p.ciclo++;
                     personajes.Add(p);
                 }
         // Dibujos de antes: un solo títere.
@@ -219,7 +404,7 @@ public class Titere : MonoBehaviour
                 nombre = "Palito",
                 pierna1 = d.titerePierna1, pierna2 = d.titerePierna2,
                 brazo1 = d.titereBrazo1, brazo2 = d.titereBrazo2, cabeza = d.titereCabeza,
-                voltear = d.titereVoltear, ciclo = d.titereCiclo > 0 ? d.titereCiclo + 1 : 0,
+                voltear = d.titereVoltear, ciclo = d.titereCiclo > 0 ? d.titereCiclo + 2 : 0,
             };
             if (d.titereCuerpo != null)
                 p.cuerpo.AddRange(d.titereCuerpo);
@@ -341,7 +526,7 @@ public class Titere : MonoBehaviour
         var p = Elegido;
         if (p == null)
             return;
-        p.ciclo = (p.ciclo + 1) % (2 + biblioteca.ciclos.Count);
+        p.ciclo = (p.ciclo + 1) % (CiclosFijos + biblioteca.ciclos.Count);
         Mensaje("Caminado: " + NombreCiclo);
     }
 
@@ -495,6 +680,7 @@ public class Titere : MonoBehaviour
     {
         if (dibujo == null || control == null)
             return;
+        ActualizarMarcos();
 
         // "Choca esos cinco" con cada mano.
         if (fase != Fase.Posando && fase != Fase.CuentaGrabar)
@@ -728,7 +914,7 @@ public class Titere : MonoBehaviour
         // Mano abierta acercándose a un personaje: protege el dibujo un momento.
         foreach (var p in personajes)
         {
-            if (!PersonajeValido(p))
+            if (!PersonajeVisible(p))
                 continue;
             Vector3 hacia = Centro(p) - palma.centro;
             float dist = hacia.magnitude;
@@ -744,7 +930,7 @@ public class Titere : MonoBehaviour
         float mejorDist = 0.22f;
         foreach (var p in personajes)
         {
-            if (!PersonajeValido(p))
+            if (!PersonajeVisible(p))
                 continue;
             Vector3 hacia = Centro(p) - palma.centro;
             float dist = hacia.magnitude;
@@ -961,7 +1147,7 @@ public class Titere : MonoBehaviour
         }
         biblioteca.ciclos.Add(nuevo);
         GuardarBiblioteca();
-        p.ciclo = biblioteca.ciclos.Count + 1;
+        p.ciclo = biblioteca.ciclos.Count + CiclosFijos - 1;
         Mensaje("Ciclo guardado: " + nuevo.nombre + " (" + claves.Count + " poses)");
     }
 
@@ -1035,8 +1221,10 @@ public class Titere : MonoBehaviour
         else
             p = cons.Dibujado(tipo, out pies);
         // Un piso bajo sus pies.
-        pisos.Add(cons.Piso(pies));
+        p.piso = cons.Piso(pies);
+        pisos.Add(p.piso);
         p.arriba = dibujo.transform.InverseTransformDirection(Vector3.up).normalized;
+        MoverACapaPersonajes(p);
         personajes.Add(p);
         elegido = personajes.Count - 1;
         // Se enciende solo con la mano derecha (sin tener que chocar los cinco).
@@ -1070,6 +1258,13 @@ public class Titere : MonoBehaviour
         {
             { 0.000f,  30f,  4f,  25f }, { 0.125f,  22f, 30f,   0f }, { 0.250f,  -3f, 10f,   0f }, { 0.375f, -20f, 10f, -25f },
             { 0.500f, -27f, 14f, -40f }, { 0.625f, -14f, 55f, -60f }, { 0.750f,  12f, 85f, -40f }, { 0.875f,  36f, 40f,  -5f },
+        };
+        // Caminado sigiloso (Ken Harris, "sneak"): agachado, pasos largos, el pie pasa RÁPIDO por el medio
+        // (rodilla alta) y se apoya con cuidado, de puntitas.
+        static readonly float[,] TablaSigilo =
+        {
+            { 0.000f,  32f,  30f, -10f }, { 0.125f,  24f,  45f,   0f }, { 0.250f,   8f,  50f,   0f }, { 0.375f, -10f,  45f,  -5f },
+            { 0.500f, -24f,  38f, -30f }, { 0.625f, -14f,  85f, -55f }, { 0.750f,  22f, 115f, -35f }, { 0.875f,  42f,  60f, -25f },
         };
         static readonly float[,] TablaCorrer =
         {
@@ -1105,7 +1300,9 @@ public class Titere : MonoBehaviour
         int mirando = 1;
         Vector3 raizOffset;
         float finSalto = -10f;       // cuándo aterrizó (para no saltar dos veces seguidas)
-        const float agacharMano = 0f, elevar = 0f; // la altura de la mano ya no agacha ni eleva
+        float agacharMano;           // mano abajo (más de 4 cm) = agacharse (suave)
+        const float elevar = 0f;     // subir la mano no lo eleva (así nunca flota)
+        bool sigilo;                 // caminado sigiloso (Ken Harris)
 
         // Salto, aterrizaje e inercia
         enum Salto { Suelo, Sostenido, Anticipa, Aire }
@@ -1274,9 +1471,16 @@ public class Titere : MonoBehaviour
                 r.rel = Relativos(r.reposo.nodos);
                 r.miembro = pg.miembro;
                 r.tramo = pg.tramo;
-                r.profundidad = pg.profundidad;
+                // Brazos y piernas un poquito más separados del tronco (el de atrás más atrás,
+                // el de adelante más adelante): así al caminar no lo traspasan.
+                r.profundidad = pg.miembro >= 0 && pg.miembro < 4 ? pg.profundidad * 1.8f : pg.profundidad;
                 partes.Add(r);
             }
+            // Palito (o tus dibujos): pierna 2 y brazo 2 van detrás; pierna 1 y brazo 1, delante.
+            if (roles[P1] != null) roles[P1].profundidad = 0.004f;
+            if (roles[P2] != null) roles[P2].profundidad = -0.006f;
+            if (roles[B1] != null) roles[B1].profundidad = 0.007f;
+            if (roles[B2] != null) roles[B2].profundidad = -0.009f;
 
             pieReposo = 0f;
             for (int i = 0; i < 2; i++)
@@ -1323,6 +1527,7 @@ public class Titere : MonoBehaviour
             raizOffset = Vector3.zero;
             finSalto = -10f;
             velocidadVertical = 0f;
+            agacharMano = 0f;
             salto = Salto.Suelo;
             pieY = pieReposo;
             velSalto = 0f;
@@ -1384,6 +1589,7 @@ public class Titere : MonoBehaviour
             {
                 velocidad = Mathf.Lerp(velocidad, 0f, 1f - Mathf.Exp(-6f * dt));
                 peso = Mathf.Lerp(peso, 0f, 1f - Mathf.Exp(-4f * dt));
+                agacharMano = Mathf.Lerp(agacharMano, 0f, 1f - Mathf.Exp(-4f * dt));
             }
             else
             {
@@ -1398,7 +1604,8 @@ public class Titere : MonoBehaviour
                 float objetivoCorrer = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(1.3f, 2.4f, rapidez));
                 float tasa = objetivoCorrer > correr ? 2.2f : 4f;
                 correr = Mathf.Lerp(correr, objetivoCorrer, 1f - Mathf.Exp(-tasa * dt));
-                faseCiclo = Mathf.Repeat(faseCiclo + Mathf.Abs(paso) / (largoPierna * Mathf.Lerp(1.5f, 2.6f, correr)), 1f);
+                sigilo = datos.ciclo == 2;
+                faseCiclo = Mathf.Repeat(faseCiclo + Mathf.Abs(paso) / (largoPierna * Mathf.Lerp(sigilo ? 2.1f : 1.5f, 2.6f, correr)), 1f);
                 if (velocidad > largoPierna * 0.2f)
                     mirando = 1;
                 else if (velocidad < -largoPierna * 0.2f)
@@ -1424,6 +1631,10 @@ public class Titere : MonoBehaviour
 
                 // SALTO (como antes): golpe rápido de la mano hacia arriba. Se agacha solo un instante
                 // (anticipación), despega, cae por la gravedad, se aplasta al caer y rebota.
+                // AGACHARSE: baja la mano más de 4 cm (los temblores normales no hacen nada). Suave.
+                float bajada = -Vector3.Dot(d, arriba) * Dibujo.EscalaMundo - 0.04f;
+                float objetivoAgachar = Mathf.Clamp(bajada / Dibujo.EscalaMundo, 0f, largoPierna * 0.5f);
+                agacharMano = Mathf.Lerp(agacharMano, objetivoAgachar, 1f - Mathf.Exp(-8f * dt));
                 float vy = Vector3.Dot(munecaLocal - antes, arriba) / dt * Dibujo.EscalaMundo;
                 velocidadVertical = Mathf.Lerp(velocidadVertical, vy, 1f - Mathf.Exp(-25f * dt));
                 if (salto == Salto.Suelo && velocidadVertical > 0.8f && Time.time - finSalto > 0.3f)
@@ -1530,7 +1741,12 @@ public class Titere : MonoBehaviour
             bool estilo = datos.ciclo == 1;
             float aire = salto == Salto.Aire ? 1f : salto == Salto.Sostenido ? Mathf.Clamp01(elevar / (largoPierna * 0.3f)) : 0f;
             float bobCiclo = cicloGuardado != null ? BobGuardado(cicloGuardado, faseCiclo) : BobManual(faseCiclo, estilo);
+            sigilo = datos.ciclo == 2;
             float bob = bobCiclo * peso * (1f - aire);
+            // Sigiloso: el cuerpo va más bajo (rodillas dobladas) y casi sin rebotar.
+            float bajo = sigilo ? 0.1f * largoPierna * peso * (1f - aire) * (1f - correr) : 0f;
+            if (sigilo)
+                bob = bob * 0.4f - bajo;
             float agachado = Agachado;
             float altura = (pieY - pieReposo) - agachado;
             Vector3 desplazar = raizOffset + arriba * (altura + bob);
@@ -1566,6 +1782,11 @@ public class Titere : MonoBehaviour
             float bobCabeza = aire > 0f ? 0f : (cicloGuardado != null ? BobGuardado(cicloGuardado, faseCiclo - 0.06f)
                                               : BobManual(faseCiclo - (estilo ? 0.1f : 0.06f), estilo)) * peso;
             Vector3 extraCabeza = estilo ? adelante * (0.04f * largoPierna * Mathf.Max(0f, Mathf.Sin(faseCiclo * Mathf.PI * 4f)) * peso) : Vector3.zero;
+            if (sigilo)
+            {
+                bobCabeza = bobCabeza * 0.4f - bajo;
+                extraCabeza = adelante * (0.06f * largoPierna * peso);
+            }
             Vector3 desplazarCabeza = raizOffset + arriba * (altura + bobCabeza) + extraCabeza;
             if (roles[CAB] != null)
             {
@@ -1637,7 +1858,7 @@ public class Titere : MonoBehaviour
         // Al correr se inclina hacia adelante; al frenar, la inercia lo inclina un momento.
         void Inclinar(List<Vector3> rel, float factor)
         {
-            float inclinacion = (0.14f * correr * peso + inercia) * factor;
+            float inclinacion = (0.14f * correr * peso + inercia + (sigilo ? 0.25f * peso * (1f - correr) : 0f)) * factor;
             if (Mathf.Abs(inclinacion) < 1e-5f)
                 return;
             for (int k = 0; k < rel.Count; k++)
@@ -1712,7 +1933,7 @@ public class Titere : MonoBehaviour
 
         float AnguloTabla(int columna, float fase, bool estilo)
         {
-            float camina = Interpolar(estilo ? TablaEstilo : Tabla, columna, fase);
+            float camina = Interpolar(sigilo ? TablaSigilo : estilo ? TablaEstilo : Tabla, columna, fase);
             return Mathf.Lerp(camina, Interpolar(TablaCorrer, columna, fase), correr);
         }
 
@@ -1789,6 +2010,12 @@ public class Titere : MonoBehaviour
             float f = fase + (j == 1 ? 0.5f : 0f);
             float aPierna = AnguloTabla(1, f, estilo);
             float s = -Mathf.Lerp(estilo ? 1.35f : 0.8f, 1.1f, correr) * aPierna;
+            if (sigilo && correr < 0.5f)
+            {
+                // Sigiloso: brazos doblados al frente, manos arriba, con un balanceo pequeño.
+                float hombro = Mathf.Lerp(35f - 0.4f * aPierna, s, correr * 2f);
+                return Brazo(j, r, hombro, Mathf.Lerp(100f, 85f, correr * 2f), hombro);
+            }
             if (estilo && correr < 0.5f)
             {
                 float retraso = -1.35f * AnguloTabla(1, f - 0.08f, true);
