@@ -106,8 +106,16 @@ public static class ArmarEscenaTrazo
         var matBlanco = Mat("Blanco", unlit, Color.white);
         var matCandado = Mat("Candado", unlit, new Color(0.95f, 0.6f, 0.1f));
         var matDial = Mat("Dial", unlit, new Color(0.2f, 0.5f, 1f));
+        var matIndicador = Mat("IndicadorTitere", unlit, new Color(1f, 0.55f, 0.1f));
+        // Lápiz de boceto sobre hoja (si faltan los shaders, el lápiz no se activa pero todo lo demás sí).
+        var shaderSello = Shader.Find("TrazoVR/SelloLapiz");
+        var shaderHoja = Shader.Find("TrazoVR/HojaLapiz");
+        Material matSello = shaderSello != null ? Mat("SelloLapiz", shaderSello, Color.white) : null;
+        Material matHoja = shaderHoja != null ? Mat("HojaLapiz", shaderHoja, new Color(0.32f, 0.32f, 0.36f)) : null;
+        if (matSello == null || matHoja == null)
+            Debug.LogWarning("TrazoVR: no encontré los shaders del lápiz de boceto (copia otra vez la carpeta Shaders).");
         // Los círculos de los nodos (y las imágenes, dianas, flecha y dial) se ven por ambos lados.
-        foreach (var m in new[] { matNodo, matNodoActivo, matAsa, matIman, matImagen, matImagenTransparente, matFlecha, matDianaRoja, matDianaVerde, matBlanco, matDial })
+        foreach (var m in new[] { matNodo, matNodoActivo, matAsa, matIman, matImagen, matImagenTransparente, matFlecha, matDianaRoja, matDianaVerde, matBlanco, matDial, matIndicador })
             if (m.HasProperty("_Cull"))
                 m.SetFloat("_Cull", 0f);
         AssetDatabase.SaveAssets();
@@ -144,6 +152,15 @@ public static class ArmarEscenaTrazo
         titere.dibujo = dibujo;
         titere.animacion = animacion;
         dibujo.titere = titere;
+        titere.materialIndicador = matIndicador;
+        if (matSello != null && matHoja != null)
+        {
+            var hojas = goDibujo.AddComponent<HojasLapiz>();
+            hojas.dibujo = dibujo;
+            hojas.materialSello = matSello;
+            hojas.materialHoja = matHoja;
+            dibujo.hojas = hojas;
+        }
         animacion.dibujo = dibujo;
         dibujo.animacion = animacion;
         dibujo.materialBorrado = matBorrado;

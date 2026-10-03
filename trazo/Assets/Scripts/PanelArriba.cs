@@ -180,7 +180,7 @@ public class PanelArriba : MonoBehaviour
 
         if (titere != null)
         {
-            Conectar(btnMuneco, titere.CargarMuneco);
+            Conectar(btnMuneco, titere.CrearOParar);
             Conectar(btnTitere, titere.CambiarTipo);
             Conectar(btnGrabarTitere, titere.Grabar);
             Conectar(btnPierna1, () => titere.AsignarPierna(1));
@@ -588,7 +588,11 @@ public class PanelArriba : MonoBehaviour
         if (btnTitere != null)
             btnTitere.PonerTexto("Tipo: " + titere.NombreTipo);
         if (btnMuneco != null)
-            btnMuneco.PonerTexto("Crear " + titere.NombreTipo);
+        {
+            bool mueve = titere.Encendido || titere.Grabando;
+            btnMuneco.PonerTexto(mueve ? "Parar" : "Crear " + titere.NombreTipo);
+            btnMuneco.Marcar(mueve);
+        }
         if (btnPosar != null)
         {
             btnPosar.PonerTexto(titere.Posando ? "Terminar" : "Posar dedos");
@@ -615,8 +619,8 @@ public class PanelArriba : MonoBehaviour
             textoTitere.text = titere.Posando
                 ? "Acomoda las piernas con el índice y el medio · pellizco IZQUIERDO = guardar clave"
                 : titere.Encendido
-                ? "Lados = caminar/correr · abajo = agacharse · arriba = elevar · agacha y sube rápido = saltar"
-                : "Choca esos cinco con un personaje (derecha o izquierda) · elegido: " + (p != null ? p.nombre : "ninguno") + " · pisos: " + titere.pisos.Count;
+                ? "Lados = caminar/correr · abajo/arriba = agachar/elevar · PUÑO = cargar, ABRE = saltar · palma arriba = apagar"
+                : "Choca esos cinco con un personaje para moverlo (con la otra mano, para apagarlo) · elegido: " + (p != null ? p.nombre : "ninguno") + " · pisos: " + titere.pisos.Count;
     }
 
     void RefrescarAnimar()

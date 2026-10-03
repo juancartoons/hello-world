@@ -41,7 +41,7 @@ public class DatosCapa
     public bool hayPlano;
     public Vector3 planoPunto;
     public Vector3 planoNormal = Vector3.forward;
-    public bool unido;               // unido con los planos de las otras capas unidas
+    public bool unido = true;        // unido con los planos de las otras capas (como acetato sobre papel)
 
     public DatosCapa Copia()
     {
@@ -69,7 +69,7 @@ public class Clave
 [System.Serializable]
 public class DatosDibujo
 {
-    public int version = 4;
+    public int version = 5;
     public List<DatosTrazo> trazos = new List<DatosTrazo>();
     public int fondo;
     public float anchoPincel = 0.008f;
@@ -89,6 +89,7 @@ public class DatosDibujo
     public List<PoseBoca> bocas = new List<PoseBoca>();
     public string audio = "";
     public List<DatosFigura> figuras = new List<DatosFigura>();
+    public List<TrazoLapiz> lapiz = new List<TrazoLapiz>();
     public int temblor;
     public bool pincelElegido;
     public int titerePierna1;
@@ -125,6 +126,7 @@ public class Dibujo : MonoBehaviour
     [Tooltip("Líneas de una capa de boceto: azul")]
     public Material materialBocetoAzul;
     public Figuras figuras;
+    public HojasLapiz hojas;
     public Animacion animacion;
     public Lipsync lipsync;
     public Temblor temblor;
@@ -182,7 +184,7 @@ public class Dibujo : MonoBehaviour
     public static readonly string[] NombresSuavidad = { "Suave", "Normal", "Nervioso" };
     public static readonly float[] Velocidades = { 4f, 8f, 12f, 24f };
     public const float SeparacionHebras = 1.2f;
-    public const float SeparacionPlanos = 0.002f; // metros entre planos unidos
+    public const float SeparacionPlanos = 0.0005f; // metros entre planos unidos (medio milímetro: como acetato)
     bool AnimacionActiva => animacion != null && animacion.Activa;
 
     void Awake()
@@ -199,6 +201,8 @@ public class Dibujo : MonoBehaviour
             titere = GetComponent<Titere>();
         if (figuras == null)
             figuras = GetComponent<Figuras>();
+        if (hojas == null)
+            hojas = GetComponent<HojasLapiz>();
     }
 
     void Start()
@@ -258,6 +262,9 @@ public class Dibujo : MonoBehaviour
     }
 
     public DatosCapa CapaActual => DatosDeCapa(capaActual);
+
+    // La capa de boceto en Plano (2D) dibuja con lápiz sobre una hoja (como papel).
+    public bool UsaHoja => hojas != null && plano && EsBoceto(capaActual);
 
     public bool EsBoceto(int capa)
     {
@@ -783,12 +790,13 @@ public class Dibujo : MonoBehaviour
         ActualizarGuia();
     }
 
-    // El plano de la capa actual. Si la capa está "unida", usa el plano del grupo
-    // (cada capa unida queda 2 mm más cerca de ti que la anterior: boceto atrás, tinta adelante).
-    void RefrescarPlano()
+    // El plano de una capa (en coordenadas del dibujo). Si la capa está "unida", usa el plano del grupo:
+    // cada capa unida queda medio milímetro más cerca de ti que la anterior (boceto atrás, tinta adelante).
+    public bool PlanoDeCapa(int capa, out Vector3 punto, out Vector3 normal)
     {
         AsegurarCapas();
-        var c = capas[capaActual];
+        capa = Mathf.Clamp(capa, 0, capas.Count - 1);
+        var c = capas[capa];
         if (c.unido)
         {
             for (int i = 0; i < capas.Count; i++)
@@ -796,16 +804,23 @@ public class Dibujo : MonoBehaviour
                 var b = capas[i];
                 if (!b.unido || !b.hayPlano || b.planoNormal.sqrMagnitude < 1e-6f)
                     continue;
-                Vector3 n = b.planoNormal.normalized;
-                planoNormal = n;
-                planoPunto = b.planoPunto - n * (SeparacionPlanos / EscalaMundo) * (capaActual - i);
-                HayPlano = true;
-                return;
+                normal = b.planoNormal.normalized;
+                punto = b.planoPunto - normal * (SeparacionPlanos / EscalaMundo) * (capa - i);
+                return true;
             }
         }
-        HayPlano = c.hayPlano && c.planoNormal.sqrMagnitude > 1e-6f;
-        planoPunto = c.planoPunto;
-        planoNormal = HayPlano ? c.planoNormal.normalized : Vector3.forward;
+        bool hay = c.hayPlano && c.planoNormal.sqrMagnitude > 1e-6f;
+        punto = c.planoPunto;
+        normal = hay ? c.planoNormal.normalized : Vector3.forward;
+        return hay;
+    }
+
+    void RefrescarPlano()
+    {
+        Vector3 p, n;
+        HayPlano = PlanoDeCapa(capaActual, out p, out n);
+        planoPunto = p;
+        planoNormal = n;
     }
 
     public void AlternarIman()
@@ -822,9 +837,32 @@ public class Dibujo : MonoBehaviour
         var c = CapaActual;
         c.unido = !c.unido;
         RefrescarPlano();
+        if (c.unido && HayPlano)
+        {
+            // Las líneas que ya tenía la capa se pegan al plano unido.
+            GuardarParaDeshacer();
+            bool antes = Trazo.silenciar;
+            Trazo.silenciar = true;
+            foreach (var t in trazos)
+            {
+                if (t == null || t.capa != capaActual || t.nodos.Count < 2)
+                    continue;
+                var d = t.CrearDatos();
+                for (int k = 0; k < d.nodos.Count; k++)
+                {
+                    d.nodos[k] = ProyectarEnPlano(d.nodos[k]);
+                    if (k < d.asaEntrada.Count) d.asaEntrada[k] = ProyectarVectorEnPlano(d.asaEntrada[k]);
+                    if (k < d.asaSalida.Count) d.asaSalida[k] = ProyectarVectorEnPlano(d.asaSalida[k]);
+                }
+                t.AplicarPose(d, null, 0f);
+            }
+            Trazo.silenciar = antes;
+        }
+        if (hojas != null)
+            hojas.RedibujarTodo();
         ActualizarGuia();
         Avisar();
-        Mensaje(c.unido ? c.nombre + ": plano unido" : c.nombre + ": plano propio");
+        Mensaje(c.unido ? c.nombre + ": plano unido (pegado a las otras capas)" : c.nombre + ": plano propio");
     }
 
     // El plano 2D en el mundo (punto y normal, la normal apunta lejos de ti). false si no hay plano.
@@ -1022,7 +1060,12 @@ public class Dibujo : MonoBehaviour
 
     public void BorrarTodo()
     {
-        if (trazos.Count == 0)
+        if (Titere.Activo)
+        {
+            Mensaje("Primero suelta los personajes");
+            return;
+        }
+        if (trazos.Count == 0 && (hojas == null || !hojas.HayAlgo))
         {
             Mensaje("No hay nada que borrar");
             return;
@@ -1038,6 +1081,8 @@ public class Dibujo : MonoBehaviour
             c.hayPlano = false;
         if (figuras != null)
             figuras.QuitarTodas();
+        if (hojas != null)
+            hojas.Limpiar();
         RefrescarPlano();
         ActualizarGuia();
         Trazo.huboCambio = false;
@@ -1072,6 +1117,11 @@ public class Dibujo : MonoBehaviour
 
     public void Cargar()
     {
+        if (Titere.Activo)
+        {
+            Mensaje("Primero suelta los personajes");
+            return;
+        }
         var d = Leer(RutaGuardado);
         if (d == null)
         {
@@ -1109,6 +1159,8 @@ public class Dibujo : MonoBehaviour
             d.capas.Add(c.Copia());
         if (figuras != null)
             figuras.GuardarEn(d);
+        if (hojas != null)
+            hojas.GuardarEn(d);
         foreach (var t in trazos)
             if (t != null && t.nodos.Count >= 2)
                 d.trazos.Add(t.CrearDatos());
@@ -1158,6 +1210,12 @@ public class Dibujo : MonoBehaviour
                 capas[capaActual].planoNormal = d.planoNormal.normalized;
             }
         }
+        if (d.version < 5)
+        {
+            // Antes las capas no estaban unidas por defecto.
+            foreach (var c in capas)
+                c.unido = true;
+        }
         RefrescarPlano();
 
         siguienteId = Mathf.Max(1, d.siguienteId);
@@ -1189,6 +1247,8 @@ public class Dibujo : MonoBehaviour
             lipsync.Restaurar(d.bocas, d.audio, incluirFondo);
         if (figuras != null)
             figuras.Restaurar(d);
+        if (hojas != null)
+            hojas.Restaurar(d);
         pincelElegido = d.pincelElegido;
         if (titere != null)
             titere.Restaurar(d);

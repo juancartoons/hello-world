@@ -68,13 +68,16 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 
 1. Panel de arriba → página **Títere** → **Tipo** (Palito, Musculoso, Gordito, Flaco, Niño) → **Crear**.
    Aparece frente a ti sobre un piso. Los personajes dibujados tienen huesos invisibles y sus partes pegadas a ellos.
-2. **Encender / apagar**: "choca esos cinco" con el personaje (mano abierta, palma hacia él, empujón rápido cerca).
+2. **Encender**: "choca esos cinco" con el personaje (mano abierta, palma hacia él, empujón rápido cerca).
    Con la mano **derecha** lo controlas con la derecha; con la **izquierda**, otro personaje con la izquierda.
+   **Apagar**: choca esos cinco con la **otra mano** (la libre). Si las dos manos tienen personaje: **palma hacia
+   arriba** medio segundo (el muñeco se queda quieto y el aro se llena). O el botón **Parar** (donde dice Crear).
+   Mientras un personaje se mueve, el dibujo se bloquea solo (candado) y vuelve como estaba al apagarlo.
 3. Mano a los lados = **caminar** (lento) o **correr** (rápido; pasa por caminar antes de correr). Hacia atrás, se voltea.
-   Al frenar de golpe, la cabeza y el tronco siguen un poquito (inercia).
+   Al frenar **después de correr**, la cabeza y el tronco siguen un poquito (inercia). "Arriba" es la gravedad real.
 4. Mano **abajo** = agacharse (dobla las rodillas). Mano **arriba** = elevarlo (tan alto como quieras).
-5. **Saltar**: agáchalo y sube rápido. Despega estirado, se recoge arriba, cae estirado, se agacha al caer (más si cayó
-   de más alto) y rebota. Si subes rápido sin agacharte, hace una anticipación corta solo.
+5. **Saltar**: cierra la mano en **puño** = carga (se agacha y se llena el aro naranja); **abre** la mano = salta
+   (más carga, más alto). Se recoge arriba, cae, se agacha al caer (más si cayó de más alto) y rebota.
 6. **Piso +/-**: la línea elegida es piso o plataforma (sube rampas, cae si se acaba).
 7. **Grabar**: cuenta 3 segundos y guarda una clave por fotograma de todos los personajes encendidos.
    "Choca esos cinco" con tu personaje (o **Parar**) = terminar. Luego corrige en la línea de tiempo y exporta con Video anim.
@@ -105,6 +108,10 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 ## Capas
 
 - Toca **Capa 1-4** para elegir en cuál dibujas; **Ver/Oculta** la muestra o la esconde.
+- Las capas en Plano están **unidas** de fábrica: medio milímetro una de otra (como acetatos sobre papel).
+  **Plano** (Medios) une o separa la capa; al unirla, sus líneas se pegan al plano.
+- **Lápiz de boceto**: en una capa de **Boceto** (gris o azul) con **Plano 2D**, dibujar pinta con lápiz sobre una
+  hoja (con grano; más cerca del plano = más oscuro). El puño-borrador es una goma. No sale en fotos ni videos.
 
 ## Archivos
 

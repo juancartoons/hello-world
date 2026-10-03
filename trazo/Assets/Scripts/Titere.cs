@@ -52,11 +52,15 @@ public class DatosPersonaje
 
 // Títeres que caminan, corren y saltan. Hasta DOS a la vez: uno en cada mano.
 //  - "Tipo" + "Crear": pone frente a ti un personaje listo (Palito, Musculoso, Gordito, Flaco o Niño) sobre un piso.
-//  - ENCENDER / APAGAR: "choca esos cinco" con el personaje (mano abierta, palma hacia él, empujón rápido cerca).
+//  - ENCENDER: "choca esos cinco" con el personaje (mano abierta, palma hacia él, empujón rápido cerca).
 //    Con la mano DERECHA lo controlas con la derecha; con la IZQUIERDA, otro personaje con la izquierda.
+//  - APAGAR: choca esos cinco con la OTRA mano (la libre). Si las dos manos tienen personaje:
+//    pon la palma hacia ARRIBA medio segundo (el muñeco se queda quieto mientras). O el botón "Parar".
 //  - Mano a los lados = caminar (lento) o correr (rápido). Hacia atrás, se voltea.
 //    Mano abajo = agacharse. Mano arriba = elevarlo (tan alto como quieras).
-//    Agáchalo y sube rápido = SALTAR (despega, se recoge arriba, cae, se aplasta al caer y rebota).
+//    PUÑO = cargar el salto (se agacha y se llena el aro); ABRE la mano = SALTA (más carga, más alto).
+//  - "Arriba" es siempre la gravedad del mundo real (aunque el dibujo esté girado).
+//  - Mientras un personaje se mueve, el dibujo queda bloqueado (candado) para no editarlo sin querer.
 //  - "Piso +/-": la línea elegida es piso para los personajes.
 //  - "Grabar": cuenta 3 segundos y guarda una clave por fotograma (todos los personajes encendidos).
 //    "Choca esos cinco" con tu personaje (o "Parar") = terminar.
@@ -93,6 +97,16 @@ public class Titere : MonoBehaviour
     readonly Vector3[] palmaPrevia = new Vector3[2];
     readonly bool[] teniaPalma = new bool[2];
     readonly float[] choqueHasta = new float[2];
+
+    // Palma hacia arriba (apagar con la misma mano)
+    readonly float[] palmaArribaDesde = { -1f, -1f };
+    const float TiempoPalmaArriba = 0.5f;
+
+    // Aro sobre el personaje: se llena al cargar el salto o al apagar con la palma arriba.
+    [Tooltip("Material del aro indicador (carga del salto / apagar)")]
+    public Material materialIndicador;
+    readonly Transform[] aros = new Transform[2];
+    readonly Transform[] rellenos = new Transform[2];
 
     // Dedos (para posar)
     readonly Vector3[,] dedos = new Vector3[2, 4];
@@ -164,6 +178,7 @@ public class Titere : MonoBehaviour
     void ActualizarActivo()
     {
         Activo = manos[0] != null || manos[1] != null || fase == Fase.Posando;
+        ActualizarAros();
     }
 
     // ---------- Guardar y cargar (con el dibujo) ----------
@@ -209,6 +224,38 @@ public class Titere : MonoBehaviour
     }
 
     // ---------- Botones ----------
+
+    // Botón "Parar": apaga todos los personajes (o termina de grabar / posar).
+    public void Parar()
+    {
+        if (fase == Fase.Grabando)
+        {
+            TerminarGrabacion();
+            return;
+        }
+        if (fase == Fase.Posando)
+        {
+            AlternarPosar();
+            return;
+        }
+        grabarAlPreparar = false;
+        if (!Encendido && fase != Fase.CuentaGrabar)
+        {
+            Mensaje("No hay ningún personaje moviéndose");
+            return;
+        }
+        ApagarTodo(true);
+        Mensaje("Personaje apagado");
+    }
+
+    // El botón "Crear" se vuelve "Parar" mientras hay un personaje moviéndose.
+    public void CrearOParar()
+    {
+        if (Encendido || fase != Fase.Libre)
+            Parar();
+        else
+            CargarMuneco();
+    }
 
     public void CambiarTipo()
     {
@@ -447,18 +494,20 @@ public class Titere : MonoBehaviour
             for (int h = 0; h < 2; h++)
             {
                 var p = DetectarChoque(h);
-                if (p == null)
+                // La mano que controla un personaje no apaga nada con choca esos cinco (así no lo persigues).
+                if (p == null || manos[h] != null)
                     continue;
-                if (manos[h] != null && manos[h].datos == p)
+                if (manos[1 - h] != null && manos[1 - h].datos == p)
                 {
+                    // La mano libre choca con el personaje de la otra mano: se apaga.
                     if (fase == Fase.Grabando)
                     {
                         TerminarGrabacion();
                         return;
                     }
-                    Apagar(h);
+                    Apagar(1 - h);
                 }
-                else if (fase == Fase.Libre && (manos[1 - h] == null || manos[1 - h].datos != p))
+                else if (fase == Fase.Libre)
                 {
                     Encender(h, p);
                 }
@@ -505,9 +554,44 @@ public class Titere : MonoBehaviour
             }
             else
             {
-                Mensaje("¡Muévelo! Abajo = agacharse · arriba = elevar · agacha y sube rápido = saltar");
+                Mensaje("¡Muévelo! Puño = cargar salto, abre = saltar · palma arriba o choca con la otra mano = apagar");
             }
         }
+
+        // Palma hacia arriba medio segundo con la mano que controla = apagar ese personaje.
+        for (int h = 0; h < 2; h++)
+        {
+            var m = manos[h];
+            if (m == null || !m.listo || fase == Fase.CuentaGrabar)
+            {
+                palmaArribaDesde[h] = -1f;
+                if (m != null) m.congelado = false;
+                continue;
+            }
+            if (PalmaArriba(h))
+            {
+                if (palmaArribaDesde[h] < 0f)
+                    palmaArribaDesde[h] = Time.time;
+                m.congelado = true;
+                if (Time.time - palmaArribaDesde[h] >= TiempoPalmaArriba)
+                {
+                    palmaArribaDesde[h] = -1f;
+                    if (fase == Fase.Grabando)
+                    {
+                        TerminarGrabacion();
+                        ActualizarAros();
+                        return;
+                    }
+                    Apagar(h);
+                }
+            }
+            else
+            {
+                palmaArribaDesde[h] = -1f;
+                m.congelado = false;
+            }
+        }
+        ActualizarAros();
 
         float dt = Mathf.Max(1e-4f, Time.deltaTime);
         switch (fase)
@@ -563,7 +647,7 @@ public class Titere : MonoBehaviour
     void ActualizarTodas(float dt)
     {
         foreach (var m in manos)
-            if (m != null && m.listo)
+            if (m != null && m.listo && !m.congelado)
                 m.Actualizar(dt);
     }
 
@@ -654,6 +738,74 @@ public class Titere : MonoBehaviour
         if (mejor != null)
             choqueHasta[h] = Time.time + 1f;
         return mejor;
+    }
+
+    // Mano abierta con la palma mirando al techo.
+    bool PalmaArriba(int h)
+    {
+        var m = h == 0 ? control.Der : control.Izq;
+        if (m == null || !m.valida || m.esqueleto == null)
+            return false;
+        var palma = ManosUtil.LeerPalma(m.esqueleto, h == 1);
+        return palma.valida && palma.cierre > 1.45f && Vector3.Dot(palma.normal, Vector3.up) > 0.7f;
+    }
+
+    // Aro sobre la cabeza del personaje: se llena con la carga del salto (o al apagar con la palma arriba).
+    void ActualizarAros()
+    {
+        for (int h = 0; h < 2; h++)
+        {
+            var m = manos[h];
+            float lleno = 0f;
+            if (m != null && m.listo)
+            {
+                lleno = m.Carga;
+                if (palmaArribaDesde[h] >= 0f)
+                    lleno = Mathf.Clamp01((Time.time - palmaArribaDesde[h]) / TiempoPalmaArriba);
+            }
+            bool ver = lleno > 0.01f && materialIndicador != null;
+            if (!ver)
+            {
+                if (aros[h] != null && aros[h].gameObject.activeSelf)
+                    aros[h].gameObject.SetActive(false);
+                continue;
+            }
+            if (aros[h] == null)
+                CrearAro(h);
+            var aro = aros[h];
+            if (!aro.gameObject.activeSelf)
+                aro.gameObject.SetActive(true);
+            float tam = Mathf.Clamp(m.LargoPiernaMundo * 0.35f, 0.02f, 0.06f);
+            aro.position = Centro(m.datos) + Vector3.up * (m.LargoPiernaMundo * 1.9f);
+            if (control != null && control.Cabeza != null)
+            {
+                Vector3 mirar = aro.position - control.Cabeza.position;
+                if (mirar.sqrMagnitude > 1e-6f)
+                    aro.rotation = Quaternion.LookRotation(mirar, Vector3.up);
+            }
+            aro.localScale = Vector3.one * tam;
+            rellenos[h].localScale = Vector3.one * (0.6f * lleno);
+        }
+    }
+
+    void CrearAro(int h)
+    {
+        var go = new GameObject("AroTitere" + h);
+        go.AddComponent<MeshFilter>().sharedMesh = ControlManos.MallaAnillo();
+        PintarAro(go.AddComponent<MeshRenderer>());
+        var relleno = new GameObject("Relleno");
+        relleno.transform.SetParent(go.transform, false);
+        relleno.AddComponent<MeshFilter>().sharedMesh = ControlManos.MallaDisco();
+        PintarAro(relleno.AddComponent<MeshRenderer>());
+        aros[h] = go.transform;
+        rellenos[h] = relleno.transform;
+    }
+
+    void PintarAro(MeshRenderer r)
+    {
+        r.sharedMaterial = materialIndicador;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
     }
 
     // La cadera del personaje, en el mundo.
@@ -929,7 +1081,15 @@ public class Titere : MonoBehaviour
         float escalaY = 1f, velEscala;
         float golpe, velGolpe;       // agacharse al caer (resorte con rebote)
         float agacharAuto;           // anticipación automática
-        float inercia, velInercia;   // cabeza y tronco siguen al frenar
+        float inercia, velInercia;   // cabeza y tronco siguen al frenar (solo después de correr)
+        float corrioHasta = -10f;    // última vez que iba corriendo rápido
+        bool frenoDado;              // el empujón de la inercia ya se dio en este frenón
+        float carga;                 // carga del salto (puño): 0 a 1
+        bool cargando;
+        public bool congelado;       // quieto mientras pones la palma hacia arriba
+
+        public float Carga => cargando ? carga : 0f;
+        public float LargoPiernaMundo => largoPierna * Dibujo.EscalaMundo;
 
         // Últimas poses de los miembros (para las partes pegadas)
         readonly List<Vector3>[] miembros = new List<Vector3>[6];
@@ -991,12 +1151,24 @@ public class Titere : MonoBehaviour
             Vector3 abajo = (a[a.Count - 1] - a[0]) + (b[b.Count - 1] - b[0]);
             if (abajo.sqrMagnitude < 1e-10f)
                 return false;
-            arriba = -abajo.normalized;
+            Vector3 arribaPiernas = -abajo.normalized;
             Vector3 frente = (a[a.Count - 1] - a[Mathf.Max(0, a.Count - 2)]) + (b[b.Count - 1] - b[Mathf.Max(0, b.Count - 2)]);
             frente += (a[a.Count / 2] - (a[0] + a[a.Count - 1]) * 0.5f) + (b[b.Count / 2] - (b[0] + b[b.Count - 1]) * 0.5f);
-            frente = Vector3.ProjectOnPlane(frente, arriba);
+            frente = Vector3.ProjectOnPlane(frente, arribaPiernas);
             if (frente.sqrMagnitude < 1e-10f)
-                frente = Vector3.ProjectOnPlane(Dibujo.transform.InverseTransformDirection(Vector3.right), arriba);
+                frente = Vector3.ProjectOnPlane(Dibujo.transform.InverseTransformDirection(Vector3.right), arribaPiernas);
+            if (frente.sqrMagnitude < 1e-10f)
+                frente = Vector3.Cross(arribaPiernas, Vector3.forward);
+            // "Arriba" = la gravedad del mundo real (no lo que digan las piernas dibujadas),
+            // dentro del plano donde está dibujado el personaje.
+            Vector3 normalPersonaje = Vector3.Cross(arribaPiernas, frente.normalized);
+            Vector3 mundoArriba = Dibujo.transform.InverseTransformDirection(Vector3.up).normalized;
+            Vector3 gravedad = normalPersonaje.sqrMagnitude > 1e-8f
+                ? Vector3.ProjectOnPlane(mundoArriba, normalPersonaje.normalized) : mundoArriba;
+            arriba = gravedad.sqrMagnitude > 0.25f ? gravedad.normalized : arribaPiernas;
+            frente = Vector3.ProjectOnPlane(frente, arriba);
+            if (frente.sqrMagnitude < 1e-10f && normalPersonaje.sqrMagnitude > 1e-8f)
+                frente = Vector3.Cross(normalPersonaje, arriba);
             if (frente.sqrMagnitude < 1e-10f)
                 frente = Vector3.Cross(arriba, Vector3.forward);
             adelante = frente.normalized * (datos.voltear ? -1f : 1f);
@@ -1123,6 +1295,11 @@ public class Titere : MonoBehaviour
             velSalto = 0f;
             escalaY = 1f;
             velEscala = golpe = velGolpe = agacharAuto = inercia = velInercia = 0f;
+            carga = 0f;
+            cargando = false;
+            frenoDado = false;
+            corrioHasta = -10f;
+            congelado = false;
             listo = true;
         }
 
@@ -1198,12 +1375,20 @@ public class Titere : MonoBehaviour
                 float objetivo = Mathf.Clamp01(Mathf.Abs(velocidad) / (largoPierna * 0.8f));
                 peso = Mathf.Lerp(peso, objetivo, 1f - Mathf.Exp(-4f * dt));
 
-                // Frenar: la cabeza y el tronco siguen un poquito (inercia) y vuelven con un rebote.
-                float acel = (velocidad - velocidadPrevia) / dt;
-                float objetivoInercia = Mathf.Abs(velocidadPrevia) > largoPierna * 0.3f
-                    ? Mathf.Clamp(-acel * mirando / (8f * largoPierna), -0.25f, 0.35f) : 0f;
-                velInercia += ((objetivoInercia - inercia) * 150f - velInercia * 11f) * dt;
-                inercia += velInercia * dt;
+                // Frenar DESPUÉS DE CORRER: la cabeza y el tronco siguen un poquito (inercia) y vuelven
+                // con un rebote. Al caminar o moverlo despacio no pasa nada.
+                if (rapidez > 1.8f)
+                {
+                    corrioHasta = Time.time;
+                    frenoDado = false;
+                }
+                else if (!frenoDado && rapidez < 0.4f && Time.time - corrioHasta < 0.5f)
+                {
+                    frenoDado = true;
+                    velInercia += 3.2f;
+                }
+                velInercia += (-inercia * 150f - velInercia * 11f) * dt;
+                inercia = Mathf.Clamp(inercia + velInercia * dt, -0.25f, 0.35f);
                 velocidadPrevia = velocidad;
 
                 // Arriba / abajo: la mano agacha o eleva al personaje.
@@ -1217,20 +1402,32 @@ public class Titere : MonoBehaviour
                 elevar = Mathf.Max(0f, dy);
                 float vy = Vector3.Dot(munecaLocal - antes, arriba) / dt * Dibujo.EscalaMundo;
                 velocidadVertical = Mathf.Lerp(velocidadVertical, vy, 1f - Mathf.Exp(-25f * dt));
-                if ((salto == Salto.Suelo || salto == Salto.Sostenido) && velocidadVertical > 0.9f)
+
+                // SALTO: puño = cargar (se agacha y se llena el aro); abrir la mano = saltar.
+                var mano = Mano;
+                var palma = mano != null && mano.valida && mano.esqueleto != null
+                    ? ManosUtil.LeerPalma(mano.esqueleto, izquierda) : new ManosUtil.Palma();
+                bool puno = palma.valida && palma.cierre < 1.15f;
+                bool abierta = palma.valida && palma.cierre > 1.45f;
+                if (salto != Salto.Suelo)
                 {
-                    // Subida rápida = salto. Si no te agachaste antes, hace una anticipación corta.
-                    float impulso = Mathf.Max(velocidadVertical / Dibujo.EscalaMundo * 1.1f, (4.5f + 6f * agacharMano / largoPierna) * largoPierna);
-                    velInicial = impulso;
-                    if (salto == Salto.Suelo && agacharMano < largoPierna * 0.06f)
+                    cargando = false;
+                    carga = 0f;
+                }
+                else if (puno)
+                {
+                    cargando = true;
+                    carga = Mathf.Min(1f, carga + dt / 0.8f);
+                }
+                else if (cargando && abierta)
+                {
+                    cargando = false;
+                    if (carga > 0.08f)
                     {
-                        salto = Salto.Anticipa;
-                        saltoDesde = Time.time;
-                    }
-                    else
-                    {
+                        velInicial = (3.5f + 4f * carga) * largoPierna;
                         Despegar();
                     }
+                    carga = 0f;
                 }
             }
             ActualizarSalto(dt);
@@ -1320,7 +1517,8 @@ public class Titere : MonoBehaviour
             escalaY = Mathf.Clamp(escalaY, 0.6f, 1.3f);
         }
 
-        float Agachado => salto == Salto.Aire || salto == Salto.Sostenido ? 0f : agacharMano + agacharAuto + golpe;
+        float Agachado => salto == Salto.Aire || salto == Salto.Sostenido ? 0f
+            : Mathf.Min(agacharMano + (cargando ? carga * largoPierna * 0.45f : 0f), largoPierna * 0.6f) + agacharAuto + golpe;
 
         // ---------- Poner la pose ----------
 

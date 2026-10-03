@@ -362,7 +362,8 @@ public class ControlManos : MonoBehaviour
         if (borrador && dirDedosIzq.sqrMagnitude > 1e-6f && palmaIzq.normal.sqrMagnitude > 1e-6f)
             giroBorrador = Quaternion.LookRotation(dirDedosIzq, -palmaIzq.normal);
         simbolos.Borrador(borrador, borrador ? palmaIzq.centro + dirDedosIzq * 0.02f : Vector3.zero, giroBorrador);
-        simbolos.Candado(DibujoBloqueado, Cabeza);
+        // Mientras un muñeco se mueve, el candado se pone solo (y vuelve como estaba al pararlo).
+        simbolos.Candado(DibujoBloqueado || Titere.Activo, Cabeza);
         bool dial = GestoIzq == Gesto.Grosor && dialUsado && Cabeza != null;
         simbolos.Dial(dial, dialCentro, Cabeza != null ? Cabeza.position : Vector3.zero, Mathf.Clamp(dialRadio * 2f, 0.02f, 0.08f));
     }
@@ -638,6 +639,8 @@ public class ControlManos : MonoBehaviour
             OcultarMano(true, false);
             CancelarFrote();
         }
+        if (dibujo.hojas != null)
+            dibujo.hojas.Terminar();
         if (GestoIzq != Gesto.Ninguno)
             finGestoIzq = Time.time;
         if (arrastre != Objetivo.Nada)
@@ -659,6 +662,11 @@ public class ControlManos : MonoBehaviour
         if (DibujoBloqueado)
             return;
         Vector3 local = dibujo.transform.InverseTransformPoint(Der.indice);
+        if (dibujo.UsaHoja)
+        {
+            LapizHoja(local, false);
+            return;
+        }
         if (LapizLevantado(local))
             return;
         if (trazoActual == null)
@@ -670,6 +678,29 @@ public class ControlManos : MonoBehaviour
             inicioTrazo = Time.time;
         }
         trazoActual.AgregarPuntoCrudo(dibujo.ProyectarEnPlano(local));
+    }
+
+    // Lápiz de boceto sobre la hoja (capa de Boceto en Plano 2D): pinta grafito o lo borra con la goma.
+    // Más cerca del plano = más presión (línea más oscura y gruesa). Lejos del plano = lápiz levantado.
+    void LapizHoja(Vector3 local, bool goma)
+    {
+        if (trazoActual != null)
+        {
+            dibujo.TerminarTrazo(trazoActual);
+            trazoActual = null;
+        }
+        if (dibujo.plano && !dibujo.HayPlano && Cabeza != null)
+            dibujo.DefinirPlano(local, Cabeza.forward);
+        var hojas = dibujo.hojas;
+        float d = dibujo.DistanciaAlPlanoMundo(local);
+        lejosDelPlano = d > hojas.alcance;
+        if (lejosDelPlano)
+        {
+            hojas.Terminar();
+            return;
+        }
+        dibujo.Seleccionar(null);
+        hojas.Pintar(local, d, goma);
     }
 
     // En Plano (2D): el dedo tiene que estar sobre el plano para dibujar, como un lápiz en el papel.
@@ -1105,6 +1136,9 @@ public class ControlManos : MonoBehaviour
         Vector3 punta = Der.indice;
         Vector3 local = dibujo.transform.InverseTransformPoint(punta);
         float escala = dibujo.EscalaMundo;
+        // En la hoja del lápiz de boceto, el borrador es una goma que aclara el grafito.
+        if (dibujo.UsaHoja && dibujo.HayPlano)
+            LapizHoja(local, true);
 
         Objetivo tipo = Objetivo.Nada;
         Trazo t = null;
