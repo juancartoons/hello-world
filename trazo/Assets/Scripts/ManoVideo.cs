@@ -48,6 +48,9 @@ public sealed class ManoVideo
     static int[] esferaTri;
 
     readonly bool guia;
+    MeshRenderer render;
+    Material materialBase;
+    int resaltado = -1;
 
     // guia = true: mano "fantasma" del tutorial (toda del mismo material, sin guante ni manga).
     public ManoVideo(Transform padre, Material material, int capa, bool guia = false)
@@ -60,6 +63,8 @@ public sealed class ManoVideo
         malla.MarkDynamic();
         go.AddComponent<MeshFilter>().sharedMesh = malla;
         var mr = go.AddComponent<MeshRenderer>();
+        render = mr;
+        materialBase = material;
         if (guia)
         {
             mr.sharedMaterials = new[] { material, material, material };
@@ -88,14 +93,14 @@ public sealed class ManoVideo
             l.Clear();
         for (int i = 0; i < Radio.Length; i++)
         {
-            triangulos = partes[DeGuante(i) ? Guante : Piel];
+            triangulos = partes[EnResaltado(i) ? Manga : DeGuante(i) ? Guante : Piel];
             Esfera(a[i], Radio[i]);
         }
         for (int k = 0; k + 1 < Segmentos.Length; k += 2)
         {
             int i0 = Segmentos[k], i1 = Segmentos[k + 1];
             // El tubo va con guante si sus dos puntas están dentro del guante (palma y base del pulgar).
-            triangulos = partes[DeGuante(i0) && DeGuante(i1) ? Guante : Piel];
+            triangulos = partes[EnResaltado(i0) && EnResaltado(i1) ? Manga : DeGuante(i0) && DeGuante(i1) ? Guante : Piel];
             Tubo(a[i0], Radio[i0], a[i1], Radio[i1]);
         }
         triangulos = partes[Guante];
@@ -125,6 +130,24 @@ public sealed class ManoVideo
         for (int k = 0; k < 3; k++)
             malla.SetTriangles(partes[k], k);
         malla.RecalculateBounds();
+    }
+
+    // Mano guía: un dedo de otro color (0 pulgar, 1 índice, 2 medio, 3 anular, 4 meñique; -1 = ninguno).
+    // Ese dedo usa la tercera parte de la malla (en la mano guía no hay manga).
+    public void Resaltar(int dedo, Material m)
+    {
+        if (!guia || render == null)
+            return;
+        int nuevo = m != null ? dedo : -1;
+        if (nuevo == resaltado)
+            return;
+        resaltado = nuevo;
+        render.sharedMaterials = new[] { materialBase, materialBase, nuevo >= 0 ? m : materialBase };
+    }
+
+    bool EnResaltado(int i)
+    {
+        return guia && resaltado >= 0 && i >= 1 + resaltado * 4 && i <= 4 + resaltado * 4;
     }
 
     // Con guante: la muñeca, la base del pulgar y los nudillos (la base de cada dedo). Lo demás es piel.

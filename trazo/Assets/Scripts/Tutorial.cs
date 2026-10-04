@@ -76,8 +76,8 @@ public class Tutorial : MonoBehaviour
 
     // ---------- Textos (English first) ----------
     static string Tx(string en, string es) { return Idioma.Ingles ? en : es; }
-    static string Texto1 => Tx("1. Make the OK sign with your LEFT hand (thumb + index) and HOLD it: the pencil turns on",
-                               "1. Haz el signo de OK con la mano IZQUIERDA (pulgar + índice) y MANTENLO: se activa el lápiz");
+    static string Texto1 => Tx("1. Make the OK sign with your LEFT hand (thumb + INDEX, the yellow finger) and HOLD it: the pencil turns on",
+                               "1. Haz el signo de OK con la mano IZQUIERDA (pulgar + ÍNDICE, el dedo amarillo) y MANTENLO: se activa el lápiz");
     static string Texto2 => Tx("2. Keep the OK and draw with your RIGHT index finger from the dot to the flag",
                                "2. Sin soltar el OK, dibuja con el índice DERECHO desde el punto hasta la bandera");
     static string TextoSoltar => Tx("Open your fingers = stop drawing", "Abre los dedos = dejas de dibujar");
@@ -91,8 +91,8 @@ public class Tutorial : MonoBehaviour
                                "5. Frota la línea con el índice DERECHO: ¡los nodos estallan!");
     static string Texto6 => Tx("6. Oops! Bring it back: LEFT fist with the THUMB pointing left, then touch the red target",
                                "6. ¡Uy! Tráela de vuelta: puño IZQUIERDO con el PULGAR hacia la izquierda y toca la diana roja");
-    static string Texto7 => Tx("7. Join thumb + MIDDLE finger (left) and hold: the nodes appear",
-                               "7. Junta pulgar + dedo MEDIO (izquierda) y mantenlo: aparecen los nodos");
+    static string Texto7 => Tx("7. Join your thumb with the MIDDLE finger (the yellow one, next to the index) on your left hand and hold: the nodes appear",
+                               "7. Junta el pulgar con el dedo MEDIO (el amarillo, al lado del índice) de la mano izquierda y mantenlo: aparecen los nodos");
     static string Texto7b => Tx("Now pinch a node with your RIGHT hand and drag it", "Ahora pellizca un nodo con la mano DERECHA y arrástralo");
 
     // ---------- Título ----------
@@ -113,7 +113,7 @@ public class Tutorial : MonoBehaviour
     ManoVideo manoIzq, manoDer;
     readonly Vector3[] puntosIzq = new Vector3[21];
     readonly Vector3[] puntosDer = new Vector3[21];
-    Material matGuia;
+    Material matGuia, matResaltado;
     TextMeshPro encabezado;
     Transform puntoA, bandera, tela, puntoBorrador;
     LineRenderer lineaGuia, lineaDemo;
@@ -573,6 +573,7 @@ public class Tutorial : MonoBehaviour
         // Manos guía (sus puntos ya están en el mundo, por eso cuelgan de un objeto sin mover).
         raizManos = new GameObject("ManosGuia");
         matGuia = materialGuia != null ? new Material(materialGuia) : null;
+        matResaltado = materialGuia != null ? new Material(materialGuia) : null; // el dedo que importa (amarillo)
         manoIzq = new ManoVideo(raizManos.transform, matGuia, 0, true);
         manoDer = new ManoVideo(raizManos.transform, matGuia, 0, true);
         manoIzq.Poner(null);
@@ -617,6 +618,9 @@ public class Tutorial : MonoBehaviour
         if (matGuia != null)
             Destroy(matGuia);
         matGuia = null;
+        if (matResaltado != null)
+            Destroy(matResaltado);
+        matResaltado = null;
         if (figura != null)
             figura.Destruir();
         figura = null;
@@ -668,8 +672,9 @@ public class Tutorial : MonoBehaviour
         PonerAlfaGuia(completa ? alfa : alfa * 0.75f);
 
         // Mano izquierda: OK de frente, a la altura del pecho izquierdo (la palma mira hacia el centro).
+        ResaltarDedo(1); // el índice (con el pulgar hace el OK)
         float pinza = PinzaDemo(t);
-        PoseMano.Calcular(puntosIzq, true, raiz.TransformPoint(ManoIzqPecho), Dir(0.05f, 1f, 0.2f), Dir(0.7f, 0f, -0.7f), pinza, 0f, 0f);
+        PoseMano.Calcular(puntosIzq, true, raiz.TransformPoint(ManoIzqPecho), Dir(-0.3f, 1f, 0.1f), Dir(0.7f, 0f, 0.7f), pinza, 0f, 0f);
         manoIzq.Poner(alfa > 0.01f ? puntosIzq : null);
         bool cerrada = pinza > 0.95f;
         if (!cerrada)
@@ -947,6 +952,7 @@ public class Tutorial : MonoBehaviour
         float alfa = Mathf.Clamp01(t / 0.4f) * (1f - Mathf.Clamp01((t - 7.0f) / 0.5f));
         PonerAlfaGuia(completa ? alfa : alfa * 0.75f);
         // Puño izquierdo con el DORSO hacia ti (la palma mira hacia adelante), a la altura del pecho izquierdo.
+        ResaltarDedo(-1);
         float puno = PunoDemo(t, 6.6f);
         PoseMano.Calcular(puntosIzq, true, raiz.TransformPoint(ManoIzqPecho), Dir(0.05f, 1f, 0.2f), Dir(0.45f, 0.1f, 1f), 0f, puno, 0f);
         manoIzq.Poner(alfa > 0.01f ? puntosIzq : null);
@@ -1142,6 +1148,7 @@ public class Tutorial : MonoBehaviour
     {
         float alfa = Mathf.Clamp01(t / 0.4f) * (1f - Mathf.Clamp01((t - 5.2f) / 0.5f));
         PonerAlfaGuia(completa ? alfa : alfa * 0.75f);
+        ResaltarDedo(0); // el pulgar (la punta de la flecha)
         float puno = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.6f, 1.0f, t)) * (1f - Mathf.InverseLerp(4.8f, 5.1f, t));
         float mover = Suave((t - 1.8f) / 0.8f) * (1f - Suave((t - 3.6f) / 0.8f));
         Vector3 muneca = raiz.TransformPoint(ManoCentro + new Vector3(-0.045f * mover, 0f, 0f));
@@ -1254,8 +1261,9 @@ public class Tutorial : MonoBehaviour
     {
         float alfa = Mathf.Clamp01(t / 0.4f) * (1f - Mathf.Clamp01((t - 7.4f) / 0.5f));
         PonerAlfaGuia(completa ? alfa : alfa * 0.75f);
+        ResaltarDedo(2); // el dedo MEDIO (el que sigue al índice)
         float medio = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.6f, 0.9f, t)) * (1f - Mathf.InverseLerp(6.9f, 7.2f, t));
-        PoseMano.Calcular(puntosIzq, true, raiz.TransformPoint(ManoIzqPecho), Dir(0.05f, 1f, 0.2f), Dir(0.7f, 0f, -0.7f), 0f, 0f, 0f, medio, 0f);
+        PoseMano.Calcular(puntosIzq, true, raiz.TransformPoint(ManoIzqPecho), Dir(-0.3f, 1f, 0.1f), Dir(0.7f, 0f, 0.7f), 0f, 0f, 0f, medio, 0f);
         manoIzq.Poner(alfa > 0.01f ? puntosIzq : null);
 
         // El nodo del medio de la línea.
@@ -1432,9 +1440,17 @@ public class Tutorial : MonoBehaviour
 
     void PonerAlfaGuia(float a)
     {
-        if (matGuia == null)
-            return;
-        matGuia.SetColor("_BaseColor", new Color(0.45f, 0.75f, 1f, 0.6f * Mathf.Clamp01(a)));
+        if (matGuia != null)
+            matGuia.SetColor("_BaseColor", new Color(0.45f, 0.75f, 1f, 0.6f * Mathf.Clamp01(a)));
+        if (matResaltado != null)
+            matResaltado.SetColor("_BaseColor", new Color(1f, 0.85f, 0.15f, 0.85f * Mathf.Clamp01(a)));
+    }
+
+    // Pinta de amarillo un dedo de la mano guía izquierda (-1 = ninguno).
+    void ResaltarDedo(int dedo)
+    {
+        if (manoIzq != null)
+            manoIzq.Resaltar(dedo, dedo >= 0 ? matResaltado : null);
     }
 
     // ==================== El títere y la línea ====================
