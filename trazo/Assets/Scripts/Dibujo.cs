@@ -273,12 +273,30 @@ public class Dibujo : MonoBehaviour
     void OnApplicationPause(bool pausa)
     {
         if (pausa)
-            Escribir(RutaAuto, JsonUtility.ToJson(CrearDatos()));
+            Escribir(RutaAuto, JsonUtility.ToJson(DatosParaGuardar()));
     }
 
     void OnApplicationQuit()
     {
-        Escribir(RutaAuto, JsonUtility.ToJson(CrearDatos()));
+        Escribir(RutaAuto, JsonUtility.ToJson(DatosParaGuardar()));
+    }
+
+    // Lo que se guarda: el dibujo de verdad (durante el tutorial, el que quedó apartado, no las líneas del tutorial).
+    DatosDibujo DatosParaGuardar()
+    {
+        if (apartado == null)
+            return CrearDatos();
+        var d = JsonUtility.FromJson<DatosDibujo>(apartado.datos);
+        if (d == null)
+            return CrearDatos();
+        if (apartado.claves != null)
+            foreach (var texto in apartado.claves)
+            {
+                var c = JsonUtility.FromJson<Clave>(texto);
+                if (c != null)
+                    d.claves.Add(c);
+            }
+        return d;
     }
 
     // ---------- Capas ----------
@@ -1221,6 +1239,48 @@ public class Dibujo : MonoBehaviour
         Mensaje("Borrado (el pulgar a la izquierda lo recupera)");
     }
 
+    // ---------- Tutorial ----------
+    // Antes del tutorial se aparta TODO el dibujo (queda la hoja en blanco) y al terminar vuelve tal cual,
+    // sin las líneas del tutorial y sin que "deshacer" las traiga de vuelta.
+    FotoDeshacer apartado;
+    int historialApartado;
+    bool cambiosApartado;
+
+    public void ApartarParaTutorial()
+    {
+        if (apartado != null)
+            return;
+        apartado = Foto();
+        historialApartado = historial.Count;
+        cambiosApartado = HayCambios;
+        Seleccionar(null);
+        grupo.Clear();
+        LimpiarTrazos();
+        if (animacion != null)
+            animacion.Restaurar(null, 0);
+        if (figuras != null)
+            figuras.QuitarTodas();
+        if (hojas != null)
+            hojas.Limpiar();
+        plano = false; // en el tutorial se dibuja libre (en 3D), sin plano ni hoja de lápiz
+        ActualizarVisibilidad();
+        ActualizarGuia();
+    }
+
+    public void RecuperarDeTutorial()
+    {
+        if (apartado == null)
+            return;
+        var foto = apartado;
+        apartado = null;
+        AplicarFoto(foto);
+        if (historial.Count > historialApartado)
+            historial.RemoveRange(historialApartado, historial.Count - historialApartado);
+        rehacer.Clear();
+        rehacerRespaldo.Clear();
+        HayCambios = cambiosApartado;
+    }
+
     void LimpiarTrazos()
     {
         foreach (var t in trazos)
@@ -1255,7 +1315,7 @@ public class Dibujo : MonoBehaviour
     {
         if (string.IsNullOrEmpty(NombreArchivo))
             NombreArchivo = NombreLibre();
-        var d = CrearDatos();
+        var d = DatosParaGuardar();
         IncluirArchivos(d);
         string json = JsonUtility.ToJson(d);
         bool ok = false;
@@ -1787,7 +1847,7 @@ public class Dibujo : MonoBehaviour
             string ruta = Path.Combine(Carpeta, nombre);
             File.WriteAllBytes(ruta, png);
             GuardarMiniatura(ruta);
-            string publico = Galeria.Publicar(ruta, "image/png", "Pictures/TrazoVR");
+            string publico = Galeria.Publicar(ruta, "image/png", "Pictures/JCartoons");
             Galeria.UltimoGuardado = "Foto " + nombre + ": " + Galeria.Donde(publico, ruta);
             Mensaje("Foto guardada. Búscala en la " + Galeria.Donde(publico, ruta));
         }

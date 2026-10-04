@@ -507,8 +507,16 @@ public class NavegadorArchivos : MonoBehaviour
         btnCerrar.alTocar.AddListener(Cerrar);
 
         // El archivo actual (el que estás haciendo) y el idioma de la app.
-        textoActual = Texto(raiz, "", new Vector3(-0.17f, 0.172f, -0.002f), new Vector2(0.27f, 0.018f), 0.12f);
+        textoActual = Texto(raiz, "", new Vector3(-0.2f, 0.172f, -0.002f), new Vector2(0.205f, 0.018f), 0.12f);
         textoActual.alignment = TextAlignmentOptions.Left;
+        // Ver otra vez el tutorial (dibujar y borrar con las manos guía).
+        var btnTutorial = Boton(raiz, "Tutorial", new Vector3(-0.055f, 0.172f, 0f), new Vector2(0.065f, 0.02f));
+        btnTutorial.alTocar.AddListener(() =>
+        {
+            Cerrar();
+            if (Tutorial.Instancia != null)
+                Tutorial.Instancia.Empezar();
+        });
         btnGuardar = Boton(raiz, "Guardar", new Vector3(0.035f, 0.172f, 0f), new Vector2(0.06f, 0.02f));
         btnGuardar.alTocar.AddListener(() => { dibujo.Guardar(); Listar(); Mostrar(); });
         btnCopia = Boton(raiz, "Guardar copia", new Vector3(0.11f, 0.172f, 0f), new Vector2(0.08f, 0.02f));

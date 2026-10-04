@@ -3,13 +3,14 @@ using System.Text;
 using TMPro;
 using UnityEngine;
 
-// Idioma de la app: Español o English (botón en "Mis archivos"). Solo cambia los textos; nada más.
+// Idioma de la app: English (al empezar) o Español (botón en "Mis archivos"). Solo cambia los textos; nada más.
 //  - T("texto en español") devuelve el texto en el idioma elegido.
 //  - Las frases conocidas se traducen completas; las que llevan números o nombres se traducen por partes.
 //  - Los textos fijos de la escena (botones, títulos) se registran al empezar y se cambian al tocar el botón.
 public static class Idioma
 {
-    const string Clave = "trazovr_idioma";
+    // JCartoons empieza en inglés ("English first"); el botón de Mis archivos lo cambia y se recuerda.
+    const string Clave = "jcartoons_idioma";
     static bool cargado, ingles;
     static readonly Dictionary<TMP_Text, string> registrados = new Dictionary<TMP_Text, string>();
     static readonly Dictionary<string, string> cache = new Dictionary<string, string>();
@@ -32,7 +33,7 @@ public static class Idioma
         if (cargado)
             return;
         cargado = true;
-        ingles = PlayerPrefs.GetInt(Clave, 0) == 1;
+        ingles = PlayerPrefs.GetInt(Clave, 1) == 1;
     }
 
     public static void Alternar()

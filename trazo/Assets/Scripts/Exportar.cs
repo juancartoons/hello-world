@@ -45,7 +45,7 @@ public static class Exportar
 
         var sb = new StringBuilder();
         sb.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
-        sb.AppendLine("<!-- Hecho con TrazoVR -->");
+        sb.AppendLine("<!-- Hecho con JCartoons -->");
         sb.Append("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"").Append(N(ancho)).Append("mm\" height=\"").Append(N(alto))
           .Append("mm\" viewBox=\"").Append(N(minX)).Append(' ').Append(N(minY)).Append(' ').Append(N(ancho)).Append(' ').Append(N(alto)).AppendLine("\">");
 

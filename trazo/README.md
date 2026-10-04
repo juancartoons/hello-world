@@ -1,7 +1,25 @@
-# TrazoVR ✏️
+# JCartoons ✏️ — *The joy of creating* (*El placer de crear*)
 
 App de dibujo 3D con las manos para Meta Quest: fondo blanco (o tu cuarto real), línea negra tipo vector,
 gruesa en el centro y en punta a los lados. Con capas y animación por morph.
+(El proyecto de Unity y sus menús todavía se llaman "TrazoVR" por dentro; la app instalada se llama **JCartoons**.)
+
+## Título y tutorial
+
+- Al abrir: sin el logo de Unity. **"JCartoons"** aparece letra por letra con música de arpa mágica (hecha con
+  código, sin archivos), un muñequito corre saltando sobre las letras y todo se desvanece sobre la hoja en blanco.
+- La app empieza en **inglés** ("English first"). *Mis archivos → Idioma: ESP* la pasa a español (y se recuerda).
+- La **primera vez** sigue el tutorial ("First time?"). Unas **manos guía** transparentes enseñan cada paso
+  (mientras, tus manos se esconden y no hacen nada); luego es tu turno y cada paso bien hecho se celebra
+  con un chulito verde, papelitos y escarcha:
+  1. **Pellizco izquierdo** (activa el lápiz).
+  2. Con el **índice derecho**, una línea del **punto azul** a la **bandera**. A mitad de la línea aparece un
+     muñeco que corre sobre ella (sorpresa).
+  3. Al llegar a la bandera el muñeco se vuelve un **títere**: sigue tu mano (¡hazlo saltar!).
+  4. **Puño izquierdo** con el dorso hacia ti (borrador).
+  5. **Frota la línea** con el índice derecho: el muñeco sale huyendo.
+- Si pasan 8 segundos sin hacer nada, las manos guía lo repiten. **Skip** lo termina.
+- Para verlo otra vez: **Mis archivos → Tutorial**. Tu dibujo se aparta antes y vuelve igual al terminar.
 
 ## Gestos (todo con las manos)
 
@@ -78,7 +96,7 @@ Grabar, Pausa, Video proceso, Vel, Video anim, Foto, **Crear SVG**, imágenes y 
 - Al borrar nodos suena una burbujita.
 - **Plano: propio / unido** (página Medios): cada capa tiene su propio plano 2D. Las capas "unidas" comparten el plano,
   cada una 2 mm más cerca de ti (boceto atrás, tinta adelante).
-- **Dónde quedan:** los videos se copian a **Movies/TrazoVR** y las fotos a **Pictures/TrazoVR**: ábrelos con la app
+- **Dónde quedan:** los videos se copian a **Movies/JCartoons** y las fotos a **Pictures/JCartoons**: ábrelos con la app
   **Archivos** del Quest (o conecta el cable al PC). El último guardado se ve escrito en la página **Medios**.
   Todo queda también en `Android/data/<tu app>/files/Dibujos`.
 

@@ -114,8 +114,27 @@ public static class ArmarEscenaTrazo
         Material matHoja = shaderHoja != null ? Mat("HojaLapiz", shaderHoja, new Color(0.32f, 0.32f, 0.36f)) : null;
         if (matSello == null || matHoja == null)
             Debug.LogWarning("TrazoVR: no encontré los shaders del lápiz de boceto (copia otra vez la carpeta Shaders).");
+        // Título y tutorial (JCartoons): manos guía, escarcha, papelitos, viñeta, números y bandera.
+        var shaderGuia = Shader.Find("TrazoVR/Guia");
+        var shaderBrillo = Shader.Find("TrazoVR/Brillo");
+        if (shaderGuia == null || shaderBrillo == null)
+            Debug.LogWarning("TrazoVR: no encontré los shaders del tutorial (copia otra vez la carpeta Shaders).");
+        Material matManoGuia = shaderGuia != null ? Mat("ManoGuia", shaderGuia, new Color(0.45f, 0.75f, 1f, 0.6f)) : null;
+        Material matConfeti = shaderBrillo != null ? Mat("Confeti", shaderBrillo, Color.white) : null;
+        Material matEscarcha = shaderBrillo != null ? Mat("Escarcha", shaderBrillo, Color.white) : null;
+        if (matConfeti != null && matConfeti.HasProperty("_Suave"))
+            matConfeti.SetFloat("_Suave", 0f);
+        if (matEscarcha != null && matEscarcha.HasProperty("_Suave"))
+            matEscarcha.SetFloat("_Suave", 1f);
+        var matTutNegro = Mat("TutorialNegro", unlit, new Color(0.08f, 0.08f, 0.1f));
+        var matTutVerde = Mat("TutorialVerde", unlit, new Color(0.2f, 0.78f, 0.35f));
+        var matTutAzul = Mat("TutorialAzul", unlit, new Color(0.2f, 0.5f, 1f));
+        var matTutRojo = Mat("TutorialRojo", unlit, new Color(1f, 0.3f, 0.25f));
+        var matTutLineaGuia = Mat("TutorialLineaGuia", unlit, new Color(0.45f, 0.5f, 0.62f, 0.35f));
+        Transparente(matTutLineaGuia);
         // Los círculos de los nodos (y las imágenes, dianas, flecha y dial) se ven por ambos lados.
-        foreach (var m in new[] { matNodo, matNodoActivo, matAsa, matIman, matImagen, matImagenTransparente, matFlecha, matDianaRoja, matDianaVerde, matBlanco, matDial, matIndicador })
+        foreach (var m in new[] { matNodo, matNodoActivo, matAsa, matIman, matImagen, matImagenTransparente, matFlecha, matDianaRoja, matDianaVerde, matBlanco, matDial, matIndicador,
+                                  matTutNegro, matTutVerde, matTutAzul, matTutRojo, matTutLineaGuia })
             if (m.HasProperty("_Cull"))
                 m.SetFloat("_Cull", 0f);
         AssetDatabase.SaveAssets();
@@ -256,6 +275,25 @@ public static class ArmarEscenaTrazo
         navegador.materialBotonMarcado = matBotonMarcado;
         navegador.materialImagen = matImagen;
 
+        // Título "JCartoons" (cada vez que abres la app) y tutorial con manos guía (la primera vez).
+        var goTutorial = new GameObject("Tutorial");
+        goTutorial.transform.SetParent(raiz.transform, false);
+        var tutorial = goTutorial.AddComponent<Tutorial>();
+        tutorial.dibujo = dibujo;
+        tutorial.control = control;
+        tutorial.titere = titere;
+        tutorial.materialGuia = matManoGuia;
+        tutorial.materialConfeti = matConfeti;
+        tutorial.materialChispa = matEscarcha;
+        tutorial.materialNegro = matTutNegro;
+        tutorial.materialBlanco = matBlanco;
+        tutorial.materialVerde = matTutVerde;
+        tutorial.materialAzul = matTutAzul;
+        tutorial.materialRojo = matTutRojo;
+        tutorial.materialGuiaLinea = matTutLineaGuia;
+        tutorial.materialBoton = matBoton;
+        tutorial.materialBotonMarcado = matBotonMarcado;
+
         var panel = CrearPanel(raiz.transform, control, dibujo, escenario, matPanel, matBoton, matBotonMarcado);
         panel.figuras = figuras;
         var arriba = CrearPanelArriba(raiz.transform, control, dibujo, animacion, escenario, matPanel, matBoton, matBotonMarcado, matClave, matCabezal, matBarra, matAsaPanel);
@@ -358,6 +396,11 @@ public static class ArmarEscenaTrazo
                 passthroughConfigurado = true;
             }
         }
+
+        // ---------- Nombre de la app y sin el logo de Unity al abrir ----------
+        PlayerSettings.productName = "JCartoons";
+        PlayerSettings.SplashScreen.show = false;
+        PlayerSettings.SplashScreen.showUnityLogo = false;
 
         // ---------- Antialiasing 4x (líneas más limpias) ----------
         var assets = new List<UnityEngine.Rendering.RenderPipelineAsset>();

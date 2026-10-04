@@ -333,7 +333,7 @@ public class Titere : MonoBehaviour
     }
 
     // Borra el personaje con todas sus líneas (y su piso). Se puede deshacer.
-    public void BorrarPersonaje(DatosPersonaje p)
+    public void BorrarPersonaje(DatosPersonaje p, bool silencioso = false)
     {
         if (p == null || Encendido)
             return;
@@ -345,7 +345,8 @@ public class Titere : MonoBehaviour
         personajes.Remove(p);
         elegido = Mathf.Clamp(elegido, 0, Mathf.Max(0, personajes.Count - 1));
         Trazo.huboCambio = false;
-        Mensaje(p.nombre + " borrado (deshacer lo devuelve)");
+        if (!silencioso)
+            Mensaje(p.nombre + " borrado (deshacer lo devuelve)");
     }
 
     // Los personajes nuevos van en su propia capa (la última): "Ver/Oculta" de esa capa los esconde.
@@ -1241,6 +1242,29 @@ public class Titere : MonoBehaviour
         elegido = personajes.Count - 1;
         // Se enciende solo con la mano derecha (sin tener que chocar los cinco).
         Encender(0, p);
+    }
+
+    // Tutorial: un Palito parado con los pies en "pies", mirando hacia "derecha", sobre la línea "piso"
+    // (tu línea: no se borra con el personaje). Se enciende solo con la mano derecha.
+    public DatosPersonaje CrearPalitoEn(Vector3 pies, Vector3 derecha, int piso)
+    {
+        if (dibujo == null || Encendido || fase != Fase.Libre)
+            return null;
+        derecha.y = 0f;
+        derecha = derecha.sqrMagnitude > 1e-6f ? derecha.normalized : Vector3.right;
+        Vector3 cadera = pies + Vector3.up * 0.172f;
+        dibujo.GuardarParaDeshacer();
+        var cons = new ConstructorPersonaje(dibujo, cadera, derecha, dibujo.AnchoNuevoLocal());
+        float alturaPies;
+        var p = cons.Palito(out alturaPies);
+        p.arriba = dibujo.transform.InverseTransformDirection(Vector3.up).normalized;
+        if (piso > 0 && !pisos.Contains(piso))
+            pisos.Add(piso);
+        MoverACapaPersonajes(p);
+        personajes.Add(p);
+        elegido = personajes.Count - 1;
+        Encender(0, p);
+        return p;
     }
 
     // ==================== Una marioneta encendida ====================

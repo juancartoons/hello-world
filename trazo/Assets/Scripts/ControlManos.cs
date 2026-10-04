@@ -89,6 +89,17 @@ public class ControlManos : MonoBehaviour
     Trazo trazoActual;
     float inicioTrazo;
 
+    // La línea que se está dibujando ahora (null si no hay). La usa el tutorial.
+    public Trazo TrazoActual => trazoActual;
+
+    // Termina la línea que se está dibujando (y espera a que sueltes los dedos para lo siguiente).
+    public void TerminarLineaActual()
+    {
+        if (GestoIzq != Gesto.Ninguno)
+            SalirDeGesto();
+        esperarSoltarIzq = true;
+    }
+
     // Pose de la mano izquierda (se calcula una vez por cuadro)
     ManosUtil.Palma palmaIzq;
     bool poseValida;
@@ -181,7 +192,7 @@ public class ControlManos : MonoBehaviour
     const float diametroDiana = 0.06f;
 
     // Manos escondidas (cuando se vuelven borrador o flecha)
-    bool ocultarIzq, ocultarDer;
+    bool ocultarIzq, ocultarDer, ocultarTodas;
     readonly List<Renderer> rendsIzq = new List<Renderer>();
     readonly List<Renderer> rendsDer = new List<Renderer>();
     float proximaBusquedaManos;
@@ -1944,8 +1955,17 @@ public class ControlManos : MonoBehaviour
         }
         else
         {
-            Forzar(izquierda ? rendsIzq : rendsDer, false);
+            Forzar(izquierda ? rendsIzq : rendsDer, ocultarTodas);
         }
+    }
+
+    // Esconde (o vuelve a mostrar) las DOS manos reales. Lo usa el tutorial mientras las manos guía enseñan.
+    public void OcultarManos(bool ocultar)
+    {
+        ocultarTodas = ocultar;
+        BuscarRenderersMano();
+        Forzar(rendsIzq, ocultar || ocultarIzq);
+        Forzar(rendsDer, ocultar || ocultarDer);
     }
 
     static void Forzar(List<Renderer> lista, bool apagar)
@@ -1958,13 +1978,13 @@ public class ControlManos : MonoBehaviour
     void LateUpdate()
     {
         EjecutarLapiz();
-        if (!ocultarIzq && !ocultarDer)
+        if (!ocultarIzq && !ocultarDer && !ocultarTodas)
             return;
         if (Time.time >= proximaBusquedaManos)
             BuscarRenderersMano();
-        if (ocultarIzq)
+        if (ocultarIzq || ocultarTodas)
             Forzar(rendsIzq, true);
-        if (ocultarDer)
+        if (ocultarDer || ocultarTodas)
             Forzar(rendsDer, true);
     }
 
@@ -1978,7 +1998,7 @@ public class ControlManos : MonoBehaviour
     void Juntar(List<Renderer> lista, ManoSeguida mano, Transform ancla, bool izquierda)
     {
         // Las que estaban escondidas y ya no son de la mano, se vuelven a mostrar.
-        bool escondida = izquierda ? ocultarIzq : ocultarDer;
+        bool escondida = ocultarTodas || (izquierda ? ocultarIzq : ocultarDer);
         var nuevas = new List<Renderer>();
         if (mano.hand != null)
             nuevas.AddRange(mano.hand.GetComponentsInChildren<Renderer>(true));

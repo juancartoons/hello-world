@@ -1,7 +1,7 @@
 using UnityEngine;
 
 // Copia videos y fotos a las carpetas públicas del Quest (plugin TrazoGaleria.java):
-//   videos → Movies/TrazoVR   ·   fotos → Pictures/TrazoVR
+//   videos → Movies/JCartoons   ·   fotos → Pictures/JCartoons
 // Así aparecen en la app "Archivos" del visor. Devuelve la carpeta pública, o "" si no se pudo.
 public static class Galeria
 {

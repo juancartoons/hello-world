@@ -10,7 +10,7 @@ public class CodificadorVideo
     public bool UsaPng { get; private set; }
     public string Error { get; private set; } = "";
     public int Cuadros { get; private set; }
-    public string RutaPublica { get; private set; } = ""; // copia en Movies/TrazoVR (app Archivos del Quest)
+    public string RutaPublica { get; private set; } = ""; // copia en Movies/JCartoons (app Archivos del Quest)
 
     int ancho, alto, fps;
 #if UNITY_ANDROID && !UNITY_EDITOR
@@ -161,7 +161,7 @@ public class CodificadorVideo
             texPng = null;
         }
         if (ok && Cuadros > 0 && !UsaPng)
-            RutaPublica = Galeria.Publicar(Ruta, "video/mp4", "Movies/TrazoVR");
+            RutaPublica = Galeria.Publicar(Ruta, "video/mp4", "Movies/JCartoons");
         return ok && Cuadros > 0;
     }
 }

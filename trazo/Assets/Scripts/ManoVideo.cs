@@ -47,18 +47,29 @@ public sealed class ManoVideo
     static Vector3[] esfera;
     static int[] esferaTri;
 
-    public ManoVideo(Transform padre, Material material, int capa)
+    readonly bool guia;
+
+    // guia = true: mano "fantasma" del tutorial (toda del mismo material, sin guante ni manga).
+    public ManoVideo(Transform padre, Material material, int capa, bool guia = false)
     {
-        go = new GameObject("ManoVideo");
+        this.guia = guia;
+        go = new GameObject(guia ? "ManoGuia" : "ManoVideo");
         go.layer = capa;
         go.transform.SetParent(padre, false);
         malla = new Mesh { name = "ManoVideo" };
         malla.MarkDynamic();
         go.AddComponent<MeshFilter>().sharedMesh = malla;
         var mr = go.AddComponent<MeshRenderer>();
-        materialGuante = Copia(material, ColorGuante);
-        materialManga = Copia(material, ColorManga);
-        mr.sharedMaterials = new[] { material, materialGuante, materialManga };
+        if (guia)
+        {
+            mr.sharedMaterials = new[] { material, material, material };
+        }
+        else
+        {
+            materialGuante = Copia(material, ColorGuante);
+            materialManga = Copia(material, ColorManga);
+            mr.sharedMaterials = new[] { material, materialGuante, materialManga };
+        }
         mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         mr.receiveShadows = false;
         ArmarEsfera();
@@ -96,7 +107,7 @@ public sealed class ManoVideo
         Esfera(Vector3.Lerp(a[0], a[17], 0.5f), 0.0145f);
         // Manga: desde la muñeca hacia atrás, larga y cerrada al final.
         Vector3 atras = a[0] - a[9];
-        if (atras.sqrMagnitude > 1e-8f)
+        if (!guia && atras.sqrMagnitude > 1e-8f)
         {
             atras.Normalize();
             triangulos = partes[Manga];

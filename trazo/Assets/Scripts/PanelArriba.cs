@@ -1174,12 +1174,12 @@ public class PanelArriba : MonoBehaviour
         { "VER / OCULTA", "SHOW / HIDDEN\nShows or hides that layer. A hidden layer can't be edited." },
         { "ARCHIVOS", "FILES\nOpens \"My files\": your drawings, videos, photos and SVG with a thumbnail. Filters on top. Tap one to select it, then Open (or View) or Delete (tap again to confirm).\nAt the top: the current file with Save, Save copy and Rename, and the language button." },
         { "CREAR SVG", "CREATE SVG\nExports the lines as vector curves (for Illustrator, Inkscape...). In Plane mode it's seen straight on; in 3D, from where you are." },
-        { "FOTO", "PHOTO\nSaves a PNG image of the drawing from where you are. Panels, nodes, images and sketch layers don't appear.\nWHERE: Quest Files app → Pictures → TrazoVR." },
+        { "FOTO", "PHOTO\nSaves a PNG image of the drawing from where you are. Panels, nodes, images and sketch layers don't appear.\nWHERE: Quest Files app → Pictures → JCartoons." },
         { "GRABAR (proceso)", "RECORD (process)\nRecords how you draw: your hands and the lines appearing. Tap again (Stop) to finish.\nThen: Process video turns it into an MP4." },
         { "PAUSA / REANUDAR", "PAUSE / RESUME\nOnly shows while recording the process. Pause stops recording for a moment (that time isn't in the video); Resume keeps recording. What you do while paused appears all at once when you resume." },
-        { "VIDEO PROCESO", "PROCESS VIDEO\nTurns your recording into an MP4: lines + your hands (gloves and sleeves). Choose the speed first with Speed.\nWHERE: Quest Files app → Movies → TrazoVR." },
+        { "VIDEO PROCESO", "PROCESS VIDEO\nTurns your recording into an MP4: lines + your hands (gloves and sleeves). Choose the speed first with Speed.\nWHERE: Quest Files app → Movies → JCartoons." },
         { "VEL x1 / x2 / x4 / x8", "SPEED x1 / x2 / x4 / x8\nHow fast the process video plays." },
-        { "VIDEO ANIM", "ANIM VIDEO\nExports the animation as an MP4 (1280x720), with the mouths' audio if there is one. You need at least 2 keys.\nWHERE: Quest Files app → Movies → TrazoVR." },
+        { "VIDEO ANIM", "ANIM VIDEO\nExports the animation as an MP4 (1280x720), with the mouths' audio if there is one. You need at least 2 keys.\nWHERE: Quest Files app → Movies → JCartoons." },
         { "IMAGEN +", "IMAGE +\nPuts the next image from Dibujos/Imagenes in front of you (copy them with the cable or Meta Quest Developer Hub).\nTo trace: in Plane mode, drop the image near the plane and it sticks behind it." },
         { "IMAGEN -", "IMAGE -\nRemoves the selected image (bluish one). Pinch an image to select it, or tap the X on its corner." },
         { "IMÁGENES: VER / OCULTAS", "IMAGES: SHOW / HIDDEN\nHides or shows all reference images at once." },
@@ -1269,14 +1269,14 @@ public class PanelArriba : MonoBehaviour
         Poner(d, btnCargar, "ARCHIVOS\nAbre \"Mis archivos\": tus dibujos, videos, fotos y SVG con una miniatura. Filtros arriba. Toca uno para elegirlo y luego Abrir (o Ver) o Borrar (pide tocar otra vez).\nGuarda antes lo que tienes (Guardar). Si te arrepientes de abrir otro: deshacer.");
         Poner(d, btnBorrarTodo, "BORRAR TODO\nBorra todo el dibujo y empieza uno nuevo (al guardar recibe otro nombre). Se puede deshacer.");
         Poner(d, btnSvg, "CREAR SVG\nExporta las líneas como curvas vectoriales (para Illustrator, Inkscape...). En Plano se ve de frente al plano; en 3D, desde donde estás.");
-        Poner(d, btnFoto, "FOTO\nGuarda una imagen PNG del dibujo desde donde estás. Los paneles, nodos, imágenes y capas de boceto no salen.\nDÓNDE QUEDA: app Archivos del Quest → Pictures → TrazoVR.");
+        Poner(d, btnFoto, "FOTO\nGuarda una imagen PNG del dibujo desde donde estás. Los paneles, nodos, imágenes y capas de boceto no salen.\nDÓNDE QUEDA: app Archivos del Quest → Pictures → JCartoons.");
 
         // Medios
         Poner(d, btnGrabar, "GRABAR (proceso)\nGraba cómo dibujas: tus manos y cómo aparecen las líneas. Toca otra vez (Detener) para parar.\nDespués: Video proceso lo convierte en MP4.");
         Poner(d, btnPausaGrabar, "PAUSA / REANUDAR\nSolo aparece mientras grabas el proceso. Pausa deja de grabar un momento (ese tiempo no sale en el video); Reanudar sigue grabando. Lo que hagas en pausa aparece de una vez al reanudar.");
-        Poner(d, btnVideoProceso, "VIDEO PROCESO\nConvierte tu grabación (botón Grabar) en un video MP4: líneas + manos en gris. Elige antes la velocidad con Vel.\nDÓNDE QUEDA: app Archivos del Quest → Movies → TrazoVR (también lo dice abajo en esta página).");
+        Poner(d, btnVideoProceso, "VIDEO PROCESO\nConvierte tu grabación (botón Grabar) en un video MP4: líneas + manos en gris. Elige antes la velocidad con Vel.\nDÓNDE QUEDA: app Archivos del Quest → Movies → JCartoons (también lo dice abajo en esta página).");
         Poner(d, btnVelocidad, "VEL x1 / x2 / x4 / x8\nQué tan rápido se ve el video del proceso.");
-        Poner(d, btnVideoAnim, "VIDEO ANIM\nExporta la animación como MP4 (1280x720), con el audio de las bocas si hay. Necesitas al menos 2 claves.\nDÓNDE QUEDA: app Archivos del Quest → Movies → TrazoVR.");
+        Poner(d, btnVideoAnim, "VIDEO ANIM\nExporta la animación como MP4 (1280x720), con el audio de las bocas si hay. Necesitas al menos 2 claves.\nDÓNDE QUEDA: app Archivos del Quest → Movies → JCartoons.");
         Poner(d, btnImagenMas, "IMAGEN +\nPone frente a ti la siguiente imagen de la carpeta Dibujos/Imagenes (cópialas con el cable o Meta Quest Developer Hub).\nPara calcar: en Plano, suelta la imagen cerca del plano y se pega detrás.");
         Poner(d, btnImagenMenos, "IMAGEN -\nQuita la imagen seleccionada (la que tiene tono azul). Pellizca una imagen para elegirla.");
         Poner(d, btnImagenesVer, "IMÁGENES: VER / OCULTAS\nEsconde o muestra todas las imágenes de referencia a la vez.");
