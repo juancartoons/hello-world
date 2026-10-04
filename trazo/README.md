@@ -7,17 +7,22 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 ## Título y tutorial
 
 - Al abrir: sin el logo de Unity. **"JCartoons"** aparece letra por letra con música de arpa mágica (hecha con
-  código, sin archivos), un muñequito corre saltando sobre las letras y todo se desvanece sobre la hoja en blanco.
+  código, sin archivos), las letras tienen **volumen 3D** y se mecen un poquito; un muñequito corre saltando sobre ellas y todo se
+  desvanece sobre la hoja en blanco.
 - La app empieza en **inglés** ("English first"). *Mis archivos → Idioma: ESP* la pasa a español (y se recuerda).
-- La **primera vez** sigue el tutorial ("First time?"). Unas **manos guía** transparentes enseñan cada paso
-  (mientras, tus manos se esconden y no hacen nada); luego es tu turno y cada paso bien hecho se celebra
-  con un chulito verde, papelitos y escarcha:
-  1. **Pellizco izquierdo** (activa el lápiz).
-  2. Con el **índice derecho**, una línea del **punto azul** a la **bandera**. A mitad de la línea aparece un
-     muñeco que corre sobre ella (sorpresa).
-  3. Al llegar a la bandera el muñeco se vuelve un **títere**: sigue tu mano (¡hazlo saltar!).
-  4. **Puño izquierdo** con el dorso hacia ti (borrador).
-  5. **Frota la línea** con el índice derecho: el muñeco sale huyendo.
+- La **primera vez** sigue el tutorial ("First time?"). Unas **manos guía** transparentes (con contorno, para
+  que la pose se entienda de un vistazo) enseñan cada paso, mientras tus manos se esconden y no hacen nada.
+  Luego es tu turno; cada paso bien hecho se celebra con un chulito verde, papelitos y escarcha.
+  Las instrucciones salen en **viñetas de cómic** (amarillo con trama, borde que tiembla, sombra de verdad
+  más atrás en 3D y letra de cómic Bangers), junto a la mano que hace la acción:
+  1. **OK 👌 con la izquierda** (pulgar + índice) y mantenerlo = lápiz encendido (se muestra dos veces).
+  2. Con el **índice derecho**, una línea del **punto azul** a la **bandera**; luego **abrir los dedos** = dejar
+     de dibujar. A mitad de la línea aparece un muñeco pequeño que corre sobre ella (sorpresa).
+  3. Al llegar, el muñeco se vuelve un **títere**: juega todo lo que quieras y toca **Next**.
+  4. **Puño izquierdo** con el dorso hacia ti (borrador; se muestra dos veces).
+  5. **Frota la línea**: los nodos estallan y el muñeco sale huyendo.
+  6. **Deshacer**: puño izquierdo con el **pulgar a la izquierda** y tocar la **diana roja**: la línea vuelve.
+  7. **Pulgar + medio** izquierdos (aparecen los nodos) y arrastrar un nodo con la derecha.
 - Si pasan 8 segundos sin hacer nada, las manos guía lo repiten. **Skip** lo termina.
 - Para verlo otra vez: **Mis archivos → Tutorial**. Tu dibujo se aparta antes y vuelve igual al terminar.
 

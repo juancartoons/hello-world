@@ -132,6 +132,12 @@ public static class ArmarEscenaTrazo
         var matTutRojo = Mat("TutorialRojo", unlit, new Color(1f, 0.3f, 0.25f));
         var matTutLineaGuia = Mat("TutorialLineaGuia", unlit, new Color(0.45f, 0.5f, 0.62f, 0.35f));
         Transparente(matTutLineaGuia);
+        // Viñetas estilo cómic: amarillo apagado con puntitos de trama.
+        var shaderTrama = Shader.Find("TrazoVR/Trama");
+        Material matTrama = shaderTrama != null ? Mat("VinetaTrama", shaderTrama, new Color(0.97f, 0.82f, 0.3f)) : null;
+        if (matTrama != null && matTrama.HasProperty("_ColorPuntos"))
+            matTrama.SetColor("_ColorPuntos", new Color(0.93f, 0.55f, 0.15f));
+        var fuenteComic = FuenteComic();
         // Los círculos de los nodos (y las imágenes, dianas, flecha y dial) se ven por ambos lados.
         foreach (var m in new[] { matNodo, matNodoActivo, matAsa, matIman, matImagen, matImagenTransparente, matFlecha, matDianaRoja, matDianaVerde, matBlanco, matDial, matIndicador,
                                   matTutNegro, matTutVerde, matTutAzul, matTutRojo, matTutLineaGuia })
@@ -293,6 +299,8 @@ public static class ArmarEscenaTrazo
         tutorial.materialGuiaLinea = matTutLineaGuia;
         tutorial.materialBoton = matBoton;
         tutorial.materialBotonMarcado = matBotonMarcado;
+        tutorial.materialTrama = matTrama;
+        tutorial.fuenteComic = fuenteComic;
 
         var panel = CrearPanel(raiz.transform, control, dibujo, escenario, matPanel, matBoton, matBotonMarcado);
         panel.figuras = figuras;
@@ -756,6 +764,56 @@ public static class ArmarEscenaTrazo
         if (b.etiqueta != null)
             b.etiqueta.rectTransform.sizeDelta = new Vector2(0.1f, 0.02f);
         return b;
+    }
+
+    // Letra de cómic (Bangers, licencia libre OFL) para las viñetas del tutorial.
+    // Busca el archivo .ttf (viene en Plugins/Fuentes) y crea una sola vez su versión para TextMeshPro.
+    static TMP_FontAsset FuenteComic()
+    {
+        const string ruta = carpetaBase + "/BangersSDF.asset";
+        var hecha = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(ruta);
+        if (hecha != null)
+            return hecha;
+        Font fuente = null;
+        foreach (var guid in AssetDatabase.FindAssets("Bangers-Regular t:Font"))
+        {
+            fuente = AssetDatabase.LoadAssetAtPath<Font>(AssetDatabase.GUIDToAssetPath(guid));
+            if (fuente != null)
+                break;
+        }
+        if (fuente == null)
+        {
+            Debug.LogWarning("TrazoVR: no encontré la letra Bangers (copia otra vez la carpeta Plugins). Las viñetas usan la letra normal.");
+            return null;
+        }
+        try
+        {
+            var fa = TMP_FontAsset.CreateFontAsset(fuente);
+            if (fa == null)
+                return null;
+            fa.name = "Bangers SDF";
+            AssetDatabase.CreateAsset(fa, ruta);
+            if (fa.material != null)
+            {
+                fa.material.name = "Bangers SDF Material";
+                AssetDatabase.AddObjectToAsset(fa.material, fa);
+            }
+            if (fa.atlasTextures != null)
+                foreach (var tx in fa.atlasTextures)
+                    if (tx != null)
+                    {
+                        tx.name = "Bangers SDF Atlas";
+                        AssetDatabase.AddObjectToAsset(tx, fa);
+                    }
+            EditorUtility.SetDirty(fa);
+            AssetDatabase.SaveAssets();
+            return fa;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("TrazoVR: no pude preparar la letra de cómic: " + e.Message);
+            return null;
+        }
     }
 
     static bool PonerEnum(SerializedProperty prop, string nombre)

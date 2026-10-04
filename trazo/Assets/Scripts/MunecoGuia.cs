@@ -18,6 +18,8 @@ public sealed class MunecoGuia
 
     public float escala = 1f;   // 1 = tamaño del Palito (unos 40 cm de alto)
     public float fase;          // dónde va el ciclo de pasos (radianes)
+    public float temblor;       // líneas vivas: cuánto tiemblan los palitos (metros, a escala 1). 0 = nada
+    int variante;               // cuál de los 3 "dibujos" del temblor (cambia 8 veces por segundo)
 
     // Se llama cada vez que un pie toca el suelo (para el sonido de los pasos).
     public System.Action alPisar;
@@ -79,6 +81,7 @@ public sealed class MunecoGuia
         Vector3 fw = adelante - up * Vector3.Dot(adelante, up);
         fw = fw.sqrMagnitude > 1e-8f ? fw.normalized : Vector3.Cross(up, Vector3.forward).normalized;
         float s = escala * tamano;
+        variante = Mathf.FloorToInt(Time.time * 8f) % 3;
 
         float andar = Mathf.Clamp01(movimiento);
         float correr = Mathf.Clamp01(movimiento - 1f);
@@ -107,6 +110,7 @@ public sealed class MunecoGuia
             tmp4[1] = Mundo(suelo, fw, up, rodilla, s);
             tmp4[2] = Mundo(suelo, fw, up, tobillo, s);
             tmp4[3] = Mundo(suelo, fw, up, punta, s);
+            Temblar(tmp4, i, fw, up, s);
             lineas[i].SetPositions(tmp4);
         }
 
@@ -116,6 +120,7 @@ public sealed class MunecoGuia
         tmp3[0] = Mundo(suelo, fw, up, cadera, s);
         tmp3[1] = Mundo(suelo, fw, up, medio, s);
         tmp3[2] = Mundo(suelo, fw, up, cuello, s);
+        Temblar(tmp3, 4, fw, up, s);
         lineas[4].SetPositions(tmp3);
 
         // Brazos: se balancean al revés que las piernas; el codo se dobla más al correr.
@@ -133,6 +138,7 @@ public sealed class MunecoGuia
             tmp3[0] = Mundo(suelo, fw, up, hombro, s);
             tmp3[1] = Mundo(suelo, fw, up, c, s);
             tmp3[2] = Mundo(suelo, fw, up, m, s);
+            Temblar(tmp3, 2 + j, fw, up, s);
             lineas[2 + j].SetPositions(tmp3);
         }
 
@@ -143,10 +149,24 @@ public sealed class MunecoGuia
             float a = k * Mathf.PI * 2f / PuntosCabeza;
             cabeza[k] = Mundo(suelo, fw, up, centro + new Vector2(Mathf.Cos(a) * 0.035f, Mathf.Sin(a) * 0.038f), s);
         }
+        Temblar(cabeza, 5, fw, up, s);
         lineas[5].SetPositions(cabeza);
 
         foreach (var l in lineas)
             l.widthMultiplier = ancho * Mathf.Max(0.3f, tamano) * Mathf.Max(0.35f, escala);
+    }
+
+    // Mueve un poquito cada punto (siempre igual para cada uno de los 3 "dibujos"): parece dibujado a mano.
+    void Temblar(Vector3[] puntos, int linea, Vector3 adelante, Vector3 arriba, float s)
+    {
+        if (temblor <= 0f)
+            return;
+        float a = temblor * s;
+        for (int k = 0; k < puntos.Length; k++)
+        {
+            float semilla = linea * 7.13f + k * 3.71f + variante * 11.3f;
+            puntos[k] += adelante * (Mathf.Sin(semilla) * a) + arriba * (Mathf.Sin(semilla * 1.7f + 2.1f) * a);
+        }
     }
 
     static Vector2 Girar(Vector2 v, float angulo)

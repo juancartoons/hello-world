@@ -1146,6 +1146,9 @@ public class Dibujo : MonoBehaviour
         rehacerRespaldo.Clear();
     }
 
+    // Cuántas veces se ha deshecho algo (el tutorial lo usa para saber que lo lograste).
+    public int VecesDeshecho { get; private set; }
+
     public bool Deshacer()
     {
         if (historial.Count == 0)
@@ -1160,6 +1163,7 @@ public class Dibujo : MonoBehaviour
             rehacer.RemoveAt(0);
         rehacerRespaldo.Clear();
         AplicarFoto(foto);
+        VecesDeshecho++;
         Mensaje("Deshecho");
         return true;
     }

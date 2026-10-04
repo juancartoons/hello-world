@@ -26,10 +26,12 @@ public static class PoseMano
     // Ángulo máximo de cada articulación al cerrar del todo (grados).
     static readonly float[] Doblez = { 78f, 98f, 68f };
 
-    // pinza: 0 a 1 (pulgar con índice) · puno: 0 a 1 (puño) · apuntar: 0 a 1 (índice estirado, los demás doblados).
+    // pinza: 0 a 1 (pulgar con índice: el "OK" 👌, los otros dedos estirados) · puno: 0 a 1 (puño)
+    // apuntar: 0 a 1 (índice estirado, los demás doblados) · pinzaMedio: pulgar con el dedo medio
+    // pulgarFuera: con el puño, el pulgar estirado hacia afuera (la flecha de deshacer).
     // muneca = dónde va la muñeca; dedos = hacia dónde apuntan los dedos; palma = hacia dónde mira la palma.
     public static void Calcular(Vector3[] a, bool izquierda, Vector3 muneca, Vector3 dedos, Vector3 palma,
-                                float pinza, float puno, float apuntar)
+                                float pinza, float puno, float apuntar, float pinzaMedio = 0f, float pulgarFuera = 0f)
     {
         if (a == null || a.Length < 21)
             return;
@@ -42,13 +44,16 @@ public static class PoseMano
         pinza = Mathf.Clamp01(pinza);
         puno = Mathf.Clamp01(puno);
         apuntar = Mathf.Clamp01(apuntar);
+        pinzaMedio = Mathf.Clamp01(pinzaMedio);
+        pulgarFuera = Mathf.Clamp01(pulgarFuera);
 
         // Qué tan doblado está cada dedo (0 = estirado, 1 = cerrado).
         var curva = new float[4];
         for (int d = 0; d < 4; d++)
         {
-            float c = 0.12f;                                        // mano relajada
-            c = Mathf.Lerp(c, d == 0 ? 0.6f : 0.35f + d * 0.08f, pinza);
+            float c = 0.12f;                                                  // mano relajada
+            c = Mathf.Lerp(c, d == 0 ? 0.6f : 0.08f + d * 0.04f, pinza);       // OK: los otros tres bien estirados
+            c = Mathf.Lerp(c, d == 1 ? 0.64f : d == 0 ? 0.08f : 0.2f, pinzaMedio);
             c = Mathf.Lerp(c, 1f, puno);
             c = Mathf.Lerp(c, d == 0 ? 0.04f : 0.95f, apuntar);
             curva[d] = c;
@@ -74,14 +79,18 @@ public static class PoseMano
             }
         }
 
-        // Pulgar: base fija y la punta va hacia donde le toca (abierto, tocando el índice o sobre el puño).
+        // Pulgar: base fija y la punta va hacia donde le toca (abierto, tocando un dedo, sobre el puño o afuera).
         Vector3 base1 = muneca + S * 0.022f + F * 0.026f + N * 0.012f;
         Vector3 base2 = base1 + (S * 0.75f + F * 0.55f + N * 0.35f).normalized * 0.038f;
         Vector3 abierto = base2 + (S * 0.6f + F * 0.75f + N * 0.2f).normalized * 0.06f;
         Vector3 conIndice = a[8] + S * 0.004f;
+        Vector3 conMedio = a[12] + S * 0.004f;
         Vector3 sobrePuno = Vector3.Lerp(a[6], a[10], 0.45f) + N * 0.012f;
+        Vector3 afuera = base2 + (S * 0.9f + F * 0.3f - N * 0.15f).normalized * 0.062f;
         Vector3 punta = Vector3.Lerp(abierto, conIndice, pinza);
-        punta = Vector3.Lerp(punta, sobrePuno, Mathf.Max(puno, apuntar));
+        punta = Vector3.Lerp(punta, conMedio, pinzaMedio);
+        punta = Vector3.Lerp(punta, sobrePuno, Mathf.Max(puno, apuntar) * (1f - pulgarFuera));
+        punta = Vector3.Lerp(punta, afuera, pulgarFuera);
         Vector3 hacia = punta - base2;
         Vector3 fuera = (S * 0.6f - N * 0.8f).normalized; // el nudillo del pulgar se curva hacia afuera
         float largo = hacia.magnitude;
@@ -95,7 +104,7 @@ public static class PoseMano
     public static void ConIndiceEn(Vector3[] a, bool izquierda, Vector3 punta, Vector3 dedos, Vector3 palma,
                                    float pinza, float puno, float apuntar)
     {
-        Calcular(a, izquierda, Vector3.zero, dedos, palma, pinza, puno, apuntar);
+        Calcular(a, izquierda, Vector3.zero, dedos, palma, pinza, puno, apuntar, 0f, 0f);
         Vector3 mover = punta - a[8];
         for (int i = 0; i < 21; i++)
             a[i] += mover;

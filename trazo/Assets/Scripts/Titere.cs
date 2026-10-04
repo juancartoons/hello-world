@@ -1246,15 +1246,15 @@ public class Titere : MonoBehaviour
 
     // Tutorial: un Palito parado con los pies en "pies", mirando hacia "derecha", sobre la línea "piso"
     // (tu línea: no se borra con el personaje). Se enciende solo con la mano derecha.
-    public DatosPersonaje CrearPalitoEn(Vector3 pies, Vector3 derecha, int piso)
+    public DatosPersonaje CrearPalitoEn(Vector3 pies, Vector3 derecha, int piso, float escala = 1f)
     {
         if (dibujo == null || Encendido || fase != Fase.Libre)
             return null;
         derecha.y = 0f;
         derecha = derecha.sqrMagnitude > 1e-6f ? derecha.normalized : Vector3.right;
-        Vector3 cadera = pies + Vector3.up * 0.172f;
+        Vector3 cadera = pies + Vector3.up * 0.172f * escala;
         dibujo.GuardarParaDeshacer();
-        var cons = new ConstructorPersonaje(dibujo, cadera, derecha, dibujo.AnchoNuevoLocal());
+        var cons = new ConstructorPersonaje(dibujo, cadera, derecha, dibujo.AnchoNuevoLocal() * Mathf.Lerp(0.6f, 1f, escala), escala);
         float alturaPies;
         var p = cons.Palito(out alturaPies);
         p.arriba = dibujo.transform.InverseTransformDirection(Vector3.up).normalized;

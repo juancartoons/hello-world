@@ -84,8 +84,11 @@ Shader "TrazoVR/Guia"
                 float3 vista = normalize(i.vistaWS);
                 float frente = saturate(abs(dot(n, vista)));
                 float borde = pow(1.0 - frente, 1.6);
-                float3 c = lerp(_BaseColor.rgb * 0.85, float3(1, 1, 1), borde * 0.55);
-                float a = _BaseColor.a * (0.45 + 0.55 * borde);
+                // Contorno oscuro y fino en la silueta (así la pose se entiende de un vistazo).
+                float contorno = 1.0 - smoothstep(0.16, 0.3, frente);
+                float3 c = lerp(_BaseColor.rgb * 0.85, float3(1, 1, 1), borde * 0.4);
+                c = lerp(c, float3(0.04, 0.1, 0.28), contorno);
+                float a = lerp(_BaseColor.a * (0.45 + 0.4 * borde), saturate(_BaseColor.a * 1.7), contorno);
                 return half4(c, a);
             }
             ENDHLSL

@@ -11,17 +11,21 @@ public class ConstructorPersonaje
     readonly Vector3 cadera;
     readonly Vector3 derecha;
     readonly float ancho;
+    readonly float escala;
 
-    public ConstructorPersonaje(Dibujo dibujo, Vector3 caderaMundo, Vector3 derechaMundo, float anchoLocal)
+    // escala: 1 = tamaño normal (el tutorial usa uno más pequeño).
+    public ConstructorPersonaje(Dibujo dibujo, Vector3 caderaMundo, Vector3 derechaMundo, float anchoLocal, float escala = 1f)
     {
         this.dibujo = dibujo;
         cadera = caderaMundo;
         derecha = derechaMundo;
         ancho = anchoLocal;
+        this.escala = escala;
     }
 
     Vector3 Local(Vector2 p)
     {
+        p *= escala;
         Vector3 mundo = cadera + derecha * p.x + Vector3.up * p.y;
         return dibujo.ProyectarEnPlano(dibujo.transform.InverseTransformPoint(mundo));
     }
