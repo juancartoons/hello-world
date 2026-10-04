@@ -59,14 +59,14 @@ public static class AplicarEstiloYEscenografia
     {
         new Vector3(-3.05f, 0.05f, -0.2f), new Vector3(-1.7f, 0.05f, 2.2f), new Vector3(-0.8f, 0.05f, -1.6f),
         new Vector3(0.8f, 0.05f, 0.3f), new Vector3(1.9f, 0.05f, -0.4f), new Vector3(3.05f, 0.05f, 2.1f),
-        new Vector3(1.0f, 0.05f, 7.55f), new Vector3(-4.2f, 0.05f, 7.5f), new Vector3(4.2f, 0.05f, -4.4f),
+        new Vector3(2.0f, 0.05f, 7.5f), new Vector3(-4.2f, 0.05f, 7.5f), new Vector3(4.2f, 0.05f, -4.4f),
         new Vector3(-4.2f, 0.05f, -4.4f), new Vector3(3.0f, 0.05f, 5.3f), new Vector3(-2.6f, 0.05f, 6.9f),
     };
 
     [MenuItem("FarmaciaVR/★ Aplicar estilo toon y escenografía")]
     static void Aplicar()
     {
-        foreach (var nombre in new[] { "FarmaciaVR/Toon", "FarmaciaVR/Toon Sin Borde", "FarmaciaVR/Vidrio", "FarmaciaVR/Luz", "FarmaciaVR/Realista" })
+        foreach (var nombre in new[] { "FarmaciaVR/Toon", "FarmaciaVR/Toon Sin Borde", "FarmaciaVR/Vidrio", "FarmaciaVR/Luz", "FarmaciaVR/Realista", "FarmaciaVR/Plano" })
         {
             if (Shader.Find(nombre) != null)
                 continue;
@@ -92,9 +92,12 @@ public static class AplicarEstiloYEscenografia
         var matVidrio = CrearMaterialSimple("Toon_Vidrio", "FarmaciaVR/Vidrio", new Color(0.75f, 0.9f, 1f, 0.18f));
         var matLuz = CrearMaterialSimple("Toon_Luz", "FarmaciaVR/Luz", new Color(1f, 0.93f, 0.72f, 1f));
         var matLinea = CrearMaterialSimple("Mat_LineaTeleport", "Sprites/Default", Color.white);
+        var matBombillo = CrearMaterialPlano("Plano_Bombillo", Color.white, false, true, 2000);
+        var matHalo = CrearMaterialPlano("Plano_Halo", Color.white, true, false, 3000);
         AssetDatabase.SaveAssets();
 
-        float tamPersonaje = MedirCuboAgarrable();
+        // El cubo de prueba del principio ya no se necesita: se mide (para que el pájaro tenga su tamaño) y se borra.
+        float tamPersonaje = MedirYBorrarCubo();
         Vector3 dirLuz = Quaternion.Euler(rotacionSol) * Vector3.forward;
 
         // ---------- Raíz de la escenografía (se reconstruye cada vez) ----------
@@ -129,12 +132,13 @@ public static class AplicarEstiloYEscenografia
 
         // ---------- Exterior ----------
         FachadaYExterior.ConstruirExterior(raiz.transform, matExterior, carpetaMallas);
+        FachadaYExterior.ConstruirTrafico(raiz.transform, matExterior, matBombillo, carpetaMallas);
 
         // ---------- Teletransporte, escondites y personaje ----------
         ConstruirPuntosTeletransporte(matPunto, matLinea);
         ConstruirEscondites(escondites);
         var mallaPluma = CrearMallaPluma();
-        ConstruirPajaro(matKit, matPluma, mallaPluma, tamPersonaje);
+        ConstruirPajaro(matKit, matPluma, mallaPluma, matHalo, tamPersonaje);
         ConstruirCronometro();
         ConstruirOpcionesNavegacion(raiz.transform, matBoton);
 
@@ -193,7 +197,7 @@ public static class AplicarEstiloYEscenografia
         Poner("Pared_Este", new Vector3(5f, 1.5f, centro), new Vector3(0.2f, 3f, largo));
         Poner("Pared_Oeste", new Vector3(-5f, 1.5f, centro), new Vector3(0.2f, 3f, largo));
         Poner("Plane", new Vector3(0f, 0f, centro), new Vector3(1f, 1f, largo / 10f));
-        Poner("Mostrador", new Vector3(0f, 0.5f, fondo - 1.2f));
+        Poner("Mostrador", new Vector3(0f, 0.5f, fondo - 0.75f)); // pegado a la pared del fondo (queda un espacio de 25 cm)
     }
 
     // ================= Muebles =================
@@ -334,6 +338,8 @@ public static class AplicarEstiloYEscenografia
         }
     }
 
+    // Mostrador de la caja, pegado a la pared del fondo, con caja registradora, datáfono, dulces, gel,
+    // una matera, el letrero "CAJA" colgando y una repisa con medicamentos en la pared de atrás.
     static void ConstruirMostrador(Transform raiz, Material mat)
     {
         var original = GameObject.Find("Mostrador");
@@ -341,6 +347,11 @@ public static class AplicarEstiloYEscenografia
             return;
         Bounds b = LimitesDeBloque(original.transform);
         OcultarRender(original); // el collider del mostrador se queda
+
+        Color grisMedio = new Color(0.45f, 0.47f, 0.52f);
+        Color negro = new Color(0.1f, 0.1f, 0.12f);
+        Color terracota = new Color(0.78f, 0.42f, 0.28f);
+        Color hojas = new Color(0.25f, 0.6f, 0.32f);
 
         var kit = new KitMalla();
         kit.Caja(b.center, b.size - new Vector3(0.04f, 0.04f, 0.06f), azul);
@@ -350,10 +361,86 @@ public static class AplicarEstiloYEscenografia
         kit.Caja(new Vector3(b.center.x, b.center.y - 0.08f, zFrente - 0.01f), new Vector3(0.30f, 0.10f, 0.02f), verde);
         kit.Caja(new Vector3(b.center.x, b.center.y - 0.08f, zFrente - 0.01f), new Vector3(0.10f, 0.30f, 0.02f), verde);
         float yTope = b.max.y + 0.05f;
-        kit.Caja(new Vector3(b.center.x + 0.8f, yTope + 0.06f, b.center.z), new Vector3(0.35f, 0.12f, 0.30f), grisOscuro);
-        kit.Caja(new Vector3(b.center.x + 0.8f, yTope + 0.24f, b.center.z + 0.08f), new Vector3(0.30f, 0.20f, 0.03f), grisOscuro);
-        kit.Etiqueta(new Vector3(b.center.x + 0.8f, yTope + 0.24f, b.center.z + 0.08f - 0.016f), Vector3.back, 0.08f, 0.13f, azulClaro);
+        float zc = b.center.z;
+
+        // Caja registradora: cajón, teclado inclinado (mirando al cajero), pantalla para el cliente e impresora.
+        float xc = b.center.x + 0.75f;
+        kit.Caja(new Vector3(xc, yTope + 0.06f, zc), new Vector3(0.44f, 0.12f, 0.40f), grisOscuro);
+        kit.Caja(new Vector3(xc, yTope + 0.03f, zc - 0.205f), new Vector3(0.38f, 0.02f, 0.01f), grisMedio, false); // ranura del cajón
+        kit.Hexaedro(new[]
+        {
+            new Vector3(xc - 0.17f, yTope + 0.12f, zc - 0.02f), new Vector3(xc + 0.17f, yTope + 0.12f, zc - 0.02f),
+            new Vector3(xc + 0.17f, yTope + 0.12f, zc + 0.18f), new Vector3(xc - 0.17f, yTope + 0.12f, zc + 0.18f),
+            new Vector3(xc - 0.17f, yTope + 0.20f, zc - 0.02f), new Vector3(xc + 0.17f, yTope + 0.20f, zc - 0.02f),
+            new Vector3(xc + 0.17f, yTope + 0.15f, zc + 0.18f), new Vector3(xc - 0.17f, yTope + 0.15f, zc + 0.18f),
+        }, grisMedio);
+        kit.grosorContorno = 0.4f;
+        for (int fila = 0; fila < 3; fila++)
+            for (int col = 0; col < 4; col++)
+            {
+                Color tecla = col == 3 ? (fila == 0 ? new Color(0.9f, 0.25f, 0.2f) : fila == 1 ? new Color(0.95f, 0.8f, 0.2f) : verde) : blanco;
+                float zt = zc + 0.03f + fila * 0.05f;
+                float yt = yTope + 0.20f - (zt - (zc - 0.02f)) / 0.2f * 0.05f + 0.008f;
+                kit.Caja(new Vector3(xc - 0.11f + col * 0.07f, yt, zt), new Vector3(0.05f, 0.012f, 0.035f), tecla);
+            }
+        kit.grosorContorno = 1f;
+        kit.Caja(new Vector3(xc - 0.1f, yTope + 0.23f, zc - 0.12f), new Vector3(0.03f, 0.22f, 0.03f), grisOscuro);
+        kit.Caja(new Vector3(xc - 0.1f, yTope + 0.37f, zc - 0.12f), new Vector3(0.24f, 0.13f, 0.03f), grisOscuro);
+        kit.Etiqueta(new Vector3(xc - 0.1f, yTope + 0.37f, zc - 0.136f), Vector3.back, 0.05f, 0.1f, azulClaro);
+        kit.Caja(new Vector3(xc + 0.33f, yTope + 0.06f, zc + 0.05f), new Vector3(0.16f, 0.12f, 0.2f), blanco);
+        kit.Caja(new Vector3(xc + 0.33f, yTope + 0.125f, zc - 0.02f), new Vector3(0.08f, 0.01f, 0.06f), new Color(0.97f, 0.97f, 0.95f), false); // papel
+        // Datáfono
+        kit.Caja(new Vector3(xc - 0.45f, yTope + 0.02f, zc - 0.22f), new Vector3(0.09f, 0.04f, 0.16f), negro);
+        kit.Piso(new Vector3(xc - 0.45f, yTope + 0.041f, zc - 0.25f), 0.03f, 0.025f, azulClaro);
+
+        // Exhibidor de dulces de dos pisos, con cajitas de colores.
+        float xd = b.center.x - 0.85f;
+        kit.Caja(new Vector3(xd, yTope + 0.04f, zc - 0.15f), new Vector3(0.5f, 0.08f, 0.22f), blanco);
+        kit.Caja(new Vector3(xd, yTope + 0.14f, zc - 0.06f), new Vector3(0.5f, 0.12f, 0.12f), blanco);
+        kit.grosorContorno = 0.5f;
+        for (int i = 0; i < 6; i++)
+        {
+            kit.Caja(new Vector3(xd - 0.2f + i * 0.08f, yTope + 0.11f, zc - 0.19f), new Vector3(0.06f, 0.06f, 0.08f), coloresProductos[i % coloresProductos.Length]);
+            kit.Caja(new Vector3(xd - 0.2f + i * 0.08f, yTope + 0.23f, zc - 0.07f), new Vector3(0.06f, 0.06f, 0.07f), coloresProductos[(i + 3) % coloresProductos.Length]);
+        }
+        kit.grosorContorno = 1f;
+
+        // Gel antibacterial y matera con planta.
+        float xg = b.center.x - 0.3f;
+        kit.Cilindro(new Vector3(xg, yTope + 0.08f, zc - 0.2f), 0.04f, 0.16f, Vector3.up, 12, blanco, true, true);
+        kit.Cilindro(new Vector3(xg, yTope + 0.18f, zc - 0.2f), 0.012f, 0.04f, Vector3.up, 8, azul);
+        kit.Caja(new Vector3(xg, yTope + 0.2f, zc - 0.22f), new Vector3(0.015f, 0.012f, 0.05f), azul);
+        float xm = b.min.x + 0.2f;
+        kit.Cilindro(new Vector3(xm, yTope + 0.08f, zc + 0.1f), 0.08f, 0.16f, Vector3.up, 14, terracota, true, true);
+        kit.Esfera(new Vector3(xm, yTope + 0.26f, zc + 0.1f), new Vector3(0.14f, 0.16f, 0.14f), 2, hojas, true, false, true);
+
+        // Repisa con medicamentos en la pared de atrás (sobre el mostrador, debajo del letrero).
+        float zPared = FachadaYExterior.Fondo - 0.1f;
+        var rnd = new System.Random(77);
+        foreach (float y in new[] { 1.3f, 1.68f })
+        {
+            kit.Caja(new Vector3(0f, y, zPared - 0.1f), new Vector3(3.0f, 0.025f, 0.2f), blanco);
+            kit.grosorContorno = 0.5f;
+            for (float x = -1.42f; x < 1.38f;)
+            {
+                float ancho = Rango(rnd, 0.06f, 0.12f), alto = Rango(rnd, 0.1f, 0.24f);
+                kit.Caja(new Vector3(x + ancho / 2f, y + 0.0125f + alto / 2f, zPared - 0.1f), new Vector3(ancho, alto, 0.14f),
+                    coloresProductos[rnd.Next(coloresProductos.Length)]);
+                x += ancho + 0.01f;
+            }
+            kit.grosorContorno = 1f;
+        }
+        foreach (float x in new[] { -1.45f, 0f, 1.45f })
+            kit.Caja(new Vector3(x, 1.49f, zPared - 0.015f), new Vector3(0.03f, 0.42f, 0.03f), grisOscuro);
+
+        // Letrero "CAJA" colgando del techo, sobre la registradora.
+        kit.Caja(new Vector3(xc, 2.5f, zc - 0.2f), new Vector3(0.7f, 0.24f, 0.04f), verde);
+        kit.Caja(new Vector3(xc - 0.3f, 2.81f, zc - 0.2f), new Vector3(0.01f, 0.38f, 0.01f), grisOscuro, false);
+        kit.Caja(new Vector3(xc + 0.3f, 2.81f, zc - 0.2f), new Vector3(0.01f, 0.38f, 0.01f), grisOscuro, false);
         kit.CrearObjeto("Kit_Mostrador", raiz, mat, carpetaMallas);
+
+        if (Resources.Load<TMP_Settings>("TMP Settings") != null)
+            Texto(raiz, "CAJA", new Vector3(xc, 2.5f, zc - 0.225f), new Vector2(0.6f, 0.2f), Color.white);
     }
 
     static void ConstruirTecho(Transform raiz, Material matTecho, Material matLampara)
@@ -540,25 +627,34 @@ public static class AplicarEstiloYEscenografia
 
     // ================= Personaje =================
 
-    // Mide el cubo agarrable de Meta para que el personaje quede del mismo tamaño.
-    static float MedirCuboAgarrable()
+    // Mide el cubo agarrable de Meta (el de la primera prueba) para que el personaje quede del mismo tamaño,
+    // y luego lo borra porque ya no se necesita. Si ya no existe, usa el tamaño del pájaro actual.
+    static float MedirYBorrarCubo()
     {
         var cubo = GameObject.Find("[BuildingBlock] Cube");
         if (cubo == null)
-            return 0.1f;
+        {
+            var actual = Object.FindFirstObjectByType<PersonajeEncontrable>();
+            return actual != null ? Mathf.Clamp(actual.transform.localScale.x / 1.3f, 0.06f, 0.3f) : 0.1f;
+        }
+        float tam = 0.1f;
         // Solo mallas normales (no las manos fantasma de Meta que pueden venir dentro del bloque).
         var renders = cubo.GetComponentsInChildren<MeshRenderer>();
-        if (renders.Length == 0)
-            return 0.1f;
-        Bounds b = renders[0].bounds;
-        foreach (var r in renders)
-            b.Encapsulate(r.bounds);
-        return Mathf.Clamp(Mathf.Max(b.size.x, Mathf.Max(b.size.y, b.size.z)), 0.06f, 0.3f);
+        if (renders.Length > 0)
+        {
+            Bounds b = renders[0].bounds;
+            foreach (var r in renders)
+                b.Encapsulate(r.bounds);
+            tam = Mathf.Clamp(Mathf.Max(b.size.x, Mathf.Max(b.size.y, b.size.z)), 0.06f, 0.3f);
+        }
+        Undo.DestroyObjectImmediate(cubo);
+        Debug.Log("FarmaciaVR: borré el cubo de prueba ([BuildingBlock] Cube).");
+        return tam;
     }
 
     // Crea el personaje: un pájaro rojo low poly (inspirado en la referencia), del tamaño del cubo agarrable.
     // Está hecho en una "unidad" de 1 de alto mirando hacia +Z y luego se escala.
-    static void ConstruirPajaro(Material mat, Material matPluma, Mesh mallaPluma, float tam)
+    static void ConstruirPajaro(Material mat, Material matPluma, Mesh mallaPluma, Material matHalo, float tam)
     {
         var manager = Object.FindFirstObjectByType<JuegoManager>();
         var actual = Object.FindFirstObjectByType<PersonajeEncontrable>();
@@ -688,6 +784,8 @@ public static class AplicarEstiloYEscenografia
         var plumas = nuevo.AddComponent<PistaPlumas>();
         plumas.materialPluma = matPluma;
         plumas.mallaPluma = mallaPluma;
+        var halo = nuevo.AddComponent<HaloPajaro>();
+        halo.material = matHalo;
 
         if (manager != null)
         {
@@ -715,7 +813,8 @@ public static class AplicarEstiloYEscenografia
 
     // ================= Cronómetro y opciones =================
 
-    // Cronómetro pegado a la vista (como unas gafas XR), a la derecha. Se dibuja encima de todo.
+    // Cronómetro pegado a la vista (como unas gafas XR), a la derecha. Se dibuja encima de todo,
+    // con un fondo sólido (no transparente) y un borde claro para que se lea bien.
     static void ConstruirCronometro()
     {
         var manager = Object.FindFirstObjectByType<JuegoManager>();
@@ -733,14 +832,32 @@ public static class AplicarEstiloYEscenografia
         go.transform.localPosition = new Vector3(0.2f, -0.1f, 0.7f);
         go.transform.localRotation = Quaternion.Euler(0f, 12f, 0f); // un poco girado hacia el centro de la vista
         var tmp = go.AddComponent<TextMeshPro>();
-        tmp.text = "1:30";
+        tmp.text = "90";
         tmp.enableAutoSizing = true;
         tmp.fontSizeMin = 0.05f;
         tmp.fontSizeMax = 20f;
         tmp.alignment = TextAlignmentOptions.Center;
         tmp.fontStyle = FontStyles.Bold;
         tmp.color = Color.white;
-        tmp.rectTransform.sizeDelta = new Vector2(0.14f, 0.05f);
+        tmp.rectTransform.sizeDelta = new Vector2(0.075f, 0.042f);
+
+        // Fondo azul oscuro sólido con borde blanco (dos rectángulos detrás del número).
+        var matBorde = CrearMaterialPlano("Plano_CronometroBorde", Color.white, false, false, 3998, true);
+        var matFondo = CrearMaterialPlano("Plano_CronometroFondo", new Color(0.09f, 0.12f, 0.22f, 1f), false, false, 3999, true);
+        void Rectangulo(string nombre, Vector2 tam, float atras, Material m)
+        {
+            var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            q.name = nombre;
+            Object.DestroyImmediate(q.GetComponent<Collider>());
+            q.transform.SetParent(go.transform, false);
+            q.transform.localPosition = new Vector3(0f, 0f, atras);
+            q.transform.localScale = new Vector3(tam.x, tam.y, 1f);
+            var r = q.GetComponent<Renderer>();
+            r.sharedMaterial = m;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        }
+        Rectangulo("Borde", new Vector2(0.098f, 0.058f), 0.002f, matBorde);
+        Rectangulo("Fondo", new Vector2(0.09f, 0.05f), 0.001f, matFondo);
 
         // Material que se dibuja por encima de paredes y muebles.
         var overlay = Shader.Find("TextMeshPro/Distance Field Overlay");
@@ -762,7 +879,7 @@ public static class AplicarEstiloYEscenografia
         go.SetActive(false);
     }
 
-    // Dos botones (se tocan con el dedo) para elegir la navegación antes de entrar.
+    // Tres botones (se tocan con el dedo) para elegir la navegación antes de entrar.
     static void ConstruirOpcionesNavegacion(Transform raiz, Material matBoton)
     {
         var manager = Object.FindFirstObjectByType<JuegoManager>();
@@ -791,13 +908,14 @@ public static class AplicarEstiloYEscenografia
 
         if (Resources.Load<TMP_Settings>("TMP Settings") != null)
         {
-            Texto(opciones.transform, "¿Cómo te quieres mover?", Vector3.zero, new Vector2(0.4f, 0.05f), Color.white);
+            Texto(opciones.transform, "¿Cómo te quieres mover?", Vector3.zero, new Vector2(0.5f, 0.05f), Color.white);
             var titulo = opciones.transform.GetChild(opciones.transform.childCount - 1);
             titulo.localPosition = new Vector3(0f, 0.075f, 0f);
             titulo.localRotation = Quaternion.identity;
         }
-        var botonPuntos = CrearBoton("BotonDedo", "Con el dedo", -0.1f);
-        var botonMeta = CrearBoton("BotonMeta", "Modo Meta", 0.1f);
+        var botonPuntos = CrearBoton("BotonDedo", "Con el dedo", -0.19f);
+        var botonMeta = CrearBoton("BotonMeta", "Modo Meta", 0f);
+        var botonCaminar = CrearBoton("BotonCaminar", "Caminar", 0.19f);
 
         // El que decide qué navegación está activa vive en el JuegoManager.
         var modo = manager.GetComponent<ModoNavegacion>();
@@ -816,17 +934,28 @@ public static class AplicarEstiloYEscenografia
         arco.zonaPermitida = new Vector4(-4.8f, 4.8f, -4.8f, FachadaYExterior.Fondo - 0.2f);
         arco.enabled = false;
         modo.teletransporteArco = arco;
+        // Caminar de forma continua hacia donde señala el dedo
+        var caminarGo = new GameObject("CaminarConDedo");
+        caminarGo.transform.SetParent(raiz, false);
+        var caminar = caminarGo.AddComponent<CaminarConDedo>();
+        caminar.zonaPermitida = arco.zonaPermitida;
+        caminar.enabled = false;
+        modo.caminar = caminar;
         modo.botonPuntos = botonPuntos;
         modo.botonMeta = botonMeta;
+        modo.botonCaminar = botonCaminar;
         EditorUtility.SetDirty(modo);
 
         // Un componente recién agregado desde el editor puede traer su evento vacío (null): se crea antes de conectarlo.
         var tocarPuntos = botonPuntos.GetComponent<BotonTocable>();
         var tocarMeta = botonMeta.GetComponent<BotonTocable>();
+        var tocarCaminar = botonCaminar.GetComponent<BotonTocable>();
         if (tocarPuntos.alTocar == null) tocarPuntos.alTocar = new UnityEngine.Events.UnityEvent();
         if (tocarMeta.alTocar == null) tocarMeta.alTocar = new UnityEngine.Events.UnityEvent();
+        if (tocarCaminar.alTocar == null) tocarCaminar.alTocar = new UnityEngine.Events.UnityEvent();
         UnityEditor.Events.UnityEventTools.AddPersistentListener(tocarPuntos.alTocar, modo.ElegirPuntos);
         UnityEditor.Events.UnityEventTools.AddPersistentListener(tocarMeta.alTocar, modo.ElegirMeta);
+        UnityEditor.Events.UnityEventTools.AddPersistentListener(tocarCaminar.alTocar, modo.ElegirCaminar);
 
         ArreglarSuperficieTeletransporteMeta(modo.teletransporteMeta);
 
@@ -885,6 +1014,20 @@ public static class AplicarEstiloYEscenografia
         m.SetColor("_OutlineColor", colorContorno);
         m.SetFloat("_OutlineWidth", shader == "FarmaciaVR/Toon" ? 2f : 0f);
         m.SetFloat("_OutlineMode", modoContorno);
+        m.enableInstancing = true;
+        EditorUtility.SetDirty(m);
+        return m;
+    }
+
+    // Material de color plano (FarmaciaVR/Plano). "encima" = se dibuja por encima de todo (para el cronómetro).
+    static Material CrearMaterialPlano(string nombre, Color color, bool coloresMalla, bool opaco, int cola, bool encima = false)
+    {
+        var m = ObtenerMaterial(nombre, "FarmaciaVR/Plano");
+        m.SetColor("_BaseColor", color);
+        m.SetFloat("_UseVertexColor", coloresMalla ? 1f : 0f);
+        m.SetFloat("_ZWrite", opaco ? 1f : 0f);
+        m.SetFloat("_ZTest", encima ? (float)UnityEngine.Rendering.CompareFunction.Always : (float)UnityEngine.Rendering.CompareFunction.LessEqual);
+        m.renderQueue = cola;
         m.enableInstancing = true;
         EditorUtility.SetDirty(m);
         return m;

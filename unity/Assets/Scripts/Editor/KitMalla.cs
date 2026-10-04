@@ -122,6 +122,28 @@ internal class KitMalla
         triangulos.Add(i); triangulos.Add(i + 1); triangulos.Add(i + 2);
     }
 
+    // Triángulo con sombreado suave: cada esquina tiene su propia normal (así no se notan los polígonos).
+    public void TrianguloSuave(Vector3 a, Vector3 b, Vector3 c, Vector3 na, Vector3 nb, Vector3 nc,
+        Vector3 haciaAfuera, Color color, Vector3 centroPieza, bool contorno)
+    {
+        if (Vector3.Dot(Vector3.Cross(b - a, c - a), haciaAfuera) < 0f)
+        {
+            var t = b; b = c; c = t;
+            var tn = nb; nb = nc; nc = tn;
+        }
+        int i = vertices.Count;
+        var ps = new[] { a, b, c };
+        var ns = new[] { na, nb, nc };
+        for (int k = 0; k < 3; k++)
+        {
+            vertices.Add(ps[k]);
+            normales.Add(ns[k].normalized);
+            colores.Add(ConBrillo(color));
+            direcciones.Add(Dir(ps[k] - centroPieza, contorno));
+        }
+        triangulos.Add(i); triangulos.Add(i + 1); triangulos.Add(i + 2);
+    }
+
     // Bloque de 8 esquinas libres (para formas inclinadas, como la cabina de un carro).
     // c[0..3] = esquinas de abajo en orden alrededor; c[4..7] = las de arriba en el mismo orden.
     public void Hexaedro(Vector3[] c, Color color, bool contorno = true)
@@ -169,17 +191,30 @@ internal class KitMalla
         triangulos.Add(i); triangulos.Add(i + 2); triangulos.Add(i + 3);
     }
 
-    // Esfera low-poly (icosaedro subdividido) con caras planas. "radios" permite aplastarla o estirarla.
-    // Si "hacia Adentro" es true, se ve desde adentro (para el cielo).
-    public void Esfera(Vector3 centro, Vector3 radios, int subdivisiones, Color color, bool contorno = true, bool haciaAdentro = false)
+    // Esfera low-poly (icosaedro subdividido). "radios" permite aplastarla o estirarla.
+    // Si "haciaAdentro" es true, se ve desde adentro (para el cielo).
+    // Si "suave" es true, se sombrea liso (como el "smooth shading" de los programas 3D): no se notan los polígonos.
+    public void Esfera(Vector3 centro, Vector3 radios, int subdivisiones, Color color, bool contorno = true, bool haciaAdentro = false, bool suave = false)
     {
+        Vector3 inverso = new Vector3(1f / radios.x, 1f / radios.y, 1f / radios.z);
         foreach (var tri in Icosfera(subdivisiones))
         {
             Vector3 a = centro + Vector3.Scale(tri[0], radios);
             Vector3 b = centro + Vector3.Scale(tri[1], radios);
             Vector3 c = centro + Vector3.Scale(tri[2], radios);
             Vector3 afuera = (a + b + c) / 3f - centro;
-            Triangulo(a, b, c, haciaAdentro ? -afuera : afuera, color, centro, contorno);
+            if (haciaAdentro)
+                afuera = -afuera;
+            if (suave)
+            {
+                float s = haciaAdentro ? -1f : 1f;
+                TrianguloSuave(a, b, c, Vector3.Scale(tri[0], inverso) * s, Vector3.Scale(tri[1], inverso) * s,
+                    Vector3.Scale(tri[2], inverso) * s, afuera, color, centro, contorno);
+            }
+            else
+            {
+                Triangulo(a, b, c, afuera, color, centro, contorno);
+            }
         }
     }
 
@@ -197,7 +232,8 @@ internal class KitMalla
     }
 
     // Cilindro (ruedas, postes). "eje" es la dirección del largo.
-    public void Cilindro(Vector3 centro, float radio, float largo, Vector3 eje, int lados, Color color, bool contorno = true)
+    // Si "suave" es true, el costado se sombrea liso (las llantas se ven redondas, sin polígonos).
+    public void Cilindro(Vector3 centro, float radio, float largo, Vector3 eje, int lados, Color color, bool contorno = true, bool suave = false)
     {
         eje.Normalize();
         Vector3 u = Vector3.Cross(eje, Mathf.Abs(eje.y) > 0.9f ? Vector3.right : Vector3.up).normalized;
@@ -210,8 +246,16 @@ internal class KitMalla
             Vector3 d0 = (u * Mathf.Cos(a0) + v * Mathf.Sin(a0)) * radio;
             Vector3 d1 = (u * Mathf.Cos(a1) + v * Mathf.Sin(a1)) * radio;
             Vector3 afuera = (d0 + d1) * 0.5f;
-            Triangulo(abajo + d0, arriba + d0, arriba + d1, afuera, color, centro, contorno);
-            Triangulo(abajo + d0, arriba + d1, abajo + d1, afuera, color, centro, contorno);
+            if (suave)
+            {
+                TrianguloSuave(abajo + d0, arriba + d0, arriba + d1, d0, d0, d1, afuera, color, centro, contorno);
+                TrianguloSuave(abajo + d0, arriba + d1, abajo + d1, d0, d1, d1, afuera, color, centro, contorno);
+            }
+            else
+            {
+                Triangulo(abajo + d0, arriba + d0, arriba + d1, afuera, color, centro, contorno);
+                Triangulo(abajo + d0, arriba + d1, abajo + d1, afuera, color, centro, contorno);
+            }
             Triangulo(arriba, arriba + d0, arriba + d1, eje, color, centro, contorno);
             Triangulo(abajo, abajo + d1, abajo + d0, -eje, color, centro, contorno);
         }

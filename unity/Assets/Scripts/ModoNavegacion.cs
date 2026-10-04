@@ -3,11 +3,12 @@ using UnityEngine;
 // Elige cómo se mueve el jugador adentro de la farmacia:
 // - Puntos: señalar con el dedo los discos del piso.
 // - Meta: arco curvo como el de Meta Quest (palma abajo + pellizco, soltar para ir), a cualquier parte del piso.
+// - Caminar: movimiento continuo hacia donde señala el dedo índice, a paso normal.
 // El arco original de Meta se apaga siempre (apuntaba mal y se veía encima del nuestro).
 // Se elige con los botones que aparecen afuera, antes de entrar.
 public class ModoNavegacion : MonoBehaviour
 {
-    public enum Modo { Puntos, Meta }
+    public enum Modo { Puntos, Meta, Caminar }
 
     [Tooltip("Modo con el que arranca la app")]
     public Modo modo = Modo.Puntos;
@@ -16,10 +17,12 @@ public class ModoNavegacion : MonoBehaviour
     public GameObject discos;
     [Tooltip("Nuestro teletransporte con arco, estilo Meta")]
     public TeletransporteArco teletransporteArco;
+    [Tooltip("Caminar de forma continua señalando con el dedo")]
+    public CaminarConDedo caminar;
     [Tooltip("El teletransporte original de Meta (ISDK_TeleportInteraction): se mantiene apagado")]
     public GameObject teletransporteMeta;
     [Tooltip("Botones para resaltar el modo elegido")]
-    public Renderer botonPuntos, botonMeta;
+    public Renderer botonPuntos, botonMeta, botonCaminar;
     public Color colorElegido = new Color(0.15f, 0.7f, 0.4f);
     public Color colorNormal = new Color(0.75f, 0.78f, 0.82f);
 
@@ -43,6 +46,7 @@ public class ModoNavegacion : MonoBehaviour
 
     public void ElegirPuntos() => Aplicar(Modo.Puntos);
     public void ElegirMeta() => Aplicar(Modo.Meta);
+    public void ElegirCaminar() => Aplicar(Modo.Caminar);
 
     public void Aplicar(Modo nuevo)
     {
@@ -54,11 +58,14 @@ public class ModoNavegacion : MonoBehaviour
             foreach (Transform disco in discos.transform)
                 disco.gameObject.SetActive(puntos);
         if (teletransporteArco != null)
-            teletransporteArco.enabled = !puntos;
+            teletransporteArco.enabled = modo == Modo.Meta;
+        if (caminar != null)
+            caminar.enabled = modo == Modo.Caminar;
         if (teletransporteMeta != null)
             teletransporteMeta.SetActive(false);
         Pintar(botonPuntos, puntos);
-        Pintar(botonMeta, !puntos);
+        Pintar(botonMeta, modo == Modo.Meta);
+        Pintar(botonCaminar, modo == Modo.Caminar);
     }
 
     void Pintar(Renderer r, bool elegido)

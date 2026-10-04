@@ -220,7 +220,10 @@ public class PersonajeEncontrable : MonoBehaviour
         tiempoMirando = 0f;
         var animacion = GetComponent<AnimacionPajaro>();
         if (animacion != null)
-            animacion.Celebrar(); // ¡levanta las alas de alegría!
+            animacion.Celebrar(); // ¡aletea de alegría!
+        var halo = GetComponent<HaloPajaro>();
+        if (halo != null)
+            halo.Mostrar(true); // halo brillante: "¡lo encontraste!"
         if (rutinaSacudida != null)
         {
             StopCoroutine(rutinaSacudida);
@@ -307,6 +310,9 @@ public class PersonajeEncontrable : MonoBehaviour
         var animacion = GetComponent<AnimacionPajaro>();
         if (animacion != null)
             animacion.Reposo();
+        var halo = GetComponent<HaloPajaro>();
+        if (halo != null)
+            halo.Mostrar(false);
         Quieto();
         tiempoMirando = 0f;
         transform.localScale = escalaOriginal;

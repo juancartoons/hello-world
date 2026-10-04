@@ -10,7 +10,10 @@ public class TeletransporteArco : MonoBehaviour
     [Tooltip("Material de la línea (Sprites/Default)")]
     public Material materialLinea;
     [Tooltip("Qué tan lejos llega el arco (velocidad inicial)")]
-    public float fuerzaArco = 7f;
+    public float fuerzaArco = 9f;
+    [Tooltip("Qué tan curva es la línea (1 = curva normal, más bajo = más recta)")]
+    [Range(0.1f, 1f)]
+    public float curvatura = 0.35f;
     public float anchoLinea = 0.008f;
     public Color colorValido = new Color(0.3f, 0.9f, 1f, 0.9f);
     public Color colorInvalido = new Color(1f, 0.35f, 0.3f, 0.7f);
@@ -154,7 +157,7 @@ public class TeletransporteArco : MonoBehaviour
             return false;
 
         origen = ManosUtil.PuntoDePellizco(m.esqueleto, m.ancla);
-        direccion = ((nudillo.position - muneca.position).normalized + Vector3.up * 0.15f).normalized;
+        direccion = ((nudillo.position - muneca.position).normalized + Vector3.up * 0.05f).normalized;
         return true;
     }
 
@@ -167,10 +170,10 @@ public class TeletransporteArco : MonoBehaviour
         Vector3 v = direccion * fuerzaArco;
         const float paso = 0.03f;
         puntos.Add(p);
-        for (int i = 0; i < 60; i++)
+        for (int i = 0; i < 80; i++)
         {
             Vector3 siguiente = p + v * paso;
-            v += Physics.gravity * paso;
+            v += Physics.gravity * (curvatura * paso);
             Vector3 tramo = siguiente - p;
             if (Physics.Raycast(p, tramo.normalized, out RaycastHit hit, tramo.magnitude, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
             {

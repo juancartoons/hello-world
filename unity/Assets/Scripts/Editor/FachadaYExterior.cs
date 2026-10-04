@@ -240,12 +240,23 @@ internal static class FachadaYExterior
         Manzana(ext, -7f, 70f, -70f, -16f);  // al frente, cruzando la calle
         Manzana(ext, -70f, -13f, -8f, 70f);  // cruzando la carrera
         Manzana(ext, -70f, -13f, -70f, -16f);
+        // La calle y la carrera siguen más allá (hasta 170 m) para que los carros aparezcan y desaparezcan muy lejos.
+        foreach (float s0 in new[] { -1f, 1f })
+        {
+            float a0 = s0 * 70f, a1 = s0 * LargoCalles;
+            ext.CajaMinMax(new Vector3(Mathf.Min(a0, a1), -0.25f, -16f), new Vector3(Mathf.Max(a0, a1), -0.13f, -8f), asfalto, false);
+            ext.CajaMinMax(new Vector3(-13f, -0.25f, Mathf.Min(a0, a1)), new Vector3(-7f, -0.13f, Mathf.Max(a0, a1)), asfalto, false);
+            Manzana(ext, Mathf.Min(a0, a1), Mathf.Max(a0, a1), -19f, -16f);
+            Manzana(ext, Mathf.Min(a0, a1), Mathf.Max(a0, a1), -8f, -5f);
+            Manzana(ext, -16f, -13f, Mathf.Min(a0, a1), Mathf.Max(a0, a1));
+            Manzana(ext, -7f, -4f, Mathf.Min(a0, a1), Mathf.Max(a0, a1));
+        }
 
         // Líneas de la calle (al frente) y de la carrera (al lado oeste), sin pintar en el cruce.
-        for (float x = -69f; x < 69f; x += 3f)
+        for (float x = -LargoCalles + 1f; x < LargoCalles - 1f; x += 3f)
             if (x + 1.5f < -13f || x > -7f)
                 ext.Piso(new Vector3(x + 0.75f, -0.125f, -12f), 0.75f, 0.06f, amarillo);
-        for (float z = -69f; z < 69f; z += 3f)
+        for (float z = -LargoCalles + 1f; z < LargoCalles - 1f; z += 3f)
             if (z + 1.5f < -16f || z > -8f)
                 ext.Piso(new Vector3(-10f, -0.125f, z + 0.75f), 0.06f, 0.75f, amarillo);
         // Cebras
@@ -278,17 +289,7 @@ internal static class FachadaYExterior
 
         ext.brillo = 0.2f;
 
-        // Carros y bus en la calle.
-        // En Colombia se maneja por la derecha: hacia +X por el carril sur, hacia -X por el carril norte.
-        Taxi(ext, new Vector3(-2f, -0.13f, -10f), Vector3.left, raiz);
-        Taxi(ext, new Vector3(-25f, -0.13f, -14f), Vector3.right, raiz);
-        Familiar(ext, new Vector3(16f, -0.13f, -14f), Vector3.right, coloresFamiliar[1]);
-        Familiar(ext, new Vector3(-18f, -0.13f, -10f), Vector3.left, coloresFamiliar[0]);
-        Familiar(ext, new Vector3(24f, -0.13f, -10f), Vector3.left, coloresFamiliar[2]);
-        Familiar(ext, new Vector3(-9f, -0.13f, 6f), Vector3.forward, coloresFamiliar[3]);
-        Familiar(ext, new Vector3(-11f, -0.13f, -24f), Vector3.back, coloresFamiliar[4]);
-        Bus(ext, new Vector3(5f, -0.13f, -14f), raiz);
-        ext.brillo = 0.2f; // edificios, árboles y cerros: mate
+        // Los carros y el bus de la calle se mueven: los arma ConstruirTrafico.
 
         // Edificios cercanos (ladrillo bogotano, con ventanas y placas de concreto).
         Edificio(ext, rnd, new Vector3(-6.5f, 0f, Fondo + 0.3f), new Vector3(6.5f, 15f, Fondo + 12f), Elegir(rnd, ladrillos));  // vecino de atrás
@@ -308,6 +309,16 @@ internal static class FachadaYExterior
         }
         Edificio(ext, rnd, new Vector3(-28f, 0f, -30f), new Vector3(-16f, 21f, -19f), Elegir(rnd, ladrillos));
 
+        // Atrás a la izquierda (al salir se veía un "potrero" vacío): un edificio ancho y otros detrás.
+        Edificio(ext, rnd, new Vector3(-62f, 0f, -31f), new Vector3(-29f, 16f, -19f), Elegir(rnd, ladrillos));
+        Toldo(ext, rnd, new Vector3(-53f, 2.6f, -18.6f), 14f, false);
+        Toldo(ext, rnd, new Vector3(-37f, 2.6f, -18.6f), 12f, false);
+        Edificio(ext, rnd, new Vector3(-62f, 0f, -52f), new Vector3(-30f, 24f, -32f), concreto);
+        Edificio(ext, rnd, new Vector3(-28f, 0f, -48f), new Vector3(-16f, 19f, -31f), Elegir(rnd, ladrillos));
+        Edificio(ext, rnd, new Vector3(-6.5f, 0f, -46f), new Vector3(10f, 13f, -31.5f), Elegir(rnd, ladrillos));
+        Edificio(ext, rnd, new Vector3(10.5f, 0f, -46f), new Vector3(30f, 17f, -31.5f), Elegir(rnd, ladrillos));
+        Edificio(ext, rnd, new Vector3(-62f, 0f, -4.5f), new Vector3(-29f, 14f, 8f), Elegir(rnd, ladrillos));
+
         // Edificios de fondo (más claros, como vistos a través del aire).
         for (int i = 0; i < 34; i++)
         {
@@ -318,6 +329,10 @@ internal static class FachadaYExterior
             Color color = Color.Lerp(rnd.NextDouble() < 0.6 ? Elegir(rnd, ladrillos) : concreto, new Color(0.75f, 0.82f, 0.9f), 0.35f);
             Vector3 min = c - new Vector3(ancho / 2f, 0f, fondo / 2f);
             Vector3 max = c + new Vector3(ancho / 2f, alto, fondo / 2f);
+            bool tapaLaCalle = min.z < -4f && max.z > -20f;
+            bool tapaLaCarrera = min.x < -3f && max.x > -17f;
+            if (tapaLaCalle || tapaLaCarrera)
+                continue;
             ext.CajaMinMax(min, max, color);
             // Franjas de ventanas en la cara que mira hacia la farmacia.
             Vector3 haciaCentro = -c.normalized;
@@ -331,12 +346,14 @@ internal static class FachadaYExterior
         }
 
         // Árboles en andenes y parqueadero, y postes de luz.
-        foreach (float x in new[] { -5.8f, 7f, 13f, 19f, 25f }) Arbol(ext, rnd, new Vector3(x, 0f, -7f));
+        foreach (float x in new[] { 7f, 13f, 19f, 25f }) Arbol(ext, rnd, new Vector3(x, 0f, -7f));
         foreach (float x in new[] { -5f, 1f, 7f, 13f, 19f, 25f }) Arbol(ext, rnd, new Vector3(x, 0f, -17.3f));
         foreach (float z in new[] { -2f, 4f, 10f, 16f }) Arbol(ext, rnd, new Vector3(-6.3f, 0f, z));
         foreach (float z in new[] { -4f, 3f, 10f, 17f }) Arbol(ext, rnd, new Vector3(-14.3f, 0f, z));
         foreach (float z in new[] { -5f, 3f, 11f }) Arbol(ext, rnd, new Vector3(14.25f, 0f, z));
-        foreach (float x in new[] { -6.2f, 6.5f, 15f, 24f }) Poste(ext, new Vector3(x, 0f, -7.7f), -1f);
+        foreach (float x in new[] { 6.5f, 15f, 24f }) Poste(ext, new Vector3(x, 0f, -7.7f), -1f);
+        foreach (var semaforo in semaforos)
+            PosteSemaforo(ext, semaforo.poste, semaforo.mira);
 
         // Cerros orientales al fondo (al este).
         float[][] cerros =
@@ -360,6 +377,145 @@ internal static class FachadaYExterior
         var caja = pisoExterior.AddComponent<BoxCollider>();
         caja.center = new Vector3(0f, -0.26f, 0f); // la parte de arriba queda en y = -0.01 (nivel del andén)
         caja.size = new Vector3(140f, 0.5f, 140f);
+    }
+
+    // ================= Tráfico: carros que se mueven y semáforos =================
+
+    // Hasta dónde llegan la calle y la carrera (los carros dan la vuelta allá, muy lejos de la vista).
+    const float LargoCalles = 170f;
+    const float yCalle = -0.13f;
+
+    // Semáforos del cruce: poste en cada esquina, mirando hacia los carros que llegan.
+    // grupo 0 = calle (oriente-occidente), grupo 1 = carrera (norte-sur).
+    struct DatoSemaforo
+    {
+        public Vector3 poste, mira;
+        public int grupo;
+        public DatoSemaforo(Vector3 poste, Vector3 mira, int grupo) { this.poste = poste; this.mira = mira; this.grupo = grupo; }
+    }
+
+    static readonly DatoSemaforo[] semaforos =
+    {
+        new DatoSemaforo(new Vector3(-6.6f, 0f, -7.6f), Vector3.right, 0),    // carros que van hacia el occidente
+        new DatoSemaforo(new Vector3(-13.4f, 0f, -16.4f), Vector3.left, 0),   // carros que van hacia el oriente
+        new DatoSemaforo(new Vector3(-13.4f, 0f, -7.6f), Vector3.forward, 1), // carros que bajan (hacia el sur)
+        new DatoSemaforo(new Vector3(-6.6f, 0f, -16.4f), Vector3.back, 1),    // carros que suben (hacia el norte)
+    };
+
+    const float altoCabeza = 3.3f;
+
+    static void PosteSemaforo(KitMalla k, Vector3 base0, Vector3 mira)
+    {
+        k.brillo = 0.4f;
+        k.Cilindro(base0 + Vector3.up * (altoCabeza / 2f), 0.07f, altoCabeza, Vector3.up, 10, grisOscuro, true, true);
+        // Caja negra con visera para los tres bombillos
+        k.Caja(base0 + Vector3.up * altoCabeza + mira * 0.08f, Abs(new Vector3(mira.z, 0f, mira.x)) * 0.3f + new Vector3(0f, 0.95f, 0f) + Abs(mira) * 0.22f, new Color(0.1f, 0.1f, 0.12f));
+        k.brillo = 0.2f;
+    }
+
+    // Crea los carros que andan por la calle y la carrera (en Colombia se maneja por la derecha),
+    // el bus del SITP y los bombillos de los semáforos.
+    internal static void ConstruirTrafico(Transform raiz, Material matExterior, Material matBombillo, string carpeta)
+    {
+        var trafico = new GameObject("Trafico");
+        trafico.transform.SetParent(raiz, false);
+
+        // Mallas de los carros (con el frente hacia +X y las llantas en y = 0).
+        var familiares = new Mesh[coloresFamiliar.Length];
+        for (int i = 0; i < familiares.Length; i++)
+        {
+            var k = new KitMalla();
+            Familiar(k, Vector3.zero, Vector3.right, coloresFamiliar[i]);
+            familiares[i] = k.GuardarComo($"{carpeta}/Carro_Familiar_{i}.asset");
+        }
+        var kitTaxi = new KitMalla();
+        Taxi(kitTaxi, Vector3.zero, Vector3.right, null);
+        var mallaTaxi = kitTaxi.GuardarComo($"{carpeta}/Carro_Taxi.asset");
+        var kitBus = new KitMalla();
+        Bus(kitBus, Vector3.zero, null);
+        var mallaBus = kitBus.GuardarComo($"{carpeta}/Bus_SITP.asset");
+
+        // Carriles: inicio, fin y línea de pare (antes del cruce o de la cebra).
+        float L = LargoCalles;
+        var carriles = new[]
+        {
+            (inicio: new Vector3(-L, yCalle, -14f), fin: new Vector3(L, yCalle, -14f), pare: -13.6f + L, grupo: 0),  // calle hacia el oriente
+            (inicio: new Vector3(L, yCalle, -10f), fin: new Vector3(-L, yCalle, -10f), pare: L + 3.4f, grupo: 0),    // calle hacia el occidente
+            (inicio: new Vector3(-8.6f, yCalle, -L), fin: new Vector3(-8.6f, yCalle, L), pare: -16.6f + L, grupo: 1), // carrera hacia el norte
+            (inicio: new Vector3(-11.4f, yCalle, L), fin: new Vector3(-11.4f, yCalle, -L), pare: L + 3.7f, grupo: 1), // carrera hacia el sur
+        };
+
+        int numero = 0;
+        void Carro(int carril, float avance, Mesh malla, Mesh[] variantes, float largo, float velocidad, float esperaMin, float esperaMax, bool esTaxi, bool esBus)
+        {
+            var c = carriles[carril];
+            var go = new GameObject($"Carro_{++numero:00}");
+            go.transform.SetParent(trafico.transform, false);
+            go.AddComponent<MeshFilter>().sharedMesh = malla;
+            go.AddComponent<MeshRenderer>().sharedMaterial = matExterior;
+            // Los letreros del taxi y del bus van pegados al carro (se crean con el carro en el origen).
+            if (esTaxi) Taxi(new KitMalla(), Vector3.zero, Vector3.right, go.transform);
+            if (esBus) Bus(new KitMalla(), Vector3.zero, go.transform);
+            var ruta = go.AddComponent<CarroEnRuta>();
+            ruta.inicio = c.inicio;
+            ruta.fin = c.fin;
+            ruta.carril = carril;
+            ruta.avanceInicial = avance;
+            ruta.largo = largo;
+            ruta.velocidad = velocidad;
+            ruta.grupoSemaforo = c.grupo;
+            ruta.lineaDePare = c.pare;
+            ruta.variantes = variantes;
+            ruta.esperaMinima = esperaMin;
+            ruta.esperaMaxima = esperaMax;
+            go.transform.position = c.inicio + (c.fin - c.inicio).normalized * avance;
+        }
+
+        Mesh F(int i) => familiares[i % familiares.Length];
+        // Calle hacia el oriente (el bus va por aquí, justo detrás del jugador al empezar)
+        Carro(0, 175f, mallaBus, null, 11f, 6.5f, 8f, 25f, false, true);
+        Carro(0, 130f, F(1), familiares, 4.5f, 8.3f, 0f, 7f, false, false);
+        Carro(0, 60f, mallaTaxi, null, 4.4f, 8.3f, 0f, 7f, true, false);
+        Carro(0, 250f, F(5), familiares, 4.5f, 8.3f, 0f, 7f, false, false);
+        Carro(0, 300f, F(6), familiares, 4.5f, 8.3f, 0f, 7f, false, false);
+        // Calle hacia el occidente
+        Carro(1, 162f, mallaTaxi, null, 4.4f, 8.3f, 0f, 7f, true, false);
+        Carro(1, 178f, F(0), familiares, 4.5f, 8.3f, 0f, 7f, false, false);
+        Carro(1, 136f, F(2), familiares, 4.5f, 8.3f, 0f, 7f, false, false);
+        Carro(1, 60f, F(7), familiares, 4.5f, 8.3f, 0f, 7f, false, false);
+        Carro(1, 250f, mallaTaxi, null, 4.4f, 8.3f, 0f, 7f, true, false);
+        // Carrera hacia el norte y hacia el sur
+        Carro(2, 176f, F(3), familiares, 4.5f, 8.3f, 0f, 7f, false, false);
+        Carro(2, 90f, mallaTaxi, null, 4.4f, 8.3f, 0f, 7f, true, false);
+        Carro(2, 240f, F(4), familiares, 4.5f, 8.3f, 0f, 7f, false, false);
+        Carro(3, 184f, F(4), familiares, 4.5f, 8.3f, 0f, 7f, false, false);
+        Carro(3, 120f, F(1), familiares, 4.5f, 8.3f, 0f, 7f, false, false);
+        Carro(3, 50f, mallaTaxi, null, 4.4f, 8.3f, 0f, 7f, true, false);
+
+        // Bombillos de los semáforos (rojo arriba, amarillo, verde abajo).
+        var cruce = new GameObject("Semaforos");
+        cruce.transform.SetParent(raiz, false);
+        var control = cruce.AddComponent<SemaforoCruce>();
+        var calle = new List<Renderer>();
+        var carrera = new List<Renderer>();
+        foreach (var dato in semaforos)
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                var bombillo = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                Object.DestroyImmediate(bombillo.GetComponent<Collider>());
+                bombillo.name = $"Bombillo_{(dato.grupo == 0 ? "Calle" : "Carrera")}_{i}";
+                bombillo.transform.SetParent(cruce.transform, false);
+                bombillo.transform.position = dato.poste + Vector3.up * (altoCabeza + 0.29f - i * 0.29f) + dato.mira * 0.2f;
+                bombillo.transform.localScale = Vector3.one * 0.2f;
+                var r = bombillo.GetComponent<Renderer>();
+                r.sharedMaterial = matBombillo;
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                (dato.grupo == 0 ? calle : carrera).Add(r);
+            }
+        }
+        control.bombillosCalle = calle.ToArray();
+        control.bombillosCarrera = carrera.ToArray();
     }
 
     // ---------- Piezas del exterior ----------
@@ -425,7 +581,7 @@ internal static class FachadaYExterior
         k.Caja(base0 + Vector3.up * (altoTronco / 2f), new Vector3(0.25f, altoTronco, 0.25f), tronco);
         float s = Rango(rnd, 0.85f, 1.2f);
         Vector3 radios = alto ? new Vector3(1.2f, 2.3f, 1.2f) * s : new Vector3(1.5f, 1.3f, 1.5f) * s;
-        k.Esfera(base0 + Vector3.up * (altoTronco + radios.y * 0.7f), radios, 1, Elegir(rnd, verdes));
+        k.Esfera(base0 + Vector3.up * (altoTronco + radios.y * 0.7f), radios, 2, Elegir(rnd, verdes), true, false, true); // lisa, sin polígonos
     }
 
     static void Poste(KitMalla k, Vector3 base0, float haciaZ)
@@ -469,7 +625,7 @@ internal static class FachadaYExterior
                 }
         a.CajaLocal(-0.66f, -0.63f, 1.40f, 1.88f, -0.62f, -0.59f, negroCarro);
 
-        if (Resources.Load<TMP_Settings>("TMP Settings") == null)
+        if (raiz == null || Resources.Load<TMP_Settings>("TMP Settings") == null)
             return;
         var textos = new GameObject("TextosTaxi");
         textos.transform.SetParent(raiz, false);
@@ -503,7 +659,8 @@ internal static class FachadaYExterior
         tmp.fontStyle = FontStyles.Bold;
         tmp.color = new Color(0.1f, 0.1f, 0.12f);
         tmp.rectTransform.sizeDelta = tamano;
-        go.transform.SetPositionAndRotation(posicion, rotacion);
+        go.transform.localPosition = posicion;
+        go.transform.localRotation = rotacion;
     }
 
     // Arma un carro en coordenadas "del carro": X = hacia adelante, Y = arriba, Z = hacia un lado.
@@ -652,8 +809,8 @@ internal static class FachadaYExterior
                 foreach (float s in new[] { -1f, 1f })
                 {
                     CuadroLateral(s, x - 0.42f, x + 0.42f, 0.30f, 0.66f, negroCarro);   // paso de rueda
-                    k.Cilindro(Mundo(x, 0.31f, s * (hz - 0.07f)), 0.31f, 0.2f, lado, 10, negroCarro);
-                    k.Cilindro(Mundo(x, 0.31f, s * (hz + 0.045f)), 0.14f, 0.03f, lado, 10, new Color(0.55f, 0.56f, 0.58f));
+                    k.Cilindro(Mundo(x, 0.31f, s * (hz - 0.07f)), 0.31f, 0.2f, lado, 18, negroCarro, true, true);
+                    k.Cilindro(Mundo(x, 0.31f, s * (hz + 0.045f)), 0.14f, 0.03f, lado, 18, new Color(0.55f, 0.56f, 0.58f), true, true);
                 }
         }
     }
@@ -703,8 +860,8 @@ internal static class FachadaYExterior
             foreach (float x in new[] { -1.6f, 2.2f })
             {
                 k.Etiqueta(P(x, 0.72f, zMarco), n, 0.38f, 0.72f, negro);
-                k.Cilindro(P(x, 0.5f, s * (hz - 0.165f)), 0.5f, 0.35f, Vector3.forward, 10, negro);
-                k.Cilindro(P(x, 0.5f, s * (hz + 0.03f)), 0.24f, 0.04f, Vector3.forward, 10, gris);
+                k.Cilindro(P(x, 0.5f, s * (hz - 0.165f)), 0.5f, 0.35f, Vector3.forward, 20, negro, true, true);
+                k.Cilindro(P(x, 0.5f, s * (hz + 0.03f)), 0.24f, 0.04f, Vector3.forward, 20, gris, true, true);
             }
             // Espejos: brazo hacia adelante, brazo hacia afuera y espejo
             k.CajaMinMax(P(hx, 2.72f, s * (hz - 0.05f) - 0.03f), P(hx + 0.35f, 2.78f, s * (hz - 0.05f) + 0.03f), negro);
@@ -725,7 +882,7 @@ internal static class FachadaYExterior
         foreach (float s in new[] { -1f, 1f })
         {
             foreach (float z in new[] { 0.62f, 0.85f })
-                k.Cilindro(P(hx + 0.02f, 0.9f, s * z), 0.09f, 0.04f, Vector3.right, 10, blanco);
+                k.Cilindro(P(hx + 0.02f, 0.9f, s * z), 0.09f, 0.04f, Vector3.right, 14, blanco, true, true);
             k.CajaMinMax(P(hx, 0.82f, s * 1.08f - 0.06f), P(hx + 0.03f, 0.98f, s * 1.08f + 0.06f), naranja);
             k.CajaMinMax(P(hx + 0.12f, 0.5f, s * 1.0f - 0.1f), P(hx + 0.15f, 0.58f, s * 1.0f + 0.1f), naranja);
         }
@@ -734,7 +891,7 @@ internal static class FachadaYExterior
         k.Etiqueta(P(-hx - 0.002f, 2.4f, 0f), Vector3.left, 0.45f, 1.0f, negro);
 
         // Textos "SITP" (frente y costados)
-        if (Resources.Load<TMP_Settings>("TMP Settings") == null)
+        if (raiz == null || Resources.Load<TMP_Settings>("TMP Settings") == null)
             return;
         var textos = new GameObject("TextosBus");
         textos.transform.SetParent(raiz, false);
@@ -756,7 +913,8 @@ internal static class FachadaYExterior
         tmp.fontStyle = FontStyles.Bold;
         tmp.color = Color.white;
         tmp.rectTransform.sizeDelta = tamano;
-        go.transform.SetPositionAndRotation(posicion, rotacion);
+        go.transform.localPosition = posicion;
+        go.transform.localRotation = rotacion;
     }
 
     static Vector3 Abs(Vector3 v) => new Vector3(Mathf.Abs(v.x), Mathf.Abs(v.y), Mathf.Abs(v.z));

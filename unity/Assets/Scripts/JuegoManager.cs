@@ -181,9 +181,10 @@ public class JuegoManager : MonoBehaviour
     {
         if (textoTiempo == null)
             return;
+        // En segundos (90, 89, 88...), igual que el aviso del comienzo. El fondo sólido lo pone el menú ★.
         int segundos = Mathf.CeilToInt(Mathf.Max(0f, tiempoRestante));
         string color = segundos <= 10 ? "#FF5A4E" : "#FFFFFF";
-        textoTiempo.text = $"<mark=#00000099><color={color}> {segundos / 60}:{segundos % 60:00} </color></mark>";
+        textoTiempo.text = $"<color={color}>{segundos}</color>";
     }
 
     void MostrarOpciones(bool visible)

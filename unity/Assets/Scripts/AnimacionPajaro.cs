@@ -1,7 +1,8 @@
 using System.Collections;
 using UnityEngine;
 
-// Animación sencilla del pájaro: al ser encontrado aletea y levanta las alas de alegría.
+// Animación sencilla del pájaro: al ser encontrado aletea de alegría y sigue aleteando sin parar
+// mientras lo tienes en las manos (hasta que empieza otra partida).
 public class AnimacionPajaro : MonoBehaviour
 {
     public Transform alaIzquierda, alaDerecha;
@@ -9,6 +10,8 @@ public class AnimacionPajaro : MonoBehaviour
     public float anguloArriba = 140f;
     [Tooltip("Ángulo de las alas en reposo")]
     public float anguloReposo = 10f;
+    [Tooltip("Qué tan rápido aletea en la mano (más alto = más rápido)")]
+    public float velocidadAleteo = 13f;
 
     Quaternion rotacionIzq, rotacionDer;
     Coroutine rutina;
@@ -37,22 +40,20 @@ public class AnimacionPajaro : MonoBehaviour
 
     IEnumerator Alegria()
     {
-        // Aletea rápido...
-        for (float t = 0f; t < 1.4f; t += Time.deltaTime)
+        // Primero aletea rápido y grande, de alegría...
+        float t = 0f;
+        for (; t < 1.2f; t += Time.deltaTime)
         {
             PonerAngulo(Mathf.Lerp(anguloReposo, anguloArriba, 0.55f + 0.45f * Mathf.Sin(t * 22f)));
             yield return null;
         }
-        // ...deja las alas arriba un momento...
-        PonerAngulo(anguloArriba);
-        yield return new WaitForSeconds(1.6f);
-        // ...y las baja despacio.
-        for (float t = 0f; t < 1f; t += Time.deltaTime)
+        // ...y luego sigue aleteando sin parar (más tranquilo) mientras está contigo.
+        for (float f = 0f; ; f += Time.deltaTime)
         {
-            PonerAngulo(Mathf.Lerp(anguloArriba, anguloReposo + 25f, Mathf.SmoothStep(0f, 1f, t)));
+            float ola = 0.5f + 0.5f * Mathf.Sin(f * velocidadAleteo);
+            PonerAngulo(Mathf.Lerp(anguloReposo + 20f, anguloArriba - 15f, ola));
             yield return null;
         }
-        rutina = null;
     }
 
     // Las alas cuelgan hacia abajo desde el hombro; girarlas en Z las abre hacia los lados y arriba.
