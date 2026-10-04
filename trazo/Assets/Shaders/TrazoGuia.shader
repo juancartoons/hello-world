@@ -6,6 +6,7 @@ Shader "TrazoVR/Guia"
     Properties
     {
         _BaseColor ("Color", Color) = (0.45, 0.75, 1, 0.5)
+        _Opaco ("Opaco (guante de caricatura)", Range(0, 1)) = 0
     }
     SubShader
     {
@@ -16,6 +17,7 @@ Shader "TrazoVR/Guia"
 
         CBUFFER_START(UnityPerMaterial)
             float4 _BaseColor;
+            float _Opaco;
         CBUFFER_END
 
         struct Attributes
@@ -89,6 +91,7 @@ Shader "TrazoVR/Guia"
                 float3 c = lerp(_BaseColor.rgb * 0.85, float3(1, 1, 1), borde * 0.4);
                 c = lerp(c, float3(0.04, 0.1, 0.28), contorno);
                 float a = lerp(_BaseColor.a * (0.45 + 0.4 * borde), saturate(_BaseColor.a * 1.7), contorno);
+                a = lerp(a, 1.0, _Opaco);
                 return half4(c, a);
             }
             ENDHLSL

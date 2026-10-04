@@ -84,6 +84,7 @@ public class PanelArriba : MonoBehaviour
 
     bool visible;
     bool anclado;          // lo moviste: se queda fijo y siempre visible
+    BotonTocable btnVolverArriba; // la X: vuelve a aparecer solo al mirar arriba
     bool arrastrando;
     bool escalando;
     Vector3 desfaseAsa;
@@ -140,6 +141,7 @@ public class PanelArriba : MonoBehaviour
         Conectar(btnPaginaTitere, () => PonerPagina(3));
         Conectar(btnZoom, CambiarZoom);
         Conectar(btnSeguir, AlternarFijo);
+        CrearX();
         Conectar(btnAyuda, AlternarAyuda);
         Conectar(btnCapasPlegar, () => AbrirCapas(!capasAbiertas));
         PrepararCapas();
@@ -372,6 +374,49 @@ public class PanelArriba : MonoBehaviour
         anclado = true;
         if (dibujo != null)
             dibujo.Mensaje("Panel fijo. Pellizca el asa (arriba) para moverlo");
+    }
+
+    // X arriba a la derecha (solo cuando el panel está fijo en otro lugar): lo devuelve a "mirar arriba".
+    void CrearX()
+    {
+        if (contenido == null || btnSeguir == null)
+            return;
+        var cubo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        cubo.name = "BotonVolverArriba";
+        cubo.transform.SetParent(contenido.transform, false);
+        cubo.transform.localPosition = new Vector3(0.237f, 0.222f, 0f);
+        cubo.transform.localScale = new Vector3(0.022f, 0.022f, 0.008f);
+        var r = cubo.GetComponent<Renderer>();
+        r.sharedMaterial = btnSeguir.materialNormal;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
+        btnVolverArriba = cubo.AddComponent<BotonTocable>();
+        btnVolverArriba.materialNormal = btnSeguir.materialNormal;
+        btnVolverArriba.materialMarcado = btnSeguir.materialMarcado;
+        var go = new GameObject("TextoX", typeof(RectTransform));
+        go.transform.SetParent(contenido.transform, false);
+        go.transform.localPosition = new Vector3(0.237f, 0.222f, -0.0046f);
+        var t = go.AddComponent<TextMeshPro>();
+        t.text = "X";
+        t.enableAutoSizing = true;
+        t.fontSizeMin = 0.01f;
+        t.fontSizeMax = 0.2f;
+        t.alignment = TextAlignmentOptions.Center;
+        t.fontStyle = FontStyles.Bold;
+        t.color = Color.black;
+        t.rectTransform.sizeDelta = new Vector2(0.018f, 0.018f);
+        btnVolverArriba.etiqueta = t;
+        btnVolverArriba.alTocar.AddListener(Seguirme);
+        MostrarX(false);
+    }
+
+    void MostrarX(bool ver)
+    {
+        if (btnVolverArriba == null || btnVolverArriba.gameObject.activeSelf == ver)
+            return;
+        btnVolverArriba.gameObject.SetActive(ver);
+        if (btnVolverArriba.etiqueta != null)
+            btnVolverArriba.etiqueta.gameObject.SetActive(ver);
     }
 
     void Seguirme()
@@ -721,6 +766,7 @@ public class PanelArriba : MonoBehaviour
             btnSeguir.PonerTexto(anclado ? "Seguirme" : "Fijar aquí");
             btnSeguir.Marcar(anclado);
         }
+        MostrarX(anclado);
 
         RefrescarCapas();
         if (pagina == 0)
@@ -1054,6 +1100,19 @@ public class PanelArriba : MonoBehaviour
     void PrepararAyuda()
     {
         Idioma.alCambiar += AlCambiarIdioma;
+        // La X de "volver arriba" no va en la copia azul.
+        if (contenido != null)
+        {
+            foreach (var nombre in new[] { "BotonVolverArriba", "TextoX" })
+            {
+                var x = contenido.transform.Find(nombre);
+                if (x != null)
+                {
+                    x.SetParent(null, false);
+                    Destroy(x.gameObject);
+                }
+            }
+        }
         var copiaLista = contenido != null ? contenido.transform.Find("ListaArchivos") : null;
         if (copiaLista != null)
         {

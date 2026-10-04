@@ -138,6 +138,14 @@ public static class ArmarEscenaTrazo
         if (matTrama != null && matTrama.HasProperty("_ColorPuntos"))
             matTrama.SetColor("_ColorPuntos", new Color(0.93f, 0.55f, 0.15f));
         var fuenteComic = FuenteComic();
+        // Guante de caricatura (blanco con contorno) para la mano del OK.
+        Material matGuante = null;
+        if (shaderGuia != null)
+        {
+            matGuante = Mat("GuanteCaricatura", shaderGuia, new Color(1f, 1f, 1f, 1f));
+            if (matGuante.HasProperty("_Opaco"))
+                matGuante.SetFloat("_Opaco", 1f);
+        }
         // Los círculos de los nodos (y las imágenes, dianas, flecha y dial) se ven por ambos lados.
         foreach (var m in new[] { matNodo, matNodoActivo, matAsa, matIman, matImagen, matImagenTransparente, matFlecha, matDianaRoja, matDianaVerde, matBlanco, matDial, matIndicador,
                                   matTutNegro, matTutVerde, matTutAzul, matTutRojo, matTutLineaGuia })
@@ -213,6 +221,7 @@ public static class ArmarEscenaTrazo
         caja.materialCaja = matCaja;
         titere.control = control;
         control.materialInvisible = matInvisible;
+        control.materialGuante = matGuante;
         var simbolos = goControl.AddComponent<SimbolosMano>();
         simbolos.materialGoma = matGoma;
         simbolos.materialFunda = matFunda;
@@ -315,12 +324,29 @@ public static class ArmarEscenaTrazo
         aviso.gameObject.name = "Aviso";
         aviso.fontSizeMax = 0.3f;
         panel.textoAviso = aviso;
+        // Los avisos salen en una viñeta de cómic (como el tutorial).
+        var vinetaAviso = aviso.gameObject.AddComponent<VinetaComic>();
+        vinetaAviso.texto = aviso;
+        vinetaAviso.ajustarAlTexto = true;
+        vinetaAviso.materialTrama = matTrama;
+        vinetaAviso.materialNegro = matTutNegro;
+        vinetaAviso.fuente = fuenteComic;
+        vinetaAviso.profundidadSombra = 0.02f;
 
         // Etiqueta que flota sobre la mano con el nombre del gesto (para aprender).
         var ayuda = Texto(raiz.transform, "", new Vector3(0f, 1.3f, 0.5f), new Vector2(0.22f, 0.05f), new Color(0.1f, 0.25f, 0.6f));
         ayuda.gameObject.name = "AyudaGesto";
         ayuda.fontSizeMax = 0.25f;
         control.textoGesto = ayuda;
+        // El nombre del gesto, en una viñeta con la colita hacia tu mano.
+        var vinetaGesto = ayuda.gameObject.AddComponent<VinetaComic>();
+        vinetaGesto.texto = ayuda;
+        vinetaGesto.ajustarAlTexto = true;
+        vinetaGesto.cola = -1;
+        vinetaGesto.materialTrama = matTrama;
+        vinetaGesto.materialNegro = matTutNegro;
+        vinetaGesto.fuente = fuenteComic;
+        vinetaGesto.profundidadSombra = 0.015f;
 
         // ---------- Cámara: fondo blanco ----------
         var camara = rig.centerEyeAnchor != null ? rig.centerEyeAnchor.GetComponent<Camera>() : null;

@@ -7,14 +7,17 @@ using UnityEngine;
 //    un muñequito corre saltando sobre las letras y todo se desvanece despacio sobre la hoja en blanco.
 //  - La primera vez sigue el tutorial ("First time?"). Unas manos guía enseñan cada paso (tus manos se
 //    esconden mientras) y luego es tu turno; cada paso bien hecho se celebra:
-//    1. OK con la izquierda y mantenerlo (lápiz).  2. Índice derecho: del punto a la bandera; abrir los dedos = parar.
-//       A mitad de tu línea aparece un muñeco que corre sobre ella (sorpresa).
-//    3. El muñeco se vuelve un títere y sigue tu mano (Next para seguir).
-//    4. Puño izquierdo con el dorso hacia ti (borrador).  5. Frotar la línea: los nodos estallan y el muñeco huye.
-//    6. Deshacer: puño izquierdo con el pulgar a la izquierda y tocar la diana roja (la línea vuelve).
+//    1. OK con la izquierda y mantenerlo (lápiz). Cae una gota de tinta que se vuelve el punto A.
+//    2. Índice derecho: desde el punto A (antes no dibuja) hasta la bandera. A mitad aparece un muñeco que corre.
+//    3. Abrir los dedos = dejar de dibujar.
+//    4. El muñeco sigue tu mano, siempre sobre TU línea (como un tren en sus rieles). Next para seguir.
+//    5. Puño izquierdo (con un giro de muñeca de lado y de vuelta) = borrador.
+//    6. Frotar la línea: los nodos estallan y el muñeco huye en pánico, siempre a 2 cm de tu dedo.
 //    7. Pulgar + medio izquierdos (nodos) y arrastrar un nodo con la derecha.
-//  - Si pasan 8 segundos sin que hagas nada, las manos guía lo repiten. "Skip" lo termina.
-//  - Se puede ver otra vez en Mis archivos > Tutorial. Tu dibujo se aparta antes y vuelve igual al terminar.
+//    8. Deshacer: puño izquierdo con el pulgar a la izquierda y tocar la diana roja.
+//  - Cada OK (cerrar o abrir) toca una nota del arpa del título. Si pasan 8 segundos sin que hagas nada,
+//    las manos guía lo repiten. "Skip" lo termina. Mis archivos > Tutorial lo repite.
+//  - Tu dibujo se aparta antes y vuelve igual al terminar.
 public class Tutorial : MonoBehaviour
 {
     public static Tutorial Instancia { get; private set; }
@@ -42,7 +45,8 @@ public class Tutorial : MonoBehaviour
     const string ClaveVisto = "jcartoons_tutorial_visto";
     const string Nombre = "JCartoons";
     const float MitadLinea = 0.32f;     // de la bandera al centro (metros)
-    const float AnchoMuneco = 0.006f;   // grosor de los palitos del muñeco guía
+    const float CorrerDerecha = 0.08f;  // todo el tutorial un poco a la derecha
+    const float AnchoMuneco = 0.0022f;  // grosor de cada hebra del muñeco
     const float EscalaMuneco = 0.45f;   // el muñeco del tutorial (unos 18 cm)
     const float AnchoVineta = 0.24f, AltoVineta = 0.075f;
 
@@ -67,7 +71,11 @@ public class Tutorial : MonoBehaviour
         new Color(0.4f, 0.85f, 0.35f), new Color(0.7f, 0.4f, 1f), new Color(1f, 0.5f, 0.15f),
     };
 
-    enum Estado { Nada, Titulo, Demo12, Paso1, Paso2, Corre, Paso3, Demo45, Paso4, Paso5, Demo6, Paso6, Demo7, Paso7, Final }
+    enum Estado
+    {
+        Nada, Titulo, Demo1, Paso1, Gota, Demo2, Paso2, Paso3, Corre, Paso4,
+        Demo56, Paso5, Paso6, Regresa, Demo7, Paso7, Demo8, Paso8, Final
+    }
     Estado estado = Estado.Nada;
     float desde;
     float T => Time.time - desde;
@@ -78,22 +86,22 @@ public class Tutorial : MonoBehaviour
     static string Tx(string en, string es) { return Idioma.Ingles ? en : es; }
     static string Texto1 => Tx("1. Make the OK sign with your LEFT hand (thumb + INDEX, the yellow finger) and HOLD it: the pencil turns on",
                                "1. Haz el signo de OK con la mano IZQUIERDA (pulgar + ÍNDICE, el dedo amarillo) y MANTENLO: se activa el lápiz");
-    static string Texto2 => Tx("2. Keep the OK and draw with your RIGHT index finger from the dot to the flag",
-                               "2. Sin soltar el OK, dibuja con el índice DERECHO desde el punto hasta la bandera");
-    static string TextoSoltar => Tx("Open your fingers = stop drawing", "Abre los dedos = dejas de dibujar");
-    static string TextoAbre => Tx("Great! Now OPEN your left fingers to stop drawing", "¡Bien! Ahora ABRE los dedos de la izquierda para dejar de dibujar");
+    static string Texto2 => Tx("2. Keep the OK, touch the blue dot with your RIGHT index finger and draw to the flag",
+                               "2. Sin soltar el OK, toca el punto azul con el índice DERECHO y dibuja hasta la bandera");
+    static string Texto3 => Tx("3. You made it! Now OPEN your thumb and index finger: that stops the drawing",
+                               "3. ¡Llegaste! Ahora ABRE el pulgar y el índice: así dejas de dibujar");
     static string TextoCasi => Tx("Almost! Keep the OK sign until you reach the flag", "¡Casi! Mantén el OK hasta llegar a la bandera");
-    static string Texto3 => Tx("3. Move your hand: the stick figure follows you. Flick up to jump! Tap NEXT when you're ready",
-                               "3. Mueve tu mano: el muñeco te sigue. ¡Golpe hacia arriba = saltar! Toca SIGUIENTE cuando quieras");
-    static string Texto4 => Tx("4. Make a FIST with your LEFT hand, back of the hand toward you: that's the eraser",
-                               "4. Cierra el PUÑO IZQUIERDO con el dorso hacia ti: ese es el borrador");
-    static string Texto5 => Tx("5. Rub the line with your RIGHT index finger: the nodes pop!",
-                               "5. Frota la línea con el índice DERECHO: ¡los nodos estallan!");
-    static string Texto6 => Tx("6. Oops! Bring it back: LEFT fist with the THUMB pointing left, then touch the red target",
-                               "6. ¡Uy! Tráela de vuelta: puño IZQUIERDO con el PULGAR hacia la izquierda y toca la diana roja");
+    static string Texto4 => Tx("4. Move your hand: the stick figure runs along YOUR line. Flick up to jump! Tap NEXT when you're ready",
+                               "4. Mueve tu mano: el muñeco corre por TU línea. ¡Golpe hacia arriba = saltar! Toca SIGUIENTE cuando quieras");
+    static string Texto5 => Tx("5. Make a FIST with your LEFT hand and twist your wrist sideways and back: that's the eraser",
+                               "5. Cierra el PUÑO IZQUIERDO y gira la muñeca de lado y de vuelta: ese es el borrador");
+    static string Texto6 => Tx("6. Rub the line with your RIGHT index finger: the nodes pop!",
+                               "6. Frota la línea con el índice DERECHO: ¡los nodos estallan!");
     static string Texto7 => Tx("7. Join your thumb with the MIDDLE finger (the yellow one, next to the index) on your left hand and hold: the nodes appear",
                                "7. Junta el pulgar con el dedo MEDIO (el amarillo, al lado del índice) de la mano izquierda y mantenlo: aparecen los nodos");
     static string Texto7b => Tx("Now pinch a node with your RIGHT hand and drag it", "Ahora pellizca un nodo con la mano DERECHA y arrástralo");
+    static string Texto8 => Tx("8. Changed your mind? LEFT fist with the THUMB pointing left, then touch the red target: undo!",
+                               "8. ¿Cambiaste de idea? Puño IZQUIERDO con el PULGAR hacia la izquierda y toca la diana roja: ¡deshacer!");
 
     // ---------- Título ----------
     Transform titulo;
@@ -115,7 +123,7 @@ public class Tutorial : MonoBehaviour
     readonly Vector3[] puntosDer = new Vector3[21];
     Material matGuia, matResaltado;
     TextMeshPro encabezado;
-    Transform puntoA, bandera, tela, puntoBorrador;
+    Transform puntoA, bandera, tela, puntoBorrador, gota;
     LineRenderer lineaGuia, lineaDemo;
     readonly List<Vector3> curvaDemo = new List<Vector3>();
     MunecoGuia figura;
@@ -126,14 +134,9 @@ public class Tutorial : MonoBehaviour
 
     // Viñeta de cómic (relleno con trama, borde que tiembla y sombra de verdad, más atrás en 3D).
     Transform vineta;
-    TextMeshPro textoVineta;
-    Mesh mallaRelleno, mallaBorde, mallaSombra;
+    VinetaComic vinetaComic;
     Vector3 vinetaObjetivo;
-    bool colaArriba, vinetaLista;
-    int vinetaVariante = -1;
-    readonly List<Vector3> contorno = new List<Vector3>();
-    readonly List<Vector3> verts = new List<Vector3>();
-    readonly List<int> tris = new List<int>();
+    bool vinetaLista;
 
     class Numero
     {
@@ -162,21 +165,23 @@ public class Tutorial : MonoBehaviour
 
     // La línea del usuario (y el camino del muñeco sobre ella), en el mundo.
     Trazo trazoUsuario, lineaUsuario;
+    DatosTrazo lineaGuardada;   // la línea antes de borrarla (vuelve sola después del paso 6)
     readonly List<Vector3> camino = new List<Vector3>();
     readonly List<float> caminoLargo = new List<float>();
-    readonly List<Vector3> caminoCopia = new List<Vector3>();
+    readonly List<Vector3> caminoAntes = new List<Vector3>(); // la línea antes de mover el nodo (para deshacer)
     float figuraS, figuraMov, figuraTam, figuraTamObjetivo, dirFigura = 1f;
-    bool figuraEnLinea, huyendo;
-    DatosPersonaje personaje;
+    float figuraAltura, figuraAgachar, figuraPanico;
+    bool figuraEnLinea;
 
+    // Pistas, pasos y celebraciones
     float pistaDesde = -1f, ultimaActividad;
-    bool chispaPinza, exito3, borrando, llegoB, exito6;
-    float movido, borrandoDesde, velDedo, ultimaChispa, llegoEn, exito6En;
-    Vector3 dedoPrevio;
+    bool pinzaGuiaCerrada, exito4, borrando, gestoNodos, metaVisible, demoAcerto, calibrado;
+    float movido, borrandoDesde, velDedo, ultimaChispa, metaDesde, saltoDesde = -1f, xCal, yCal, sCal, yPrevio, velY;
+    Vector3 dedoPrevio, gotaDesde, demoDiana;
     bool teniaDedo;
-    int nodosInicio, deshechoInicio;
-    bool demoAcerto;
-    Vector3 demoDiana;
+    int nodosInicio, deshechoInicio, notaArpa;
+    float dirHuida;
+    bool huidaFija;
     readonly Dictionary<int, List<Vector3>> nodosPaso7 = new Dictionary<int, List<Vector3>>();
 
     void Awake()
@@ -188,10 +193,14 @@ public class Tutorial : MonoBehaviour
     {
         if (Instancia == this)
             Instancia = null;
+        if (control != null && control.permitirEmpezarLinea != null)
+            control.permitirEmpezarLinea = null;
         if (raizManos != null)
             Destroy(raizManos);
         if (matGuia != null)
             Destroy(matGuia);
+        if (matResaltado != null)
+            Destroy(matResaltado);
     }
 
     void Start()
@@ -228,34 +237,44 @@ public class Tutorial : MonoBehaviour
             return;
         if (Bloquea(estado))
             control.Ocupado = true; // por si otro objeto lo soltó
+        // Cada OK (cerrar o abrir) toca la siguiente nota del arpa del título.
+        if (estado != Estado.Titulo && control.Izq.valida && (control.Izq.empezoPellizco || control.Izq.soltoPellizco))
+            NotaArpa(0.45f);
 
         switch (estado)
         {
             case Estado.Titulo: ActualizarTitulo(); break;
-            case Estado.Demo12:
-                if (Demo12(T, true))
+            case Estado.Demo1:
+                if (Demo1(T, true))
                     EntrarPaso1();
                 break;
             case Estado.Paso1: Paso1(); break;
+            case Estado.Gota: Gota(); break;
+            case Estado.Demo2:
+                if (Demo2(T, true))
+                    EntrarPaso2();
+                break;
             case Estado.Paso2: Paso2(); break;
-            case Estado.Corre: Corre(); break;
             case Estado.Paso3: Paso3(); break;
-            case Estado.Demo45:
-                if (Demo45(T, true))
-                    EntrarPaso4();
-                break;
+            case Estado.Corre: Corre(); break;
             case Estado.Paso4: Paso4(); break;
-            case Estado.Paso5: Paso5(); break;
-            case Estado.Demo6:
-                if (Demo6(T, true))
-                    EntrarPaso6();
+            case Estado.Demo56:
+                if (Demo56(T, true))
+                    EntrarPaso5();
                 break;
+            case Estado.Paso5: Paso5(); break;
             case Estado.Paso6: Paso6(); break;
+            case Estado.Regresa: Regresa(); break;
             case Estado.Demo7:
                 if (Demo7(T, true))
                     EntrarPaso7();
                 break;
             case Estado.Paso7: Paso7(); break;
+            case Estado.Demo8:
+                if (Demo8(T, true))
+                    EntrarPaso8();
+                break;
+            case Estado.Paso8: Paso8(); break;
             case Estado.Final:
                 ActualizarFigura();
                 if (T > 6.5f)
@@ -273,13 +292,13 @@ public class Tutorial : MonoBehaviour
 
     bool Bloquea(Estado e)
     {
-        return e == Estado.Demo12 || e == Estado.Corre || e == Estado.Demo45 || e == Estado.Demo6 || e == Estado.Demo7
-               || (e == Estado.Titulo && primeraVez);
+        return e == Estado.Demo1 || e == Estado.Demo2 || e == Estado.Corre || e == Estado.Demo56 || e == Estado.Regresa
+               || e == Estado.Demo7 || e == Estado.Demo8 || (e == Estado.Titulo && primeraVez);
     }
 
     static bool Oculta(Estado e)
     {
-        return e == Estado.Demo12 || e == Estado.Demo45 || e == Estado.Demo6 || e == Estado.Demo7;
+        return e == Estado.Demo1 || e == Estado.Demo2 || e == Estado.Demo56 || e == Estado.Demo7 || e == Estado.Demo8;
     }
 
     void Cambiar(Estado nuevo)
@@ -297,6 +316,14 @@ public class Tutorial : MonoBehaviour
             if (oculta != ocultaba)
                 control.OcultarManos(oculta);
         }
+    }
+
+    void NotaArpa(float volumen)
+    {
+        if (fuente == null)
+            return;
+        fuente.PlayOneShot(Sonidos.Nota(notaArpa), volumen);
+        notaArpa++;
     }
 
     // ==================== Título ====================
@@ -360,7 +387,7 @@ public class Tutorial : MonoBehaviour
         eslogan.fontStyle = FontStyles.Italic | FontStyles.Bold;
         eslogan.alpha = 0f;
 
-        munecoTitulo = new MunecoGuia(titulo, materialNegro, AnchoMuneco * 0.8f);
+        munecoTitulo = new MunecoGuia(titulo, materialNegro, 0.0048f);
         munecoTitulo.escala = 0.22f;
         munecoTitulo.temblor = 0.003f;
         munecoTitulo.Poner(Vector3.zero, Vector3.right, Vector3.up, 0f, 0f);
@@ -492,7 +519,9 @@ public class Tutorial : MonoBehaviour
             titere.Parar();
         dibujo.ApartarParaTutorial();
         Armar();
-        Cambiar(Estado.Demo12);
+        // En el tutorial, una línea solo empieza en el punto A (y solo en el paso 2).
+        control.permitirEmpezarLinea = p => estado == Estado.Paso2 && raiz != null && Vector3.Distance(p, A) < 0.045f;
+        Cambiar(Estado.Demo1);
     }
 
     void Terminar()
@@ -500,9 +529,11 @@ public class Tutorial : MonoBehaviour
         PlayerPrefs.SetInt(ClaveVisto, 1);
         PlayerPrefs.Save();
         primeraVez = false;
-        QuitarPersonaje();
+        if (control != null)
+            control.permitirEmpezarLinea = null;
         trazoUsuario = null;
         lineaUsuario = null;
+        lineaGuardada = null;
         OcultarFlecha();
         if (dibujo != null)
             dibujo.RecuperarDeTutorial();
@@ -517,9 +548,11 @@ public class Tutorial : MonoBehaviour
         Desarmar();
         Transform cab = control.Cabeza;
         Vector3 adelante = Horizontal(cab.forward);
+        Vector3 derecha = Vector3.Cross(Vector3.up, adelante).normalized;
         raiz = new GameObject("Tutorial").transform;
         raiz.SetParent(transform, false);
-        raiz.SetPositionAndRotation(cab.position + adelante * 0.45f - Vector3.up * 0.12f, Quaternion.LookRotation(adelante, Vector3.up));
+        raiz.SetPositionAndRotation(cab.position + adelante * 0.45f - Vector3.up * 0.12f + derecha * CorrerDerecha,
+                                    Quaternion.LookRotation(adelante, Vector3.up));
 
         // "First time?" arriba, con letras de colores.
         encabezado = CrearTexto(raiz, Tx("First time?", "¿Primera vez?"), new Vector3(0f, 0.27f, 0.12f), new Vector2(0.42f, 0.09f), 1.2f, Color.white);
@@ -528,16 +561,25 @@ public class Tutorial : MonoBehaviour
         encabezado.outlineWidth = 0.2f;
         encabezado.outlineColor = new Color32(45, 30, 80, 255);
 
-        ArmarVineta();
+        // Viñeta de cómic (se mueve junto a cada acción).
+        vineta = new GameObject("Vineta").transform;
+        vineta.SetParent(raiz, false);
+        vinetaComic = vineta.gameObject.AddComponent<VinetaComic>();
+        vinetaComic.materialTrama = materialTrama;
+        vinetaComic.materialNegro = materialNegro;
+        vinetaComic.fuente = fuenteComic;
+        vinetaComic.Armar(AnchoVineta, AltoVineta);
+        vineta.gameObject.SetActive(false);
+        vinetaLista = false;
 
-        // Botones "Skip" (abajo a la derecha) y "Next" (para seguir después de jugar con el títere).
-        btnSaltar = CrearBoton(Tx("Skip", "Saltar"), new Vector3(0.4f, -0.22f, 0.02f), new Vector2(0.07f, 0.026f));
+        // Botones "Skip" (abajo a la derecha, bien lejos) y "Next" (para seguir después de jugar con el muñeco).
+        btnSaltar = CrearBoton(Tx("Skip", "Saltar"), new Vector3(0.52f, -0.24f, 0.04f), new Vector2(0.07f, 0.026f));
         btnSaltar.alTocar.AddListener(Terminar);
         btnSiguiente = CrearBoton(Tx("Next >", "Siguiente >"), new Vector3(0.42f, 0.13f, 0f), new Vector2(0.09f, 0.03f));
         btnSiguiente.alTocar.AddListener(() => siguientePedido = true);
         MostrarBoton(btnSiguiente, false);
 
-        // Punto A (azul) y bandera en B.
+        // Punto A (azul) y bandera en B (aparecen después del paso 1).
         curvaDemo.Clear();
         for (int i = 0; i <= 60; i++)
             curvaDemo.Add(raiz.TransformPoint(Curva(i / 60f)));
@@ -563,6 +605,16 @@ public class Tutorial : MonoBehaviour
         Malla(tela, "Trapo", mallaTela, materialRojo, Vector3.zero);
         var baseB = Pieza(PrimitiveType.Sphere, bandera, materialRojo);
         baseB.transform.localScale = Vector3.one * 0.014f;
+        metaVisible = false;
+        puntoA.gameObject.SetActive(false);
+        bandera.gameObject.SetActive(false);
+
+        // La gota de tinta (cae del OK y se vuelve el punto A).
+        var g = Pieza(PrimitiveType.Sphere, raiz, materialNegro);
+        g.name = "GotaTinta";
+        g.transform.localScale = Vector3.one * 0.014f;
+        gota = g.transform;
+        gota.gameObject.SetActive(false);
 
         lineaGuia = CrearLinea("LineaGuia", materialGuiaLinea, 0.007f);
         PonerLinea(lineaGuia, curvaDemo, curvaDemo.Count);
@@ -584,7 +636,8 @@ public class Tutorial : MonoBehaviour
         puntoBorrador = bola.transform;
         puntoBorrador.gameObject.SetActive(false);
 
-        figura = new MunecoGuia(transform, materialNegro, AnchoMuneco);
+        // El muñeco: pequeño, con 3 hebras finas que tiemblan.
+        figura = new MunecoGuia(transform, materialNegro, AnchoMuneco, 3);
         figura.escala = EscalaMuneco;
         figura.temblor = 0.004f;
         figura.alPisar = () => Pasito(0.22f);
@@ -592,15 +645,16 @@ public class Tutorial : MonoBehaviour
         figuraTam = 0f;
         figuraTamObjetivo = 0f;
         figuraEnLinea = false;
-        huyendo = false;
-        exito3 = false;
-        exito6 = false;
+        figuraAltura = figuraAgachar = figuraPanico = 0f;
+        exito4 = false;
         borrando = false;
-        llegoB = false;
+        gestoNodos = false;
         movido = 0f;
         teniaDedo = false;
-        chispaPinza = false;
+        pinzaGuiaCerrada = false;
+        caminoAntes.Clear();
         siguientePedido = false;
+        notaArpa = 0;
     }
 
     void Desarmar()
@@ -629,19 +683,15 @@ public class Tutorial : MonoBehaviour
         if (lineaDemo != null)
             Destroy(lineaDemo.gameObject);
         lineaGuia = lineaDemo = null;
-        foreach (var m in new[] { mallaRelleno, mallaBorde, mallaSombra })
-            if (m != null)
-                Destroy(m);
-        mallaRelleno = mallaBorde = mallaSombra = null;
         vineta = null;
-        textoVineta = null;
+        vinetaComic = null;
         vinetaLista = false;
         numeros.Clear();
         encabezado = null;
         btnSaltar = btnSiguiente = null;
     }
 
-    // ==================== Pasos 1 y 2: dibujar ====================
+    // ==================== Paso 1: el OK ====================
 
     // La curva de ejemplo (en el marco del tutorial): una ola suave de A (izquierda) a B (derecha).
     static Vector3 Curva(float u)
@@ -653,86 +703,54 @@ public class Tutorial : MonoBehaviour
     Vector3 A => raiz.TransformPoint(Curva(0f));
     Vector3 B => raiz.TransformPoint(Curva(1f));
 
-    // Pellizco de la demostración: dos veces (pellizca, sostiene, suelta, vuelve a pellizcar y se queda),
-    // y al final abre los dedos (deja de dibujar).
-    static float PinzaDemo(float t)
+    // OK de la demostración: dos veces (pellizca, sostiene, suelta, vuelve a pellizcar y se queda).
+    static float PinzaDosVeces(float t)
     {
         float subir1 = Mathf.InverseLerp(0.7f, 1.0f, t);
         float bajar1 = Mathf.InverseLerp(1.8f, 2.1f, t);
         float subir2 = Mathf.InverseLerp(2.5f, 2.8f, t);
-        float bajar2 = Mathf.InverseLerp(7.4f, 7.7f, t);
+        float bajar2 = Mathf.InverseLerp(3.9f, 4.2f, t);
         float p = t < 2.1f ? subir1 * (1f - bajar1) : subir2 * (1f - bajar2);
         return Mathf.SmoothStep(0f, 1f, p);
     }
 
-    // Las manos guía enseñan el OK (1), la línea (2) y abrir los dedos. "completa" = la primera vez (con números y línea).
-    bool Demo12(float t, bool completa)
+    // La mano izquierda guía con el OK (como el dibujo: dorso hacia ti, el anillo a la derecha).
+    void PonerOkGuia(float pinza, float alfa)
     {
-        float alfa = Mathf.Clamp01(t / 0.4f) * (1f - Mathf.Clamp01((t - 8.8f) / 0.5f));
-        PonerAlfaGuia(completa ? alfa : alfa * 0.75f);
-
-        // Mano izquierda: OK de frente, a la altura del pecho izquierdo (la palma mira hacia el centro).
         ResaltarDedo(1); // el índice (con el pulgar hace el OK)
-        float pinza = PinzaDemo(t);
         PoseMano.Calcular(puntosIzq, true, raiz.TransformPoint(ManoIzqPecho), Dir(-0.3f, 1f, 0.1f), Dir(0.7f, 0f, 0.7f), pinza, 0f, 0f);
         manoIzq.Poner(alfa > 0.01f ? puntosIzq : null);
+        // Escarcha y una nota del arpa cada vez que la mano guía cierra el OK.
         bool cerrada = pinza > 0.95f;
-        if (!cerrada)
-            chispaPinza = false;
-        else if (!chispaPinza)
+        if (cerrada && !pinzaGuiaCerrada)
         {
-            chispaPinza = true;
             Chispas((puntosIzq[4] + puntosIzq[8]) * 0.5f, 8, 0.15f);
+            if (estado == Estado.Demo1)
+                NotaArpa(0.3f);
         }
+        if (pinza < 0.5f || cerrada)
+            pinzaGuiaCerrada = cerrada;
+    }
 
-        Vector3 descanso = raiz.TransformPoint(ManoDerDescanso);
-        Vector3 punta;
-        float u = 0f;
-        if (t < 3.3f)
-            punta = descanso;
-        else if (t < 3.9f)
-            punta = Vector3.Lerp(descanso, A, Suave((t - 3.3f) / 0.6f));
-        else if (t < 6.7f)
+    // Solo el paso 1: la mano del OK (dos veces), el número y su viñeta. Nada del paso 2 todavía.
+    bool Demo1(float t, bool completa)
+    {
+        float alfa = Mathf.Clamp01(t / 0.4f) * (1f - Mathf.Clamp01((t - 4.3f) / 0.5f));
+        PonerAlfaGuia(completa ? alfa : alfa * 0.75f);
+        PonerOkGuia(PinzaDosVeces(t), alfa);
+        manoDer.Poner(null);
+        if (completa && t >= 0.4f)
         {
-            u = Suave((t - 3.9f) / 2.8f);
-            punta = raiz.TransformPoint(Curva(u));
+            PonerVineta(Texto1, VinetaIzq, 1);
+            MostrarNumero(1, JuntoAVineta(VinetaIzq));
         }
-        else
-        {
-            u = 1f;
-            punta = B;
-        }
-        PoseMano.ConIndiceEn(puntosDer, false, punta, Dir(-0.1f, 0.25f, 1f), Dir(0f, -1f, 0.2f), 0f, 0f, 1f);
-        manoDer.Poner(alfa > 0.01f && t > 0.2f ? puntosDer : null);
-
-        if (completa)
-        {
-            if (t >= 0.4f && t < 3.3f)
-            {
-                PonerVineta(Texto1, VinetaIzq, true);
-                MostrarNumero(1, JuntoAVineta(VinetaIzq));
-            }
-            if (t >= 3.3f && t < 7.2f)
-            {
-                PonerVineta(Texto2, VinetaLinea, false);
-                MostrarNumero(2, JuntoAVineta(VinetaLinea));
-            }
-            if (t >= 7.2f)
-                PonerVineta(TextoSoltar, VinetaIzq, true);
-            if (t >= 3.9f)
-                PonerLinea(lineaDemo, curvaDemo, Mathf.Clamp(Mathf.RoundToInt(u * (curvaDemo.Count - 1)) + 1, 2, curvaDemo.Count));
-        }
-        return t >= 9.4f;
+        return t >= 4.9f;
     }
 
     void EntrarPaso1()
     {
         OcultarGuia();
-        if (lineaDemo != null)
-            lineaDemo.positionCount = 0;
-        if (lineaGuia != null)
-            lineaGuia.gameObject.SetActive(true);
-        PonerVineta(Texto1, VinetaIzq, true);
+        PonerVineta(Texto1, VinetaIzq, 1);
         Cambiar(Estado.Paso1);
     }
 
@@ -742,12 +760,93 @@ public class Tutorial : MonoBehaviour
         {
             PararPista();
             Exito(1, control.Izq.PuntoPellizco);
-            PonerVineta(Texto2, VinetaLinea, false);
-            llegoB = false;
-            Cambiar(Estado.Paso2);
+            // Del OK cae una gota de tinta que se vuelve el punto A.
+            gotaDesde = control.Izq.PuntoPellizco;
+            if (gota != null)
+            {
+                gota.gameObject.SetActive(true);
+                gota.position = gotaDesde;
+            }
+            Cambiar(Estado.Gota);
             return;
         }
-        Pista12();
+        if (control.GestoIzq != ControlManos.Gesto.Ninguno)
+            ultimaActividad = Time.time;
+        if (TocaPista() && Demo1(Time.time - pistaDesde, false))
+            PararPista();
+    }
+
+    void Gota()
+    {
+        float u = Mathf.Clamp01(T / 0.9f);
+        if (gota != null && gota.gameObject.activeSelf)
+        {
+            // Sube un poquito, cae en el punto A y se estira al caer.
+            gota.position = Vector3.Lerp(gotaDesde, A, u) + Vector3.up * 0.12f * Mathf.Sin(Mathf.PI * u);
+            gota.localScale = new Vector3(0.012f, 0.012f * (1f + 0.6f * u), 0.012f);
+            if (u >= 1f)
+            {
+                gota.gameObject.SetActive(false);
+                if (fuentePasos != null)
+                    fuentePasos.PlayOneShot(Sonidos.Burbuja, 0.8f);
+                Chispas(A, 10, 0.2f);
+                metaVisible = true;
+                metaDesde = Time.time;
+                if (lineaGuia != null)
+                    lineaGuia.gameObject.SetActive(true);
+            }
+        }
+        if (T > 1.7f)
+            Cambiar(Estado.Demo2);
+    }
+
+    // ==================== Paso 2: la línea (desde el punto A hasta la bandera) ====================
+
+    // La mano izquierda guía mantiene el OK y la derecha dibuja del punto A a la bandera.
+    bool Demo2(float t, bool completa)
+    {
+        float alfa = Mathf.Clamp01(t / 0.4f) * (1f - Mathf.Clamp01((t - 4.6f) / 0.5f));
+        PonerAlfaGuia(completa ? alfa : alfa * 0.75f);
+        PonerOkGuia(1f, alfa);
+        Vector3 descanso = raiz.TransformPoint(ManoDerDescanso);
+        Vector3 punta;
+        float u = 0f;
+        if (t < 0.5f)
+            punta = descanso;
+        else if (t < 1.1f)
+            punta = Vector3.Lerp(descanso, A, Suave((t - 0.5f) / 0.6f));
+        else if (t < 3.9f)
+        {
+            u = Suave((t - 1.1f) / 2.8f);
+            punta = raiz.TransformPoint(Curva(u));
+        }
+        else
+        {
+            u = 1f;
+            punta = B;
+        }
+        PoseMano.ConIndiceEn(puntosDer, false, punta, Dir(-0.1f, 0.25f, 1f), Dir(0f, -1f, 0.2f), 0f, 0f, 1f);
+        manoDer.Poner(alfa > 0.01f ? puntosDer : null);
+        if (completa)
+        {
+            if (t >= 0.3f)
+            {
+                PonerVineta(Texto2, VinetaLinea, -1);
+                MostrarNumero(2, JuntoAVineta(VinetaLinea));
+            }
+            if (t >= 1.1f)
+                PonerLinea(lineaDemo, curvaDemo, Mathf.Clamp(Mathf.RoundToInt(u * (curvaDemo.Count - 1)) + 1, 2, curvaDemo.Count));
+        }
+        return t >= 5.2f;
+    }
+
+    void EntrarPaso2()
+    {
+        OcultarGuia();
+        if (lineaDemo != null)
+            lineaDemo.positionCount = 0;
+        PonerVineta(Texto2, VinetaLinea, -1);
+        Cambiar(Estado.Paso2);
     }
 
     void Paso2()
@@ -757,66 +856,27 @@ public class Tutorial : MonoBehaviour
         {
             PararPista();
             ultimaActividad = Time.time;
-            if (trazoUsuario != tr)
+            SeguirLineaNueva(tr);
+            // ¡Llegaste a la bandera! (paso 2). Ahora hay que abrir los dedos (paso 3).
+            if (Vector3.Distance(control.Der.indice, B) < 0.07f && LargoCamino >= MitadLinea * 2f * 0.6f)
             {
-                trazoUsuario = tr;
-                figuraEnLinea = false;
-                figuraTamObjetivo = 0f;
-            }
-            LeerCamino(tr);
-            float largo = LargoCamino;
-            float ab = MitadLinea * 2f;
-            // Sorpresa: a mitad de tu línea aparece un muñeco que corre sobre ella.
-            if (!figuraEnLinea && largo >= ab * 0.45f)
-            {
-                figuraEnLinea = true;
-                figuraS = 0f;
-                figuraMov = 1f;
-                figuraTamObjetivo = 1f;
-                Chispas(PuntoCamino(0f), 6, 0.2f);
-            }
-            if (figuraEnLinea)
-                MoverFigura(largo - 0.04f, 0.4f);
-            // ¡Llegaste a la bandera! Ahora hay que abrir los dedos para dejar de dibujar.
-            if (!llegoB && Vector3.Distance(control.Der.indice, B) < 0.07f && largo >= ab * 0.6f)
-            {
-                llegoB = true;
-                llegoEn = Time.time;
                 Exito(2, B);
-                PonerVineta(TextoAbre, VinetaIzq, true);
+                PonerVineta(Texto3, VinetaIzq, 1);
+                MostrarNumero(3, JuntoAVineta(VinetaIzq));
+                Cambiar(Estado.Paso3);
             }
-            // Si no suelta en un buen rato, la línea se termina sola.
-            if (llegoB && Time.time - llegoEn > 8f)
-                control.TerminarLineaActual();
             return;
         }
         if (trazoUsuario != null)
         {
+            // Soltó antes de llegar: se quita esa línea y se intenta otra vez (desde el punto A).
             var t = trazoUsuario;
             trazoUsuario = null;
-            if (llegoB)
-            {
-                // ¡Abrió los dedos! La línea queda terminada.
-                lineaUsuario = t != null && dibujo.trazos.Contains(t) ? t : UltimoTrazo();
-                if (fuente != null)
-                    fuente.PlayOneShot(Sonidos.Ding, 0.45f);
-                Chispas(control.Izq.valida ? control.Izq.PuntoPellizco : raiz.TransformPoint(ManoIzqPecho), 10, 0.2f);
-                if (lineaUsuario != null)
-                {
-                    Aplanar(lineaUsuario);
-                    LeerCamino(lineaUsuario);
-                }
-                if (lineaGuia != null)
-                    lineaGuia.gameObject.SetActive(false);
-                Cambiar(Estado.Corre);
-                return;
-            }
-            // Soltó antes de llegar: se quita esa línea y se intenta otra vez.
             if (t != null && dibujo.trazos.Contains(t))
                 dibujo.EliminarDelTodo(t);
             figuraTamObjetivo = 0f;
             figuraEnLinea = false;
-            PonerVineta(TextoCasi, VinetaLinea, false);
+            PonerVineta(TextoCasi, VinetaLinea, -1);
             return;
         }
         if (control.GestoIzq != ControlManos.Gesto.Ninguno)
@@ -824,16 +884,74 @@ public class Tutorial : MonoBehaviour
             ultimaActividad = Time.time;
             PararPista();
         }
-        Pista12();
+        if (TocaPista() && Demo2(Time.time - pistaDesde, false))
+            PararPista();
         ActualizarFigura();
     }
 
-    // El muñeco termina de correr hasta cerca del final de tu línea; ahí se vuelve un títere de verdad.
+    // Mientras dibujas: lee tu línea y, a mitad de camino, aparece el muñeco corriendo sobre ella (sorpresa).
+    void SeguirLineaNueva(Trazo tr)
+    {
+        if (trazoUsuario != tr)
+        {
+            trazoUsuario = tr;
+            figuraEnLinea = false;
+            figuraTamObjetivo = 0f;
+        }
+        LeerCamino(tr);
+        float largo = LargoCamino;
+        if (!figuraEnLinea && largo >= MitadLinea * 2f * 0.45f)
+        {
+            figuraEnLinea = true;
+            figuraS = 0f;
+            figuraMov = 1f;
+            figuraTamObjetivo = 1f;
+            Chispas(PuntoCamino(0f), 6, 0.2f);
+        }
+        if (figuraEnLinea)
+            MoverFigura(largo - 0.04f, 0.4f);
+    }
+
+    // ==================== Paso 3: abrir los dedos (dejar de dibujar) ====================
+
+    void Paso3()
+    {
+        var tr = control.TrazoActual;
+        if (tr != null && tr.Dibujando)
+        {
+            SeguirLineaNueva(tr);
+            // La mano guía (suave) enseña a abrir los dedos, una y otra vez.
+            float ciclo = Mathf.Repeat(T, 2.2f);
+            float pinza = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(1.0f, 1.3f, ciclo)) * (1f - Mathf.InverseLerp(1.9f, 2.2f, ciclo));
+            PonerAlfaGuia(0.55f * Mathf.Clamp01(T / 0.4f));
+            PonerOkGuia(pinza, 1f);
+            // Si no suelta en un buen rato, la línea se termina sola.
+            if (T > 12f)
+                control.TerminarLineaActual();
+            return;
+        }
+        // ¡Abrió los dedos! La línea queda terminada.
+        OcultarGuia();
+        var t = trazoUsuario;
+        trazoUsuario = null;
+        lineaUsuario = t != null && dibujo.trazos.Contains(t) ? t : UltimoTrazo();
+        Exito(3, control.Izq.valida ? control.Izq.PuntoPellizco : raiz.TransformPoint(ManoIzqPecho));
+        if (lineaUsuario != null)
+        {
+            Aplanar(lineaUsuario);
+            LeerCamino(lineaUsuario);
+        }
+        if (lineaGuia != null)
+            lineaGuia.gameObject.SetActive(false);
+        Cambiar(Estado.Corre);
+    }
+
+    // El muñeco termina de correr hasta cerca del final de tu línea; ahí empieza a seguir tu mano.
     void Corre()
     {
         if (lineaUsuario == null || camino.Count < 2)
         {
-            EmpezarDemo45();
+            EmpezarDemo56();
             return;
         }
         float meta = Mathf.Max(0f, LargoCamino - 0.04f);
@@ -847,86 +965,122 @@ public class Tutorial : MonoBehaviour
         bool llego = Mathf.Abs(figuraS - meta) < 0.005f;
         if ((llego && T > 0.6f) || T > 3.5f)
         {
-            Vector3 pies = PuntoCamino(figuraS);
-            personaje = titere != null ? titere.CrearPalitoEn(pies, raiz.right, lineaUsuario.id, EscalaMuneco) : null;
-            if (personaje == null)
-            {
-                EmpezarDemo45();
-                return;
-            }
-            // Las líneas del títere también tiemblan (líneas vivas, como dibujo animado).
-            int capa = Dibujo.NumeroDeCapas - 1;
-            var datosCapa = dibujo.DatosDeCapa(capa);
-            datosCapa.temblor = 1;
-            datosCapa.ciclo3 = true;
-            dibujo.RefrescarCapa(capa);
-            figuraTam = 0f;
-            figuraTamObjetivo = 0f;
-            figura.Poner(Vector3.zero, Vector3.right, Vector3.up, 0f, 0f);
-            Chispas(pies + Vector3.up * 0.1f, 10, 0.3f);
-            PonerVineta(Texto3, VinetaMuneco, false);
-            MostrarNumero(3, JuntoAVineta(VinetaMuneco));
+            metaVisible = false;
+            PonerVineta(Texto4, VinetaMuneco, -1);
+            MostrarNumero(4, JuntoAVineta(VinetaMuneco));
             movido = 0f;
-            teniaDedo = false;
-            exito3 = false;
+            exito4 = false;
+            calibrado = false;
+            saltoDesde = -1f;
             siguientePedido = false;
-            Cambiar(Estado.Paso3);
+            Chispas(PuntoCamino(figuraS) + Vector3.up * 0.08f, 10, 0.3f);
+            Cambiar(Estado.Paso4);
         }
     }
 
-    // ==================== Paso 3: el títere (juega todo lo que quieras) ====================
+    // ==================== Paso 4: el muñeco sigue tu mano, sobre TU línea (como un tren en sus rieles) ====================
 
-    void Paso3()
+    void Paso4()
     {
         var der = control.Der;
+        float dt = Mathf.Max(1e-4f, Time.deltaTime);
+        float largo = LargoCamino;
         if (der.valida)
         {
-            Vector3 p = der.indice;
-            if (teniaDedo)
+            float x = Vector3.Dot(der.indice - raiz.position, raiz.right);
+            if (!calibrado)
             {
-                Vector3 d = p - dedoPrevio;
-                d.y = 0f;
-                movido += d.magnitude;
+                // Donde está tu mano ahora = donde está el muñeco.
+                calibrado = true;
+                xCal = x;
+                yCal = der.indice.y;
+                sCal = figuraS;
+                yPrevio = der.indice.y;
+                velY = 0f;
             }
-            dedoPrevio = p;
-            teniaDedo = true;
+            float objetivo = Mathf.Clamp(sCal + (x - xCal) * 1.2f, 0.02f, Mathf.Max(0.02f, largo - 0.02f));
+            float antes = figuraS;
+            MoverFigura(objetivo, 1.5f);
+            movido += Mathf.Abs(figuraS - antes);
+            // Golpe rápido hacia arriba = saltar.
+            velY = Mathf.Lerp(velY, (der.indice.y - yPrevio) / dt, 1f - Mathf.Exp(-25f * dt));
+            yPrevio = der.indice.y;
+            if (saltoDesde < 0f && velY > 0.8f)
+                saltoDesde = Time.time;
+            // Mano más de 4 cm abajo = agacharse.
+            float agacharMano = Mathf.Clamp01((yCal - der.indice.y - 0.04f) / 0.06f);
+            ActualizarSalto(agacharMano);
         }
         else
         {
-            teniaDedo = false;
+            ActualizarSalto(0f);
+            ActualizarFigura();
         }
         if (T > 2.5f)
             MostrarBoton(btnSiguiente, true);
-        if (!exito3 && T > 2.5f && movido > 0.4f)
+        if (!exito4 && T > 2.5f && movido > 0.3f)
         {
-            exito3 = true;
+            exito4 = true;
             Numero n;
-            Vector3 donde = numeros.TryGetValue(3, out n) && n.raiz != null ? n.raiz.position : B + Vector3.up * 0.2f;
-            Exito(3, donde);
+            Vector3 donde = numeros.TryGetValue(4, out n) && n.raiz != null ? n.raiz.position : B + Vector3.up * 0.2f;
+            Exito(4, donde);
         }
-        // Sigue cuando tocas "Next" (o solo, después de un buen rato).
-        if (siguientePedido || T > 45f)
+        // Sigue cuando tocas "Next" (o solo, después de un rato).
+        if (siguientePedido || T > 22f)
         {
             MostrarBoton(btnSiguiente, false);
-            if (!exito3)
-                MarcarNumero(3);
-            EmpezarDemo45();
+            if (!exito4)
+                MarcarNumero(4);
+            figuraAltura = 0f;
+            figuraAgachar = 0f;
+            EmpezarDemo56();
         }
     }
 
-    // ==================== Pasos 4 y 5: borrar ====================
-
-    void EmpezarDemo45()
+    // Salto: se agacha (anticipación), sube, cae y se aplasta un poquito al caer.
+    void ActualizarSalto(float agacharMano)
     {
-        QuitarPersonaje();
+        figuraAltura = 0f;
+        figuraAgachar = agacharMano;
+        if (saltoDesde < 0f)
+            return;
+        float t = Time.time - saltoDesde;
+        const float anticipa = 0.1f, aire = 0.45f, cae = 0.15f;
+        if (t < anticipa)
+            figuraAgachar = Mathf.Max(figuraAgachar, 0.6f * (t / anticipa));
+        else if (t < anticipa + aire)
+        {
+            float u = (t - anticipa) / aire;
+            figuraAltura = 4f * 0.07f * u * (1f - u);
+            figuraAgachar = 0f;
+        }
+        else if (t < anticipa + aire + cae)
+        {
+            float u = (t - anticipa - aire) / cae;
+            figuraAgachar = Mathf.Max(figuraAgachar, 0.5f * Mathf.Sin(Mathf.PI * u));
+            if (u < 0.2f && t - Time.deltaTime < anticipa + aire)
+                Pasito(0.3f);
+        }
+        else
+        {
+            saltoDesde = -1f;
+        }
+    }
+
+    // ==================== Pasos 5 y 6: borrar ====================
+
+    void EmpezarDemo56()
+    {
         QuitarNumeros();
         MostrarBoton(btnSiguiente, false);
         AsegurarLinea();
-        // El muñeco vuelve a estar parado cerca del final de la línea.
+        // La línea como está ahora (después vuelve sola, para los pasos 7 y 8).
+        lineaGuardada = lineaUsuario != null ? lineaUsuario.CrearDatos() : null;
+        // El muñeco está parado cerca del final de la línea (donde va a empezar a borrar el dedo guía).
         figuraS = Mathf.Max(0f, LargoCamino - 0.04f);
         figuraMov = 0f;
-        dirFigura = 1f;
-        huyendo = false;
+        dirFigura = -1f;
+        figuraPanico = 0f;
         figuraEnLinea = true;
         figuraTam = 1f;
         figuraTamObjetivo = 1f;
@@ -934,27 +1088,32 @@ public class Tutorial : MonoBehaviour
         OcultarTrazosTutorial(true);
         MostrarCopia();
         CrearNodosDemo();
-        Cambiar(Estado.Demo45);
+        Cambiar(Estado.Demo56);
     }
 
-    // Puño de la demostración: dos veces (cierra, sostiene, abre, vuelve a cerrar y se queda).
-    static float PunoDemo(float t, float fin)
+    // Puño de la demostración: cierra, gira la muñeca de lado y vuelve; abre; otra vez igual y se queda.
+    static void PunoDemo(float t, float fin, out float puno, out float giro)
     {
-        float c1 = Mathf.InverseLerp(0.6f, 0.9f, t), a1 = Mathf.InverseLerp(1.7f, 2.0f, t);
-        float c2 = Mathf.InverseLerp(2.3f, 2.6f, t), a2 = Mathf.InverseLerp(fin, fin + 0.3f, t);
-        float p = t < 2.0f ? c1 * (1f - a1) : c2 * (1f - a2);
-        return Mathf.SmoothStep(0f, 1f, p);
+        float c1 = Mathf.InverseLerp(0.6f, 0.9f, t), a1 = Mathf.InverseLerp(2.3f, 2.6f, t);
+        float c2 = Mathf.InverseLerp(2.9f, 3.2f, t), a2 = Mathf.InverseLerp(fin, fin + 0.3f, t);
+        float p = t < 2.6f ? c1 * (1f - a1) : c2 * (1f - a2);
+        puno = Mathf.SmoothStep(0f, 1f, p);
+        float g1 = Suave((t - 1.1f) / 0.5f) * (1f - Suave((t - 1.6f) / 0.5f));
+        float g2 = Suave((t - 3.3f) / 0.5f) * (1f - Suave((t - 3.8f) / 0.5f));
+        giro = Mathf.Max(g1, g2);
     }
 
-    // Las manos guía enseñan el puño (4) y frotar la línea (5). "completa" = con la línea que se borra y el muñeco que huye.
-    bool Demo45(float t, bool completa)
+    // Las manos guía enseñan el puño (5) y frotar la línea (6). "completa" = con la línea que se borra y el muñeco que huye.
+    bool Demo56(float t, bool completa)
     {
-        float alfa = Mathf.Clamp01(t / 0.4f) * (1f - Mathf.Clamp01((t - 7.0f) / 0.5f));
+        float alfa = Mathf.Clamp01(t / 0.4f) * (1f - Mathf.Clamp01((t - 8.4f) / 0.5f));
         PonerAlfaGuia(completa ? alfa : alfa * 0.75f);
-        // Puño izquierdo con el DORSO hacia ti (la palma mira hacia adelante), a la altura del pecho izquierdo.
         ResaltarDedo(-1);
-        float puno = PunoDemo(t, 6.6f);
-        PoseMano.Calcular(puntosIzq, true, raiz.TransformPoint(ManoIzqPecho), Dir(0.05f, 1f, 0.2f), Dir(0.45f, 0.1f, 1f), 0f, puno, 0f);
+        // Puño izquierdo con el DORSO hacia ti; la muñeca gira de lado (palma hacia la derecha) y vuelve.
+        float puno, giro;
+        PunoDemo(t, 8.0f, out puno, out giro);
+        Vector3 palma = Vector3.Slerp(Dir(0.45f, 0.1f, 1f), Dir(1f, 0.1f, -0.1f), giro);
+        PoseMano.Calcular(puntosIzq, true, raiz.TransformPoint(ManoIzqPecho), Dir(0.05f, 1f, 0.2f), palma, 0f, puno, 0f);
         manoIzq.Poner(alfa > 0.01f ? puntosIzq : null);
 
         float largo = LargoCamino;
@@ -964,14 +1123,14 @@ public class Tutorial : MonoBehaviour
         Vector3 punta;
         float sDedo = largo + 1f;
         bool frotando = false;
-        if (t < 3.0f)
+        if (t < 4.6f)
             punta = descanso;
-        else if (t < 3.6f)
-            punta = Vector3.Lerp(descanso, fin, Suave((t - 3.0f) / 0.6f));
-        else if (t < 6.2f)
+        else if (t < 5.2f)
+            punta = Vector3.Lerp(descanso, fin, Suave((t - 4.6f) / 0.6f));
+        else if (t < 7.8f)
         {
-            sDedo = largo * (1f - Suave((t - 3.6f) / 2.6f));
-            punta = camino.Count > 0 ? PuntoCamino(sDedo) : Vector3.Lerp(fin, inicio, (t - 3.6f) / 2.6f);
+            sDedo = largo * (1f - Suave((t - 5.2f) / 2.6f));
+            punta = camino.Count > 0 ? PuntoCamino(sDedo) : Vector3.Lerp(fin, inicio, (t - 5.2f) / 2.6f);
             punta += raiz.right * Mathf.Sin(t * 22f) * 0.006f; // un poquito de "frote" (ida y vuelta)
             frotando = true;
         }
@@ -981,8 +1140,8 @@ public class Tutorial : MonoBehaviour
             punta = inicio;
         }
         PoseMano.ConIndiceEn(puntosDer, false, punta, Dir(-0.1f, 0.2f, 1f), Dir(0f, -1f, 0.2f), 0f, 0f, 1f);
-        manoDer.Poner(alfa > 0.01f && t > 0.2f ? puntosDer : null);
-        bool punto = alfa > 0.01f && t >= 2.6f && t < 6.6f;
+        manoDer.Poner(alfa > 0.01f && t > 4.3f ? puntosDer : null);
+        bool punto = alfa > 0.01f && t >= 3.2f && t < 8.0f;
         if (puntoBorrador != null)
         {
             if (puntoBorrador.gameObject.activeSelf != punto)
@@ -993,17 +1152,17 @@ public class Tutorial : MonoBehaviour
 
         if (completa)
         {
-            if (t >= 0.4f && t < 3.0f)
+            if (t >= 0.4f && t < 4.6f)
             {
-                PonerVineta(Texto4, VinetaIzq, true);
-                MostrarNumero(4, JuntoAVineta(VinetaIzq));
+                PonerVineta(Texto5, VinetaIzq, 1);
+                MostrarNumero(5, JuntoAVineta(VinetaIzq));
             }
-            if (t >= 3.0f)
+            if (t >= 4.6f)
             {
-                PonerVineta(Texto5, VinetaLinea, false);
-                MostrarNumero(5, JuntoAVineta(VinetaLinea));
+                PonerVineta(Texto6, VinetaLinea, -1);
+                MostrarNumero(6, JuntoAVineta(VinetaLinea));
             }
-            if (frotando || t >= 6.2f)
+            if (frotando || t >= 7.8f)
             {
                 // La copia de la línea se va borrando detrás del dedo y sus nodos estallan.
                 int n = 0;
@@ -1011,31 +1170,49 @@ public class Tutorial : MonoBehaviour
                     n++;
                 PonerLinea(lineaDemo, camino, n);
                 foreach (var nd in nodosDemo)
-                {
                     if (!nd.estallo && nd.s >= sDedo - 0.004f)
                         Estallar(nd);
-                }
                 if (frotando && Time.time - ultimaChispa > 0.12f)
                 {
                     ultimaChispa = Time.time;
                     Chispas(punta, 2, 0.12f);
                 }
             }
-            // El muñeco huye del borrador (corre hacia el inicio y se va).
-            if (!huyendo && frotando && sDedo - figuraS < 0.12f)
-            {
-                huyendo = true;
-                dirFigura = -1f;
-            }
-            if (huyendo)
-                MoverFigura(-0.2f, 0.6f);
+            // El muñeco huye en pánico, siempre 2 cm delante del dedo (y se va al final).
+            if (frotando)
+                Huir(sDedo, -1f, true);
+            else if (t >= 7.8f)
+                Escapar();
             else
                 ActualizarFigura();
         }
-        return t >= 7.6f;
+        return t >= 9.0f;
     }
 
-    void EntrarPaso4()
+    // El muñeco corre en pánico (brazos arriba) justo delante del dedo que borra, sin salirse de la línea.
+    void Huir(float sDedo, float direccion, bool rapido)
+    {
+        float largo = LargoCamino;
+        float objetivo = Mathf.Clamp(sDedo + direccion * 0.02f, 0.005f, Mathf.Max(0.005f, largo - 0.005f));
+        float paso = Mathf.Clamp(objetivo - figuraS, -1.5f * Time.deltaTime, 1.5f * Time.deltaTime);
+        figuraS += paso;
+        dirFigura = direccion;
+        figuraMov = 2f; // siempre corriendo (aunque borres despacio)
+        figuraPanico = Mathf.MoveTowards(figuraPanico, 1f, Time.deltaTime * 6f);
+        if (figura != null)
+            figura.Avanzar(Time.deltaTime * (rapido ? 0.45f : 0.35f) * EscalaMuneco, 2f);
+        ActualizarFigura();
+    }
+
+    // Al terminar de borrar: salta fuera de la línea y desaparece.
+    void Escapar()
+    {
+        figuraTamObjetivo = 0f;
+        figuraAltura = 0.03f;
+        ActualizarFigura();
+    }
+
+    void EntrarPaso5()
     {
         OcultarGuia();
         QuitarNodosDemo();
@@ -1046,34 +1223,37 @@ public class Tutorial : MonoBehaviour
         figuraS = Mathf.Max(0f, LargoCamino - 0.04f);
         figuraMov = 0f;
         dirFigura = -1f;
-        huyendo = false;
+        figuraPanico = 0f;
+        figuraAltura = 0f;
         figuraTam = 0f;
         figuraTamObjetivo = 1f;
-        PonerVineta(Texto4, VinetaIzq, true);
-        Cambiar(Estado.Paso4);
+        PonerVineta(Texto5, VinetaIzq, 1);
+        Cambiar(Estado.Paso5);
     }
 
-    void Paso4()
+    void Paso5()
     {
         ActualizarFigura();
         if (control.GestoIzq == ControlManos.Gesto.Borrar)
         {
             PararPista();
-            Exito(4, control.Izq.medio);
-            PonerVineta(Texto5, VinetaLinea, false);
+            Exito(5, control.Izq.medio);
+            PonerVineta(Texto6, VinetaLinea, -1);
             nodosInicio = NodosTutorial();
             borrando = false;
+            huidaFija = false;
             teniaDedo = false;
             velDedo = 0f;
-            Cambiar(Estado.Paso5);
+            Cambiar(Estado.Paso6);
             return;
         }
         if (control.GestoIzq != ControlManos.Gesto.Ninguno)
             ultimaActividad = Time.time;
-        Pista45();
+        if (TocaPista() && Demo56(Time.time - pistaDesde, false))
+            PararPista();
     }
 
-    void Paso5()
+    void Paso6()
     {
         var der = control.Der;
         float dt = Mathf.Max(1e-4f, Time.deltaTime);
@@ -1097,148 +1277,70 @@ public class Tutorial : MonoBehaviour
             ultimaActividad = Time.time;
             PararPista();
         }
-        bool cerca = goma && der.valida && distancia < 0.08f && Mathf.Abs(sDedo - figuraS) < 0.15f;
-        if (!huyendo && (nodos < nodosInicio || cerca))
-        {
-            huyendo = true;
-            dirFigura = sDedo > figuraS ? -1f : 1f;
-        }
         if (!borrando && nodos < nodosInicio)
         {
             borrando = true;
             borrandoDesde = Time.time;
         }
-        if (huyendo)
+        // Hacia dónde huye: hacia el lado más lejano del dedo (se decide al empezar a borrar y ya no cambia).
+        if (!huidaFija)
+            dirHuida = sDedo > LargoCamino * 0.5f ? -1f : 1f;
+        if (borrando)
+            huidaFija = true;
+        bool cerca = der.valida && distancia < 0.12f && (goma || borrando);
+        if (cerca || borrando)
+            Huir(sDedo, dirHuida, velDedo > 0.2f);
+        else
+            ActualizarFigura();
+        bool listo = nodos == 0 || (nodosInicio > 0 && nodos <= nodosInicio / 2) || (borrando && Time.time - borrandoDesde > 3f);
+        if (listo)
         {
-            // Corre si borras rápido; camina si borras despacio.
-            float vel = velDedo > 0.2f ? 0.55f : 0.12f;
-            MoverFigura(dirFigura < 0f ? -0.2f : LargoCamino + 0.2f, vel);
+            Exito(6, der.valida ? der.indice : PuntoCamino(figuraS));
+            Escapar();
+            Cambiar(Estado.Regresa);
+            return;
+        }
+        if (TocaPista() && Demo56(Time.time - pistaDesde, false))
+            PararPista();
+    }
+
+    // La línea vuelve sola (tinta mágica que se redibuja de A a B), para los pasos 7 y 8.
+    void Regresa()
+    {
+        ActualizarFigura();
+        float u = Mathf.Clamp01((T - 0.6f) / 0.9f);
+        if (lineaDemo != null && caminoAntes.Count == 0 && camino.Count > 0)
+            caminoAntes.AddRange(camino);
+        if (T >= 0.6f && caminoAntes.Count > 1)
+        {
+            int n = Mathf.Clamp(Mathf.RoundToInt(u * caminoAntes.Count), 2, caminoAntes.Count);
+            PonerLinea(lineaDemo, caminoAntes, n);
+            if (Time.time - ultimaChispa > 0.08f)
+            {
+                ultimaChispa = Time.time;
+                Chispas(caminoAntes[n - 1], 2, 0.1f);
+            }
+        }
+        if (T < 1.6f)
+            return;
+        // Quita lo que quedó y vuelve a poner la línea tal como era.
+        var viejas = new List<Trazo>(dibujo.trazos);
+        foreach (var t in viejas)
+            if (t != null)
+                dibujo.EliminarDelTodo(t);
+        if (lineaGuardada != null)
+        {
+            dibujo.GuardarParaDeshacer();
+            lineaUsuario = dibujo.AgregarTrazo(JsonUtility.FromJson<DatosTrazo>(JsonUtility.ToJson(lineaGuardada)));
         }
         else
         {
-            ActualizarFigura();
+            lineaUsuario = null;
         }
-        bool listo = nodos == 0 || (nodosInicio > 0 && nodos <= nodosInicio / 2) || (borrando && Time.time - borrandoDesde > 2.5f);
-        if (listo)
-        {
-            Exito(5, der.valida ? der.indice : PuntoCamino(figuraS));
-            EmpezarDemo6();
-            return;
-        }
-        Pista45();
-    }
-
-    // ==================== Paso 6: deshacer ====================
-
-    void EmpezarDemo6()
-    {
-        OcultarGuia();
-        QuitarNumeros();
-        figuraTamObjetivo = 0f;
-        demoAcerto = false;
-        // La copia (de la línea como era antes de borrar) aparece cuando la flecha toca la diana.
         if (lineaDemo != null)
             lineaDemo.positionCount = 0;
-        Cambiar(Estado.Demo6);
-    }
-
-    // Puño izquierdo con el PULGAR hacia la izquierda, centrado en el pecho (la palma mira hacia ti):
-    // aparece la flecha, va hacia la diana roja y la toca = deshacer.
-    bool Demo6(float t, bool completa)
-    {
-        float alfa = Mathf.Clamp01(t / 0.4f) * (1f - Mathf.Clamp01((t - 5.2f) / 0.5f));
-        PonerAlfaGuia(completa ? alfa : alfa * 0.75f);
-        ResaltarDedo(0); // el pulgar (la punta de la flecha)
-        float puno = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.6f, 1.0f, t)) * (1f - Mathf.InverseLerp(4.8f, 5.1f, t));
-        float mover = Suave((t - 1.8f) / 0.8f) * (1f - Suave((t - 3.6f) / 0.8f));
-        Vector3 muneca = raiz.TransformPoint(ManoCentro + new Vector3(-0.045f * mover, 0f, 0f));
-        PoseMano.Calcular(puntosIzq, true, muneca, Dir(0f, 1f, 0.15f), Dir(0f, 0f, -1f), 0f, puno, 0f, 0f, puno);
-        manoIzq.Poner(alfa > 0.01f ? puntosIzq : null);
-        manoDer.Poner(null);
-
-        if (completa)
-        {
-            if (t >= 0.4f)
-            {
-                PonerVineta(Texto6, VinetaCentro, true);
-                MostrarNumero(6, JuntoAVineta(VinetaCentro));
-            }
-            // La flecha (la punta en el pulgar) y la diana delante de ella.
-            bool flecha = t >= 1.2f && t < 4.6f && control.simbolos != null;
-            Vector3 dir = -raiz.right;
-            Vector3 puntaFlecha = puntosIzq[4] - Vector3.up * 0.008f;
-            if (t < 1.2f)
-                demoDiana = puntaFlecha + dir * 0.045f;
-            if (flecha)
-            {
-                control.simbolos.Flecha(true, puntaFlecha - dir * 0.12f, dir, 0.12f);
-                control.simbolos.Diana(false, true, demoDiana, demoDiana - dir, 0.06f);
-            }
-            else
-            {
-                OcultarFlecha();
-            }
-            if (!demoAcerto && t >= 2.6f)
-            {
-                // ¡Tocó la diana! La línea vuelve (y el muñeco también).
-                demoAcerto = true;
-                if (control.simbolos != null)
-                    control.simbolos.Acertar(false);
-                if (fuente != null)
-                    fuente.PlayOneShot(Sonidos.Ding, 0.4f);
-                PonerLinea(lineaDemo, caminoCopia, caminoCopia.Count);
-                Chispas(demoDiana, 10, 0.2f);
-                figuraS = Mathf.Max(0f, LargoCamino - 0.04f);
-                dirFigura = -1f;
-                huyendo = false;
-                figuraMov = 0f;
-                figuraTamObjetivo = 1f;
-            }
-            ActualizarFigura();
-        }
-        return t >= 5.8f;
-    }
-
-    void EntrarPaso6()
-    {
-        OcultarGuia();
-        OcultarFlecha();
-        if (lineaDemo != null)
-            lineaDemo.positionCount = 0;
-        figuraTamObjetivo = 0f;
-        deshechoInicio = dibujo.VecesDeshecho;
-        exito6 = false;
-        PonerVineta(Texto6, VinetaCentro, true);
-        Cambiar(Estado.Paso6);
-    }
-
-    void Paso6()
-    {
-        ActualizarFigura();
-        if (!exito6 && dibujo.VecesDeshecho > deshechoInicio)
-        {
-            exito6 = true;
-            exito6En = Time.time;
-            PararPista();
-            Exito(6, control.Izq.valida ? control.Izq.pulgar : raiz.TransformPoint(ManoCentro));
-            // La línea volvió: el muñeco regresa feliz al final de ella.
-            AsegurarLinea();
-            figuraS = Mathf.Max(0f, LargoCamino - 0.04f);
-            dirFigura = -1f;
-            huyendo = false;
-            figuraMov = 0f;
-            figuraTam = 0f;
-            figuraTamObjetivo = 1f;
-        }
-        if (exito6)
-        {
-            if (Time.time - exito6En > 2f)
-                EmpezarDemo7();
-            return;
-        }
-        if (control.GestoIzq != ControlManos.Gesto.Ninguno)
-            ultimaActividad = Time.time;
-        Pista6();
+        caminoAntes.Clear();
+        EmpezarDemo7();
     }
 
     // ==================== Paso 7: mover nodos ====================
@@ -1248,6 +1350,14 @@ public class Tutorial : MonoBehaviour
         OcultarGuia();
         QuitarNumeros();
         AsegurarLinea();
+        // El muñeco vuelve, tranquilo, al final de la línea.
+        figuraS = Mathf.Max(0f, LargoCamino - 0.04f);
+        figuraMov = 0f;
+        dirFigura = -1f;
+        figuraPanico = 0f;
+        figuraAltura = 0f;
+        figuraTam = 0f;
+        figuraTamObjetivo = 1f;
         OcultarTrazosTutorial(true);
         MostrarCopia();
         CrearNodosDemo();
@@ -1290,31 +1400,31 @@ public class Tutorial : MonoBehaviour
         {
             if (t >= 0.4f && t < 1.8f)
             {
-                PonerVineta(Texto7, VinetaIzq, true);
+                PonerVineta(Texto7, VinetaIzq, 1);
                 MostrarNumero(7, JuntoAVineta(VinetaIzq));
             }
             if (t >= 1.8f)
-                PonerVineta(Texto7b, VinetaLinea, false);
+                PonerVineta(Texto7b, VinetaLinea, -1);
             // Los nodos aparecen con el gesto y el del medio se arrastra (la línea lo sigue, suave).
             float ver = Rebote(Mathf.Clamp01((t - 0.9f) / 0.35f)) * (1f - Mathf.Clamp01((t - 7.0f) / 0.3f));
             Vector3 mover = arrastre * tirar;
             for (int i = 0; i < nodosDemo.Count; i++)
             {
                 var nd = nodosDemo[i];
-                float peso = Peso(nd.s, sNodo);
-                nd.t.position = nd.pos + mover * peso;
+                nd.t.position = nd.pos + mover * Peso(nd.s, sNodo);
                 nd.t.localScale = Vector3.one * 0.016f * ver * (i == k && pinza > 0.5f ? 1.3f : 1f);
                 if (control.Cabeza != null)
                     nd.t.rotation = Quaternion.LookRotation(nd.t.position - control.Cabeza.position, Vector3.up);
             }
-            if (lineaDemo != null && caminoCopia.Count >= 2 && caminoLargo.Count > 0)
+            if (lineaDemo != null && camino.Count >= 2)
             {
-                lineaDemo.positionCount = caminoCopia.Count;
-                for (int i = 0; i < caminoCopia.Count; i++)
-                    lineaDemo.SetPosition(i, caminoCopia[i] + mover * Peso(caminoLargo[Mathf.Min(i, caminoLargo.Count - 1)], sNodo));
+                lineaDemo.positionCount = camino.Count;
+                for (int i = 0; i < camino.Count; i++)
+                    lineaDemo.SetPosition(i, camino[i] + mover * Peso(caminoLargo[i], sNodo));
             }
             if (t >= 2.8f && t - Time.deltaTime < 2.8f)
                 Pasito(0.2f);
+            ActualizarFigura();
         }
         return t >= 8.0f;
     }
@@ -1332,7 +1442,7 @@ public class Tutorial : MonoBehaviour
         OcultarTrazosTutorial(false);
         if (lineaDemo != null)
             lineaDemo.positionCount = 0;
-        // Se recuerda dónde está cada nodo, para saber cuándo moviste uno.
+        // Se recuerda dónde está cada nodo (para saber cuándo moviste uno) y cómo es la línea (para deshacer).
         nodosPaso7.Clear();
         foreach (var t in dibujo.trazos)
         {
@@ -1343,24 +1453,33 @@ public class Tutorial : MonoBehaviour
                 lista.Add(dibujo.transform.TransformPoint(n));
             nodosPaso7[t.id] = lista;
         }
-        PonerVineta(Texto7, VinetaIzq, true);
+        caminoAntes.Clear();
+        caminoAntes.AddRange(camino);
+        gestoNodos = false;
+        PonerVineta(Texto7, VinetaIzq, 1);
         Cambiar(Estado.Paso7);
     }
 
     void Paso7()
     {
         ActualizarFigura();
+        // Primera celebración: juntaste pulgar + medio (aparecen los nodos).
         if (control.GestoIzq == ControlManos.Gesto.Nodos)
         {
             ultimaActividad = Time.time;
             PararPista();
-            PonerVineta(Texto7b, VinetaLinea, false);
+            if (!gestoNodos)
+            {
+                gestoNodos = true;
+                Exito(7, control.Izq.valida ? control.Izq.medio : raiz.TransformPoint(ManoIzqPecho));
+                PonerVineta(Texto7b, VinetaLinea, -1);
+            }
         }
         else if (control.GestoIzq != ControlManos.Gesto.Ninguno)
         {
             ultimaActividad = Time.time;
         }
-        // ¿Moviste un nodo más de 2.5 cm?
+        // Segunda celebración: moviste un nodo más de 2.5 cm.
         foreach (var t in dibujo.trazos)
         {
             List<Vector3> antes;
@@ -1373,12 +1492,106 @@ public class Tutorial : MonoBehaviour
                 if (Vector3.Distance(ahora, antes[i]) > 0.025f)
                 {
                     Exito(7, ahora);
-                    EntrarFinal();
+                    EmpezarDemo8();
                     return;
                 }
             }
         }
-        Pista7();
+        if (TocaPista() && Demo7(Time.time - pistaDesde, false))
+            PararPista();
+    }
+
+    // ==================== Paso 8: deshacer (el último) ====================
+
+    void EmpezarDemo8()
+    {
+        OcultarGuia();
+        QuitarNumeros();
+        demoAcerto = false;
+        AsegurarLinea(); // la línea con el nodo movido
+        OcultarTrazosTutorial(true);
+        MostrarCopia();
+        Cambiar(Estado.Demo8);
+    }
+
+    // Puño izquierdo con el PULGAR hacia la izquierda, centrado en el pecho (la palma mira hacia ti):
+    // aparece la flecha, va hacia la diana roja y la toca = deshacer (el nodo vuelve a su lugar).
+    bool Demo8(float t, bool completa)
+    {
+        float alfa = Mathf.Clamp01(t / 0.4f) * (1f - Mathf.Clamp01((t - 5.2f) / 0.5f));
+        PonerAlfaGuia(completa ? alfa : alfa * 0.75f);
+        ResaltarDedo(0); // el pulgar (la punta de la flecha)
+        float puno = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.6f, 1.0f, t)) * (1f - Mathf.InverseLerp(4.8f, 5.1f, t));
+        float mover = Suave((t - 1.8f) / 0.8f) * (1f - Suave((t - 3.6f) / 0.8f));
+        Vector3 muneca = raiz.TransformPoint(ManoCentro + new Vector3(-0.045f * mover, 0f, 0f));
+        PoseMano.Calcular(puntosIzq, true, muneca, Dir(0f, 1f, 0.15f), Dir(0f, 0f, -1f), 0f, puno, 0f, 0f, puno);
+        manoIzq.Poner(alfa > 0.01f ? puntosIzq : null);
+        manoDer.Poner(null);
+
+        if (completa)
+        {
+            if (t >= 0.4f)
+            {
+                PonerVineta(Texto8, VinetaCentro, 1);
+                MostrarNumero(8, JuntoAVineta(VinetaCentro));
+            }
+            // La flecha (la punta en el pulgar) y la diana delante de ella.
+            bool flecha = t >= 1.2f && t < 4.6f && control.simbolos != null;
+            Vector3 dir = -raiz.right;
+            Vector3 puntaFlecha = puntosIzq[4] - Vector3.up * 0.008f;
+            if (t < 1.2f)
+                demoDiana = puntaFlecha + dir * 0.045f;
+            if (flecha)
+            {
+                control.simbolos.Flecha(true, puntaFlecha - dir * 0.12f, dir, 0.12f);
+                control.simbolos.Diana(false, true, demoDiana, demoDiana - dir, 0.06f);
+            }
+            else
+            {
+                OcultarFlecha();
+            }
+            if (!demoAcerto && t >= 2.6f)
+            {
+                // ¡Tocó la diana! El nodo vuelve a su lugar.
+                demoAcerto = true;
+                if (control.simbolos != null)
+                    control.simbolos.Acertar(false);
+                if (fuente != null)
+                    fuente.PlayOneShot(Sonidos.Ding, 0.4f);
+                PonerLinea(lineaDemo, caminoAntes, caminoAntes.Count);
+                Chispas(demoDiana, 10, 0.2f);
+            }
+            ActualizarFigura();
+        }
+        return t >= 5.8f;
+    }
+
+    void EntrarPaso8()
+    {
+        OcultarGuia();
+        OcultarFlecha();
+        OcultarTrazosTutorial(false);
+        if (lineaDemo != null)
+            lineaDemo.positionCount = 0;
+        deshechoInicio = dibujo.VecesDeshecho;
+        PonerVineta(Texto8, VinetaCentro, 1);
+        Cambiar(Estado.Paso8);
+    }
+
+    void Paso8()
+    {
+        ActualizarFigura();
+        if (dibujo.VecesDeshecho > deshechoInicio)
+        {
+            PararPista();
+            Exito(8, control.Izq.valida ? control.Izq.pulgar : raiz.TransformPoint(ManoCentro));
+            EntrarFinal();
+            return;
+        }
+        if (control.GestoIzq != ControlManos.Gesto.Ninguno)
+            ultimaActividad = Time.time;
+        if (TocaPista() && Demo8(Time.time - pistaDesde, false))
+            PararPista();
     }
 
     void EntrarFinal()
@@ -1393,7 +1606,7 @@ public class Tutorial : MonoBehaviour
             Confeti(encabezado.transform.position, 90, 0.9f);
             Chispas(encabezado.transform.position, 20, 0.35f);
         }
-        PonerVineta(Tx("Now draw whatever you want! See it again: My files > Tutorial", "¡Ahora dibuja lo que quieras! Para verlo otra vez: Mis archivos > Tutorial"), VinetaLinea, false);
+        PonerVineta(Tx("Now draw whatever you want! See it again: My files > Tutorial", "¡Ahora dibuja lo que quieras! Para verlo otra vez: Mis archivos > Tutorial"), VinetaLinea, -1);
         figuraTamObjetivo = 0f;
         PlayerPrefs.SetInt(ClaveVisto, 1);
         PlayerPrefs.Save();
@@ -1408,11 +1621,6 @@ public class Tutorial : MonoBehaviour
             pistaDesde = Time.time;
         return pistaDesde >= 0f;
     }
-
-    void Pista12() { if (TocaPista() && Demo12(Time.time - pistaDesde, false)) PararPista(); }
-    void Pista45() { if (TocaPista() && Demo45(Time.time - pistaDesde, false)) PararPista(); }
-    void Pista6() { if (TocaPista() && Demo6(Time.time - pistaDesde, false)) PararPista(); }
-    void Pista7() { if (TocaPista() && Demo7(Time.time - pistaDesde, false)) PararPista(); }
 
     void PararPista()
     {
@@ -1453,21 +1661,7 @@ public class Tutorial : MonoBehaviour
             manoIzq.Resaltar(dedo, dedo >= 0 ? matResaltado : null);
     }
 
-    // ==================== El títere y la línea ====================
-
-    void QuitarPersonaje()
-    {
-        if (titere != null)
-        {
-            if (titere.Encendido)
-                titere.Parar();
-            if (personaje != null)
-                titere.BorrarPersonaje(personaje, true);
-            if (lineaUsuario != null)
-                titere.pisos.Remove(lineaUsuario.id);
-        }
-        personaje = null;
-    }
+    // ==================== La línea del tutorial ====================
 
     // Que haya una línea del tutorial (la tuya; si no quedó ninguna, una de ejemplo) y su camino.
     void AsegurarLinea()
@@ -1478,8 +1672,6 @@ public class Tutorial : MonoBehaviour
             lineaUsuario = LineaDeEjemplo();
         if (lineaUsuario != null)
             LeerCamino(lineaUsuario);
-        caminoCopia.Clear();
-        caminoCopia.AddRange(camino);
     }
 
     // Una copia de tu línea (para las demostraciones).
@@ -1644,7 +1836,7 @@ public class Tutorial : MonoBehaviour
         if (figura == null)
             return;
         figuraTam = Mathf.MoveTowards(figuraTam, figuraTamObjetivo, Time.deltaTime * 4f);
-        // Fuera de la línea (saliendo corriendo) se va achicando hasta desaparecer.
+        // Fuera de la línea se va achicando hasta desaparecer.
         float afuera = Mathf.Max(-figuraS, figuraS - LargoCamino, 0f);
         float tam = figuraTam * Mathf.Clamp01(1f - afuera / 0.12f);
         if (tam <= 0.01f || camino.Count < 2)
@@ -1652,11 +1844,15 @@ public class Tutorial : MonoBehaviour
             figura.Poner(Vector3.zero, Vector3.right, Vector3.up, 0f, 0f);
             return;
         }
-        Vector3 suelo = PuntoCamino(figuraS) + Vector3.up * 0.003f;
+        if (figuraTamObjetivo > 0.5f && figuraPanico > 0f && estado != Estado.Paso6 && estado != Estado.Demo56)
+            figuraPanico = Mathf.MoveTowards(figuraPanico, 0f, Time.deltaTime * 3f);
+        figura.panico = figuraPanico;
+        figura.agachar = figuraAgachar;
+        Vector3 suelo = PuntoCamino(figuraS) + Vector3.up * (0.003f + figuraAltura);
         figura.Poner(suelo, TangenteCamino(figuraS) * dirFigura, Vector3.up, figuraMov, tam);
     }
 
-    // Tu línea queda en un plano frente a ti (así el títere la pisa bien).
+    // Tu línea queda en un plano frente a ti (así el muñeco la sigue bien).
     void Aplanar(Trazo t)
     {
         if (t == null || t.nodos.Count < 2 || raiz == null)
@@ -1718,57 +1914,26 @@ public class Tutorial : MonoBehaviour
 
     // ==================== Viñeta de cómic ====================
 
-    void ArmarVineta()
+    // cola: -1 hacia abajo, 1 hacia arriba (hacia donde está la acción).
+    void PonerVineta(string texto, Vector3 lugar, int cola)
     {
-        vineta = new GameObject("Vineta").transform;
-        vineta.SetParent(raiz, false);
-        mallaRelleno = new Mesh { name = "VinetaRelleno" };
-        mallaBorde = new Mesh { name = "VinetaBorde" };
-        mallaSombra = new Mesh { name = "VinetaSombra" };
-        mallaRelleno.MarkDynamic();
-        mallaBorde.MarkDynamic();
-        mallaSombra.MarkDynamic();
-        // La sombra está DE VERDAD más atrás (3 cm) y corrida: con los dos ojos se siente la profundidad.
-        Malla(vineta, "Sombra", mallaSombra, materialNegro, new Vector3(0.012f, -0.012f, 0.03f));
-        Malla(vineta, "Borde", mallaBorde, materialNegro, new Vector3(0f, 0f, 0.0015f));
-        Malla(vineta, "Relleno", mallaRelleno, materialTrama != null ? materialTrama : materialBlanco, Vector3.zero);
-        textoVineta = CrearTexto(vineta, "", new Vector3(0f, 0f, -0.002f), new Vector2(AnchoVineta - 0.026f, AltoVineta - 0.016f), 0.3f, Color.black);
-        textoVineta.fontSizeMin = 0.05f;
-        if (fuenteComic != null)
-        {
-            textoVineta.font = fuenteComic;
-            textoVineta.fontStyle = FontStyles.UpperCase;
-        }
-        else
-        {
-            textoVineta.fontStyle = FontStyles.Bold | FontStyles.UpperCase;
-        }
-        vinetaLista = false;
-        vinetaVariante = -1;
-    }
-
-    void PonerVineta(string texto, Vector3 lugar, bool colaHaciaArriba)
-    {
-        if (vineta == null)
+        if (vineta == null || vinetaComic == null)
             return;
-        if (textoVineta != null && textoVineta.text != texto)
-            textoVineta.text = texto;
-        bool rehacer = colaHaciaArriba != colaArriba || !vinetaLista;
-        colaArriba = colaHaciaArriba;
+        if (!vineta.gameObject.activeSelf)
+            vineta.gameObject.SetActive(true);
+        var t = vinetaComic.Texto;
+        if (t != null && t.text != texto)
+            t.text = texto;
+        vinetaComic.cola = cola;
         vinetaObjetivo = lugar;
         if (!vinetaLista)
         {
             vineta.localPosition = lugar;
             vinetaLista = true;
         }
-        if (rehacer)
-        {
-            ArmarMalla(mallaRelleno, 0f, 0f, 0);
-            vinetaVariante = -1; // el borde y la sombra se rehacen en ActualizarVineta
-        }
     }
 
-    // Se mueve suave a su lugar, mira hacia ti y su borde tiembla (3 dibujos, 8 veces por segundo).
+    // Se mueve suave a su lugar y mira hacia ti (el temblor del borde lo hace la viñeta).
     void ActualizarVineta()
     {
         if (vineta == null || !vinetaLista)
@@ -1780,83 +1945,6 @@ public class Tutorial : MonoBehaviour
             Vector3 mirar = vineta.position - control.Cabeza.position;
             if (mirar.sqrMagnitude > 1e-6f)
                 vineta.rotation = Quaternion.Slerp(vineta.rotation, Quaternion.LookRotation(mirar, Vector3.up), a);
-        }
-        int v = Mathf.FloorToInt(Time.time * 8f) % 3;
-        if (v != vinetaVariante)
-        {
-            vinetaVariante = v;
-            ArmarMalla(mallaBorde, 0.006f, 0.0018f, v + 1);
-            ArmarMalla(mallaSombra, 0.006f, 0.0018f, v + 4);
-        }
-    }
-
-    // Rectángulo redondeado con una colita (hacia abajo o hacia arriba, hacia donde está la acción).
-    // extra = cuánto más grande (el borde); temblor = cuánto se mueve cada punto; variante = qué "dibujo".
-    void ArmarMalla(Mesh m, float extra, float temblor, int variante)
-    {
-        if (m == null)
-            return;
-        float w = AnchoVineta + extra * 2f, h = AltoVineta + extra * 2f, r = 0.02f + extra;
-        contorno.Clear();
-        float x0 = -w * 0.5f, x1 = w * 0.5f, y0 = -h * 0.5f, y1 = h * 0.5f;
-        const int pasos = 6;
-        const float colaX = 0.04f;
-        float media = 0.018f + extra;
-        float puntaX = colaX + 0.03f + extra * 0.6f;
-        // Abajo (de izquierda a derecha)
-        contorno.Add(new Vector3(x0 + r, y0, 0f));
-        if (!colaArriba)
-        {
-            contorno.Add(new Vector3(colaX - media, y0, 0f));
-            contorno.Add(new Vector3(puntaX, y0 - 0.04f - extra * 1.4f, 0f));
-            contorno.Add(new Vector3(colaX + media, y0, 0f));
-        }
-        contorno.Add(new Vector3(x1 - r, y0, 0f));
-        Esquina(contorno, new Vector2(x1 - r, y0 + r), r, -90f, 0f, pasos);
-        Esquina(contorno, new Vector2(x1 - r, y1 - r), r, 0f, 90f, pasos);
-        // Arriba (de derecha a izquierda)
-        if (colaArriba)
-        {
-            contorno.Add(new Vector3(colaX + media, y1, 0f));
-            contorno.Add(new Vector3(puntaX, y1 + 0.04f + extra * 1.4f, 0f));
-            contorno.Add(new Vector3(colaX - media, y1, 0f));
-        }
-        Esquina(contorno, new Vector2(x0 + r, y1 - r), r, 90f, 180f, pasos);
-        Esquina(contorno, new Vector2(x0 + r, y0 + r), r, 180f, 270f, pasos);
-        // Temblor del borde (como dibujado a mano).
-        if (temblor > 0f)
-        {
-            for (int i = 0; i < contorno.Count; i++)
-            {
-                Vector3 p = contorno[i];
-                Vector3 fuera = p.sqrMagnitude > 1e-8f ? p.normalized : Vector3.up;
-                float semilla = i * 2.37f + variante * 5.11f;
-                contorno[i] = p + fuera * (Mathf.Sin(semilla) * 0.6f + Mathf.Sin(semilla * 2.3f + 1.3f) * 0.4f) * temblor;
-            }
-        }
-        verts.Clear();
-        tris.Clear();
-        verts.Add(Vector3.zero);
-        verts.AddRange(contorno);
-        for (int i = 0; i < contorno.Count; i++)
-        {
-            tris.Add(0);
-            tris.Add(1 + i);
-            tris.Add(1 + (i + 1) % contorno.Count);
-        }
-        m.Clear();
-        m.SetVertices(verts);
-        m.SetTriangles(tris, 0);
-        m.RecalculateNormals();
-        m.RecalculateBounds();
-    }
-
-    static void Esquina(List<Vector3> lista, Vector2 centro, float r, float desdeGrados, float hastaGrados, int pasos)
-    {
-        for (int i = 0; i <= pasos; i++)
-        {
-            float a = Mathf.Lerp(desdeGrados, hastaGrados, i / (float)pasos) * Mathf.Deg2Rad;
-            lista.Add(new Vector3(centro.x + Mathf.Cos(a) * r, centro.y + Mathf.Sin(a) * r, 0f));
         }
     }
 
@@ -1923,17 +2011,22 @@ public class Tutorial : MonoBehaviour
     void ActualizarDecorado()
     {
         float t = Time.time;
-        bool verMeta = estado == Estado.Demo12 || estado == Estado.Paso1 || estado == Estado.Paso2;
+        // El punto A y la bandera aparecen (con rebote) cuando cae la gota de tinta, y se van al terminar la línea.
+        float aparecer = metaVisible ? Rebote(Mathf.Clamp01((t - metaDesde) / 0.35f)) : 0f;
+        float aparecerBandera = metaVisible ? Rebote(Mathf.Clamp01((t - metaDesde - 0.3f) / 0.35f)) : 0f;
         if (puntoA != null)
         {
-            if (puntoA.gameObject.activeSelf != verMeta)
-                puntoA.gameObject.SetActive(verMeta);
-            puntoA.localScale = Vector3.one * (1f + 0.15f * Mathf.Sin(t * 5f));
+            bool ver = aparecer > 0.01f;
+            if (puntoA.gameObject.activeSelf != ver)
+                puntoA.gameObject.SetActive(ver);
+            puntoA.localScale = Vector3.one * aparecer * (1f + 0.15f * Mathf.Sin(t * 5f));
         }
         if (bandera != null)
         {
-            if (bandera.gameObject.activeSelf != verMeta)
-                bandera.gameObject.SetActive(verMeta);
+            bool ver = aparecerBandera > 0.01f;
+            if (bandera.gameObject.activeSelf != ver)
+                bandera.gameObject.SetActive(ver);
+            bandera.localScale = Vector3.one * aparecerBandera;
             if (tela != null)
                 tela.localRotation = Quaternion.Euler(0f, Mathf.Sin(t * 3.2f) * 22f, Mathf.Sin(t * 2.1f) * 4f);
         }

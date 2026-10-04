@@ -10,20 +10,26 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
   código, sin archivos), las letras tienen **volumen 3D** y se mecen un poquito; un muñequito corre saltando sobre ellas y todo se
   desvanece sobre la hoja en blanco.
 - La app empieza en **inglés** ("English first"). *Mis archivos → Idioma: ESP* la pasa a español (y se recuerda).
-- La **primera vez** sigue el tutorial ("First time?"). Unas **manos guía** transparentes (con contorno, para
-  que la pose se entienda de un vistazo) enseñan cada paso, mientras tus manos se esconden y no hacen nada.
-  Luego es tu turno; cada paso bien hecho se celebra con un chulito verde, papelitos y escarcha.
-  Las instrucciones salen en **viñetas de cómic** (amarillo con trama, borde que tiembla, sombra de verdad
-  más atrás en 3D y letra de cómic Bangers), junto a la mano que hace la acción:
-  1. **OK 👌 con la izquierda** (pulgar + índice) y mantenerlo = lápiz encendido (se muestra dos veces).
-  2. Con el **índice derecho**, una línea del **punto azul** a la **bandera**; luego **abrir los dedos** = dejar
-     de dibujar. A mitad de la línea aparece un muñeco pequeño que corre sobre ella (sorpresa).
-  3. Al llegar, el muñeco se vuelve un **títere**: juega todo lo que quieras y toca **Next**.
-  4. **Puño izquierdo** con el dorso hacia ti (borrador; se muestra dos veces).
-  5. **Frota la línea**: los nodos estallan y el muñeco sale huyendo.
-  6. **Deshacer**: puño izquierdo con el **pulgar a la izquierda** y tocar la **diana roja**: la línea vuelve.
-  7. **Pulgar + medio** izquierdos (aparecen los nodos) y arrastrar un nodo con la derecha.
+- La **primera vez** sigue el tutorial ("First time?"). Unas **manos guía** transparentes (con contorno y el
+  dedo importante en **amarillo**) enseñan cada paso mientras tus manos se esconden; luego es tu turno y cada
+  paso bien hecho se celebra (chulito verde, papelitos, escarcha). Cada OK que haces (cerrar o abrir) toca una
+  nota del arpa del título. Las instrucciones salen en **viñetas de cómic** junto a la mano que hace la acción:
+  1. **OK 👌 con la izquierda** y mantenerlo. Solo se ve este paso; al lograrlo cae una **gota de tinta** que se
+     vuelve el **punto azul** y aparece la bandera.
+  2. Con el **índice derecho**, desde el punto azul (antes no dibuja nada) hasta la **bandera**. A mitad de la
+     línea aparece un muñeco pequeño (3 hebras que tiemblan) que corre sobre ella.
+  3. **Abrir el pulgar y el índice** = dejar de dibujar.
+  4. El muñeco **sigue tu mano sobre TU línea**, como un tren en sus rieles (golpe hacia arriba = saltar,
+     mano abajo = agacharse). **Next** para seguir.
+  5. **Puño izquierdo** (con un giro de muñeca de lado y de vuelta) = borrador.
+  6. **Frota la línea**: los nodos estallan y el muñeco huye en pánico, siempre a 2 cm de tu dedo. Luego la
+     línea vuelve sola (tinta mágica).
+  7. **Pulgar + medio** izquierdos (celebración) y arrastrar un nodo con la derecha (otra celebración).
+  8. **Deshacer** (el último): puño izquierdo con el **pulgar a la izquierda** y tocar la **diana roja**.
 - Si pasan 8 segundos sin hacer nada, las manos guía lo repiten. **Skip** lo termina.
+- **Guante de caricatura:** mientras haces el OK para dibujar, tu mano izquierda lleva un guante blanco de cartoon.
+- Los **avisos** y el nombre del gesto sobre la mano también salen en viñetas de cómic.
+- El panel de arriba, cuando lo fijaste en otro lugar, tiene una **X** que lo devuelve a "mirar arriba".
 - Para verlo otra vez: **Mis archivos → Tutorial**. Tu dibujo se aparta antes y vuelve igual al terminar.
 
 ## Gestos (todo con las manos)

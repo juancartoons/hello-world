@@ -92,6 +92,16 @@ public class ControlManos : MonoBehaviour
     // La línea que se está dibujando ahora (null si no hay). La usa el tutorial.
     public Trazo TrazoActual => trazoActual;
 
+    // Si está: una línea nueva solo empieza cuando esto dice que sí (el tutorial: solo desde el punto A).
+    public System.Func<Vector3, bool> permitirEmpezarLinea;
+
+    [Tooltip("Guante de caricatura (blanco con contorno) que se pone la mano izquierda mientras haces el OK para dibujar")]
+    public Material materialGuante;
+    GameObject raizGuante;
+    ManoVideo guante;
+    readonly Vector3[] puntosGuante = new Vector3[21];
+    bool conGuante;
+
     // Termina la línea que se está dibujando (y espera a que sueltes los dedos para lo siguiente).
     public void TerminarLineaActual()
     {
@@ -741,6 +751,8 @@ public class ControlManos : MonoBehaviour
             return;
         }
         if (LapizLevantado(local))
+            return;
+        if (trazoActual == null && permitirEmpezarLinea != null && !permitirEmpezarLinea(Der.indice))
             return;
         if (trazoActual == null)
         {
@@ -1975,8 +1987,41 @@ public class ControlManos : MonoBehaviour
                 r.forceRenderingOff = apagar;
     }
 
+    // Mientras la izquierda hace el OK (dibujar), se ve con un guante blanco de caricatura (como el borrador).
+    void ActualizarGuante()
+    {
+        bool ver = materialGuante != null && GestoIzq == Gesto.Dibujar && Izq.valida && Izq.esqueleto != null;
+        if (ver)
+        {
+            for (int i = 0; i < puntosGuante.Length; i++)
+            {
+                var hueso = ManosUtil.Hueso(Izq.esqueleto, GrabadorProceso.Huesos[i]);
+                if (hueso == null)
+                {
+                    ver = false;
+                    break;
+                }
+                puntosGuante[i] = hueso.position;
+            }
+        }
+        if (ver && guante == null)
+        {
+            raizGuante = new GameObject("GuanteCaricatura");
+            guante = new ManoVideo(raizGuante.transform, materialGuante, 0, true);
+        }
+        if (ver != conGuante)
+        {
+            conGuante = ver;
+            // Al quitarse el guante, la mano sigue escondida si ahora es el borrador o la flecha.
+            OcultarMano(true, ver || GestoIzq == Gesto.Borrar || flechaIzq.activa);
+        }
+        if (guante != null)
+            guante.Poner(ver ? puntosGuante : null);
+    }
+
     void LateUpdate()
     {
+        ActualizarGuante();
         EjecutarLapiz();
         if (!ocultarIzq && !ocultarDer && !ocultarTodas)
             return;

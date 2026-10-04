@@ -40,6 +40,28 @@ public static class Sonidos
         foreach (var c in lista)
             if (c == null)
                 Debug.LogWarning("JCartoons: no se pudo crear un sonido");
+        for (int i = 0; i < Arpa.Length; i++)
+            Nota(i);
+    }
+
+    // Las notas del arpa del título (Re mayor con novena, de grave a agudo).
+    static readonly float[] Arpa = { 293.66f, 369.99f, 440f, 554.37f, 659.25f, 739.99f, 880f, 1108.73f, 1318.51f };
+    static AudioClip[] notas;
+
+    // Una nota del arpa (con un brillito de campana): el tutorial toca la melodía del título con tus OK.
+    public static AudioClip Nota(int i)
+    {
+        if (notas == null)
+            notas = new AudioClip[Arpa.Length];
+        i = ((i % Arpa.Length) + Arpa.Length) % Arpa.Length;
+        if (notas[i] != null)
+            return notas[i];
+        var datos = new float[Mathf.RoundToInt(Frecuencia * 1.6f)];
+        Pulsar(datos, 0f, Arpa[i], 0.5f, new System.Random(20 + i));
+        Campana(datos, 0.01f, Arpa[i] * 2f, 0.07f, 1f, 3.5f);
+        Eco(datos, 0.25f);
+        notas[i] = Clip("Nota" + i, datos, 0.7f);
+        return notas[i];
     }
 
     // ---------- Música del título: arpa mágica + brillo "tecnológico" ----------
@@ -61,7 +83,7 @@ public static class Sonidos
             // Un "whoosh" que sube (como cuando algo mágico se abre).
             Soplo(datos, 0.0f, 1.4f, 0.05f, azar);
             // El arpa: 9 notas, una por letra.
-            float[] arpa = { 293.66f, 369.99f, 440f, 554.37f, 659.25f, 739.99f, 880f, 1108.73f, 1318.51f };
+            float[] arpa = Arpa;
             for (int i = 0; i < arpa.Length; i++)
                 Pulsar(datos, InicioNotas + i * PasoNotas, arpa[i], 0.28f, azar);
             // Final: campanitas brillantes (el toque "tecnológico") y un acorde de arpa.
