@@ -18,6 +18,9 @@ public static class AplicarEstiloYEscenografia
     const string carpetaMallas = "Assets/Generated/FarmaciaVR";
     const string nombreRaiz = "_Escenografia";
 
+    // Reflejo en el piso brillante: false = piso de mármol sólido, sin reflejo (cámbialo a true para volver a tenerlo).
+    const bool reflejoEnPiso = false;
+
     static readonly Color azul = new Color(0.09f, 0.36f, 0.72f);
     static readonly Color azulClaro = new Color(0.55f, 0.78f, 0.95f);
     static readonly Color blanco = new Color(0.96f, 0.96f, 0.95f);
@@ -105,8 +108,9 @@ public static class AplicarEstiloYEscenografia
         matPisoBrillante.SetColor("_BaseColor", new Color(0.86f, 0.87f, 0.9f));
         matPisoBrillante.SetColor("_ColorVetas", new Color(0.62f, 0.64f, 0.7f));
         matPisoBrillante.SetColor("_ColorJunta", new Color(0.72f, 0.73f, 0.77f));
-        matPisoBrillante.SetFloat("_OpacidadCerca", 0.74f);
-        matPisoBrillante.SetFloat("_OpacidadLejos", 0.45f);
+        // Sin reflejo el piso es sólido (opacidad 1); con reflejo deja ver la copia "de cabeza" de abajo.
+        matPisoBrillante.SetFloat("_OpacidadCerca", reflejoEnPiso ? 0.74f : 1f);
+        matPisoBrillante.SetFloat("_OpacidadLejos", reflejoEnPiso ? 0.45f : 1f);
         matPisoBrillante.renderQueue = 2999;
         EditorUtility.SetDirty(matPisoBrillante);
         var matReflejoKit = CrearMaterialReflejo("Reflejo_Kit", Color.white, true, false);
@@ -160,7 +164,8 @@ public static class AplicarEstiloYEscenografia
         InteriorModerno.ConstruirParedFondo(raiz.transform, matKit, matBrillo, matResplandor, carpetaMallas);
         bool conTextos = ConstruirDecoracion(raiz.transform, matKit);
         InteriorModerno.ConstruirGondolaMedia(raiz.transform, matKit, matBrillo, carpetaMallas, escondites);
-        InteriorModerno.ConstruirReflejos(raiz.transform, matReflejoKit, matReflejoLuz, matReflejoTecho, matReflejoPared);
+        if (reflejoEnPiso)
+            InteriorModerno.ConstruirReflejos(raiz.transform, matReflejoKit, matReflejoLuz, matReflejoTecho, matReflejoPared);
         ConstruirCruzLED(raiz.transform, matKit, matBrillo, matResplandor);
 
         // ---------- Exterior ----------
@@ -174,7 +179,7 @@ public static class AplicarEstiloYEscenografia
         var mallaPluma = CrearMallaPluma();
         ConstruirPajaro(matPajaro, matPluma, mallaPluma, matHalo, tamPersonaje);
         ConstruirPeluches(matPajaro, tamPersonaje);
-        ConstruirRobot(raiz.transform, matKit, matReflejoKit);
+        ConstruirRobot(raiz.transform, matKit, reflejoEnPiso ? matReflejoKit : null);
         ConstruirSonido();
         ConstruirCronometro();
         ConstruirOpcionesNavegacion(raiz.transform, matBoton, matIcono, matCieloNoche);
