@@ -19,7 +19,7 @@ public static class AplicarEstiloYEscenografia
     const string nombreRaiz = "_Escenografia";
 
     // Reflejo en el piso brillante: false = piso de mármol sólido, sin reflejo (cámbialo a true para volver a tenerlo).
-    const bool reflejoEnPiso = false;
+    const bool reflejoEnPiso = true;
 
     static readonly Color azul = new Color(0.09f, 0.36f, 0.72f);
     static readonly Color azulClaro = new Color(0.55f, 0.78f, 0.95f);
