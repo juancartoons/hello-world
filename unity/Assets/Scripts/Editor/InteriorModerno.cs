@@ -613,7 +613,8 @@ internal static class InteriorModerno
 
         kit.grosorContorno = 0.7f;
         Pieza(new Vector3(x0, 0f, zc - mitadFondo), new Vector3(x1, 0.3f, zc + mitadFondo), roble);
-        Pieza(new Vector3(x0 + 0.06f, 0.3f, zc - 0.03f), new Vector3(x1 - 0.06f, 1.5f, zc + 0.03f), blanco);
+        // Panel del centro en aguamarina suave: así resaltan las cajas blancas (combina con la madera y el azul de las góndolas)
+        Pieza(new Vector3(x0 + 0.06f, 0.3f, zc - 0.03f), new Vector3(x1 - 0.06f, 1.5f, zc + 0.03f), new Color(0.55f, 0.8f, 0.84f));
         Pieza(new Vector3(x0, 1.5f, zc - 0.045f), new Vector3(x1, 1.56f, zc + 0.045f), roble);
         foreach (float x in new[] { x0, x1 - 0.06f })
             Pieza(new Vector3(x, 0.3f, zc - 0.045f), new Vector3(x + 0.06f, 1.5f, zc + 0.045f), roble);

@@ -423,9 +423,11 @@ internal static class FachadaYExterior
         }
 
         // Árboles en andenes y parqueadero, y postes de luz.
-        foreach (float x in new[] { 7f, 13f, 19f, 25f }) Arbol(ext, rnd, new Vector3(x, 0f, -7f));
-        foreach (float x in new[] { -5f, 1f, 7f, 13f, 19f, 25f }) Arbol(ext, rnd, new Vector3(x, 0f, -17.3f));
-        foreach (float z in new[] { -2f, 4f, 10f, 16f }) Arbol(ext, rnd, new Vector3(-6.3f, 0f, z));
+        // Junto a la farmacia: más lejos de la pared y con copa más pequeña (antes se metían por las paredes).
+        foreach (float x in new[] { 10.5f, 19.5f, 28.5f }) Arbol(ext, rnd, new Vector3(x, 0f, -7f), 1.4f);
+        // Al frente, cruzando la calle: ninguno tapa el letrero "LA CIA Agencia".
+        foreach (float x in new[] { 5.5f, 14.5f, 25.5f }) Arbol(ext, rnd, new Vector3(x, 0f, -17.3f));
+        // (La fila del andén pegado a la pared izquierda de la farmacia se quitó: se metía adentro.)
         foreach (float z in new[] { -4f, 3f, 10f, 17f }) Arbol(ext, rnd, new Vector3(-14.3f, 0f, z));
         foreach (float z in new[] { -5f, 3f, 11f }) Arbol(ext, rnd, new Vector3(14.25f, 0f, z));
         foreach (var poste in Postes())
@@ -829,13 +831,16 @@ internal static class FachadaYExterior
         k.luzNoche = Color.black;
     }
 
-    static void Arbol(KitMalla k, System.Random rnd, Vector3 base0)
+    // "maxRadio" limita qué tan ancha es la copa (para árboles cerca de paredes).
+    static void Arbol(KitMalla k, System.Random rnd, Vector3 base0, float maxRadio = 99f)
     {
         bool alto = rnd.NextDouble() < 0.35; // eucalipto / urapán más alto
         float altoTronco = alto ? 3.2f : 2.0f;
         k.Caja(base0 + Vector3.up * (altoTronco / 2f), new Vector3(0.25f, altoTronco, 0.25f), tronco);
         float s = Rango(rnd, 0.85f, 1.2f);
         Vector3 radios = alto ? new Vector3(1.2f, 2.3f, 1.2f) * s : new Vector3(1.5f, 1.3f, 1.5f) * s;
+        radios.x = Mathf.Min(radios.x, maxRadio);
+        radios.z = Mathf.Min(radios.z, maxRadio);
         k.Esfera(base0 + Vector3.up * (altoTronco + radios.y * 0.7f), radios, 2, Elegir(rnd, verdes), true, false, true); // lisa, sin polígonos
     }
 

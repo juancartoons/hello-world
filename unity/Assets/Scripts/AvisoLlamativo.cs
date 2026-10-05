@@ -68,6 +68,16 @@ public class AvisoLlamativo : MonoBehaviour
         inicio = Time.time;
     }
 
+    // Mueve el aviso (cuando se reacomoda frente al jugador) sin reiniciar los destellos.
+    public void Mover(Vector3 posicion, Quaternion rotacion)
+    {
+        if (!activo || resplandor == null)
+            return;
+        posicionAviso = posicion;
+        haciaAviso = rotacion * Vector3.forward;
+        resplandor.SetPositionAndRotation(posicion + haciaAviso * 0.03f, rotacion);
+    }
+
     public void Ocultar()
     {
         activo = false;
@@ -86,7 +96,7 @@ public class AvisoLlamativo : MonoBehaviour
 
         // Resplandor que late detrás del aviso
         float pulso = 0.75f + 0.25f * Mathf.Sin(t * 3f);
-        resplandor.localScale = new Vector3(0.95f, 0.62f, 1f) * (1f + 0.04f * Mathf.Sin(t * 3f));
+        resplandor.localScale = new Vector3(0.7f, 0.46f, 1f) * (1f + 0.04f * Mathf.Sin(t * 3f));
         Pintar(renderResplandor, 0.55f * pulso * Mathf.Clamp01(t * 2f));
 
         // Destellos: salen frente al jugador (a la altura del pecho) y suben en curva hasta el aviso.

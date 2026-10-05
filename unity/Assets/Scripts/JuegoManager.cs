@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using TMPro;
+using UnityEngine.UI;
 using Random = UnityEngine.Random;
 using Debug = UnityEngine.Debug;
 
@@ -29,9 +30,13 @@ public class JuegoManager : MonoBehaviour
     public GameObject opcionesNavegacion;
     [Tooltip("Distancia (metros) a la que aparece el panel frente al jugador")]
     public float distanciaPanel = 1.2f;
-    [Tooltip("Al ganar o perder, el aviso sale arriba de las góndolas a esta altura (metros)")]
-    public float alturaAvisoArriba = 2.3f;
-    public float distanciaAvisoArriba = 1.8f;
+    [Tooltip("Al ganar o perder, el aviso sale un poco arriba de los ojos (metros) y se ve por encima de todo")]
+    public float alturaAvisoArriba = 0.3f;
+    public float distanciaAvisoArriba = 1.3f;
+    [Tooltip("Tamaño del aviso del premio comparado con el panel normal")]
+    public float tamanoAviso = 0.7f;
+    [Tooltip("Si giras la cabeza más de estos grados, el aviso del premio se reacomoda frente a ti")]
+    public float anguloReacomodar = 35f;
 
     [Header("Lugares")]
     [Tooltip("Donde empieza el jugador: afuera, en el andén frente a la puerta")]
@@ -73,6 +78,10 @@ public class JuegoManager : MonoBehaviour
     Estado estado;
     Coroutine rutina;
     AvisoLlamativo aviso;
+    bool avisoArriba, reacomodando;
+    Graphic[] graficosPanel;
+    Material[] materialesNormales, materialesEncima;
+    Vector3 escalaPanel;
 
     void Start()
     {
@@ -145,6 +154,7 @@ public class JuegoManager : MonoBehaviour
 
         if (aviso != null)
             aviso.Ocultar();
+        MirarHacia(Vector3.forward); // siempre empieza mirando de frente la entrada de la farmacia
         MoverJugador(puntoAfuera);
         MostrarPanel("¡Encuentra al personaje escondido!", textoPalmada);
         MostrarOpciones(true);
@@ -154,6 +164,7 @@ public class JuegoManager : MonoBehaviour
     {
         estado = Estado.Entrando;
         MostrarOpciones(false);
+        MirarHacia(Vector3.forward); // al entrar, mirando hacia adentro de la farmacia
         MoverJugador(puntoAdentro);
         MostrarPanel("¡A buscar!", $"Tienes {Mathf.RoundToInt(segundosParaBuscar)} segundos");
         yield return new WaitForSeconds(segundosIntro);
@@ -168,6 +179,8 @@ public class JuegoManager : MonoBehaviour
 
     void Update()
     {
+        if (estado == Estado.Terminado && avisoArriba)
+            SeguirAviso();
         if (estado != Estado.Buscando)
             return;
 
@@ -270,6 +283,20 @@ public class JuegoManager : MonoBehaviour
     }
 
     // ---------- Jugador ----------
+
+    // Gira el rig (alrededor de la cabeza) para que el jugador quede mirando hacia "direccion",
+    // sin importar hacia dónde estaba mirando en la sesión anterior.
+    void MirarHacia(Vector3 direccion)
+    {
+        if (rig == null || cabeza == null)
+            return;
+        Vector3 frente = cabeza.forward;
+        frente.y = 0f;
+        if (frente.sqrMagnitude < 0.001f)
+            return;
+        float giro = Vector3.SignedAngle(frente, direccion, Vector3.up);
+        rig.transform.RotateAround(cabeza.position, Vector3.up, giro);
+    }
 
     // Mueve el rig para que la cabeza quede sobre "destino" y ajusta la altura (sentado / de pie).
     void MoverJugador(Vector3 destino)
@@ -393,6 +420,86 @@ public class JuegoManager : MonoBehaviour
 
     // ---------- Panel ----------
 
+    void PosicionAviso(Vector3 frente, out Vector3 posicion, out Vector3 haciaAviso)
+    {
+        posicion = cabeza.position + frente * distanciaAvisoArriba + Vector3.up * alturaAvisoArriba;
+        haciaAviso = posicion - cabeza.position;
+    }
+
+    // Si el jugador gira mucho la cabeza, el aviso del premio vuelve suavemente frente a él (sin quedar pegado a la cara).
+    void SeguirAviso()
+    {
+        if (cabeza == null || !panel.activeSelf)
+            return;
+        Vector3 frente = cabeza.forward;
+        frente.y = 0f;
+        if (frente.sqrMagnitude < 0.001f)
+            return;
+        frente.Normalize();
+        Vector3 haciaPanel = panel.transform.position - cabeza.position;
+        haciaPanel.y = 0f;
+        float angulo = Vector3.Angle(frente, haciaPanel);
+        if (angulo > anguloReacomodar)
+            reacomodando = true;
+        if (!reacomodando)
+            return;
+        PosicionAviso(frente, out Vector3 destino, out Vector3 haciaAviso);
+        float k = 1f - Mathf.Exp(-4f * Time.deltaTime);
+        panel.transform.position = Vector3.Lerp(panel.transform.position, destino, k);
+        panel.transform.rotation = Quaternion.Slerp(panel.transform.rotation, Quaternion.LookRotation(haciaAviso, Vector3.up), k);
+        if (aviso != null)
+            aviso.Mover(panel.transform.position, panel.transform.rotation);
+        if (Vector3.Distance(panel.transform.position, destino) < 0.02f)
+            reacomodando = false;
+    }
+
+    // El aviso del premio se dibuja encima de todo (nada lo tapa) y un poco más pequeño; los demás avisos, normal.
+    void PanelEncima(bool encima)
+    {
+        if (graficosPanel == null)
+        {
+            escalaPanel = panel.transform.localScale;
+            graficosPanel = panel.GetComponentsInChildren<Graphic>(true);
+            materialesNormales = new Material[graficosPanel.Length];
+            materialesEncima = new Material[graficosPanel.Length];
+            var plano = Shader.Find("FarmaciaVR/Plano");
+            var textoEncima = Shader.Find("TextMeshPro/Distance Field Overlay");
+            for (int i = 0; i < graficosPanel.Length; i++)
+            {
+                if (graficosPanel[i] is TMP_Text texto)
+                {
+                    materialesNormales[i] = texto.fontSharedMaterial;
+                    if (textoEncima != null && texto.fontSharedMaterial != null)
+                        materialesEncima[i] = new Material(texto.fontSharedMaterial) { shader = textoEncima };
+                }
+                else
+                {
+                    materialesNormales[i] = graficosPanel[i].material;
+                    if (plano != null)
+                    {
+                        var m = new Material(plano);
+                        m.SetFloat("_UseVertexColor", 1f);
+                        m.SetFloat("_ZWrite", 0f);
+                        m.SetFloat("_ZTest", (float)UnityEngine.Rendering.CompareFunction.Always);
+                        m.renderQueue = 3990;
+                        materialesEncima[i] = m;
+                    }
+                }
+            }
+        }
+        for (int i = 0; i < graficosPanel.Length; i++)
+        {
+            var m = encima && materialesEncima[i] != null ? materialesEncima[i] : materialesNormales[i];
+            if (m == null)
+                continue;
+            if (graficosPanel[i] is TMP_Text texto)
+                texto.fontSharedMaterial = m;
+            else
+                graficosPanel[i].material = m;
+        }
+        panel.transform.localScale = encima ? escalaPanel * tamanoAviso : escalaPanel;
+    }
+
     // Pone el panel frente al jugador, a la altura de sus ojos, mirándolo.
     // Con "arriba" (al ganar o perder) sale por encima de las góndolas para que nada lo tape,
     // un poco inclinado hacia el jugador, y con destellos que suben hacia él (AvisoLlamativo).
@@ -410,20 +517,19 @@ public class JuegoManager : MonoBehaviour
 
             if (arriba)
             {
-                float altura = Mathf.Max(cabeza.position.y + 0.55f, alturaAvisoArriba);
-                float distancia = distanciaAvisoArriba;
-                // Si hay una pared o un estante alto adelante (a la altura del aviso), se acerca para no atravesarlo.
-                Vector3 origen = new Vector3(cabeza.position.x, altura, cabeza.position.z);
-                if (Physics.Raycast(origen, frente, out RaycastHit hit, distancia + 0.4f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
-                    distancia = Mathf.Max(0.7f, hit.distance - 0.4f);
-                Vector3 posicion = cabeza.position + frente * distancia;
-                posicion.y = altura;
-                panel.transform.SetPositionAndRotation(posicion, Quaternion.LookRotation(posicion - cabeza.position, Vector3.up));
+                // Como el cronómetro: se dibuja por encima de todo (nada lo tapa), un poco arriba de los ojos.
+                PanelEncima(true);
+                avisoArriba = true;
+                Vector3 posicion, haciaAviso;
+                PosicionAviso(frente, out posicion, out haciaAviso);
+                panel.transform.SetPositionAndRotation(posicion, Quaternion.LookRotation(haciaAviso, Vector3.up));
                 if (aviso != null)
                     aviso.Mostrar(panel.transform.position, panel.transform.rotation);
             }
             else
             {
+                PanelEncima(false);
+                avisoArriba = false;
                 panel.transform.position = cabeza.position + frente * distanciaPanel;
                 panel.transform.rotation = Quaternion.LookRotation(frente, Vector3.up);
             }
