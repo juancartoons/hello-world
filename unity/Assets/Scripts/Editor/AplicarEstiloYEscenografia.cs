@@ -21,6 +21,9 @@ public static class AplicarEstiloYEscenografia
     // Reflejo en el piso brillante: false = piso de mármol sólido, sin reflejo (cámbialo a true para volver a tenerlo).
     const bool reflejoEnPiso = true;
 
+    // Líneas negras de contorno adentro: false = sin contorno (cámbialo a true para volver a tenerlas).
+    const bool contornosAdentro = false;
+
     static readonly Color azul = new Color(0.09f, 0.36f, 0.72f);
     static readonly Color azulClaro = new Color(0.55f, 0.78f, 0.95f);
     static readonly Color blanco = new Color(0.96f, 0.96f, 0.95f);
@@ -171,6 +174,7 @@ public static class AplicarEstiloYEscenografia
         // ---------- Exterior ----------
         FachadaYExterior.ConstruirExterior(raiz.transform, matExterior, carpetaMallas);
         FachadaYExterior.ConstruirLucesNoche(raiz.transform, matResplandor, carpetaMallas);
+        FachadaYExterior.ConstruirLetreroLaCIA(raiz.transform, matResplandor, carpetaMallas);
         FachadaYExterior.ConstruirTrafico(raiz.transform, matExterior, matBombillo, matResplandor, carpetaMallas);
 
         // ---------- Teletransporte, escondites y personaje ----------
@@ -180,7 +184,7 @@ public static class AplicarEstiloYEscenografia
         ConstruirPajaro(matPajaro, matPluma, mallaPluma, matHalo, tamPersonaje);
         ConstruirPeluches(matPajaro, tamPersonaje);
         ConstruirRobot(raiz.transform, matKit, reflejoEnPiso ? matReflejoKit : null);
-        ConstruirSonido();
+        ConstruirSonido(matResplandor);
         ConstruirCronometro();
         ConstruirOpcionesNavegacion(raiz.transform, matBoton, matIcono, matCieloNoche);
 
@@ -699,12 +703,21 @@ public static class AplicarEstiloYEscenografia
         brillo.CrearObjeto("CruzLED_Resplandor", raiz, matResplandor, carpetaMallas).AddComponent<SoloDeNoche>();
     }
 
-    // Sonido de ambiente (música, ciudad, pitos y grillos): vive en el JuegoManager.
-    static void ConstruirSonido()
+    // Sonido de ambiente (música, ciudad y pitos) y las luces que llaman la atención hacia el aviso del premio:
+    // viven en el JuegoManager.
+    static void ConstruirSonido(Material matResplandor)
     {
         var manager = Object.FindFirstObjectByType<JuegoManager>();
-        if (manager != null && manager.GetComponent<AmbienteSonoro>() == null)
+        if (manager == null)
+            return;
+        if (manager.GetComponent<AmbienteSonoro>() == null)
             Undo.AddComponent<AmbienteSonoro>(manager.gameObject);
+        var aviso = manager.GetComponent<AvisoLlamativo>();
+        if (aviso == null)
+            aviso = Undo.AddComponent<AvisoLlamativo>(manager.gameObject);
+        Undo.RecordObject(aviso, "Aviso");
+        aviso.material = matResplandor;
+        EditorUtility.SetDirty(aviso);
     }
 
     // ================= Cronómetro y opciones =================
@@ -993,6 +1006,9 @@ public static class AplicarEstiloYEscenografia
 
     static Material CrearMaterial(string nombre, string shader, Color color, Color sombra, int modoContorno, bool coloresMalla)
     {
+        // Sin contornos: el shader toon se cambia por su versión sin borde (todo lo demás queda igual).
+        if (!contornosAdentro && shader == "FarmaciaVR/Toon")
+            shader = "FarmaciaVR/Toon Sin Borde";
         var m = ObtenerMaterial(nombre, shader);
         m.SetColor("_BaseColor", color);
         m.SetColor("_ShadowColor", sombra);

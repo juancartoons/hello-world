@@ -246,7 +246,11 @@ internal static class InteriorModerno
         techo.CintaVertical(aroFuera, KitMalla.NormalesDeContorno(aroFuera), yAro, ySuperficie, plata, true);
         techo.CintaVertical(aroDentro, Invertir(KitMalla.NormalesDeContorno(aroDentro)), yAro, ySuperficie - 0.002f, huecoFoco, true);
         Vector3 lente = new Vector3(p.x, ySuperficie - 0.004f, p.y);
-        luces.DiscoDegradado(lente, Vector3.down, 0.065f, blancoLed, new Color(0.72f, 0.75f, 0.8f), 24);
+        // Lente blanca por completo, con solo un borde finito que se oscurece hacia el aro
+        luces.DiscoDegradado(lente, Vector3.down, 0.054f, blancoLed, blancoLed, 24);
+        var lenteDentro = A3(Elipse(p, new Vector2(0.054f, 0.054f), 24), lente.y);
+        var lenteFuera = A3(Elipse(p, new Vector2(0.065f, 0.065f), 24), lente.y);
+        luces.FranjaDegradada(lenteDentro, lenteFuera, blancoLed, new Color(0.72f, 0.75f, 0.8f), true);
         brillo.DiscoDegradado(lente + Vector3.down * 0.012f, Vector3.down, 0.05f, Resplandor(0.6f), Resplandor(0f), 16);
         brillo.DiscoDegradado(new Vector3(p.x, ySuperficie - 0.001f, p.y), Vector3.down, 0.26f, Resplandor(0.3f), Resplandor(0f), 24);
     }

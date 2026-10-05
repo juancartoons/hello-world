@@ -2,7 +2,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
-// Un carro (o el bus) que anda por su carril, de "inicio" a "fin", y vuelve a empezar.
+// Un carro (o el bus) que anda por su carril, de "inicio" a "fin" (o por una "ruta" con curvas, para voltear
+// en una esquina), y vuelve a empezar.
 // - Frena detrás del carro de adelante (no se chocan).
 // - Respeta el semáforo del cruce (SemaforoCruce).
 // - Para que no se note que se repite: cada vez que da la vuelta lejos de la vista, espera un rato
@@ -12,6 +13,8 @@ public class CarroEnRuta : MonoBehaviour
     [Header("Carril")]
     public Vector3 inicio;
     public Vector3 fin;
+    [Tooltip("Ruta con curvas (opcional). Si tiene 2 o más puntos, se usa en vez de inicio y fin")]
+    public Vector3[] ruta;
     [Tooltip("Carros con el mismo número comparten carril (se respetan la distancia)")]
     public int carril;
     [Tooltip("Dónde arranca el carro al empezar (metros desde el inicio del carril)")]
@@ -43,8 +46,8 @@ public class CarroEnRuta : MonoBehaviour
 
     float largoCarril, avance, rapidez, factor = 1f, esperaHasta;
     bool oculto;
-    Vector3 direccion;
-    Quaternion rotacion;
+    Vector3[] puntos;
+    float[] acumulado;
     MeshFilter filtro;
     Renderer[] renders;
 
@@ -53,10 +56,11 @@ public class CarroEnRuta : MonoBehaviour
 
     void Start()
     {
-        largoCarril = Vector3.Distance(inicio, fin);
-        direccion = largoCarril > 0.01f ? (fin - inicio) / largoCarril : Vector3.right;
-        // Las mallas de los carros miran hacia +X; LookRotation hace mirar +Z, por eso se gira -90°.
-        rotacion = Quaternion.LookRotation(direccion, Vector3.up) * Quaternion.Euler(0f, -90f, 0f);
+        puntos = ruta != null && ruta.Length >= 2 ? ruta : new[] { inicio, fin };
+        acumulado = new float[puntos.Length];
+        for (int i = 1; i < puntos.Length; i++)
+            acumulado[i] = acumulado[i - 1] + Vector3.Distance(puntos[i - 1], puntos[i]);
+        largoCarril = Mathf.Max(0.01f, acumulado[puntos.Length - 1]);
         filtro = GetComponent<MeshFilter>();
         renders = GetComponentsInChildren<Renderer>(true);
         avance = Mathf.Clamp(avanceInicial, 0f, largoCarril);
@@ -150,8 +154,32 @@ public class CarroEnRuta : MonoBehaviour
                 r.enabled = visible;
     }
 
+    // Punto de la ruta a "s" metros del inicio.
+    Vector3 PuntoEn(float s)
+    {
+        s = Mathf.Clamp(s, 0f, largoCarril);
+        for (int i = 1; i < puntos.Length; i++)
+        {
+            if (s <= acumulado[i] || i == puntos.Length - 1)
+            {
+                float tramo = acumulado[i] - acumulado[i - 1];
+                float t = tramo > 0.0001f ? (s - acumulado[i - 1]) / tramo : 0f;
+                return Vector3.Lerp(puntos[i - 1], puntos[i], t);
+            }
+        }
+        return puntos[0];
+    }
+
     void Ubicar()
     {
-        transform.SetPositionAndRotation(inicio + direccion * avance, rotacion);
+        Vector3 posicion = PuntoEn(avance);
+        // La dirección se toma un poco atrás y un poco adelante: así gira suave en las curvas.
+        Vector3 direccion = PuntoEn(avance + 1.2f) - PuntoEn(avance - 1.2f);
+        direccion.y = 0f;
+        if (direccion.sqrMagnitude < 0.0001f)
+            direccion = puntos[puntos.Length - 1] - puntos[0];
+        // Las mallas de los carros miran hacia +X; LookRotation hace mirar +Z, por eso se gira -90°.
+        var rotacion = Quaternion.LookRotation(direccion.normalized, Vector3.up) * Quaternion.Euler(0f, -90f, 0f);
+        transform.SetPositionAndRotation(posicion, rotacion);
     }
 }

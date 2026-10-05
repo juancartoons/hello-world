@@ -70,7 +70,7 @@ public class AgarreAntigravedad : MonoBehaviour
     Mano izquierda, derecha, manoActiva;
     Vector3 offsetLocal, puntoEspera;
     Quaternion rotacionRelativa;
-    float tiempoEstado, ladoCurva = 1f, mitad = 0.05f;
+    float tiempoEstado, ladoCurva = 1f, mitad = 0.05f, puedeAgarrarDesde;
 
     void Awake()
     {
@@ -136,6 +136,7 @@ public class AgarreAntigravedad : MonoBehaviour
     // Lo llama PersonajeEncontrable cuando llega a la mano.
     public void Activar()
     {
+        puedeAgarrarDesde = Time.time + 0.6f;
         IgnorarMano(izquierda, false);
         IgnorarMano(derecha, false);
         puntoEspera = transform.position;
@@ -177,7 +178,13 @@ public class AgarreAntigravedad : MonoBehaviour
             if (m != null && m.ignorada && m != manoActiva && Time.time > m.ignorarHasta)
                 IgnorarMano(m, false);
         if (estado == Estado.Apagado)
+        {
+            // Se sigue llevando la cuenta de si cada mano está abierta o cerrada aunque el pájaro no esté activo.
+            // (Antes no: en la primera partida una mano medio relajada contaba como "agarrar" y quedaba pegado.)
+            if (izquierda != null) izquierda.cerradaAntes = EstaCerrada(izquierda);
+            if (derecha != null) derecha.cerradaAntes = EstaCerrada(derecha);
             return;
+        }
         tiempoEstado += Time.deltaTime;
 
         switch (estado)
@@ -333,6 +340,9 @@ public class AgarreAntigravedad : MonoBehaviour
     bool IntentarTomar(Mano m)
     {
         if (m == null)
+            return false;
+        // Recién llegado a la mano: espera un momento antes de dejarse agarrar (y solo si la mano se cierra de verdad).
+        if (Time.time < puedeAgarrarDesde)
             return false;
         Vector3 punto = PuntoDeMano(m);
         float distancia = Vector3.Distance(punto, cuerpo.position);

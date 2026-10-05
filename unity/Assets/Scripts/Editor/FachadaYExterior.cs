@@ -280,22 +280,35 @@ internal static class FachadaYExterior
         ext.brillo = 0.35f;
         CajaConHueco(ext, new Vector3(-7f, -0.25f, -8f), new Vector3(70f, -0.01f, 70f), acera); // la manzana de la farmacia
         Manzana(ext, -7f, 70f, -70f, -16f);  // al frente, cruzando la calle
-        Manzana(ext, -70f, -13f, -8f, 70f);  // cruzando la carrera
-        Manzana(ext, -70f, -13f, -70f, -16f);
-        // La calle y la carrera siguen más allá (hasta 170 m) para que los carros aparezcan y desaparezcan muy lejos.
+        Manzana(ext, xCalleNueva + 4f, -13f, -8f, 70f);  // cruzando la carrera (llega hasta la calle nueva)
+        Manzana(ext, xCalleNueva + 4f, -13f, -70f, -16f);
+        // La calle (hacia el oriente) y la carrera siguen más allá (hasta 170 m) para que los carros
+        // aparezcan y desaparezcan muy lejos. Hacia el occidente la calle termina en "T" contra la calle nueva.
         foreach (float s0 in new[] { -1f, 1f })
         {
             float a0 = s0 * 70f, a1 = s0 * LargoCalles;
-            ext.CajaMinMax(new Vector3(Mathf.Min(a0, a1), -0.25f, -16f), new Vector3(Mathf.Max(a0, a1), -0.13f, -8f), asfalto, false);
+            if (s0 > 0f)
+            {
+                ext.CajaMinMax(new Vector3(a0, -0.25f, -16f), new Vector3(a1, -0.13f, -8f), asfalto, false);
+                Manzana(ext, a0, a1, -19f, -16f);
+                Manzana(ext, a0, a1, -8f, -5f);
+            }
             ext.CajaMinMax(new Vector3(-13f, -0.25f, Mathf.Min(a0, a1)), new Vector3(-7f, -0.13f, Mathf.Max(a0, a1)), asfalto, false);
-            Manzana(ext, Mathf.Min(a0, a1), Mathf.Max(a0, a1), -19f, -16f);
-            Manzana(ext, Mathf.Min(a0, a1), Mathf.Max(a0, a1), -8f, -5f);
             Manzana(ext, -16f, -13f, Mathf.Min(a0, a1), Mathf.Max(a0, a1));
             Manzana(ext, -7f, -4f, Mathf.Min(a0, a1), Mathf.Max(a0, a1));
         }
 
+        // Calle nueva (norte-sur) donde termina la calle, y al otro lado una cuadra de edificios que cierra la vista.
+        float xc0 = xCalleNueva - 4f, xc1 = xCalleNueva + 4f;
+        ext.CajaMinMax(new Vector3(xc0, -0.25f, -70f), new Vector3(-70f, -0.13f, 70f), asfalto, false);
+        ext.CajaMinMax(new Vector3(xc0, -0.25f, 70f), new Vector3(xc1, -0.13f, LargoCalles), asfalto, false);
+        ext.CajaMinMax(new Vector3(xc0, -0.25f, -LargoCalles), new Vector3(xc1, -0.13f, -70f), asfalto, false);
+        Manzana(ext, xc0 - 40f, xc0, -LargoCalles, LargoCalles);
+        for (float z = -LargoCalles + 1f; z < LargoCalles - 1f; z += 3f)
+            ext.Piso(new Vector3(xCalleNueva, -0.125f, z + 0.75f), 0.06f, 0.75f, amarillo);
+
         // Líneas de la calle (al frente) y de la carrera (al lado oeste), sin pintar en el cruce.
-        for (float x = -LargoCalles + 1f; x < LargoCalles - 1f; x += 3f)
+        for (float x = xCalleNueva + 4f; x < LargoCalles - 1f; x += 3f)
             if (x + 1.5f < -13f || x > -7f)
                 ext.Piso(new Vector3(x + 0.75f, -0.125f, -12f), 0.75f, 0.06f, amarillo);
         for (float z = -LargoCalles + 1f; z < LargoCalles - 1f; z += 3f)
@@ -341,7 +354,10 @@ internal static class FachadaYExterior
         foreach (var e in frente)
         {
             Edificio(ext, rnd, new Vector3(e[0], 0f, -30f), new Vector3(e[1], e[2], -19f), Elegir(rnd, ladrillos));
-            Toldo(ext, rnd, new Vector3((e[0] + e[1]) / 2f, 2.6f, -18.6f), e[1] - e[0] - 1f, false);
+            if (e[0] == laCiaX0)
+                EntradaLaCIA(ext); // el edificio justo al frente de la farmacia: entrada moderna con el letrero
+            else
+                Toldo(ext, rnd, new Vector3((e[0] + e[1]) / 2f, 2.6f, -18.6f), e[1] - e[0] - 1f, false);
         }
         float[][] carrera = { new[] { -7f, 2f, 12f }, new[] { 2.5f, 10f, 15f }, new[] { 10.5f, 20f, 18f }, new[] { 20.5f, 30f, 12f } };
         foreach (var e in carrera)
@@ -361,6 +377,20 @@ internal static class FachadaYExterior
         Edificio(ext, rnd, new Vector3(10.5f, 0f, -46f), new Vector3(30f, 17f, -31.5f), Elegir(rnd, ladrillos));
         Edificio(ext, rnd, new Vector3(-62f, 0f, -4.5f), new Vector3(-29f, 14f, 8f), Elegir(rnd, ladrillos));
 
+        // "Muro" de edificios al otro lado de la calle nueva: cierra el fondo de la calle (antes se veía un potrero).
+        float xFachada = xCalleNueva - 6f;
+        float[][] muro =
+        {
+            new[] { -62f, -37f, 22f }, new[] { -36f, -21f, 16f }, new[] { -20f, -4f, 26f },
+            new[] { -3f, 12f, 18f }, new[] { 13f, 31f, 24f }, new[] { 32f, 52f, 15f },
+        };
+        foreach (var e in muro)
+        {
+            Edificio(ext, rnd, new Vector3(xFachada - 22f, 0f, e[0]), new Vector3(xFachada, e[2], e[1]),
+                rnd.NextDouble() < 0.75 ? Elegir(rnd, ladrillos) : concreto);
+            Toldo(ext, rnd, new Vector3(xFachada + 0.4f, 2.6f, (e[0] + e[1]) / 2f), e[1] - e[0] - 1f, true);
+        }
+
         // Edificios de fondo (más claros, como vistos a través del aire).
         for (int i = 0; i < 34; i++)
         {
@@ -373,7 +403,8 @@ internal static class FachadaYExterior
             Vector3 max = c + new Vector3(ancho / 2f, alto, fondo / 2f);
             bool tapaLaCalle = min.z < -4f && max.z > -20f;
             bool tapaLaCarrera = min.x < -3f && max.x > -17f;
-            if (tapaLaCalle || tapaLaCarrera)
+            bool tapaCalleNueva = min.x < xCalleNueva + 7f && max.x > xCalleNueva - 29f;
+            if (tapaLaCalle || tapaLaCarrera || tapaCalleNueva)
                 continue;
             ext.CajaMinMax(min, max, color);
             // Franjas de ventanas en la cara que mira hacia la farmacia.
@@ -430,6 +461,8 @@ internal static class FachadaYExterior
 
     // Hasta dónde llegan la calle y la carrera (los carros dan la vuelta allá, muy lejos de la vista).
     const float LargoCalles = 170f;
+    // Centro de la calle nueva (norte-sur) donde termina la calle en "T", justo después del último edificio.
+    const float xCalleNueva = -68f;
     const float yCalle = -0.13f;
 
     // Semáforos del cruce: poste en cada esquina, mirando hacia los carros que llegan.
@@ -485,14 +518,24 @@ internal static class FachadaYExterior
         var lucesCarro = MallaLucesCarro($"{carpeta}/LucesNoche_Carro.asset", 2.25f, 0.65f, 0.57f);
         var lucesBus = MallaLucesCarro($"{carpeta}/LucesNoche_Bus.asset", 5.5f, 0.9f, 0.74f);
 
-        // Carriles: inicio, fin y línea de pare (antes del cruce o de la cebra).
+        // Carriles: ruta, línea de pare (antes del cruce o de la cebra) y grupo del semáforo.
+        // Los de la calle voltean a la derecha en la "T" con la calle nueva (en Colombia se maneja por la derecha).
         float L = LargoCalles;
+        float xNorte = xCalleNueva + 2f, xSur = xCalleNueva - 2f; // carriles de la calle nueva
+        var haciaOriente = new List<Vector3> { new Vector3(xNorte, yCalle, -120f) };
+        haciaOriente.AddRange(Curva(new Vector3(xNorte + 3f, yCalle, -17f), 3f, 180f, 90f, 8));
+        haciaOriente.Add(new Vector3(L, yCalle, -14f));
+        float pareOriente = LargoHasta(haciaOriente, haciaOriente.Count - 2) + (-13.6f - (xNorte + 3f));
+        var haciaOccidente = new List<Vector3> { new Vector3(L, yCalle, -10f) };
+        haciaOccidente.AddRange(Curva(new Vector3(xNorte + 3f, yCalle, -7f), 3f, -90f, -180f, 8));
+        haciaOccidente.Add(new Vector3(xNorte, yCalle, 120f));
         var carriles = new[]
         {
-            (inicio: new Vector3(-L, yCalle, -14f), fin: new Vector3(L, yCalle, -14f), pare: -13.6f + L, grupo: 0),  // calle hacia el oriente
-            (inicio: new Vector3(L, yCalle, -10f), fin: new Vector3(-L, yCalle, -10f), pare: L + 3.4f, grupo: 0),    // calle hacia el occidente
-            (inicio: new Vector3(-8.6f, yCalle, -L), fin: new Vector3(-8.6f, yCalle, L), pare: -16.6f + L, grupo: 1), // carrera hacia el norte
-            (inicio: new Vector3(-11.4f, yCalle, L), fin: new Vector3(-11.4f, yCalle, -L), pare: L + 3.7f, grupo: 1), // carrera hacia el sur
+            (ruta: haciaOriente.ToArray(), pare: pareOriente, grupo: 0),                                               // calle hacia el oriente
+            (ruta: haciaOccidente.ToArray(), pare: L + 3.4f, grupo: 0),                                                // calle hacia el occidente
+            (ruta: new[] { new Vector3(-8.6f, yCalle, -L), new Vector3(-8.6f, yCalle, L) }, pare: -16.6f + L, grupo: 1),  // carrera hacia el norte
+            (ruta: new[] { new Vector3(-11.4f, yCalle, L), new Vector3(-11.4f, yCalle, -L) }, pare: L + 3.7f, grupo: 1),  // carrera hacia el sur
+            (ruta: new[] { new Vector3(xSur, yCalle, 120f), new Vector3(xSur, yCalle, -120f) }, pare: -1f, grupo: 0),    // calle nueva hacia el sur
         };
 
         int numero = 0;
@@ -515,8 +558,9 @@ internal static class FachadaYExterior
             luces.AddComponent<SoloDeNoche>();
             luces.SetActive(false);
             var ruta = go.AddComponent<CarroEnRuta>();
-            ruta.inicio = c.inicio;
-            ruta.fin = c.fin;
+            ruta.ruta = c.ruta;
+            ruta.inicio = c.ruta[0];
+            ruta.fin = c.ruta[c.ruta.Length - 1];
             ruta.carril = carril;
             ruta.avanceInicial = avance;
             ruta.largo = largo;
@@ -526,12 +570,12 @@ internal static class FachadaYExterior
             ruta.variantes = variantes;
             ruta.esperaMinima = esperaMin;
             ruta.esperaMaxima = esperaMax;
-            go.transform.position = c.inicio + (c.fin - c.inicio).normalized * avance;
+            go.transform.position = c.ruta[0];
         }
 
         Mesh F(int i) => familiares[i % familiares.Length];
         // Calle hacia el oriente (el bus va por aquí, justo detrás del jugador al empezar)
-        Carro(0, 175f, mallaBus, null, 11f, 6.5f, 8f, 25f, false, true);
+        Carro(0, 176f, mallaBus, null, 11f, 6.5f, 8f, 25f, false, true);
         Carro(0, 130f, F(1), familiares, 4.5f, 8.3f, 0f, 7f, false, false);
         Carro(0, 60f, mallaTaxi, null, 4.4f, 8.3f, 0f, 7f, true, false);
         Carro(0, 250f, F(5), familiares, 4.5f, 8.3f, 0f, 7f, false, false);
@@ -549,6 +593,9 @@ internal static class FachadaYExterior
         Carro(3, 184f, F(4), familiares, 4.5f, 8.3f, 0f, 7f, false, false);
         Carro(3, 120f, F(1), familiares, 4.5f, 8.3f, 0f, 7f, false, false);
         Carro(3, 50f, mallaTaxi, null, 4.4f, 8.3f, 0f, 7f, true, false);
+        // Calle nueva hacia el sur (pasa por el fondo de la "T")
+        Carro(4, 40f, F(6), familiares, 4.5f, 8.3f, 0f, 9f, false, false);
+        Carro(4, 150f, mallaTaxi, null, 4.4f, 8.3f, 0f, 9f, true, false);
 
         // Bombillos de los semáforos (rojo arriba, amarillo, verde abajo).
         var cruce = new GameObject("Semaforos");
@@ -574,6 +621,27 @@ internal static class FachadaYExterior
         }
         control.bombillosCalle = calle.ToArray();
         control.bombillosCarrera = carrera.ToArray();
+    }
+
+    // Puntos de una curva (arco de círculo en el piso) para que los carros volteen suave en una esquina.
+    static List<Vector3> Curva(Vector3 centro, float radio, float desdeGrados, float hastaGrados, int pasos)
+    {
+        var puntos = new List<Vector3>();
+        for (int i = 0; i <= pasos; i++)
+        {
+            float a = Mathf.Lerp(desdeGrados, hastaGrados, i / (float)pasos) * Mathf.Deg2Rad;
+            puntos.Add(centro + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * radio);
+        }
+        return puntos;
+    }
+
+    // Largo de una ruta desde su inicio hasta el punto número "hasta".
+    static float LargoHasta(List<Vector3> ruta, int hasta)
+    {
+        float largo = 0f;
+        for (int i = 1; i <= hasta && i < ruta.Count; i++)
+            largo += Vector3.Distance(ruta[i - 1], ruta[i]);
+        return largo;
     }
 
     // Haces de luz de un carro (coordenadas del carro: +X adelante, la calle en y = 0).
@@ -606,6 +674,89 @@ internal static class FachadaYExterior
         k.CuadroColores(new Vector3(-hx - 0.1f, 0.02f, -0.9f), new Vector3(-hx - 0.1f, 0.02f, 0.9f),
             new Vector3(-hx - 1.8f, 0.02f, 1.1f), new Vector3(-hx - 1.8f, 0.02f, -1.1f), Roja(0.22f), Roja(0.22f), Roja(0f), Roja(0f));
         return k.GuardarComo(ruta);
+    }
+
+    // ---------- Letrero "LA CIA Agencia" (edificio al frente de la farmacia, cruzando la calle) ----------
+
+    const float laCiaX0 = -6.5f, laCiaX1 = 2f, laCiaFachada = -19f;
+    static readonly Color negroMate = new Color(0.1f, 0.11f, 0.13f);
+
+    // Entrada moderna (como la foto): franja oscura para las letras, marquesina con listones, vitrina de vidrio y puerta.
+    static void EntradaLaCIA(KitMalla k)
+    {
+        float x0 = laCiaX0 + 0.5f, x1 = laCiaX1 - 0.5f, z = laCiaFachada;
+        k.brillo = 0.5f;
+        // Franja oscura donde van las letras (sale un poco de la fachada)
+        k.CajaMinMax(new Vector3(x0, 3.0f, z), new Vector3(x1, 4.15f, z + 0.28f), negroMate);
+        // Marquesina: marco y listones metálicos
+        float zm = z + 1.7f;
+        k.CajaMinMax(new Vector3(x0 + 0.3f, 2.86f, z), new Vector3(x1 - 0.3f, 2.94f, z + 0.12f), negroMate);
+        k.CajaMinMax(new Vector3(x0 + 0.3f, 2.86f, zm - 0.08f), new Vector3(x1 - 0.3f, 2.94f, zm), negroMate);
+        foreach (float x in new[] { x0 + 0.3f, x1 - 0.38f })
+            k.CajaMinMax(new Vector3(x, 2.86f, z), new Vector3(x + 0.08f, 2.94f, zm), negroMate);
+        for (float x = x0 + 0.45f; x < x1 - 0.4f; x += 0.14f)
+            k.CajaMinMax(new Vector3(x, 2.87f, z + 0.12f), new Vector3(x + 0.035f, 2.95f, zm - 0.08f), new Color(0.2f, 0.21f, 0.24f), false);
+        // Tensores que sostienen la marquesina
+        foreach (float x in new[] { x0 + 0.7f, x1 - 0.7f })
+            k.Hexaedro(new[]
+            {
+                new Vector3(x - 0.015f, 2.94f, zm - 0.1f), new Vector3(x + 0.015f, 2.94f, zm - 0.1f),
+                new Vector3(x + 0.015f, 2.94f, zm - 0.07f), new Vector3(x - 0.015f, 2.94f, zm - 0.07f),
+                new Vector3(x - 0.015f, 3.6f, z + 0.03f), new Vector3(x + 0.015f, 3.6f, z + 0.03f),
+                new Vector3(x + 0.015f, 3.6f, z + 0.06f), new Vector3(x - 0.015f, 3.6f, z + 0.06f),
+            }, negroMate, false);
+        // Vitrina de vidrio con perfiles oscuros, y puerta doble en el centro
+        k.brillo = 1f;
+        k.luzNoche = new Color(1.1f, 0.95f, 0.75f);
+        k.Etiqueta(new Vector3((x0 + x1) / 2f, 1.4f, z + 0.02f), Vector3.forward, 1.35f, (x1 - x0) / 2f, vidrioOscuro);
+        k.luzNoche = Color.black;
+        k.brillo = 0.5f;
+        for (float x = x0; x <= x1 + 0.01f; x += (x1 - x0) / 6f)
+            k.CajaMinMax(new Vector3(x - 0.04f, 0.05f, z), new Vector3(x + 0.04f, 2.8f, z + 0.06f), negroMate, false);
+        k.CajaMinMax(new Vector3(x0, 2.75f, z), new Vector3(x1, 2.82f, z + 0.06f), negroMate, false);
+        k.CajaMinMax(new Vector3(x0, 0.0f, z), new Vector3(x1, 0.1f, z + 0.06f), negroMate, false);
+        float xp = (x0 + x1) / 2f;
+        foreach (float lado in new[] { -0.12f, 0.12f })
+            k.CajaMinMax(new Vector3(xp + lado - 0.012f, 0.95f, z + 0.06f), new Vector3(xp + lado + 0.012f, 1.45f, z + 0.12f), new Color(0.75f, 0.76f, 0.78f), false);
+        k.brillo = 0.2f;
+    }
+
+    // Letras blancas "LA CIA Agencia" sobre la franja oscura, y de noche un resplandor suave alrededor.
+    internal static void ConstruirLetreroLaCIA(Transform raiz, Material matLuz, string carpeta)
+    {
+        float xc = (laCiaX0 + laCiaX1) / 2f, zFrente = laCiaFachada + 0.28f;
+        var brillo = new KitMalla();
+        Color calida = new Color(1f, 0.92f, 0.8f);
+        var dentro = new List<Vector3>
+        {
+            new Vector3(xc + 3.2f, 3.2f, zFrente + 0.01f), new Vector3(xc - 3.2f, 3.2f, zFrente + 0.01f),
+            new Vector3(xc - 3.2f, 3.95f, zFrente + 0.01f), new Vector3(xc + 3.2f, 3.95f, zFrente + 0.01f),
+        };
+        var fuera = new List<Vector3>
+        {
+            new Vector3(xc + 3.7f, 2.95f, zFrente + 0.01f), new Vector3(xc - 3.7f, 2.95f, zFrente + 0.01f),
+            new Vector3(xc - 3.7f, 4.2f, zFrente + 0.01f), new Vector3(xc + 3.7f, 4.2f, zFrente + 0.01f),
+        };
+        Color c = new Color(calida.r, calida.g, calida.b, 0.22f), nada = new Color(calida.r, calida.g, calida.b, 0f);
+        brillo.CuadroColores(dentro[0], dentro[1], dentro[2], dentro[3], c, c, c, c);
+        brillo.FranjaDegradada(dentro, fuera, c, nada, true);
+        brillo.CrearObjeto("LetreroLaCIA_Resplandor", raiz, matLuz, carpeta).AddComponent<SoloDeNoche>();
+
+        if (Resources.Load<TMP_Settings>("TMP Settings") == null)
+            return;
+        var go = new GameObject("Letrero_LaCIA", typeof(RectTransform));
+        go.transform.SetParent(raiz, false);
+        var tmp = go.AddComponent<TextMeshPro>();
+        tmp.text = "<b>LA CIA</b> <size=75%>Agencia</size>";
+        tmp.enableAutoSizing = true;
+        tmp.fontSizeMin = 0.1f;
+        tmp.fontSizeMax = 40f;
+        tmp.alignment = TextAlignmentOptions.Center;
+        tmp.color = Color.white;
+        tmp.characterSpacing = 4f;
+        tmp.rectTransform.sizeDelta = new Vector2(6.2f, 0.8f);
+        // El letrero mira hacia la farmacia (hacia +Z): se lee desde el andén de enfrente.
+        go.transform.SetPositionAndRotation(new Vector3(xc, 3.58f, zFrente + 0.006f), Quaternion.Euler(0f, 180f, 0f));
     }
 
     // ---------- Piezas del exterior ----------

@@ -29,6 +29,9 @@ public class JuegoManager : MonoBehaviour
     public GameObject opcionesNavegacion;
     [Tooltip("Distancia (metros) a la que aparece el panel frente al jugador")]
     public float distanciaPanel = 1.2f;
+    [Tooltip("Al ganar o perder, el aviso sale arriba de las góndolas a esta altura (metros)")]
+    public float alturaAvisoArriba = 2.3f;
+    public float distanciaAvisoArriba = 1.8f;
 
     [Header("Lugares")]
     [Tooltip("Donde empieza el jugador: afuera, en el andén frente a la puerta")]
@@ -69,6 +72,7 @@ public class JuegoManager : MonoBehaviour
     float tiempoRestante;
     Estado estado;
     Coroutine rutina;
+    AvisoLlamativo aviso;
 
     void Start()
     {
@@ -88,6 +92,8 @@ public class JuegoManager : MonoBehaviour
         if (sonidoCelebracion == null) sonidoCelebracion = SonidosProcedurales.Celebracion();
 
         personaje.alSerEncontrado.AddListener(AlEncontrarlo);
+
+        aviso = GetComponent<AvisoLlamativo>();
 
         var palmadas = GetComponent<DetectorPalmadas>();
         if (palmadas == null)
@@ -137,6 +143,8 @@ public class JuegoManager : MonoBehaviour
         EsconderPersonaje();
         MostrarCronometro(false);
 
+        if (aviso != null)
+            aviso.Ocultar();
         MoverJugador(puntoAfuera);
         MostrarPanel("¡Encuentra al personaje escondido!", textoPalmada);
         MostrarOpciones(true);
@@ -228,7 +236,7 @@ public class JuegoManager : MonoBehaviour
         ignorarPalmadasHasta = Time.time + 1f;
         personaje.Activo = false;
         MostrarCronometro(false);
-        MostrarPanel(titulo, texto);
+        MostrarPanel(titulo, texto, true); // arriba de las góndolas, con luces que llaman la atención
         Cambiar(VolverSolo());
     }
 
@@ -386,7 +394,9 @@ public class JuegoManager : MonoBehaviour
     // ---------- Panel ----------
 
     // Pone el panel frente al jugador, a la altura de sus ojos, mirándolo.
-    void MostrarPanel(string titulo, string codigo)
+    // Con "arriba" (al ganar o perder) sale por encima de las góndolas para que nada lo tape,
+    // un poco inclinado hacia el jugador, y con destellos que suben hacia él (AvisoLlamativo).
+    void MostrarPanel(string titulo, string codigo, bool arriba = false)
     {
         if (textoTitulo != null) textoTitulo.text = titulo;
         if (textoCodigo != null) textoCodigo.text = codigo;
@@ -398,8 +408,25 @@ public class JuegoManager : MonoBehaviour
             if (frente.sqrMagnitude < 0.001f) frente = Vector3.forward;
             frente.Normalize();
 
-            panel.transform.position = cabeza.position + frente * distanciaPanel;
-            panel.transform.rotation = Quaternion.LookRotation(frente, Vector3.up);
+            if (arriba)
+            {
+                float altura = Mathf.Max(cabeza.position.y + 0.55f, alturaAvisoArriba);
+                float distancia = distanciaAvisoArriba;
+                // Si hay una pared o un estante alto adelante (a la altura del aviso), se acerca para no atravesarlo.
+                Vector3 origen = new Vector3(cabeza.position.x, altura, cabeza.position.z);
+                if (Physics.Raycast(origen, frente, out RaycastHit hit, distancia + 0.4f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+                    distancia = Mathf.Max(0.7f, hit.distance - 0.4f);
+                Vector3 posicion = cabeza.position + frente * distancia;
+                posicion.y = altura;
+                panel.transform.SetPositionAndRotation(posicion, Quaternion.LookRotation(posicion - cabeza.position, Vector3.up));
+                if (aviso != null)
+                    aviso.Mostrar(panel.transform.position, panel.transform.rotation);
+            }
+            else
+            {
+                panel.transform.position = cabeza.position + frente * distanciaPanel;
+                panel.transform.rotation = Quaternion.LookRotation(frente, Vector3.up);
+            }
         }
         panel.SetActive(true);
     }
