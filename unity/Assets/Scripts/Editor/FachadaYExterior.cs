@@ -97,7 +97,52 @@ internal static class FachadaYExterior
 
         fachada.CrearObjeto("Kit_Fachada", raiz, matKit, carpeta);
         vidrio.CrearObjeto("Vidrios", raiz, matVidrio, carpeta);
+        ConstruirPuerta(raiz, matKit, matVidrio, carpeta);
         luz.CrearObjeto("LuzDeSol", raiz, matLuz, carpeta).AddComponent<SoloDeDia>(); // de noche no entra sol
+    }
+
+    // Puerta automática de vidrio: dos hojas (marco y vidrio) que se deslizan hacia los lados, por dentro de la pared.
+    static void ConstruirPuerta(Transform raiz, Material matKit, Material matVidrio, string carpeta)
+    {
+        const float ancho = 0.7f, alto = 2.3f, b = 0.03f;
+        var marcoHoja = new KitMalla();
+        var vidrioHoja = new KitMalla();
+        marcoHoja.CajaMinMax(new Vector3(-ancho / 2f, 0f, -0.012f), new Vector3(ancho / 2f, b * 2f, 0.012f), marco);
+        marcoHoja.CajaMinMax(new Vector3(-ancho / 2f, alto - b, -0.012f), new Vector3(ancho / 2f, alto, 0.012f), marco);
+        marcoHoja.CajaMinMax(new Vector3(-ancho / 2f, 0f, -0.012f), new Vector3(-ancho / 2f + b, alto, 0.012f), marco);
+        marcoHoja.CajaMinMax(new Vector3(ancho / 2f - b, 0f, -0.012f), new Vector3(ancho / 2f, alto, 0.012f), marco);
+        vidrioHoja.CajaMinMax(new Vector3(-ancho / 2f + b, b * 2f, -0.004f), new Vector3(ancho / 2f - b, alto - b, 0.004f), Color.white, false);
+        var mallaMarco = marcoHoja.GuardarComo($"{carpeta}/Puerta_Marco.asset");
+        var mallaVidrio = vidrioHoja.GuardarComo($"{carpeta}/Puerta_Vidrio.asset");
+
+        var puerta = new GameObject("PuertaAutomatica");
+        puerta.transform.SetParent(raiz, false);
+        puerta.transform.position = new Vector3(0f, 0f, -4.83f);
+        Transform Hoja(string nombre, float x, float xManija)
+        {
+            var hoja = new GameObject(nombre);
+            hoja.transform.SetParent(puerta.transform, false);
+            hoja.transform.localPosition = new Vector3(x, 0f, 0f);
+            var m = new GameObject("Marco");
+            m.transform.SetParent(hoja.transform, false);
+            m.AddComponent<MeshFilter>().sharedMesh = mallaMarco;
+            m.AddComponent<MeshRenderer>().sharedMaterial = matKit;
+            var v = new GameObject("Vidrio");
+            v.transform.SetParent(hoja.transform, false);
+            v.AddComponent<MeshFilter>().sharedMesh = mallaVidrio;
+            v.AddComponent<MeshRenderer>().sharedMaterial = matVidrio;
+            // Manija vertical junto al centro de la puerta
+            var manija = new KitMalla();
+            manija.CajaMinMax(new Vector3(xManija - 0.015f, 0.9f, -0.06f), new Vector3(xManija + 0.015f, 1.3f, 0.06f), grisOscuro);
+            var mm = new GameObject("Manija");
+            mm.transform.SetParent(hoja.transform, false);
+            mm.AddComponent<MeshFilter>().sharedMesh = manija.GuardarComo($"{carpeta}/Puerta_{nombre}_Manija.asset");
+            mm.AddComponent<MeshRenderer>().sharedMaterial = matKit;
+            return hoja.transform;
+        }
+        var control = puerta.AddComponent<PuertaAutomatica>();
+        control.hojaIzquierda = Hoja("HojaIzquierda", -ancho / 2f, ancho / 2f - 0.1f);
+        control.hojaDerecha = Hoja("HojaDerecha", ancho / 2f, -ancho / 2f + 0.1f);
     }
 
     // Pared de 0.2 m de grosor con huecos. Si "enX" es true, la pared va a lo largo de Z en x = fijo;
@@ -154,16 +199,12 @@ internal static class FachadaYExterior
             Bloque(h.a0 - b, h.a0 + b, yBase, h.y1, pm0, pm1, marco, true, kit);
             Bloque(h.a1 - b, h.a1 + b, yBase, h.y1, pm0, pm1, marco, true, kit);
 
-            float medio = (h.a0 + h.a1) / 2f;
-            if (h.puerta || h.a1 - h.a0 > 1.2f)
-                Bloque(medio - b, medio + b, yBase, h.y1, pm0, pm1, marco, true, kit);
+            // La puerta es automática: sus hojas de vidrio se arman aparte (ConstruirPuerta) porque se mueven.
             if (h.puerta)
-            {
-                // Manijas de la puerta de vidrio.
-                foreach (float lado in new[] { -1f, 1f })
-                    Bloque(medio + lado * 0.1f - 0.015f, medio + lado * 0.1f + 0.015f, 0.9f, 1.3f,
-                        fijo - mitadGrosor - 0.08f, fijo + mitadGrosor + 0.08f, grisOscuro, true, kit);
-            }
+                continue;
+            float medio = (h.a0 + h.a1) / 2f;
+            if (h.a1 - h.a0 > 1.2f)
+                Bloque(medio - b, medio + b, yBase, h.y1, pm0, pm1, marco, true, kit);
 
             Bloque(h.a0, h.a1, yBase, h.y1, fijo - 0.005f, fijo + 0.005f, Color.white, false, vidrio);
         }

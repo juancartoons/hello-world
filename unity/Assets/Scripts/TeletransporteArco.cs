@@ -19,6 +19,8 @@ public class TeletransporteArco : MonoBehaviour
     public Color colorInvalido = new Color(1f, 0.35f, 0.3f, 0.7f);
     [Tooltip("Zona del piso donde se puede caer (x mínimo, x máximo, z mínimo, z máximo)")]
     public Vector4 zonaPermitida = new Vector4(-4.8f, 4.8f, -4.8f, 7.8f);
+    [Tooltip("Grados que se inclina el arco hacia abajo respecto a la mano (para no tener que bajar la muñeca)")]
+    public float inclinacionAbajo = 28f;
     [Tooltip("Qué tan suave se mueve el arco (más bajo = más estable)")]
     public float suavidad = 12f;
 
@@ -157,7 +159,10 @@ public class TeletransporteArco : MonoBehaviour
             return false;
 
         origen = ManosUtil.PuntoDePellizco(m.esqueleto, m.ancla);
-        direccion = ((nudillo.position - muneca.position).normalized + Vector3.up * 0.05f).normalized;
+        // Con la mano en posición cómoda (casi horizontal) el arco ya apunta al piso: se inclina hacia abajo.
+        Vector3 mano = (nudillo.position - muneca.position).normalized;
+        Vector3 lado = Vector3.Cross(Vector3.up, mano);
+        direccion = lado.sqrMagnitude > 0.001f ? Quaternion.AngleAxis(inclinacionAbajo, lado.normalized) * mano : mano;
         return true;
     }
 

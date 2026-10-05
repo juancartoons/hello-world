@@ -229,6 +229,46 @@ internal class KitMalla
         }
     }
 
+    // Esfera lisa con un color distinto en cada punto (por ejemplo, barriga más clara u overol en la parte de abajo).
+    // "colorEn" recibe la dirección del punto en una esfera de radio 1 (x, y, z entre -1 y 1).
+    public void EsferaColor(Vector3 centro, Vector3 radios, int subdivisiones, System.Func<Vector3, Color> colorEn, bool contorno = true)
+    {
+        Vector3 inverso = new Vector3(1f / radios.x, 1f / radios.y, 1f / radios.z);
+        foreach (var tri in Icosfera(subdivisiones))
+        {
+            Vector3 a = centro + Vector3.Scale(tri[0], radios);
+            Vector3 b = centro + Vector3.Scale(tri[1], radios);
+            Vector3 c = centro + Vector3.Scale(tri[2], radios);
+            Vector3 afuera = (a + b + c) / 3f - centro;
+            TrianguloSuaveColores(a, b, c, Vector3.Scale(tri[0], inverso), Vector3.Scale(tri[1], inverso), Vector3.Scale(tri[2], inverso),
+                colorEn(tri[0]), colorEn(tri[1]), colorEn(tri[2]), afuera, centro, contorno);
+        }
+    }
+
+    void TrianguloSuaveColores(Vector3 a, Vector3 b, Vector3 c, Vector3 na, Vector3 nb, Vector3 nc,
+        Color ca, Color cb, Color cc, Vector3 haciaAfuera, Vector3 centroPieza, bool contorno)
+    {
+        if (Vector3.Dot(Vector3.Cross(b - a, c - a), haciaAfuera) < 0f)
+        {
+            var t = b; b = c; c = t;
+            var tn = nb; nb = nc; nc = tn;
+            var tc = cb; cb = cc; cc = tc;
+        }
+        int i = vertices.Count;
+        var ps = new[] { a, b, c };
+        var ns = new[] { na, nb, nc };
+        var cs = new[] { ca, cb, cc };
+        for (int k = 0; k < 3; k++)
+        {
+            vertices.Add(ps[k]);
+            normales.Add(ns[k].normalized);
+            colores.Add(ConBrillo(cs[k]));
+            direcciones.Add(Dir(ps[k] - centroPieza, contorno));
+            emisiones.Add(Emision());
+        }
+        triangulos.Add(i); triangulos.Add(i + 1); triangulos.Add(i + 2);
+    }
+
     // Esfera del cielo con degradado (horizonte claro, cenit más azul). Se ve desde adentro.
     public void Cielo(float radio, Color horizonte, Color cenit, Color suelo)
     {

@@ -1,17 +1,17 @@
 Shader "FarmaciaVR/Piso Brillante"
 {
-    // Piso de mármol súper pulido: deja ver el reflejo del techo, las luces y los muebles
-    // (el reflejo es una copia "de cabeza" de la farmacia debajo del piso).
-    // El piso se dibuja encima del reflejo, semitransparente: mientras más de lado lo miras, más refleja.
+    // Piso de mármol súper pulido: deja ver un reflejo suave de los muebles y el techo
+    // (una copia "de cabeza" de la farmacia debajo del piso) y, encima, los brillos fuertes de las luces
+    // (se suman después del piso con el shader "Reflejo Luz"). Así se siente piso brillante, no espejo.
     Properties
     {
-        _BaseColor ("Color del mármol", Color) = (0.95, 0.95, 0.97, 1)
-        _ColorVetas ("Color de las vetas", Color) = (0.66, 0.68, 0.74, 1)
+        _BaseColor ("Color del mármol", Color) = (0.86, 0.87, 0.9, 1)
+        _ColorVetas ("Color de las vetas", Color) = (0.62, 0.64, 0.7, 1)
         _Vetas ("Intensidad de las vetas", Range(0, 1)) = 0.45
-        _ColorJunta ("Color de las juntas", Color) = (0.78, 0.79, 0.83, 1)
+        _ColorJunta ("Color de las juntas", Color) = (0.72, 0.73, 0.77, 1)
         _Baldosa ("Tamaño de las baldosas (m)", Float) = 1.2
-        _OpacidadCerca ("Opacidad mirando hacia abajo", Range(0, 1)) = 0.5
-        _OpacidadLejos ("Opacidad a lo lejos (más reflejo)", Range(0, 1)) = 0.18
+        _OpacidadCerca ("Opacidad mirando hacia abajo", Range(0, 1)) = 0.74
+        _OpacidadLejos ("Opacidad a lo lejos (más reflejo)", Range(0, 1)) = 0.45
     }
 
     SubShader
@@ -24,7 +24,8 @@ Shader "FarmaciaVR/Piso Brillante"
             Name "PisoBrillante"
             Tags { "LightMode" = "UniversalForward" }
             Blend SrcAlpha OneMinusSrcAlpha
-            ZWrite On
+            // No escribe profundidad: así los brillos de las luces reflejadas se pueden sumar encima.
+            ZWrite Off
             Cull Back
 
             HLSLPROGRAM

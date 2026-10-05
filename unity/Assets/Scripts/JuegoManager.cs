@@ -16,6 +16,8 @@ public class JuegoManager : MonoBehaviour
     public PersonajeEncontrable personaje;
     [Tooltip("Objeto vacío cuyos hijos son los escondites posibles")]
     public Transform escondites;
+    [Tooltip("Peluches rojos (no son el pájaro) que se reparten en otros escondites para despistar")]
+    public Transform senuelos;
 
     [Header("Panel (Canvas World Space)")]
     public GameObject panel;
@@ -48,10 +50,10 @@ public class JuegoManager : MonoBehaviour
     public float alturaObjetivo = 1.55f;
 
     [Header("Sonidos y efectos (opcionales)")]
-    [Tooltip("Arrastra aquí el sonido del 'pío' (mp3/wav). Suena en 3D desde el personaje")]
+    [Tooltip("Sonido del 'pío' (mp3/wav). Si lo dejas vacío, se usa uno hecho por código. Suena en 3D desde el personaje")]
     public AudioClip sonidoPio;
     public float segundosEntrePios = 4f;
-    [Tooltip("Arrastra aquí el sonido de celebración al encontrarlo")]
+    [Tooltip("Sonido de celebración al encontrarlo. Si lo dejas vacío, se usa uno hecho por código")]
     public AudioClip sonidoCelebracion;
     public ParticleSystem confeti;
 
@@ -82,6 +84,8 @@ public class JuegoManager : MonoBehaviour
         fuentePersonaje.spatialBlend = 1f;
         fuentePersonaje.rolloffMode = AudioRolloffMode.Linear;
         fuentePersonaje.maxDistance = 15f;
+        if (sonidoPio == null) sonidoPio = SonidosProcedurales.Pio();
+        if (sonidoCelebracion == null) sonidoCelebracion = SonidosProcedurales.Celebracion();
 
         personaje.alSerEncontrado.AddListener(AlEncontrarlo);
 
@@ -301,6 +305,55 @@ public class JuegoManager : MonoBehaviour
         Transform punto = escondites.GetChild(indice);
         personaje.transform.SetPositionAndRotation(punto.position, punto.rotation);
         ApoyarEnSuperficie();
+        RepartirSenuelos(indice);
+    }
+
+    // Pone cada peluche rojo en un escondite distinto (nunca donde está el pájaro).
+    void RepartirSenuelos(int indicePajaro)
+    {
+        if (senuelos == null)
+            return;
+        int cantidad = escondites.childCount;
+        var libres = new System.Collections.Generic.List<int>();
+        for (int i = 0; i < cantidad; i++)
+            if (i != indicePajaro)
+                libres.Add(i);
+        foreach (Transform peluche in senuelos)
+        {
+            if (libres.Count == 0)
+            {
+                peluche.gameObject.SetActive(false);
+                continue;
+            }
+            int k = Random.Range(0, libres.Count);
+            Transform punto = escondites.GetChild(libres[k]);
+            libres.RemoveAt(k);
+            peluche.gameObject.SetActive(true);
+            peluche.SetPositionAndRotation(punto.position, punto.rotation * Quaternion.Euler(0f, Random.Range(-35f, 35f), 0f));
+            Apoyar(peluche);
+        }
+    }
+
+    // Deja un peluche apoyado sobre lo que tenga debajo (piso o producto).
+    void Apoyar(Transform objeto)
+    {
+        var renders = objeto.GetComponentsInChildren<Renderer>();
+        if (renders.Length == 0)
+            return;
+        Bounds limites = renders[0].bounds;
+        foreach (var r in renders)
+            limites.Encapsulate(r.bounds);
+        Vector3 origen = new Vector3(limites.center.x, limites.max.y + 0.05f, limites.center.z);
+        float superficie = float.NegativeInfinity;
+        foreach (var hit in Physics.RaycastAll(origen, Vector3.down, 3f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+        {
+            if (hit.collider.transform.IsChildOf(personaje.transform))
+                continue;
+            if (hit.point.y > superficie)
+                superficie = hit.point.y;
+        }
+        if (!float.IsNegativeInfinity(superficie))
+            objeto.position += Vector3.up * (superficie - limites.min.y);
     }
 
     // Baja (o sube) al personaje para que quede apoyado sobre lo que tenga debajo

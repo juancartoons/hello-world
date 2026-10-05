@@ -61,23 +61,23 @@ internal static class InteriorModerno
         var molduraFuera = RectRedondeado(0f, cz, hx, hz, 0.25f, 6);
         var molduraDentro = RectRedondeado(0f, cz, hx - anchoMoldura, hz - anchoMoldura, 0.7f, 6);
         Losa(techo, molduraFuera, molduraDentro, yMoldura, yTecho, blanco, false, true);
-        LedEnBorde(luces, molduraDentro, false, yMoldura);
+        LedEnBorde(luces, molduraDentro, false, yMoldura, techo, brillo);
         BrilloEntre(brillo, molduraDentro, RectRedondeado(0f, cz, hx - anchoMoldura - 0.6f, hz - anchoMoldura - 0.6f, 0.9f, 6), yTecho - 0.003f, 0.45f);
 
         // --- Anillos flotantes del frente ---
         var aFuera = Elipse(centroAnillos, anilloA_fuera, 72);
         var aDentro = Elipse(centroAnillos, anilloA_dentro, 72);
         Losa(techo, aFuera, aDentro, yAnilloA, yTecho, blanco, true, true);
-        LedEnBorde(luces, aFuera, true, yAnilloA);
-        LedEnBorde(luces, aDentro, false, yAnilloA);
+        LedEnBorde(luces, aFuera, true, yAnilloA, techo, brillo);
+        LedEnBorde(luces, aDentro, false, yAnilloA, techo, brillo);
         BrilloEntre(brillo, aFuera, Elipse(centroAnillos, anilloA_fuera + Vector2.one * 0.45f, 72), yTecho - 0.003f, 0.4f);
         BrilloEntre(brillo, aDentro, Elipse(centroAnillos, anilloA_dentro - Vector2.one * 0.4f, 72), yTecho - 0.003f, 0.5f);
 
         var bFuera = Elipse(centroAnillos, anilloB_fuera, 64);
         var bDentro = Elipse(centroAnillos, anilloB_dentro, 64);
         Losa(techo, bFuera, bDentro, yAnilloB, yTecho, blanco, true, true);
-        LedEnBorde(luces, bFuera, true, yAnilloB);
-        LedEnBorde(luces, bDentro, false, yAnilloB);
+        LedEnBorde(luces, bFuera, true, yAnilloB, techo, brillo);
+        LedEnBorde(luces, bDentro, false, yAnilloB, techo, brillo);
         BrilloEntre(brillo, bDentro, Elipse(centroAnillos, anilloB_dentro - Vector2.one * 0.25f, 64), yTecho - 0.003f, 0.5f);
 
         // Panel de luz ovalado en el centro de los anillos
@@ -100,8 +100,8 @@ internal static class InteriorModerno
         var normalDer = NormalesDeLinea(der, 1f);
         techo.CintaVertical(izq, normalIzq, yOla + 0.04f, yTecho, blanco);
         techo.CintaVertical(der, normalDer, yOla + 0.04f, yTecho, blanco);
-        luces.CintaVertical(Mover(izq, normalIzq, 0.003f), normalIzq, yOla, yOla + 0.04f, blancoLed);
-        luces.CintaVertical(Mover(der, normalDer, 0.003f), normalDer, yOla, yOla + 0.04f, blancoLed);
+        LedConPerfil(luces, techo, brillo, izq, normalIzq, yOla, false);
+        LedConPerfil(luces, techo, brillo, der, normalDer, yOla, false);
         brillo.FranjaDegradada(A3(izq, yTecho - 0.003f), A3(Mover(izq, normalIzq, 0.45f), yTecho - 0.003f), Resplandor(0.45f), Resplandor(0f));
         brillo.FranjaDegradada(A3(der, yTecho - 0.003f), A3(Mover(der, normalDer, 0.45f), yTecho - 0.003f), Resplandor(0.45f), Resplandor(0f));
 
@@ -117,19 +117,16 @@ internal static class InteriorModerno
                 linea.Add(lado.Item1[i] + lado.Item2[i] * 0.55f);
                 normales.Add(lado.Item2[i]);
             }
-            luces.Franja(A3(Mover(linea, normales, -0.015f), yTecho - 0.004f), A3(Mover(linea, normales, 0.015f), yTecho - 0.004f), Vector3.down, blancoLed);
+            luces.Franja(A3(Mover(linea, normales, -0.012f), yTecho - 0.004f), A3(Mover(linea, normales, 0.012f), yTecho - 0.004f), Vector3.down, blancoLed);
+            techo.Franja(A3(Mover(linea, normales, -0.024f), yTecho - 0.0045f), A3(Mover(linea, normales, -0.012f), yTecho - 0.0045f), Vector3.down, perfilAluminio);
+            techo.Franja(A3(Mover(linea, normales, 0.012f), yTecho - 0.0045f), A3(Mover(linea, normales, 0.024f), yTecho - 0.0045f), Vector3.down, perfilAluminio);
             brillo.FranjaDegradada(A3(linea, yTecho - 0.005f), A3(Mover(linea, normales, 0.16f), yTecho - 0.005f), Resplandor(0.35f), Resplandor(0f));
             brillo.FranjaDegradada(A3(linea, yTecho - 0.005f), A3(Mover(linea, normales, -0.16f), yTecho - 0.005f), Resplandor(0.35f), Resplandor(0f));
         }
 
-        // --- Focos redondos ---
+        // --- Focos redondos (aro metálico, hueco y lente que brilla) ---
         foreach (var p in PosicionesFocos())
-        {
-            float y = AlturaTecho(p.x, p.y);
-            Vector3 c = new Vector3(p.x, y - 0.003f, p.y);
-            luces.DiscoDegradado(c, Vector3.down, 0.06f, blancoLed, blancoLed, 14);
-            brillo.DiscoDegradado(c + Vector3.down * 0.002f, Vector3.down, 0.24f, Resplandor(0.55f), Resplandor(0f), 18);
-        }
+            Foco(techo, luces, brillo, p, AlturaTecho(p.x, p.y));
 
         techo.CrearObjeto("Kit_Techo", raiz, matTechoKit, carpeta);
         luces.CrearObjeto("Kit_TechoLuces", raiz, matBrillo, carpeta);
@@ -203,13 +200,55 @@ internal static class InteriorModerno
             k.CintaVertical(dentro, Invertir(KitMalla.NormalesDeContorno(dentro)), yAbajo + 0.04f, yArriba, color, true);
     }
 
+    static readonly Color perfilAluminio = new Color(0.55f, 0.57f, 0.62f);
+    static readonly Color ledSuave = new Color(0.86f, 0.9f, 0.96f);
+    static readonly Color plata = new Color(0.82f, 0.83f, 0.86f);
+    static readonly Color huecoFoco = new Color(0.42f, 0.43f, 0.47f);
+
     // Línea de LED en el borde de abajo de una losa (en su cara de afuera o de adentro).
-    static void LedEnBorde(KitMalla luces, List<Vector2> curva, bool haciaAfuera, float yAbajo)
+    static void LedEnBorde(KitMalla luces, List<Vector2> curva, bool haciaAfuera, float yAbajo, KitMalla perfil = null, KitMalla brillo = null)
     {
         var normales = KitMalla.NormalesDeContorno(curva);
         if (!haciaAfuera)
             normales = Invertir(normales);
-        luces.CintaVertical(Mover(curva, normales, 0.003f), normales, yAbajo, yAbajo + 0.04f, blancoLed, true);
+        LedConPerfil(luces, perfil, brillo, curva, normales, yAbajo, true);
+    }
+
+    // LED dentro de un perfil de aluminio: bordes grises, luz más fuerte en el centro
+    // y un resplandor suave arriba y abajo (así se ve como luz de verdad y no como una franja pintada).
+    static void LedConPerfil(KitMalla luces, KitMalla perfil, KitMalla brillo, List<Vector2> curva, List<Vector2> normales, float y0, bool cerrada)
+    {
+        if (perfil != null)
+        {
+            var fuera = Mover(curva, normales, 0.006f);
+            perfil.CintaVertical(fuera, normales, y0, y0 + 0.007f, perfilAluminio, cerrada);
+            perfil.CintaVertical(fuera, normales, y0 + 0.033f, y0 + 0.04f, perfilAluminio, cerrada);
+        }
+        var led = Mover(curva, normales, 0.003f);
+        luces.CintaVertical(led, normales, y0 + 0.007f, y0 + 0.013f, ledSuave, cerrada);
+        luces.CintaVertical(led, normales, y0 + 0.013f, y0 + 0.027f, blancoLed, cerrada);
+        luces.CintaVertical(led, normales, y0 + 0.027f, y0 + 0.033f, ledSuave, cerrada);
+        if (brillo != null)
+        {
+            var aire = Mover(curva, normales, 0.008f);
+            brillo.FranjaDegradada(A3(aire, y0 + 0.02f), A3(aire, y0 - 0.05f), Resplandor(0.45f), Resplandor(0f), cerrada);
+            brillo.FranjaDegradada(A3(aire, y0 + 0.02f), A3(aire, y0 + 0.09f), Resplandor(0.4f), Resplandor(0f), cerrada);
+        }
+    }
+
+    // Foco empotrado: aro plateado que sobresale un poco, hueco oscuro y lente brillante metida adentro.
+    static void Foco(KitMalla techo, KitMalla luces, KitMalla brillo, Vector2 p, float ySuperficie)
+    {
+        var aroFuera = Elipse(p, new Vector2(0.09f, 0.09f), 24);
+        var aroDentro = Elipse(p, new Vector2(0.066f, 0.066f), 24);
+        float yAro = ySuperficie - 0.012f;
+        techo.Franja(A3(aroFuera, yAro), A3(aroDentro, yAro), Vector3.down, plata, true);
+        techo.CintaVertical(aroFuera, KitMalla.NormalesDeContorno(aroFuera), yAro, ySuperficie, plata, true);
+        techo.CintaVertical(aroDentro, Invertir(KitMalla.NormalesDeContorno(aroDentro)), yAro, ySuperficie - 0.002f, huecoFoco, true);
+        Vector3 lente = new Vector3(p.x, ySuperficie - 0.004f, p.y);
+        luces.DiscoDegradado(lente, Vector3.down, 0.065f, blancoLed, new Color(0.72f, 0.75f, 0.8f), 24);
+        brillo.DiscoDegradado(lente + Vector3.down * 0.012f, Vector3.down, 0.05f, Resplandor(0.6f), Resplandor(0f), 16);
+        brillo.DiscoDegradado(new Vector3(p.x, ySuperficie - 0.001f, p.y), Vector3.down, 0.26f, Resplandor(0.3f), Resplandor(0f), 24);
     }
 
     static void BrilloEntre(KitMalla brillo, List<Vector2> borde, List<Vector2> lejos, float y, float intensidad)
@@ -247,11 +286,15 @@ internal static class InteriorModerno
             brillo.FranjaDegradada(cerca, lejos, ResplandorCalido(0.35f), ResplandorCalido(0f));
         }
 
-        // Letrero: cruz verde iluminada y resplandor detrás de las letras (las letras se ponen abajo)
-        float yLetrero = 2.2f, zLetrero = zp - 0.075f;
-        luces.Caja(new Vector3(-1.55f, yLetrero, zLetrero), new Vector3(0.3f, 0.1f, 0.02f), verdeCruz, false);
-        luces.Caja(new Vector3(-1.55f, yLetrero, zLetrero), new Vector3(0.1f, 0.3f, 0.02f), verdeCruz, false);
-        RectanguloSuave(brillo, new Vector3(0.1f, yLetrero, zp - 0.067f), 1.55f, 0.24f, 0.3f, ResplandorCalido(0.4f));
+        // Letrero: placa oscura (para que las letras blancas se lean bien), con luz alrededor y cruz verde iluminada
+        float yLetrero = 2.2f, zPlaca = zp - 0.065f;
+        kit.grosorContorno = 0.6f;
+        kit.CajaMinMax(new Vector3(-1.9f, yLetrero - 0.26f, zPlaca - 0.03f), new Vector3(1.75f, yLetrero + 0.26f, zPlaca), new Color(0.11f, 0.13f, 0.19f));
+        kit.grosorContorno = 1f;
+        RectanguloSuave(brillo, new Vector3(-0.07f, yLetrero, zp - 0.067f), 1.85f, 0.28f, 0.32f, ResplandorCalido(0.45f));
+        float zLetrero = zPlaca - 0.04f;
+        luces.Caja(new Vector3(-1.58f, yLetrero, zLetrero), new Vector3(0.26f, 0.085f, 0.015f), verdeCruz, false);
+        luces.Caja(new Vector3(-1.58f, yLetrero, zLetrero), new Vector3(0.085f, 0.26f, 0.015f), verdeCruz, false);
 
         // Repisas blancas con fondo naranja y luz por debajo, a los dos lados de la madera
         kit.grosorContorno = 0.6f;
@@ -315,7 +358,7 @@ internal static class InteriorModerno
         }
 
         if (Resources.Load<TMP_Settings>("TMP Settings") != null)
-            Texto(raiz, "Farma-CIA Agencia", new Vector3(0.15f, yLetrero, zp - 0.075f), Quaternion.identity, new Vector2(2.7f, 0.42f), Color.white);
+            Texto(raiz, "Farma-CIA Agencia", new Vector3(0.12f, yLetrero, zPlaca - 0.035f), Quaternion.identity, new Vector2(2.9f, 0.4f), Color.white);
     }
 
     static readonly Color[] Productos =
@@ -394,13 +437,21 @@ internal static class InteriorModerno
     internal static void ConstruirMostrador(Transform raiz, Material matKit, Material matBrillo, Material matResplandor, string carpeta)
     {
         // El bloque original de la maqueta ya no se usa (ni se ve ni estorba): este mostrador tiene sus propias colisiones.
-        var original = GameObject.Find("Mostrador");
-        if (original != null)
+        // (Se buscan todos: si la escena tiene copias del bloque, se veía un rectángulo negro en medio de la farmacia.)
+        foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
         {
-            var r = original.GetComponent<MeshRenderer>();
-            if (r != null) { Undo.RecordObject(r, "Mostrador"); r.enabled = false; }
-            var col = original.GetComponent<Collider>();
-            if (col != null) { Undo.RecordObject(col, "Mostrador"); col.enabled = false; }
+            if (!t.name.StartsWith("Mostrador"))
+                continue;
+            foreach (var r in t.GetComponentsInChildren<Renderer>(true))
+            {
+                Undo.RecordObject(r, "Mostrador");
+                r.enabled = false;
+            }
+            foreach (var col in t.GetComponentsInChildren<Collider>(true))
+            {
+                Undo.RecordObject(col, "Mostrador");
+                col.enabled = false;
+            }
         }
 
         var kit = new KitMalla();
@@ -538,10 +589,99 @@ internal static class InteriorModerno
         }
     }
 
+    // ================= Góndola baja de madera y vidrio =================
+
+    // Góndola de media altura (como la foto): base y postes de madera, panel blanco al centro y repisas
+    // de vidrio a los dos lados, con luz cálida debajo. Va atravesada, paralela al mostrador.
+    internal static void ConstruirGondolaMedia(Transform raiz, Material matKit, Material matBrillo, string carpeta, List<Vector3> escondites)
+    {
+        const float x0 = -1.5f, x1 = 1.5f, zc = 4.9f, mitadFondo = 0.28f;
+        Color roble = new Color(0.84f, 0.66f, 0.46f);
+        Color vidrio = new Color(0.8f, 0.92f, 0.96f);
+        var kit = new KitMalla();
+        var luces = new KitMalla();
+        var colisiones = new List<Bounds>();
+        void Pieza(Vector3 min, Vector3 max, Color c, bool borde = true)
+        {
+            kit.CajaMinMax(min, max, c, borde);
+            colisiones.Add(new Bounds((min + max) / 2f, max - min));
+        }
+
+        kit.grosorContorno = 0.7f;
+        Pieza(new Vector3(x0, 0f, zc - mitadFondo), new Vector3(x1, 0.3f, zc + mitadFondo), roble);
+        Pieza(new Vector3(x0 + 0.06f, 0.3f, zc - 0.03f), new Vector3(x1 - 0.06f, 1.5f, zc + 0.03f), blanco);
+        Pieza(new Vector3(x0, 1.5f, zc - 0.045f), new Vector3(x1, 1.56f, zc + 0.045f), roble);
+        foreach (float x in new[] { x0, x1 - 0.06f })
+            Pieza(new Vector3(x, 0.3f, zc - 0.045f), new Vector3(x + 0.06f, 1.5f, zc + 0.045f), roble);
+        Pieza(new Vector3(-0.03f, 0.3f, zc - 0.045f), new Vector3(0.03f, 1.5f, zc + 0.045f), roble);
+
+        // Escondites: sobre la base y sobre la repisa de vidrio de abajo (siempre a una altura cómoda).
+        var huecos = new List<(float x, float y, int lado)>
+        {
+            (-0.8f, 0.3f, -1), (0.75f, 0.3f, 1), (0.45f, 0.62f, -1), (-0.6f, 0.62f, 1),
+        };
+        foreach (var h in huecos)
+            escondites.Add(new Vector3(h.x, h.y + 0.02f, zc + h.lado * 0.16f));
+
+        var rnd = new System.Random(11);
+        float[] niveles = { 0.3f, 0.62f, 0.92f, 1.22f };
+        foreach (int lado in new[] { -1, 1 })
+        {
+            for (int n = 0; n < niveles.Length; n++)
+            {
+                float y = niveles[n];
+                if (n > 0)
+                {
+                    // Repisa de vidrio con luz LED cálida debajo de su borde
+                    kit.grosorContorno = 0.4f;
+                    Pieza(new Vector3(x0 + 0.08f, y - 0.012f, Mathf.Min(zc + lado * 0.03f, zc + lado * 0.25f)),
+                        new Vector3(x1 - 0.08f, y, Mathf.Max(zc + lado * 0.03f, zc + lado * 0.25f)), vidrio);
+                    float zLed = zc + lado * 0.235f;
+                    luces.CajaMinMax(new Vector3(x0 + 0.1f, y - 0.02f, zLed - 0.006f), new Vector3(x1 - 0.1f, y - 0.012f, zLed + 0.006f), calidoLed, false);
+                }
+                // Productos (cajas blancas con franjas de colores), dejando libres los escondites
+                kit.grosorContorno = 0.45f;
+                float alturaLibre = n < niveles.Length - 1 ? niveles[n + 1] - y - 0.05f : 0.26f;
+                for (float x = x0 + 0.12f; x < x1 - 0.18f;)
+                {
+                    float ancho = 0.05f + (float)rnd.NextDouble() * 0.06f;
+                    bool libre = true;
+                    foreach (var h in huecos)
+                        if (h.lado == lado && Mathf.Abs(h.y - y) < 0.01f && Mathf.Abs(x + ancho / 2f - h.x) < 0.14f)
+                            libre = false;
+                    if (libre && Mathf.Abs(x + ancho / 2f) > 0.06f)
+                    {
+                        float alto = Mathf.Min(alturaLibre, 0.09f + (float)rnd.NextDouble() * 0.14f);
+                        float fondo = 0.08f + (float)rnd.NextDouble() * 0.1f;
+                        Color franja = Productos[rnd.Next(Productos.Length)];
+                        Color caja = rnd.NextDouble() < 0.65 ? new Color(0.96f, 0.96f, 0.95f) : franja;
+                        float zCentro = zc + lado * (0.045f + fondo / 2f + 0.01f);
+                        kit.Caja(new Vector3(x + ancho / 2f, y + alto / 2f, zCentro), new Vector3(ancho, alto, fondo), caja);
+                        kit.Etiqueta(new Vector3(x + ancho / 2f, y + alto * 0.6f, zCentro + lado * (fondo / 2f + 0.002f)),
+                            new Vector3(0f, 0f, lado), alto * 0.12f, ancho * 0.42f, franja == caja ? blanco : franja);
+                    }
+                    x += ancho + 0.012f;
+                }
+            }
+        }
+        kit.grosorContorno = 1f;
+
+        var go = kit.CrearObjeto("Kit_GondolaMedia", raiz, matKit, carpeta);
+        luces.CrearObjeto("Kit_GondolaMediaLuces", raiz, matBrillo, carpeta);
+        var contenedor = new GameObject("Colisiones");
+        contenedor.transform.SetParent(go.transform, false);
+        foreach (var c in colisiones)
+        {
+            var caja = contenedor.AddComponent<BoxCollider>();
+            caja.center = c.center;
+            caja.size = c.size;
+        }
+    }
+
     // ================= Reflejo en el piso brillante =================
 
     // Copia "de cabeza" (escala Y = -1) de lo que hay adentro; el piso semitransparente la deja ver como un reflejo.
-    internal static void ConstruirReflejos(Transform raiz, Material reflejoKit, Material reflejoBrillo, Material reflejoTecho, Material reflejoPared)
+    internal static void ConstruirReflejos(Transform raiz, Material reflejoKit, Material reflejoLuz, Material reflejoTecho, Material reflejoPared)
     {
         var espejo = new GameObject("ReflejoDelPiso");
         espejo.transform.SetParent(raiz, false);
@@ -571,10 +711,12 @@ internal static class InteriorModerno
         }
 
         foreach (var nombre in new[] { "Kit_Fachada", "Kit_Techo", "Kit_Gondola_1", "Kit_Gondola_2", "Kit_Gondola_3",
-                     "Kit_Estante_Este", "Kit_Estante_Oeste", "Kit_Mostrador", "Kit_ParedFondo", "Kit_Decoracion" })
+                     "Kit_Estante_Este", "Kit_Estante_Oeste", "Kit_Mostrador", "Kit_ParedFondo", "Kit_Decoracion", "Kit_GondolaMedia" })
             Copiar(nombre, reflejoKit);
-        foreach (var nombre in new[] { "Kit_TechoLuces", "Kit_MostradorLuces", "Kit_ParedFondoLuces", "Kit_LucesMuebles" })
-            Copiar(nombre, reflejoBrillo);
+        // Las luces se reflejan como brillos fuertes que se suman encima del piso.
+        foreach (var nombre in new[] { "Kit_TechoLuces", "Kit_MostradorLuces", "Kit_ParedFondoLuces", "Kit_LucesMuebles",
+                     "Kit_TechoResplandor", "Kit_ParedFondoResplandor", "Kit_GondolaMediaLuces" })
+            Copiar(nombre, reflejoLuz);
         Copiar("Techo", reflejoTecho);
         Copiar("Pared_Norte", reflejoPared);
     }

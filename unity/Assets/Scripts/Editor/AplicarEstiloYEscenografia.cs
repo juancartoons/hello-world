@@ -50,7 +50,8 @@ public static class AplicarEstiloYEscenografia
             p.Add(new Vector3(x, 0.01f, -3.2f));
         // Zona nueva del fondo (la farmacia se amplió 3 m): frente al mostrador y a sus lados.
         foreach (float x in new[] { -3.6f, -1.8f, 0f, 1.8f, 3.6f })
-            p.Add(new Vector3(x, 0.01f, 4.4f));
+            p.Add(new Vector3(x, 0.01f, 4.0f));
+        p.Add(new Vector3(0f, 0.01f, 5.85f));
         foreach (float x in new[] { -3.6f, -2.4f, 2.4f, 3.6f })
             p.Add(new Vector3(x, 0.01f, 6.0f));
         return p.ToArray();
@@ -69,7 +70,7 @@ public static class AplicarEstiloYEscenografia
     static void Aplicar()
     {
         foreach (var nombre in new[] { "FarmaciaVR/Toon", "FarmaciaVR/Toon Sin Borde", "FarmaciaVR/Vidrio", "FarmaciaVR/Luz", "FarmaciaVR/Realista", "FarmaciaVR/Plano",
-                     "FarmaciaVR/Piso Brillante", "FarmaciaVR/Reflejo", "FarmaciaVR/Cielo Noche" })
+                     "FarmaciaVR/Piso Brillante", "FarmaciaVR/Reflejo", "FarmaciaVR/Reflejo Luz", "FarmaciaVR/Cielo Noche" })
         {
             if (Shader.Find(nombre) != null)
                 continue;
@@ -99,11 +100,23 @@ public static class AplicarEstiloYEscenografia
         var matBrillo = CrearMaterialPlano("Plano_Brillo", Color.white, true, true, 2000);   // LEDs y focos: brillan siempre
         var matIcono = CrearMaterialPlano("Plano_Icono", Color.white, true, true, 2000);
         var matResplandor = CrearMaterialSimple("Luz_Blanca", "FarmaciaVR/Luz", Color.white); // luz suave sumada (aditiva)
+        // Piso: brillante pero con reflejo suave de los objetos (los brillos de las luces se suman aparte).
         var matPisoBrillante = ObtenerMaterial("Piso_Brillante", "FarmaciaVR/Piso Brillante");
+        matPisoBrillante.SetColor("_BaseColor", new Color(0.86f, 0.87f, 0.9f));
+        matPisoBrillante.SetColor("_ColorVetas", new Color(0.62f, 0.64f, 0.7f));
+        matPisoBrillante.SetColor("_ColorJunta", new Color(0.72f, 0.73f, 0.77f));
+        matPisoBrillante.SetFloat("_OpacidadCerca", 0.74f);
+        matPisoBrillante.SetFloat("_OpacidadLejos", 0.45f);
         matPisoBrillante.renderQueue = 2999;
         EditorUtility.SetDirty(matPisoBrillante);
         var matReflejoKit = CrearMaterialReflejo("Reflejo_Kit", Color.white, true, false);
-        var matReflejoBrillo = CrearMaterialReflejo("Reflejo_Brillo", Color.white, true, true);
+        matReflejoKit.SetFloat("_Intensidad", 0.8f);
+        var matReflejoLuz = ObtenerMaterial("Reflejo_Luz", "FarmaciaVR/Reflejo Luz");
+        matReflejoLuz.SetColor("_BaseColor", Color.white);
+        matReflejoLuz.SetFloat("_Intensidad", 0.6f);
+        matReflejoLuz.renderQueue = 3001;
+        EditorUtility.SetDirty(matReflejoLuz);
+        var matPajaro = CrearMaterial("Toon_Pajaro", "FarmaciaVR/Toon Sin Borde", Color.white, new Color(0.86f, 0.8f, 0.86f), 0, true);
         var matReflejoTecho = CrearMaterialReflejo("Reflejo_Techo", colorTecho, false, false);
         var matReflejoPared = CrearMaterialReflejo("Reflejo_Pared", new Color(0.97f, 0.96f, 0.93f), false, false);
         var matCieloNoche = ObtenerMaterial("Cielo_Noche", "FarmaciaVR/Cielo Noche");
@@ -146,7 +159,9 @@ public static class AplicarEstiloYEscenografia
         InteriorModerno.ConstruirTecho(raiz.transform, matTechoKit, matBrillo, matResplandor, carpetaMallas);
         InteriorModerno.ConstruirParedFondo(raiz.transform, matKit, matBrillo, matResplandor, carpetaMallas);
         bool conTextos = ConstruirDecoracion(raiz.transform, matKit);
-        InteriorModerno.ConstruirReflejos(raiz.transform, matReflejoKit, matReflejoBrillo, matReflejoTecho, matReflejoPared);
+        InteriorModerno.ConstruirGondolaMedia(raiz.transform, matKit, matBrillo, carpetaMallas, escondites);
+        InteriorModerno.ConstruirReflejos(raiz.transform, matReflejoKit, matReflejoLuz, matReflejoTecho, matReflejoPared);
+        ConstruirCruzLED(raiz.transform, matKit, matBrillo, matResplandor);
 
         // ---------- Exterior ----------
         FachadaYExterior.ConstruirExterior(raiz.transform, matExterior, carpetaMallas);
@@ -157,7 +172,10 @@ public static class AplicarEstiloYEscenografia
         ConstruirPuntosTeletransporte(matPunto, matLinea);
         ConstruirEscondites(escondites);
         var mallaPluma = CrearMallaPluma();
-        ConstruirPajaro(matKit, matPluma, mallaPluma, matHalo, tamPersonaje);
+        ConstruirPajaro(matPajaro, matPluma, mallaPluma, matHalo, tamPersonaje);
+        ConstruirPeluches(matPajaro, tamPersonaje);
+        ConstruirRobot(raiz.transform, matKit, matReflejoKit);
+        ConstruirSonido();
         ConstruirCronometro();
         ConstruirOpcionesNavegacion(raiz.transform, matBoton, matIcono, matCieloNoche);
 
@@ -552,120 +570,35 @@ public static class AplicarEstiloYEscenografia
         return tam;
     }
 
-    // Crea el personaje: un pájaro rojo low poly (inspirado en la referencia), del tamaño del cubo agarrable.
-    // Está hecho en una "unidad" de 1 de alto mirando hacia +Z y luego se escala.
+    // Crea el personaje: el pájaro rojo con overol y su pollito (liso, sin línea de borde), del tamaño del cubo agarrable.
+    // Las mallas las arma PersonajesPeluche, en una "unidad" de 1 de alto mirando hacia +Z; aquí se escalan.
     static void ConstruirPajaro(Material mat, Material matPluma, Mesh mallaPluma, Material matHalo, float tam)
     {
         var manager = Object.FindFirstObjectByType<JuegoManager>();
         var actual = Object.FindFirstObjectByType<PersonajeEncontrable>();
         Vector3 posicion = actual != null ? actual.transform.position : new Vector3(0.5f, 1.2f, 3.8f);
-        float escala = tam * 1.3f; // un poquito más grande que el cubo, para que se vea la cara
+        float escala = tam * 1.3f;
 
-        Color rojo = new Color(0.86f, 0.11f, 0.11f);
-        Color barriga = new Color(0.98f, 0.74f, 0.68f);
-        Color blancoOjo = new Color(0.98f, 0.98f, 0.97f);
-        Color negro = new Color(0.08f, 0.07f, 0.07f);
-        Color cafeIris = new Color(0.5f, 0.28f, 0.12f);
-        Color naranja = new Color(1f, 0.62f, 0.12f);
-        Color naranjaOscuro = new Color(0.92f, 0.48f, 0.08f);
-        Color boca = new Color(0.55f, 0.12f, 0.12f);
-        Color overol = new Color(0.80f, 0.63f, 0.42f);
-        Color overolOscuro = new Color(0.64f, 0.47f, 0.30f);
-        Color azulPollito = new Color(0.35f, 0.65f, 0.95f);
-        Color azulClaro = new Color(0.58f, 0.82f, 1f);
-        Color amarilloGafas = new Color(1f, 0.85f, 0.1f);
-
-        var cuerpo = new KitMalla();
-        // Cuerpo en forma de huevo y barriga clara
-        cuerpo.Esfera(new Vector3(0f, 0.5f, 0f), new Vector3(0.5f, 0.55f, 0.47f), 3, rojo);
-        cuerpo.Esfera(new Vector3(0f, 0.42f, 0.22f), new Vector3(0.36f, 0.33f, 0.27f), 3, barriga);
-        cuerpo.Esfera(new Vector3(0f, 0.36f, -0.45f), new Vector3(0.1f, 0.08f, 0.1f), 1, rojo); // colita
-
-        // Overol café: peto, tirantes con botones, estrella y bolsillo
-        cuerpo.Esfera(new Vector3(0f, 0.27f, 0.27f), new Vector3(0.38f, 0.22f, 0.24f), 2, overol);
-        foreach (float s in new[] { -1f, 1f })
-        {
-            cuerpo.Caja(new Vector3(s * 0.2f, 0.6f, 0.43f), new Vector3(0.07f, 0.24f, 0.04f), overol);
-            cuerpo.grosorContorno = 0.5f;
-            cuerpo.Esfera(new Vector3(s * 0.2f, 0.49f, 0.45f), new Vector3(0.025f, 0.025f, 0.015f), 1, overolOscuro);
-            cuerpo.grosorContorno = 1f;
-        }
-        Estrella(cuerpo, new Vector3(0.2f, 0.31f, 0.478f), 0.05f, Color.white);
-        cuerpo.Caja(new Vector3(0f, 0.2f, 0.51f), new Vector3(0.26f, 0.12f, 0.04f), overolOscuro);
-
-        // Ojos grandes con iris café, pupila y brillo
-        foreach (float s in new[] { -1f, 1f })
-        {
-            cuerpo.Esfera(new Vector3(s * 0.15f, 0.64f, 0.37f), new Vector3(0.14f, 0.16f, 0.1f), 2, blancoOjo);
-            cuerpo.grosorContorno = 0.5f;
-            cuerpo.Esfera(new Vector3(s * 0.125f, 0.63f, 0.455f), new Vector3(0.065f, 0.075f, 0.03f), 1, cafeIris);
-            cuerpo.Esfera(new Vector3(s * 0.12f, 0.63f, 0.475f), new Vector3(0.035f, 0.04f, 0.02f), 1, negro);
-            cuerpo.Esfera(new Vector3(s * 0.1f, 0.665f, 0.49f), new Vector3(0.013f, 0.013f, 0.008f), 1, Color.white, false);
-            cuerpo.grosorContorno = 1f;
-            // Cejas gruesas, más bajas hacia el centro
-            float xi = s * 0.03f, xe = s * 0.32f;
-            cuerpo.Hexaedro(new[]
-            {
-                new Vector3(xi, 0.76f, 0.48f), new Vector3(xe, 0.82f, 0.40f), new Vector3(xe, 0.82f, 0.32f), new Vector3(xi, 0.76f, 0.41f),
-                new Vector3(xi, 0.86f, 0.48f), new Vector3(xe, 0.91f, 0.40f), new Vector3(xe, 0.91f, 0.32f), new Vector3(xi, 0.86f, 0.41f),
-            }, negro);
-            cuerpo.Esfera(new Vector3(s * 0.16f, 0.03f, 0.13f), new Vector3(0.1f, 0.04f, 0.15f), 1, naranja); // patas
-        }
-
-        // Pico abierto (de arriba y de abajo) con la boca adentro
-        Vector3 punta = new Vector3(0f, 0.5f, 0.73f);
-        cuerpo.Hexaedro(new[]
-        {
-            new Vector3(-0.11f, 0.45f, 0.43f), new Vector3(0.11f, 0.45f, 0.43f), new Vector3(0.11f, 0.45f, 0.5f), new Vector3(-0.11f, 0.45f, 0.5f),
-            new Vector3(-0.1f, 0.58f, 0.43f), new Vector3(0.1f, 0.58f, 0.43f), punta, punta,
-        }, naranja);
-        Vector3 puntaAbajo = new Vector3(0f, 0.4f, 0.62f);
-        cuerpo.Hexaedro(new[]
-        {
-            new Vector3(-0.08f, 0.35f, 0.43f), new Vector3(0.08f, 0.35f, 0.43f), puntaAbajo, puntaAbajo,
-            new Vector3(-0.09f, 0.42f, 0.43f), new Vector3(0.09f, 0.42f, 0.43f), new Vector3(0.09f, 0.42f, 0.5f), new Vector3(-0.09f, 0.42f, 0.5f),
-        }, naranjaOscuro);
-        cuerpo.Esfera(new Vector3(0f, 0.435f, 0.47f), new Vector3(0.08f, 0.03f, 0.04f), 1, boca, false);
-
-        // Copete de plumas
-        cuerpo.Esfera(new Vector3(0f, 1.06f, 0.02f), new Vector3(0.05f, 0.13f, 0.05f), 1, rojo);
-        cuerpo.Esfera(new Vector3(0.07f, 1.02f, -0.03f), new Vector3(0.04f, 0.1f, 0.04f), 1, rojo);
-        cuerpo.Esfera(new Vector3(-0.06f, 1.0f, -0.05f), new Vector3(0.035f, 0.08f, 0.035f), 1, rojo);
-
-        // El hijo: pollito azul con gafas amarillas, asomado en el bolsillo
-        cuerpo.grosorContorno = 0.4f;
-        cuerpo.Esfera(new Vector3(0f, 0.31f, 0.5f), new Vector3(0.085f, 0.085f, 0.08f), 2, azulPollito);
-        foreach (float x in new[] { -0.03f, 0f, 0.03f })
-            cuerpo.Esfera(new Vector3(x, 0.4f + (x == 0f ? 0.01f : 0f), 0.5f), new Vector3(0.015f, 0.04f, 0.015f), 1, azulClaro);
-        foreach (float s in new[] { -1f, 1f })
-        {
-            cuerpo.Cilindro(new Vector3(s * 0.033f, 0.33f, 0.572f), 0.036f, 0.01f, Vector3.forward, 12, amarilloGafas);
-            cuerpo.Esfera(new Vector3(s * 0.033f, 0.33f, 0.578f), new Vector3(0.028f, 0.03f, 0.014f), 1, blancoOjo, false);
-            cuerpo.Esfera(new Vector3(s * 0.03f, 0.33f, 0.59f), new Vector3(0.012f, 0.013f, 0.006f), 1, negro, false);
-        }
-        cuerpo.Caja(new Vector3(0f, 0.335f, 0.578f), new Vector3(0.02f, 0.008f, 0.006f), amarilloGafas, false);
-        cuerpo.Esfera(new Vector3(0f, 0.302f, 0.585f), new Vector3(0.013f, 0.01f, 0.016f), 1, naranja, false);
-        cuerpo.grosorContorno = 1f;
-
-        var ala = new KitMalla();
-        ala.Esfera(new Vector3(0f, -0.17f, 0f), new Vector3(0.07f, 0.2f, 0.15f), 2, rojo);
+        var mallaCuerpo = PersonajesPeluche.MallaPajaro($"{carpetaMallas}/PajaroCuerpo.asset");
+        var mallaAla = PersonajesPeluche.MallaAla($"{carpetaMallas}/PajaroAla.asset");
 
         var nuevo = new GameObject("Personaje");
         Undo.RegisterCreatedObjectUndo(nuevo, "Personaje");
         nuevo.transform.position = posicion;
         nuevo.transform.localScale = Vector3.one * escala;
         var colision = nuevo.AddComponent<SphereCollider>();
-        colision.center = new Vector3(0f, 0.5f, 0f);
+        colision.center = new Vector3(0f, 0.53f, 0f);
         colision.radius = 0.5f;
 
-        var goCuerpo = cuerpo.CrearObjeto("PajaroCuerpo", nuevo.transform, mat, carpetaMallas);
-        goCuerpo.name = "Cuerpo";
-        var mallaAla = ala.GuardarComo($"{carpetaMallas}/PajaroAla.asset");
+        var goCuerpo = new GameObject("Cuerpo");
+        goCuerpo.transform.SetParent(nuevo.transform, false);
+        goCuerpo.AddComponent<MeshFilter>().sharedMesh = mallaCuerpo;
+        goCuerpo.AddComponent<MeshRenderer>().sharedMaterial = mat;
         Transform CrearAla(string nombre, float lado)
         {
             var hombro = new GameObject(nombre).transform;
             hombro.SetParent(nuevo.transform, false);
-            hombro.localPosition = new Vector3(lado * 0.44f, 0.62f, -0.02f);
+            hombro.localPosition = new Vector3(lado * 0.41f, 0.66f, 0f);
             var malla = new GameObject("Malla");
             malla.transform.SetParent(hombro, false);
             malla.AddComponent<MeshFilter>().sharedMesh = mallaAla;
@@ -697,18 +630,76 @@ public static class AplicarEstiloYEscenografia
             Undo.DestroyObjectImmediate(actual.gameObject);
     }
 
-    // Estrella plana de 5 puntas (mirando hacia +Z), para el parche del overol.
-    static void Estrella(KitMalla k, Vector3 centro, float radio, Color color)
+    // Peluches rojos (osito, corazón, mariquita y pulpito) que se reparten en otros escondites para despistar.
+    static void ConstruirPeluches(Material mat, float tam)
     {
-        var puntas = new Vector3[10];
-        for (int i = 0; i < 10; i++)
+        var manager = Object.FindFirstObjectByType<JuegoManager>();
+        var viejo = GameObject.Find("Senuelos");
+        if (viejo != null)
+            Undo.DestroyObjectImmediate(viejo);
+        var raiz = new GameObject("Senuelos");
+        Undo.RegisterCreatedObjectUndo(raiz, "Peluches");
+        string[] nombres = { "Osito", "Corazon", "Mariquita", "Pulpito" };
+        var mallas = PersonajesPeluche.MallasPeluches(carpetaMallas);
+        for (int i = 0; i < mallas.Length; i++)
         {
-            float r = i % 2 == 0 ? radio : radio * 0.45f;
-            float a = Mathf.PI / 2f + i * Mathf.PI / 5f;
-            puntas[i] = centro + new Vector3(Mathf.Cos(a) * r, Mathf.Sin(a) * r, 0f);
+            var go = new GameObject("Peluche_" + nombres[i]);
+            go.transform.SetParent(raiz.transform, false);
+            go.transform.position = new Vector3(i * 0.3f, 0.05f, 0f);
+            go.transform.localScale = Vector3.one * tam * 1.2f;
+            go.AddComponent<MeshFilter>().sharedMesh = mallas[i];
+            go.AddComponent<MeshRenderer>().sharedMaterial = mat;
+            go.SetActive(false); // aparecen cuando empieza la partida
         }
-        for (int i = 0; i < 10; i++)
-            k.Triangulo(centro, puntas[i], puntas[(i + 1) % 10], Vector3.forward, color, centro, false);
+        if (manager != null)
+        {
+            Undo.RecordObject(manager, "Peluches");
+            manager.senuelos = raiz.transform;
+            EditorUtility.SetDirty(manager);
+        }
+    }
+
+    // Robot aspiradora que recorre el piso de la farmacia.
+    static void ConstruirRobot(Transform raiz, Material matKit, Material matReflejo)
+    {
+        var robot = new GameObject("RobotAspiradora");
+        robot.transform.SetParent(raiz, false);
+        robot.transform.SetPositionAndRotation(new Vector3(3.4f, 0f, 5.3f), Quaternion.Euler(0f, -90f, 0f));
+        robot.AddComponent<MeshFilter>().sharedMesh = PersonajesPeluche.MallaRobot($"{carpetaMallas}/Robot.asset");
+        robot.AddComponent<MeshRenderer>().sharedMaterial = matKit;
+        var control = robot.AddComponent<RobotAspiradora>();
+        control.mallaCepillo = PersonajesPeluche.MallaCepillo($"{carpetaMallas}/RobotCepillo.asset");
+        control.materialCepillo = matKit;
+        control.materialReflejo = matReflejo;
+    }
+
+    // Cruz verde LED afuera, saliendo de la fachada (se ve por los dos lados), con su resplandor de noche.
+    static void ConstruirCruzLED(Transform raiz, Material matKit, Material matBrillo, Material matResplandor)
+    {
+        Vector3 centro = new Vector3(-4.45f, 2.35f, -5.62f);
+        var caja = new KitMalla();
+        caja.Caja(centro, new Vector3(0.08f, 0.82f, 0.82f), grisOscuro);
+        caja.Caja(new Vector3(centro.x, centro.y + 0.3f, -5.16f), new Vector3(0.04f, 0.04f, 0.1f), grisOscuro);
+        caja.Caja(new Vector3(centro.x, centro.y - 0.3f, -5.16f), new Vector3(0.04f, 0.04f, 0.1f), grisOscuro);
+        caja.CrearObjeto("CruzLED_Caja", raiz, matKit, carpetaMallas);
+
+        var cruz = new GameObject("CruzLED");
+        cruz.transform.SetParent(raiz, false);
+        cruz.transform.position = centro;
+        cruz.AddComponent<CruzLED>().material = matBrillo;
+
+        var brillo = new KitMalla();
+        foreach (float lado in new[] { -1f, 1f })
+            brillo.DiscoDegradado(centro + Vector3.right * lado * 0.06f, Vector3.right, 0.9f, new Color(0.2f, 1f, 0.45f, 0.4f), new Color(0.2f, 1f, 0.45f, 0f), 28);
+        brillo.CrearObjeto("CruzLED_Resplandor", raiz, matResplandor, carpetaMallas).AddComponent<SoloDeNoche>();
+    }
+
+    // Sonido de ambiente (música, ciudad, pitos y grillos): vive en el JuegoManager.
+    static void ConstruirSonido()
+    {
+        var manager = Object.FindFirstObjectByType<JuegoManager>();
+        if (manager != null && manager.GetComponent<AmbienteSonoro>() == null)
+            Undo.AddComponent<AmbienteSonoro>(manager.gameObject);
     }
 
     // ================= Cronómetro y opciones =================
