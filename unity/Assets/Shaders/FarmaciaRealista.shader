@@ -3,6 +3,8 @@ Shader "FarmaciaVR/Realista"
     // Iluminación "realista" sencilla para el exterior: sombreado suave con el sol, luz del cielo
     // y brillo (reflejo del sol) en superficies como el asfalto, vidrios y carros. Sin contorno.
     // Usa los colores de la malla; el alfa del color dice qué tanto brilla cada pieza.
+    // De noche (_FarmaciaNoche = 1, lo pone DiaNoche) se oscurece y se prenden las luces propias
+    // guardadas en la malla (UV2): ventanas de edificios, faros de los carros, lámparas de los postes.
     Properties
     {
         _Brillo ("Intensidad del brillo", Range(0, 2)) = 0.8
@@ -35,11 +37,14 @@ Shader "FarmaciaVR/Realista"
                 float4 _AmbienteSuelo;
             CBUFFER_END
 
+            float _FarmaciaNoche; // global: 0 = día, 1 = noche
+
             struct Attributes
             {
                 float4 positionOS : POSITION;
                 float3 normalOS : NORMAL;
                 float4 color : COLOR;
+                float4 luzNoche : TEXCOORD2;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -49,6 +54,7 @@ Shader "FarmaciaVR/Realista"
                 float3 positionWS : TEXCOORD0;
                 float3 normalWS : TEXCOORD1;
                 float4 color : COLOR;
+                float3 luzNoche : TEXCOORD2;
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -61,6 +67,7 @@ Shader "FarmaciaVR/Realista"
                 o.positionCS = TransformWorldToHClip(o.positionWS);
                 o.normalWS = TransformObjectToWorldNormal(v.normalOS);
                 o.color = v.color;
+                o.luzNoche = v.luzNoche.rgb;
                 return o;
             }
 
@@ -74,9 +81,12 @@ Shader "FarmaciaVR/Realista"
 
                 float difusa = saturate(dot(n, sol.direction));
                 float3 ambiente = lerp(_AmbienteSuelo.rgb, _AmbienteCielo.rgb, n.y * 0.5 + 0.5);
+                float3 ambienteNoche = lerp(float3(0.02, 0.02, 0.035), float3(0.05, 0.065, 0.13), n.y * 0.5 + 0.5);
+                ambiente = lerp(ambiente, ambienteNoche, _FarmaciaNoche);
                 float brillo = pow(saturate(dot(n, h)), _Dureza) * _Brillo * i.color.a;
 
                 float3 color = i.color.rgb * (ambiente + difusa * sol.color) + brillo * sol.color;
+                color += i.luzNoche * _FarmaciaNoche;
                 return half4(color, 1);
             }
             ENDHLSL

@@ -12,6 +12,13 @@ internal class KitMalla
     readonly List<Vector3> normales = new List<Vector3>();
     readonly List<Color> colores = new List<Color>();
     readonly List<Vector4> direcciones = new List<Vector4>();
+    readonly List<Vector4> emisiones = new List<Vector4>();
+
+    // Luz propia de noche de las piezas que se agreguen (ventanas encendidas, faros, lámparas).
+    // Se guarda en UV2; el shader realista la prende cuando es de noche. Negro = no se prende.
+    public Color luzNoche = Color.black;
+
+    Vector4 Emision() => new Vector4(luzNoche.r, luzNoche.g, luzNoche.b, 0f);
 
     // Grosor relativo del contorno para las piezas que se agreguen (1 = normal, 0.5 = la mitad).
     public float grosorContorno = 1f;
@@ -93,6 +100,7 @@ internal class KitMalla
             normales.Add(normal);
             colores.Add(ConBrillo(color));
             direcciones.Add(Dir(p - centroPieza, contorno));
+            emisiones.Add(Emision());
         }
         // Orden horario visto desde afuera (frente en Unity).
         triangulos.Add(i); triangulos.Add(i + 2); triangulos.Add(i + 1);
@@ -118,6 +126,7 @@ internal class KitMalla
             normales.Add(n);
             colores.Add(ConBrillo(color));
             direcciones.Add(Dir(p - centroPieza, contorno));
+            emisiones.Add(Emision());
         }
         triangulos.Add(i); triangulos.Add(i + 1); triangulos.Add(i + 2);
     }
@@ -140,6 +149,7 @@ internal class KitMalla
             normales.Add(ns[k].normalized);
             colores.Add(ConBrillo(color));
             direcciones.Add(Dir(ps[k] - centroPieza, contorno));
+            emisiones.Add(Emision());
         }
         triangulos.Add(i); triangulos.Add(i + 1); triangulos.Add(i + 2);
     }
@@ -186,6 +196,7 @@ internal class KitMalla
             normales.Add(n);
             colores.Add(cs[k]);
             direcciones.Add(Dir(Vector3.zero, false));
+            emisiones.Add(Emision());
         }
         triangulos.Add(i); triangulos.Add(i + 1); triangulos.Add(i + 2);
         triangulos.Add(i); triangulos.Add(i + 2); triangulos.Add(i + 3);
@@ -261,6 +272,129 @@ internal class KitMalla
         }
     }
 
+    // ---------- Formas curvas (mostrador, techo, LEDs) ----------
+
+    // Normales hacia afuera de una forma cerrada (puntos en el plano XZ), una por punto.
+    public static List<Vector2> NormalesDeContorno(List<Vector2> forma)
+    {
+        int n = forma.Count;
+        Vector2 centro = Vector2.zero;
+        foreach (var p in forma)
+            centro += p;
+        centro /= n;
+        var normales = new List<Vector2>(n);
+        for (int i = 0; i < n; i++)
+        {
+            Vector2 t = forma[(i + 1) % n] - forma[(i - 1 + n) % n];
+            Vector2 normal = new Vector2(t.y, -t.x).normalized;
+            if (Vector2.Dot(normal, forma[i] - centro) < 0f)
+                normal = -normal;
+            normales.Add(normal);
+        }
+        return normales;
+    }
+
+    // La misma forma, más grande (d > 0) o más pequeña (d < 0).
+    public static List<Vector2> Desplazar(List<Vector2> forma, float d)
+    {
+        var normales = NormalesDeContorno(forma);
+        var nueva = new List<Vector2>(forma.Count);
+        for (int i = 0; i < forma.Count; i++)
+            nueva.Add(forma[i] + normales[i] * d);
+        return nueva;
+    }
+
+    // Levanta una forma cerrada y convexa (vista desde arriba, en XZ) entre las alturas y0 y y1.
+    // Con "suave" los costados se ven redondeados (sin aristas entre los pedacitos).
+    public void Extruir(List<Vector2> forma, float y0, float y1, Color color, bool contorno = true, bool suave = true)
+    {
+        int n = forma.Count;
+        Vector2 c2 = Vector2.zero;
+        foreach (var p in forma)
+            c2 += p;
+        c2 /= n;
+        Vector3 centro = new Vector3(c2.x, (y0 + y1) / 2f, c2.y);
+        Vector3 centroArriba = new Vector3(c2.x, y1, c2.y), centroAbajo = new Vector3(c2.x, y0, c2.y);
+        var normales = NormalesDeContorno(forma);
+        for (int i = 0; i < n; i++)
+        {
+            int j = (i + 1) % n;
+            Vector3 a0 = new Vector3(forma[i].x, y0, forma[i].y), b0 = new Vector3(forma[j].x, y0, forma[j].y);
+            Vector3 a1 = new Vector3(forma[i].x, y1, forma[i].y), b1 = new Vector3(forma[j].x, y1, forma[j].y);
+            Vector3 na = new Vector3(normales[i].x, 0f, normales[i].y), nb = new Vector3(normales[j].x, 0f, normales[j].y);
+            Vector3 afuera = na + nb;
+            if (suave)
+            {
+                TrianguloSuave(a0, a1, b1, na, na, nb, afuera, color, centro, contorno);
+                TrianguloSuave(a0, b1, b0, na, nb, nb, afuera, color, centro, contorno);
+            }
+            else
+            {
+                Triangulo(a0, a1, b1, afuera, color, centro, contorno);
+                Triangulo(a0, b1, b0, afuera, color, centro, contorno);
+            }
+            Triangulo(centroArriba, a1, b1, Vector3.up, color, centro, contorno);
+            Triangulo(centroAbajo, a0, b0, Vector3.down, color, centro, contorno);
+        }
+    }
+
+    // Cinta vertical (sin contorno) que sigue una línea de puntos en XZ, entre y0 y y1,
+    // mirando hacia "afuera" (una dirección por punto). Para LEDs, bordes y franjas.
+    public void CintaVertical(List<Vector2> puntos, List<Vector2> afuera, float y0, float y1, Color color, bool cerrada = false)
+    {
+        int n = puntos.Count;
+        int tramos = cerrada ? n : n - 1;
+        for (int i = 0; i < tramos; i++)
+        {
+            int j = (i + 1) % n;
+            Vector3 a0 = new Vector3(puntos[i].x, y0, puntos[i].y), b0 = new Vector3(puntos[j].x, y0, puntos[j].y);
+            Vector3 a1 = new Vector3(puntos[i].x, y1, puntos[i].y), b1 = new Vector3(puntos[j].x, y1, puntos[j].y);
+            Vector3 na = new Vector3(afuera[i].x, 0f, afuera[i].y), nb = new Vector3(afuera[j].x, 0f, afuera[j].y);
+            TrianguloSuave(a0, a1, b1, na, na, nb, na + nb, color, a0, false);
+            TrianguloSuave(a0, b1, b0, na, nb, nb, na + nb, color, a0, false);
+        }
+    }
+
+    // Franja plana entre dos líneas de puntos (misma cantidad), mirando hacia "normal". Sin contorno.
+    public void Franja(List<Vector3> a, List<Vector3> b, Vector3 normal, Color color, bool cerrada = false)
+    {
+        int n = a.Count;
+        int tramos = cerrada ? n : n - 1;
+        for (int i = 0; i < tramos; i++)
+        {
+            int j = (i + 1) % n;
+            Triangulo(a[i], a[j], b[j], normal, color, a[i], false);
+            Triangulo(a[i], b[j], b[i], normal, color, a[i], false);
+        }
+    }
+
+    // Franja con degradado de color (para resplandores de luz): color "ca" en la línea a y "cb" en la línea b.
+    public void FranjaDegradada(List<Vector3> a, List<Vector3> b, Color ca, Color cb, bool cerrada = false)
+    {
+        int n = a.Count;
+        int tramos = cerrada ? n : n - 1;
+        for (int i = 0; i < tramos; i++)
+        {
+            int j = (i + 1) % n;
+            CuadroColores(a[i], a[j], b[j], b[i], ca, ca, cb, cb);
+        }
+    }
+
+    // Disco con degradado: "cc" en el centro y "cb" en el borde (para focos y manchas de luz).
+    public void DiscoDegradado(Vector3 centro, Vector3 eje, float radio, Color cc, Color cb, int lados = 16)
+    {
+        eje.Normalize();
+        Vector3 u = Vector3.Cross(eje, Mathf.Abs(eje.y) > 0.9f ? Vector3.right : Vector3.up).normalized;
+        Vector3 v = Vector3.Cross(eje, u);
+        for (int i = 0; i < lados; i++)
+        {
+            float a0 = i * Mathf.PI * 2f / lados, a1 = (i + 1) * Mathf.PI * 2f / lados;
+            Vector3 p0 = centro + (u * Mathf.Cos(a0) + v * Mathf.Sin(a0)) * radio;
+            Vector3 p1 = centro + (u * Mathf.Cos(a1) + v * Mathf.Sin(a1)) * radio;
+            CuadroColores(centro, p0, p1, centro, cc, cb, cb, cc);
+        }
+    }
+
     static List<Vector3[]> Icosfera(int subdivisiones)
     {
         float t = (1f + Mathf.Sqrt(5f)) / 2f;
@@ -310,6 +444,7 @@ internal class KitMalla
         malla.SetVertices(vertices);
         malla.SetNormals(normales);
         malla.SetColors(colores);
+        malla.SetUVs(2, emisiones);
         malla.SetUVs(3, direcciones);
         malla.SetTriangles(triangulos, 0);
         malla.RecalculateBounds();

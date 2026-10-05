@@ -8,8 +8,9 @@ using UnityEngine;
 using Debug = UnityEngine.Debug;
 
 // Menú de ayuda: FarmaciaVR > ★ Aplicar estilo toon y escenografía.
-// Con un clic arma todo: materiales toon, muebles con productos, mostrador, techo, letreros,
-// paredes con ventanas y sol, exterior (Bogotá), discos de teletransporte, escondites y personaje.
+// Con un clic arma todo: materiales toon, muebles con productos, mostrador, techo futurista, letreros,
+// piso brillante con reflejo, paredes con ventanas y sol, exterior (Bogotá) de día y de noche,
+// discos de teletransporte, escondites y personaje.
 // Se puede usar varias veces: reconstruye todo sin duplicar.
 public static class AplicarEstiloYEscenografia
 {
@@ -24,6 +25,7 @@ public static class AplicarEstiloYEscenografia
     static readonly Color verde = new Color(0.12f, 0.68f, 0.38f);
     static readonly Color colorContorno = new Color(0.10f, 0.12f, 0.20f);
     static readonly Color sombraSuave = new Color(0.78f, 0.82f, 0.90f);
+    static readonly Color colorTecho = new Color(0.84f, 0.84f, 0.88f); // gris claro: así resaltan las luces
 
     static readonly Color[] coloresProductos =
     {
@@ -59,14 +61,15 @@ public static class AplicarEstiloYEscenografia
     {
         new Vector3(-3.05f, 0.05f, -0.2f), new Vector3(-1.7f, 0.05f, 2.2f), new Vector3(-0.8f, 0.05f, -1.6f),
         new Vector3(0.8f, 0.05f, 0.3f), new Vector3(1.9f, 0.05f, -0.4f), new Vector3(3.05f, 0.05f, 2.1f),
-        new Vector3(2.0f, 0.05f, 7.5f), new Vector3(-4.2f, 0.05f, 7.5f), new Vector3(4.2f, 0.05f, -4.4f),
+        new Vector3(2.72f, 0.05f, 7.45f), new Vector3(-4.2f, 0.05f, 7.5f), new Vector3(4.2f, 0.05f, -4.4f),
         new Vector3(-4.2f, 0.05f, -4.4f), new Vector3(3.0f, 0.05f, 5.3f), new Vector3(-2.6f, 0.05f, 6.9f),
     };
 
     [MenuItem("FarmaciaVR/★ Aplicar estilo toon y escenografía")]
     static void Aplicar()
     {
-        foreach (var nombre in new[] { "FarmaciaVR/Toon", "FarmaciaVR/Toon Sin Borde", "FarmaciaVR/Vidrio", "FarmaciaVR/Luz", "FarmaciaVR/Realista", "FarmaciaVR/Plano" })
+        foreach (var nombre in new[] { "FarmaciaVR/Toon", "FarmaciaVR/Toon Sin Borde", "FarmaciaVR/Vidrio", "FarmaciaVR/Luz", "FarmaciaVR/Realista", "FarmaciaVR/Plano",
+                     "FarmaciaVR/Piso Brillante", "FarmaciaVR/Reflejo", "FarmaciaVR/Cielo Noche" })
         {
             if (Shader.Find(nombre) != null)
                 continue;
@@ -81,9 +84,8 @@ public static class AplicarEstiloYEscenografia
 
         // ---------- Materiales ----------
         var matPared = CrearMaterial("Toon_Pared", "FarmaciaVR/Toon", new Color(0.97f, 0.96f, 0.93f), sombraSuave, 1, false);
-        var matPiso = CrearMaterial("Toon_Piso", "FarmaciaVR/Toon Sin Borde", new Color(0.86f, 0.88f, 0.90f), sombraSuave, 0, false);
-        var matTecho = CrearMaterial("Toon_Techo", "FarmaciaVR/Toon Sin Borde", blanco, new Color(0.93f, 0.94f, 0.96f), 0, false);
-        var matLampara = CrearMaterial("Toon_Lampara", "FarmaciaVR/Toon Sin Borde", Color.white, Color.white, 0, false);
+        var matTecho = CrearMaterial("Toon_Techo", "FarmaciaVR/Toon Sin Borde", colorTecho, new Color(0.93f, 0.94f, 0.96f), 0, false);
+        var matTechoKit = CrearMaterial("Toon_TechoKit", "FarmaciaVR/Toon Sin Borde", Color.white, new Color(0.9f, 0.9f, 0.94f), 0, true);
         var matKit = CrearMaterial("Toon_Kit", "FarmaciaVR/Toon", Color.white, sombraSuave, 2, true);
         var matPunto = CrearMaterial("Toon_Punto", "FarmaciaVR/Toon Sin Borde", new Color(0.2f, 0.8f, 1f), Color.white, 0, false);
         var matExterior = CrearMaterialSimple("Exterior_Realista", "FarmaciaVR/Realista", Color.white);
@@ -94,6 +96,17 @@ public static class AplicarEstiloYEscenografia
         var matLinea = CrearMaterialSimple("Mat_LineaTeleport", "Sprites/Default", Color.white);
         var matBombillo = CrearMaterialPlano("Plano_Bombillo", Color.white, false, true, 2000);
         var matHalo = CrearMaterialPlano("Plano_Halo", Color.white, true, false, 3000);
+        var matBrillo = CrearMaterialPlano("Plano_Brillo", Color.white, true, true, 2000);   // LEDs y focos: brillan siempre
+        var matIcono = CrearMaterialPlano("Plano_Icono", Color.white, true, true, 2000);
+        var matResplandor = CrearMaterialSimple("Luz_Blanca", "FarmaciaVR/Luz", Color.white); // luz suave sumada (aditiva)
+        var matPisoBrillante = ObtenerMaterial("Piso_Brillante", "FarmaciaVR/Piso Brillante");
+        matPisoBrillante.renderQueue = 2999;
+        EditorUtility.SetDirty(matPisoBrillante);
+        var matReflejoKit = CrearMaterialReflejo("Reflejo_Kit", Color.white, true, false);
+        var matReflejoBrillo = CrearMaterialReflejo("Reflejo_Brillo", Color.white, true, true);
+        var matReflejoTecho = CrearMaterialReflejo("Reflejo_Techo", colorTecho, false, false);
+        var matReflejoPared = CrearMaterialReflejo("Reflejo_Pared", new Color(0.97f, 0.96f, 0.93f), false, false);
+        var matCieloNoche = ObtenerMaterial("Cielo_Noche", "FarmaciaVR/Cielo Noche");
         AssetDatabase.SaveAssets();
 
         // El cubo de prueba del principio ya no se necesita: se mide (para que el pájaro tenga su tamaño) y se borra.
@@ -112,27 +125,33 @@ public static class AplicarEstiloYEscenografia
 
         // ---------- Paredes y piso ----------
         PonerMaterial(GameObject.Find("Pared_Norte"), matPared);
-        PonerMaterial(GameObject.Find("Plane"), matPiso);
+        PonerMaterial(GameObject.Find("Plane"), matPisoBrillante); // mármol súper pulido que refleja todo
         foreach (var nombre in new[] { "Pared_Sur", "Pared_Este", "Pared_Oeste" })
             OcultarRender(GameObject.Find(nombre)); // se reemplazan por paredes con ventanas; el collider se queda (vidrio invisible)
         FachadaYExterior.ConstruirFachada(raiz.transform, matKit, matVidrio, matLuz, dirLuz, carpetaMallas);
 
         // ---------- Góndolas y estantes ----------
         var escondites = new List<Vector3>(escondidesPiso);
+        var ledsMuebles = new KitMalla();
         int semilla = 1;
         foreach (var nombre in new[] { "Gondola_1", "Gondola_2", "Gondola_3" })
-            ConstruirMueble(nombre, raiz.transform, matKit, true, 4, semilla++, tamPersonaje, escondites);
+            ConstruirMueble(nombre, raiz.transform, matKit, true, 4, semilla++, tamPersonaje, escondites, ledsMuebles);
         foreach (var nombre in new[] { "Estante_Este", "Estante_Oeste" })
-            ConstruirMueble(nombre, raiz.transform, matKit, false, 5, semilla++, tamPersonaje, escondites);
+            ConstruirMueble(nombre, raiz.transform, matKit, false, 5, semilla++, tamPersonaje, escondites, ledsMuebles);
+        ledsMuebles.CrearObjeto("Kit_LucesMuebles", raiz.transform, matBrillo, carpetaMallas);
 
         // ---------- Mostrador, techo, decoración ----------
-        ConstruirMostrador(raiz.transform, matKit);
-        ConstruirTecho(raiz.transform, matTecho, matLampara);
+        InteriorModerno.ConstruirMostrador(raiz.transform, matKit, matBrillo, matResplandor, carpetaMallas);
+        ConstruirTecho(raiz.transform, matTecho);
+        InteriorModerno.ConstruirTecho(raiz.transform, matTechoKit, matBrillo, matResplandor, carpetaMallas);
+        InteriorModerno.ConstruirParedFondo(raiz.transform, matKit, matBrillo, matResplandor, carpetaMallas);
         bool conTextos = ConstruirDecoracion(raiz.transform, matKit);
+        InteriorModerno.ConstruirReflejos(raiz.transform, matReflejoKit, matReflejoBrillo, matReflejoTecho, matReflejoPared);
 
         // ---------- Exterior ----------
         FachadaYExterior.ConstruirExterior(raiz.transform, matExterior, carpetaMallas);
-        FachadaYExterior.ConstruirTrafico(raiz.transform, matExterior, matBombillo, carpetaMallas);
+        FachadaYExterior.ConstruirLucesNoche(raiz.transform, matResplandor, carpetaMallas);
+        FachadaYExterior.ConstruirTrafico(raiz.transform, matExterior, matBombillo, matResplandor, carpetaMallas);
 
         // ---------- Teletransporte, escondites y personaje ----------
         ConstruirPuntosTeletransporte(matPunto, matLinea);
@@ -140,7 +159,7 @@ public static class AplicarEstiloYEscenografia
         var mallaPluma = CrearMallaPluma();
         ConstruirPajaro(matKit, matPluma, mallaPluma, matHalo, tamPersonaje);
         ConstruirCronometro();
-        ConstruirOpcionesNavegacion(raiz.transform, matBoton);
+        ConstruirOpcionesNavegacion(raiz.transform, matBoton, matIcono, matCieloNoche);
 
         // ---------- Luz y cámara ----------
         var luz = GameObject.Find("Directional Light");
@@ -203,7 +222,7 @@ public static class AplicarEstiloYEscenografia
     // ================= Muebles =================
 
     static void ConstruirMueble(string nombre, Transform raiz, Material mat, bool dobleCara, int niveles, int semilla,
-        float tamPersonaje, List<Vector3> escondites)
+        float tamPersonaje, List<Vector3> escondites, KitMalla leds)
     {
         var original = GameObject.Find(nombre);
         if (original == null)
@@ -278,7 +297,11 @@ public static class AplicarEstiloYEscenografia
             {
                 float yRepisa = yBase + nivel * paso;
                 if (nivel > 0)
+                {
                     Estructura(new Vector3((xFrente + xFondo) / 2f, yRepisa, b.center.z), new Vector3(profundidad, 0.025f, b.size.z - 0.08f), blanco);
+                    // Luz LED cálida debajo del borde de cada repisa
+                    leds.Caja(new Vector3(xFrente - lado * 0.03f, yRepisa - 0.017f, b.center.z), new Vector3(0.02f, 0.008f, b.size.z - 0.14f), new Color(1f, 0.9f, 0.72f), false);
+                }
 
                 float ySuelo = yRepisa + (nivel > 0 ? 0.0125f : 0f);
                 float altoMax = Mathf.Min(0.32f, paso - 0.07f);
@@ -338,112 +361,9 @@ public static class AplicarEstiloYEscenografia
         }
     }
 
-    // Mostrador de la caja, pegado a la pared del fondo, con caja registradora, datáfono, dulces, gel,
-    // una matera, el letrero "CAJA" colgando y una repisa con medicamentos en la pared de atrás.
-    static void ConstruirMostrador(Transform raiz, Material mat)
-    {
-        var original = GameObject.Find("Mostrador");
-        if (original == null)
-            return;
-        Bounds b = LimitesDeBloque(original.transform);
-        OcultarRender(original); // el collider del mostrador se queda
-
-        Color grisMedio = new Color(0.45f, 0.47f, 0.52f);
-        Color negro = new Color(0.1f, 0.1f, 0.12f);
-        Color terracota = new Color(0.78f, 0.42f, 0.28f);
-        Color hojas = new Color(0.25f, 0.6f, 0.32f);
-
-        var kit = new KitMalla();
-        kit.Caja(b.center, b.size - new Vector3(0.04f, 0.04f, 0.06f), azul);
-        kit.Caja(new Vector3(b.center.x, b.max.y + 0.025f, b.center.z), new Vector3(b.size.x + 0.08f, 0.05f, b.size.z + 0.08f), blanco);
-        float zFrente = b.min.z + 0.03f;
-        kit.Caja(new Vector3(b.center.x, b.min.y + b.size.y * 0.72f, zFrente - 0.005f), new Vector3(b.size.x - 0.04f, 0.08f, 0.01f), blanco);
-        kit.Caja(new Vector3(b.center.x, b.center.y - 0.08f, zFrente - 0.01f), new Vector3(0.30f, 0.10f, 0.02f), verde);
-        kit.Caja(new Vector3(b.center.x, b.center.y - 0.08f, zFrente - 0.01f), new Vector3(0.10f, 0.30f, 0.02f), verde);
-        float yTope = b.max.y + 0.05f;
-        float zc = b.center.z;
-
-        // Caja registradora: cajón, teclado inclinado (mirando al cajero), pantalla para el cliente e impresora.
-        float xc = b.center.x + 0.75f;
-        kit.Caja(new Vector3(xc, yTope + 0.06f, zc), new Vector3(0.44f, 0.12f, 0.40f), grisOscuro);
-        kit.Caja(new Vector3(xc, yTope + 0.03f, zc - 0.205f), new Vector3(0.38f, 0.02f, 0.01f), grisMedio, false); // ranura del cajón
-        kit.Hexaedro(new[]
-        {
-            new Vector3(xc - 0.17f, yTope + 0.12f, zc - 0.02f), new Vector3(xc + 0.17f, yTope + 0.12f, zc - 0.02f),
-            new Vector3(xc + 0.17f, yTope + 0.12f, zc + 0.18f), new Vector3(xc - 0.17f, yTope + 0.12f, zc + 0.18f),
-            new Vector3(xc - 0.17f, yTope + 0.20f, zc - 0.02f), new Vector3(xc + 0.17f, yTope + 0.20f, zc - 0.02f),
-            new Vector3(xc + 0.17f, yTope + 0.15f, zc + 0.18f), new Vector3(xc - 0.17f, yTope + 0.15f, zc + 0.18f),
-        }, grisMedio);
-        kit.grosorContorno = 0.4f;
-        for (int fila = 0; fila < 3; fila++)
-            for (int col = 0; col < 4; col++)
-            {
-                Color tecla = col == 3 ? (fila == 0 ? new Color(0.9f, 0.25f, 0.2f) : fila == 1 ? new Color(0.95f, 0.8f, 0.2f) : verde) : blanco;
-                float zt = zc + 0.03f + fila * 0.05f;
-                float yt = yTope + 0.20f - (zt - (zc - 0.02f)) / 0.2f * 0.05f + 0.008f;
-                kit.Caja(new Vector3(xc - 0.11f + col * 0.07f, yt, zt), new Vector3(0.05f, 0.012f, 0.035f), tecla);
-            }
-        kit.grosorContorno = 1f;
-        kit.Caja(new Vector3(xc - 0.1f, yTope + 0.23f, zc - 0.12f), new Vector3(0.03f, 0.22f, 0.03f), grisOscuro);
-        kit.Caja(new Vector3(xc - 0.1f, yTope + 0.37f, zc - 0.12f), new Vector3(0.24f, 0.13f, 0.03f), grisOscuro);
-        kit.Etiqueta(new Vector3(xc - 0.1f, yTope + 0.37f, zc - 0.136f), Vector3.back, 0.05f, 0.1f, azulClaro);
-        kit.Caja(new Vector3(xc + 0.33f, yTope + 0.06f, zc + 0.05f), new Vector3(0.16f, 0.12f, 0.2f), blanco);
-        kit.Caja(new Vector3(xc + 0.33f, yTope + 0.125f, zc - 0.02f), new Vector3(0.08f, 0.01f, 0.06f), new Color(0.97f, 0.97f, 0.95f), false); // papel
-        // Datáfono
-        kit.Caja(new Vector3(xc - 0.45f, yTope + 0.02f, zc - 0.22f), new Vector3(0.09f, 0.04f, 0.16f), negro);
-        kit.Piso(new Vector3(xc - 0.45f, yTope + 0.041f, zc - 0.25f), 0.03f, 0.025f, azulClaro);
-
-        // Exhibidor de dulces de dos pisos, con cajitas de colores.
-        float xd = b.center.x - 0.85f;
-        kit.Caja(new Vector3(xd, yTope + 0.04f, zc - 0.15f), new Vector3(0.5f, 0.08f, 0.22f), blanco);
-        kit.Caja(new Vector3(xd, yTope + 0.14f, zc - 0.06f), new Vector3(0.5f, 0.12f, 0.12f), blanco);
-        kit.grosorContorno = 0.5f;
-        for (int i = 0; i < 6; i++)
-        {
-            kit.Caja(new Vector3(xd - 0.2f + i * 0.08f, yTope + 0.11f, zc - 0.19f), new Vector3(0.06f, 0.06f, 0.08f), coloresProductos[i % coloresProductos.Length]);
-            kit.Caja(new Vector3(xd - 0.2f + i * 0.08f, yTope + 0.23f, zc - 0.07f), new Vector3(0.06f, 0.06f, 0.07f), coloresProductos[(i + 3) % coloresProductos.Length]);
-        }
-        kit.grosorContorno = 1f;
-
-        // Gel antibacterial y matera con planta.
-        float xg = b.center.x - 0.3f;
-        kit.Cilindro(new Vector3(xg, yTope + 0.08f, zc - 0.2f), 0.04f, 0.16f, Vector3.up, 12, blanco, true, true);
-        kit.Cilindro(new Vector3(xg, yTope + 0.18f, zc - 0.2f), 0.012f, 0.04f, Vector3.up, 8, azul);
-        kit.Caja(new Vector3(xg, yTope + 0.2f, zc - 0.22f), new Vector3(0.015f, 0.012f, 0.05f), azul);
-        float xm = b.min.x + 0.2f;
-        kit.Cilindro(new Vector3(xm, yTope + 0.08f, zc + 0.1f), 0.08f, 0.16f, Vector3.up, 14, terracota, true, true);
-        kit.Esfera(new Vector3(xm, yTope + 0.26f, zc + 0.1f), new Vector3(0.14f, 0.16f, 0.14f), 2, hojas, true, false, true);
-
-        // Repisa con medicamentos en la pared de atrás (sobre el mostrador, debajo del letrero).
-        float zPared = FachadaYExterior.Fondo - 0.1f;
-        var rnd = new System.Random(77);
-        foreach (float y in new[] { 1.3f, 1.68f })
-        {
-            kit.Caja(new Vector3(0f, y, zPared - 0.1f), new Vector3(3.0f, 0.025f, 0.2f), blanco);
-            kit.grosorContorno = 0.5f;
-            for (float x = -1.42f; x < 1.38f;)
-            {
-                float ancho = Rango(rnd, 0.06f, 0.12f), alto = Rango(rnd, 0.1f, 0.24f);
-                kit.Caja(new Vector3(x + ancho / 2f, y + 0.0125f + alto / 2f, zPared - 0.1f), new Vector3(ancho, alto, 0.14f),
-                    coloresProductos[rnd.Next(coloresProductos.Length)]);
-                x += ancho + 0.01f;
-            }
-            kit.grosorContorno = 1f;
-        }
-        foreach (float x in new[] { -1.45f, 0f, 1.45f })
-            kit.Caja(new Vector3(x, 1.49f, zPared - 0.015f), new Vector3(0.03f, 0.42f, 0.03f), grisOscuro);
-
-        // Letrero "CAJA" colgando del techo, sobre la registradora.
-        kit.Caja(new Vector3(xc, 2.5f, zc - 0.2f), new Vector3(0.7f, 0.24f, 0.04f), verde);
-        kit.Caja(new Vector3(xc - 0.3f, 2.81f, zc - 0.2f), new Vector3(0.01f, 0.38f, 0.01f), grisOscuro, false);
-        kit.Caja(new Vector3(xc + 0.3f, 2.81f, zc - 0.2f), new Vector3(0.01f, 0.38f, 0.01f), grisOscuro, false);
-        kit.CrearObjeto("Kit_Mostrador", raiz, mat, carpetaMallas);
-
-        if (Resources.Load<TMP_Settings>("TMP Settings") != null)
-            Texto(raiz, "CAJA", new Vector3(xc, 2.5f, zc - 0.225f), new Vector2(0.6f, 0.2f), Color.white);
-    }
-
-    static void ConstruirTecho(Transform raiz, Material matTecho, Material matLampara)
+    // La losa del techo (con su colisión, para que el personaje no se escape por arriba).
+    // El diseño futurista con luces lo arma InteriorModerno.ConstruirTecho.
+    static void ConstruirTecho(Transform raiz, Material matTecho)
     {
         var techo = GameObject.CreatePrimitive(PrimitiveType.Cube);
         techo.name = "Techo";
@@ -451,37 +371,18 @@ public static class AplicarEstiloYEscenografia
         float fondo = FachadaYExterior.Fondo;
         techo.transform.position = new Vector3(0f, 3.05f, (fondo - 5f) / 2f);
         techo.transform.localScale = new Vector3(10f, 0.1f, fondo + 5f);
-        techo.GetComponent<Renderer>().sharedMaterial = matTecho; // conserva su collider: el personaje no se escapa por arriba
-
-        var lamparas = new KitMalla();
-        foreach (float x in new[] { -3.6f, -1.25f, 1.25f, 3.6f })
-            foreach (float z in new[] { -1.2f, 2.0f, 5.2f })
-                lamparas.Caja(new Vector3(x, 2.985f, z), new Vector3(0.35f, 0.03f, 1.4f), Color.white, false);
-        lamparas.CrearObjeto("Lamparas", raiz, matLampara, carpetaMallas);
+        techo.GetComponent<Renderer>().sharedMaterial = matTecho;
     }
 
     static bool ConstruirDecoracion(Transform raiz, Material mat)
     {
         var kit = new KitMalla();
 
-        // Zócalo azul solo en la pared del fondo (en los lados peleaba con los estantes y parpadeaba).
-        float zFondo = FachadaYExterior.Fondo - 0.11f;           // cara interior de la pared del fondo
-        float largoLados = FachadaYExterior.Fondo + 5f - 0.4f;    // largo de las paredes laterales por dentro
-        float centroLados = (FachadaYExterior.Fondo - 5f) / 2f;
-        kit.Caja(new Vector3(0f, 0.07f, zFondo), new Vector3(9.6f, 0.14f, 0.02f), azul);
-        // Franja azul alta en las cuatro paredes.
-        kit.Caja(new Vector3(0f, 2.8f, zFondo), new Vector3(9.6f, 0.12f, 0.02f), azul);
-        kit.Caja(new Vector3(0f, 2.8f, -4.89f), new Vector3(9.6f, 0.12f, 0.02f), azul);
-        kit.Caja(new Vector3(4.89f, 2.8f, centroLados), new Vector3(0.02f, 0.12f, largoLados), azul);
-        kit.Caja(new Vector3(-4.89f, 2.8f, centroLados), new Vector3(0.02f, 0.12f, largoLados), azul);
+        // (La pared del fondo ahora es de madera y el borde del techo tiene una moldura con luz:
+        // el zócalo y la franja azul de antes ya no van.)
 
         // Tapete de entrada
         kit.Caja(new Vector3(0f, 0.006f, -4.3f), new Vector3(1.6f, 0.012f, 0.9f), azul);
-
-        // Letrero principal sobre el mostrador
-        kit.Caja(new Vector3(0f, 2.35f, zFondo - 0.02f), new Vector3(3.4f, 0.7f, 0.06f), blanco);
-        kit.Caja(new Vector3(-1.35f, 2.35f, zFondo - 0.06f), new Vector3(0.36f, 0.12f, 0.03f), verde);
-        kit.Caja(new Vector3(-1.35f, 2.35f, zFondo - 0.06f), new Vector3(0.12f, 0.36f, 0.03f), verde);
 
         // Letrero exterior sobre la vitrina (con cruz verde) y tablero de instrucciones en el andén
         kit.CajaMinMax(new Vector3(-3.2f, 2.55f, -5.23f), new Vector3(3.2f, 3.05f, -5.13f), azul);
@@ -510,7 +411,6 @@ public static class AplicarEstiloYEscenografia
         }
         var contenedor = new GameObject("Letreros");
         contenedor.transform.SetParent(raiz, false);
-        Texto(contenedor.transform, "Farma-CIA Agencia", new Vector3(0.25f, 2.35f, FachadaYExterior.Fondo - 0.165f), new Vector2(2.6f, 0.5f), azul);
 
         // Afuera: letrero grande sobre la entrada y tablero de instrucciones junto a la puerta.
         Texto(contenedor.transform, "Farma-CIA Agencia", new Vector3(0.3f, 2.8f, -5.235f), new Vector2(5.0f, 0.4f), Color.white);
@@ -879,8 +779,9 @@ public static class AplicarEstiloYEscenografia
         go.SetActive(false);
     }
 
-    // Tres botones (se tocan con el dedo) para elegir la navegación antes de entrar.
-    static void ConstruirOpcionesNavegacion(Transform raiz, Material matBoton)
+    // Tres botones (se tocan con el dedo) para elegir la navegación antes de entrar,
+    // y debajo dos botones con dibujos de un sol y una luna para elegir día o noche.
+    static void ConstruirOpcionesNavegacion(Transform raiz, Material matBoton, Material matIcono, Material matCieloNoche)
     {
         var manager = Object.FindFirstObjectByType<JuegoManager>();
         if (manager == null)
@@ -957,12 +858,101 @@ public static class AplicarEstiloYEscenografia
         UnityEditor.Events.UnityEventTools.AddPersistentListener(tocarMeta.alTocar, modo.ElegirMeta);
         UnityEditor.Events.UnityEventTools.AddPersistentListener(tocarCaminar.alTocar, modo.ElegirCaminar);
 
+        // ---- Día o noche: botón con un sol y botón con una luna ----
+        Renderer CrearBotonIcono(string nombre, float x, Mesh icono)
+        {
+            var boton = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            boton.name = nombre;
+            boton.transform.SetParent(opciones.transform, false);
+            boton.transform.localPosition = new Vector3(x, -0.095f, 0f);
+            boton.transform.localScale = new Vector3(0.08f, 0.065f, 0.025f);
+            boton.GetComponent<Renderer>().sharedMaterial = matBoton;
+            boton.AddComponent<BotonTocable>();
+            var dibujo = new GameObject("Icono_" + nombre);
+            dibujo.transform.SetParent(opciones.transform, false);
+            dibujo.transform.localPosition = new Vector3(x, -0.095f, -0.0135f);
+            dibujo.transform.localScale = Vector3.one * 0.024f;
+            dibujo.AddComponent<MeshFilter>().sharedMesh = icono;
+            var r = dibujo.AddComponent<MeshRenderer>();
+            r.sharedMaterial = matIcono;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            return boton.GetComponent<Renderer>();
+        }
+        var botonDia = CrearBotonIcono("BotonDia", -0.055f, CrearIconoSol());
+        var botonNoche = CrearBotonIcono("BotonNoche", 0.055f, CrearIconoLuna());
+
+        var diaNoche = manager.GetComponent<DiaNoche>();
+        if (diaNoche == null)
+            diaNoche = Undo.AddComponent<DiaNoche>(manager.gameObject);
+        Undo.RecordObject(diaNoche, "Día y noche");
+        var luzSol = GameObject.Find("Directional Light");
+        diaNoche.sol = luzSol != null ? luzSol.GetComponent<Light>() : null;
+        diaNoche.cieloDia = AssetDatabase.GetBuiltinExtraResource<Material>("Default-Skybox.mat");
+        diaNoche.cieloNoche = matCieloNoche;
+        diaNoche.botonDia = botonDia;
+        diaNoche.botonNoche = botonNoche;
+        EditorUtility.SetDirty(diaNoche);
+        var tocarDia = botonDia.GetComponent<BotonTocable>();
+        var tocarNoche = botonNoche.GetComponent<BotonTocable>();
+        if (tocarDia.alTocar == null) tocarDia.alTocar = new UnityEngine.Events.UnityEvent();
+        if (tocarNoche.alTocar == null) tocarNoche.alTocar = new UnityEngine.Events.UnityEvent();
+        UnityEditor.Events.UnityEventTools.AddPersistentListener(tocarDia.alTocar, diaNoche.Dia);
+        UnityEditor.Events.UnityEventTools.AddPersistentListener(tocarNoche.alTocar, diaNoche.Noche);
+
         ArreglarSuperficieTeletransporteMeta(modo.teletransporteMeta);
 
         Undo.RecordObject(manager, "Opciones");
         manager.opcionesNavegacion = opciones;
         EditorUtility.SetDirty(manager);
         opciones.SetActive(false);
+    }
+
+    // Dibujo de un sol (círculo y rayos), de radio 1, mirando hacia -Z.
+    static Mesh CrearIconoSol()
+    {
+        var k = new KitMalla();
+        Color amarillo = new Color(1f, 0.78f, 0.1f);
+        for (int i = 0; i < 24; i++)
+        {
+            float a0 = i * Mathf.PI * 2f / 24f, a1 = (i + 1) * Mathf.PI * 2f / 24f;
+            k.Triangulo(Vector3.zero, new Vector3(Mathf.Cos(a0), Mathf.Sin(a0), 0f) * 0.42f, new Vector3(Mathf.Cos(a1), Mathf.Sin(a1), 0f) * 0.42f,
+                Vector3.back, amarillo, Vector3.zero, false);
+        }
+        for (int i = 0; i < 8; i++)
+        {
+            float a = i * Mathf.PI / 4f;
+            Vector3 izq = new Vector3(Mathf.Cos(a - 0.17f), Mathf.Sin(a - 0.17f), 0f) * 0.55f;
+            Vector3 der = new Vector3(Mathf.Cos(a + 0.17f), Mathf.Sin(a + 0.17f), 0f) * 0.55f;
+            Vector3 punta = new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f) * 0.95f;
+            k.Triangulo(izq, der, punta, Vector3.back, amarillo, Vector3.zero, false);
+        }
+        return k.GuardarComo($"{carpetaMallas}/Icono_Sol.asset");
+    }
+
+    // Dibujo de una luna creciente, de radio 1, mirando hacia -Z.
+    static Mesh CrearIconoLuna()
+    {
+        var k = new KitMalla();
+        Color luna = new Color(0.98f, 0.92f, 0.62f);
+        Vector3 corrida = new Vector3(0.2f, 0f, 0f);
+        const int n = 24;
+        Vector3 Fuera(float t)
+        {
+            float a = Mathf.Lerp(46.4f, 313.6f, t) * Mathf.Deg2Rad;
+            return new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f) * 0.9f + corrida;
+        }
+        Vector3 Dentro(float t)
+        {
+            float a = Mathf.Lerp(64.9f, 295.1f, t) * Mathf.Deg2Rad;
+            return (new Vector3(0.35f, 0f, 0f) + new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f) * 0.8f) * 0.9f + corrida;
+        }
+        for (int i = 0; i < n; i++)
+        {
+            float t0 = i / (float)n, t1 = (i + 1) / (float)n;
+            k.Triangulo(Fuera(t0), Fuera(t1), Dentro(t1), Vector3.back, luna, Vector3.zero, false);
+            k.Triangulo(Fuera(t0), Dentro(t1), Dentro(t0), Vector3.back, luna, Vector3.zero, false);
+        }
+        return k.GuardarComo($"{carpetaMallas}/Icono_Luna.asset");
     }
 
     static GameObject BuscarAunqueEsteApagado(string nombre)
@@ -1028,6 +1018,20 @@ public static class AplicarEstiloYEscenografia
         m.SetFloat("_ZWrite", opaco ? 1f : 0f);
         m.SetFloat("_ZTest", encima ? (float)UnityEngine.Rendering.CompareFunction.Always : (float)UnityEngine.Rendering.CompareFunction.LessEqual);
         m.renderQueue = cola;
+        m.enableInstancing = true;
+        EditorUtility.SetDirty(m);
+        return m;
+    }
+
+    // Material para la copia "de cabeza" que se ve reflejada en el piso.
+    static Material CrearMaterialReflejo(string nombre, Color color, bool coloresMalla, bool sinLuz)
+    {
+        var m = ObtenerMaterial(nombre, "FarmaciaVR/Reflejo");
+        m.SetColor("_BaseColor", color);
+        m.SetColor("_ShadowColor", sombraSuave);
+        m.SetFloat("_UseVertexColor", coloresMalla ? 1f : 0f);
+        m.SetFloat("_SinLuz", sinLuz ? 1f : 0f);
+        m.renderQueue = 2450; // después de lo opaco, antes del piso brillante
         m.enableInstancing = true;
         EditorUtility.SetDirty(m);
         return m;

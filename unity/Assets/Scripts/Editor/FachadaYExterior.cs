@@ -97,7 +97,7 @@ internal static class FachadaYExterior
 
         fachada.CrearObjeto("Kit_Fachada", raiz, matKit, carpeta);
         vidrio.CrearObjeto("Vidrios", raiz, matVidrio, carpeta);
-        luz.CrearObjeto("LuzDeSol", raiz, matLuz, carpeta);
+        luz.CrearObjeto("LuzDeSol", raiz, matLuz, carpeta).AddComponent<SoloDeDia>(); // de noche no entra sol
     }
 
     // Pared de 0.2 m de grosor con huecos. Si "enX" es true, la pared va a lo largo de Z en x = fijo;
@@ -232,11 +232,12 @@ internal static class FachadaYExterior
         ext.brillo = 0.2f; // casi todo es mate; abajo se sube el brillo del asfalto, vidrios y carros
 
         // Suelo: pasto lejano, asfalto de las calles y las manzanas (andenes) 12 cm más arriba.
-        ext.CajaMinMax(new Vector3(-400f, -0.5f, -400f), new Vector3(400f, -0.2f, 400f), pasto, false);
+        // Debajo de la farmacia el suelo de afuera tiene un hueco: ahí abajo está el reflejo del piso brillante.
+        CajaConHueco(ext, new Vector3(-400f, -0.5f, -400f), new Vector3(400f, -0.2f, 400f), pasto);
         ext.brillo = 0.6f; // el asfalto refleja el sol
-        ext.CajaMinMax(new Vector3(-70f, -0.25f, -70f), new Vector3(70f, -0.13f, 70f), asfalto, false);
+        CajaConHueco(ext, new Vector3(-70f, -0.25f, -70f), new Vector3(70f, -0.13f, 70f), asfalto);
         ext.brillo = 0.35f;
-        Manzana(ext, -7f, 70f, -8f, 70f);    // la de la farmacia
+        CajaConHueco(ext, new Vector3(-7f, -0.25f, -8f), new Vector3(70f, -0.01f, 70f), acera); // la manzana de la farmacia
         Manzana(ext, -7f, 70f, -70f, -16f);  // al frente, cruzando la calle
         Manzana(ext, -70f, -13f, -8f, 70f);  // cruzando la carrera
         Manzana(ext, -70f, -13f, -70f, -16f);
@@ -341,8 +342,12 @@ internal static class FachadaYExterior
             float mitadCara = Mathf.Abs(normal.x) > 0 ? fondo / 2f : ancho / 2f;
             float offset = Mathf.Abs(normal.x) > 0 ? ancho / 2f : fondo / 2f;
             for (float y = 4f; y < alto - 2f; y += 3f)
+            {
+                ext.luzNoche = rnd.NextDouble() < 0.6 ? new Color(0.9f, 0.68f, 0.38f) * Rango(rnd, 0.35f, 0.7f) : Color.black;
                 ext.Etiqueta(c + normal * (offset + 0.02f) + Vector3.up * y, normal, 0.55f, mitadCara * 0.8f,
                     Color.Lerp(vidrioOscuro, new Color(0.75f, 0.82f, 0.9f), 0.35f));
+                ext.luzNoche = Color.black;
+            }
         }
 
         // Árboles en andenes y parqueadero, y postes de luz.
@@ -351,7 +356,8 @@ internal static class FachadaYExterior
         foreach (float z in new[] { -2f, 4f, 10f, 16f }) Arbol(ext, rnd, new Vector3(-6.3f, 0f, z));
         foreach (float z in new[] { -4f, 3f, 10f, 17f }) Arbol(ext, rnd, new Vector3(-14.3f, 0f, z));
         foreach (float z in new[] { -5f, 3f, 11f }) Arbol(ext, rnd, new Vector3(14.25f, 0f, z));
-        foreach (float x in new[] { 6.5f, 15f, 24f }) Poste(ext, new Vector3(x, 0f, -7.7f), -1f);
+        foreach (var poste in Postes())
+            Poste(ext, poste.base0, poste.hacia);
         foreach (var semaforo in semaforos)
             PosteSemaforo(ext, semaforo.poste, semaforo.mira);
 
@@ -415,7 +421,7 @@ internal static class FachadaYExterior
 
     // Crea los carros que andan por la calle y la carrera (en Colombia se maneja por la derecha),
     // el bus del SITP y los bombillos de los semáforos.
-    internal static void ConstruirTrafico(Transform raiz, Material matExterior, Material matBombillo, string carpeta)
+    internal static void ConstruirTrafico(Transform raiz, Material matExterior, Material matBombillo, Material matLuz, string carpeta)
     {
         var trafico = new GameObject("Trafico");
         trafico.transform.SetParent(raiz, false);
@@ -434,6 +440,9 @@ internal static class FachadaYExterior
         var kitBus = new KitMalla();
         Bus(kitBus, Vector3.zero, null);
         var mallaBus = kitBus.GuardarComo($"{carpeta}/Bus_SITP.asset");
+        // Luces de noche (haces de los faros y luz roja atrás), pegadas a cada carro.
+        var lucesCarro = MallaLucesCarro($"{carpeta}/LucesNoche_Carro.asset", 2.25f, 0.65f, 0.57f);
+        var lucesBus = MallaLucesCarro($"{carpeta}/LucesNoche_Bus.asset", 5.5f, 0.9f, 0.74f);
 
         // Carriles: inicio, fin y línea de pare (antes del cruce o de la cebra).
         float L = LargoCalles;
@@ -456,6 +465,14 @@ internal static class FachadaYExterior
             // Los letreros del taxi y del bus van pegados al carro (se crean con el carro en el origen).
             if (esTaxi) Taxi(new KitMalla(), Vector3.zero, Vector3.right, go.transform);
             if (esBus) Bus(new KitMalla(), Vector3.zero, go.transform);
+            var luces = new GameObject("LucesNoche");
+            luces.transform.SetParent(go.transform, false);
+            luces.AddComponent<MeshFilter>().sharedMesh = esBus ? lucesBus : lucesCarro;
+            var renderLuces = luces.AddComponent<MeshRenderer>();
+            renderLuces.sharedMaterial = matLuz;
+            renderLuces.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            luces.AddComponent<SoloDeNoche>();
+            luces.SetActive(false);
             var ruta = go.AddComponent<CarroEnRuta>();
             ruta.inicio = c.inicio;
             ruta.fin = c.fin;
@@ -518,6 +535,38 @@ internal static class FachadaYExterior
         control.bombillosCarrera = carrera.ToArray();
     }
 
+    // Haces de luz de un carro (coordenadas del carro: +X adelante, la calle en y = 0).
+    static Mesh MallaLucesCarro(string ruta, float hx, float alturaFaro, float ladoFaro)
+    {
+        var k = new KitMalla();
+        Color Blanca(float a) => new Color(1f, 0.95f, 0.82f, a);
+        Color Roja(float a) => new Color(1f, 0.08f, 0.04f, a);
+
+        // Mancha de luz en la calle, adelante (más fuerte en el centro, se apaga hacia los lados y a lo lejos).
+        float[] xs = { hx + 0.2f, hx + 2f, hx + 4.5f, hx + 8.5f };
+        float[] alfas = { 0.36f, 0.28f, 0.13f, 0f };
+        float[] anchos = { 1.0f, 1.6f, 2.4f, 3.3f };
+        for (int i = 0; i < xs.Length - 1; i++)
+            foreach (float s in new[] { -1f, 1f })
+                k.CuadroColores(new Vector3(xs[i], 0.02f, 0f), new Vector3(xs[i + 1], 0.02f, 0f),
+                    new Vector3(xs[i + 1], 0.02f, s * anchos[i + 1]), new Vector3(xs[i], 0.02f, s * anchos[i]),
+                    Blanca(alfas[i]), Blanca(alfas[i + 1]), Blanca(0f), Blanca(0f));
+
+        // Haz de cada faro (plano suave que baja hasta la calle)
+        foreach (float s in new[] { -1f, 1f })
+        {
+            Vector3 faro = new Vector3(hx + 0.02f, alturaFaro, s * ladoFaro);
+            Vector3 lejos = new Vector3(hx + 7f, 0.05f, s * ladoFaro * 1.4f);
+            k.CuadroColores(faro + Vector3.back * 0.08f, faro + Vector3.forward * 0.08f,
+                lejos + Vector3.forward * 0.9f, lejos + Vector3.back * 0.9f, Blanca(0.14f), Blanca(0.14f), Blanca(0f), Blanca(0f));
+        }
+
+        // Reflejo rojo de las luces de atrás
+        k.CuadroColores(new Vector3(-hx - 0.1f, 0.02f, -0.9f), new Vector3(-hx - 0.1f, 0.02f, 0.9f),
+            new Vector3(-hx - 1.8f, 0.02f, 1.1f), new Vector3(-hx - 1.8f, 0.02f, -1.1f), Roja(0.22f), Roja(0.22f), Roja(0f), Roja(0f));
+        return k.GuardarComo(ruta);
+    }
+
     // ---------- Piezas del exterior ----------
 
     static void Manzana(KitMalla k, float x0, float x1, float z0, float z1)
@@ -555,11 +604,23 @@ internal static class FachadaYExterior
                     p.y = y;
                     float brilloAntes = k.brillo;
                     k.brillo = 1f; // las ventanas reflejan el sol
+                    k.luzNoche = LuzDeVentana(rnd);
                     k.Etiqueta(p, normal, 0.7f, Mathf.Min(0.65f, paso * 0.35f), vidrioOscuro);
+                    k.luzNoche = Color.black;
                     k.brillo = brilloAntes;
                 }
             }
         }
+    }
+
+    // De noche: la mayoría de ventanas encendidas (luz cálida), algunas con luz fría y otras apagadas.
+    static Color LuzDeVentana(System.Random rnd)
+    {
+        double r = rnd.NextDouble();
+        float f = Rango(rnd, 0.6f, 1.1f);
+        if (r < 0.55) return new Color(1f, 0.76f, 0.4f) * f;
+        if (r < 0.68) return new Color(0.7f, 0.82f, 1f) * (f * 0.8f);
+        return Color.black;
     }
 
     static void Toldo(KitMalla k, System.Random rnd, Vector3 centro, float ancho, bool enX)
@@ -571,7 +632,9 @@ internal static class FachadaYExterior
         // Vitrina oscura de la tienda en el primer piso.
         Vector3 normal = enX ? Vector3.right : Vector3.forward;
         Vector3 cara = centro - normal * 0.38f + Vector3.down * 1.35f;
+        k.luzNoche = new Color(1.2f, 1.0f, 0.75f); // vitrina iluminada de noche
         k.Etiqueta(cara, normal, 1.1f, ancho * 0.45f, vidrioOscuro);
+        k.luzNoche = Color.black;
     }
 
     static void Arbol(KitMalla k, System.Random rnd, Vector3 base0)
@@ -584,11 +647,91 @@ internal static class FachadaYExterior
         k.Esfera(base0 + Vector3.up * (altoTronco + radios.y * 0.7f), radios, 2, Elegir(rnd, verdes), true, false, true); // lisa, sin polígonos
     }
 
-    static void Poste(KitMalla k, Vector3 base0, float haciaZ)
+    // Poste de luz con brazo hacia la calle ("hacia"). De noche la lámpara se prende.
+    static void Poste(KitMalla k, Vector3 base0, Vector3 hacia)
     {
-        k.Cilindro(base0 + Vector3.up * 2.5f, 0.06f, 5f, Vector3.up, 6, grisOscuro);
-        k.Caja(base0 + new Vector3(0f, 4.95f, haciaZ * 0.5f), new Vector3(0.08f, 0.08f, 1.0f), grisOscuro);
-        k.Caja(base0 + new Vector3(0f, 4.88f, haciaZ * 1.0f), new Vector3(0.25f, 0.1f, 0.45f), grisClaro);
+        Vector3 lado = Abs(new Vector3(hacia.z, 0f, hacia.x));
+        k.Cilindro(base0 + Vector3.up * 2.5f, 0.06f, 5f, Vector3.up, 10, grisOscuro, true, true);
+        k.Caja(base0 + Vector3.up * 4.95f + hacia * 0.5f, Abs(hacia) * 1.0f + lado * 0.08f + Vector3.up * 0.08f, grisOscuro);
+        k.luzNoche = luzLampara;
+        k.Caja(base0 + Vector3.up * 4.88f + hacia * 1.0f, Abs(hacia) * 0.45f + lado * 0.25f + Vector3.up * 0.1f, grisClaro);
+        k.luzNoche = Color.black;
+    }
+
+    static readonly Color luzLampara = new Color(1.6f, 1.3f, 0.85f);
+
+    // Postes en los andenes de la calle y de la carrera (lejos de los semáforos y de la farmacia).
+    static List<(Vector3 base0, Vector3 hacia)> Postes()
+    {
+        var lista = new List<(Vector3 base0, Vector3 hacia)>();
+        foreach (float x in new[] { 6.5f, 15f, 24f, 34f, 46f, 60f, -26f, -40f, -54f })
+            lista.Add((new Vector3(x, 0f, -7.7f), Vector3.back));
+        foreach (float x in new[] { -1f, 9f, 20f, 31f, 44f, 58f, -24f, -38f, -52f })
+            lista.Add((new Vector3(x, 0f, -16.3f), Vector3.forward));
+        foreach (float z in new[] { 1f, 13f, 24f, 36f, 50f, -27f, -40f })
+            lista.Add((new Vector3(-6.7f, 0f, z), Vector3.left));
+        foreach (float z in new[] { 6.5f, 13.5f, 22f, 32f, 46f, -24f, -36f })
+            lista.Add((new Vector3(-13.3f, 0f, z), Vector3.right));
+        return lista;
+    }
+
+    // Caja con un hueco (en X y Z) justo debajo de la farmacia.
+    static void CajaConHueco(KitMalla k, Vector3 min, Vector3 max, Color color)
+    {
+        float hx0 = -4.95f, hx1 = 4.95f, hz0 = -4.95f, hz1 = Fondo - 0.05f;
+        k.CajaMinMax(min, new Vector3(hx0, max.y, max.z), color, false);
+        k.CajaMinMax(new Vector3(hx1, min.y, min.z), max, color, false);
+        k.CajaMinMax(new Vector3(hx0, min.y, min.z), new Vector3(hx1, max.y, hz0), color, false);
+        k.CajaMinMax(new Vector3(hx0, min.y, hz1), new Vector3(hx1, max.y, max.z), color, false);
+    }
+
+    // ================= Noche: manchas de luz de los postes =================
+
+    // Altura del suelo de afuera en un punto (calle, andén o parqueadero).
+    static float AlturaSuelo(float x, float z)
+    {
+        if ((z > -16f && z < -8f) || (x > -13f && x < -7f))
+            return -0.125f;
+        if (x > 5.4f && x < 24f && z > -7.4f && z < 14f)
+            return 0.012f;
+        return -0.003f;
+    }
+
+    // Luz de los postes de noche: una mancha cálida en el suelo y un cono suave de luz.
+    internal static void ConstruirLucesNoche(Transform raiz, Material matLuz, string carpeta)
+    {
+        var k = new KitMalla();
+        Color calida = new Color(1f, 0.78f, 0.45f);
+        foreach (var poste in Postes())
+        {
+            Vector3 cabeza = poste.base0 + Vector3.up * 4.83f + poste.hacia * 1.0f;
+            const float radio = 3.8f, celda = 0.6f;
+            for (float x = -radio; x < radio - 0.001f; x += celda)
+                for (float z = -radio; z < radio - 0.001f; z += celda)
+                {
+                    float cx = cabeza.x + x + celda / 2f, cz = cabeza.z + z + celda / 2f;
+                    if (new Vector2(x + celda / 2f, z + celda / 2f).magnitude > radio + celda)
+                        continue;
+                    float y = AlturaSuelo(cx, cz);
+                    Vector3 p0 = new Vector3(cabeza.x + x, y, cabeza.z + z);
+                    Vector3 p1 = p0 + Vector3.right * celda, p2 = p0 + new Vector3(celda, 0f, celda), p3 = p0 + Vector3.forward * celda;
+                    Color A(Vector3 p)
+                    {
+                        float d = new Vector2(p.x - cabeza.x, p.z - cabeza.z).magnitude;
+                        float f = Mathf.Clamp01(1f - d / radio);
+                        return new Color(calida.r, calida.g, calida.b, 0.5f * f * f);
+                    }
+                    k.CuadroColores(p0, p1, p2, p3, A(p0), A(p1), A(p2), A(p3));
+                }
+            // Cono de luz (dos planos cruzados, muy suaves)
+            float suelo = AlturaSuelo(cabeza.x, cabeza.z);
+            Color arriba = new Color(calida.r, calida.g, calida.b, 0.16f), abajo = new Color(calida.r, calida.g, calida.b, 0f);
+            foreach (var eje in new[] { Vector3.right, Vector3.forward })
+                k.CuadroColores(cabeza - eje * 0.12f, cabeza + eje * 0.12f,
+                    new Vector3(cabeza.x, suelo, cabeza.z) + eje * 1.9f, new Vector3(cabeza.x, suelo, cabeza.z) - eje * 1.9f,
+                    arriba, arriba, abajo, abajo);
+        }
+        k.CrearObjeto("LucesNoche_Calle", raiz, matLuz, carpeta).AddComponent<SoloDeNoche>();
     }
 
     // ---------- Carros (estilo de las referencias: low poly, cabina en trapecio) ----------
@@ -787,7 +930,9 @@ internal static class FachadaYExterior
             CuadroFrontal(x, -0.36f, 0.36f, 0.56f, 0.74f, negroCarro);           // rejilla
             foreach (float s in new[] { -1f, 1f })
             {
+                k.luzNoche = new Color(1.6f, 1.6f, 1.45f); // faros prendidos de noche
                 CuadroFrontal(x, Mathf.Min(s * 0.42f, s * 0.72f), Mathf.Max(s * 0.42f, s * 0.72f), 0.58f, 0.73f, new Color(0.95f, 0.95f, 0.9f));
+                k.luzNoche = Color.black;
                 CuadroFrontal(x, Mathf.Min(s * 0.74f, s * 0.85f), Mathf.Max(s * 0.74f, s * 0.85f), 0.58f, 0.73f, new Color(1f, 0.55f, 0.1f));
             }
             CajaLocal(hx, hx + 0.12f, 0.30f, 0.48f, -hz - 0.03f, hz + 0.03f, parachoques);
@@ -797,8 +942,10 @@ internal static class FachadaYExterior
         public void Atras()
         {
             float x = -hx - 0.003f;
+            k.luzNoche = new Color(1.3f, 0.12f, 0.06f); // luces de atrás prendidas de noche
             foreach (float s in new[] { -1f, 1f })
                 CuadroTrasero(x, Mathf.Min(s * 0.52f, s * 0.84f), Mathf.Max(s * 0.52f, s * 0.84f), 0.6f, 0.76f, new Color(0.85f, 0.22f, 0.15f));
+            k.luzNoche = Color.black;
             CajaLocal(-hx - 0.12f, -hx, 0.30f, 0.48f, -hz - 0.03f, hz + 0.03f, parachoques);
             CuadroTrasero(-hx - 0.123f, -0.22f, 0.22f, 0.33f, 0.45f, new Color(0.95f, 0.95f, 0.95f));
         }
@@ -846,7 +993,9 @@ internal static class FachadaYExterior
             {
                 float cx = (v[0] + v[1]) / 2f, mx = (v[1] - v[0]) / 2f;
                 k.Etiqueta(P(cx, 2.35f, zMarco), n, 0.58f, mx + 0.06f, negro);
+                k.luzNoche = new Color(0.5f, 0.6f, 0.7f); // de noche se ve la luz de adentro del bus
                 k.Etiqueta(P(cx, 2.35f, zVidrio), n, 0.5f, mx - 0.02f, vidrio);
+                k.luzNoche = Color.black;
             }
             foreach (var d in puertas)
             {
@@ -881,8 +1030,10 @@ internal static class FachadaYExterior
         k.Etiqueta(P(hx + 0.122f, 0.52f, 0f), fr, 0.08f, 0.3f, blanco);
         foreach (float s in new[] { -1f, 1f })
         {
+            k.luzNoche = new Color(1.6f, 1.6f, 1.45f);
             foreach (float z in new[] { 0.62f, 0.85f })
                 k.Cilindro(P(hx + 0.02f, 0.9f, s * z), 0.09f, 0.04f, Vector3.right, 14, blanco, true, true);
+            k.luzNoche = Color.black;
             k.CajaMinMax(P(hx, 0.82f, s * 1.08f - 0.06f), P(hx + 0.03f, 0.98f, s * 1.08f + 0.06f), naranja);
             k.CajaMinMax(P(hx + 0.12f, 0.5f, s * 1.0f - 0.1f), P(hx + 0.15f, 0.58f, s * 1.0f + 0.1f), naranja);
         }
