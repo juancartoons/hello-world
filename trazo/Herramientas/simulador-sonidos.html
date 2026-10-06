@@ -108,21 +108,21 @@ footer { color: var(--muted); font-size: 0.85rem; }
       <div class="card">
         <div class="label">Igual que en el visor</div>
         <ul>
-          <li>Arpa, Piano, Marimba, Cajita: una nota cada 3.5 cm que recorres; un acorde al soltar.</li>
+          <li>Arpa, Piano, Marimba, Cajita, Orquesta: una nota cada 3.5 cm que recorres; un acorde al soltar.</li>
           <li>Rock, Punk, Drum &amp; Bass: la batería arranca con la línea y tus notas caen al compás (solo si tu mano se movió).</li>
           <li>Al soltar, la batería sigue un poco. Si dibujas otra vez, la canción continúa; si no, termina en el siguiente compás con un crash.</li>
         </ul>
       </div>
     </div>
   </div>
-  <footer>Versión v24.1 · 44 100 muestras por segundo, el mismo generador de ruido que Unity (System.Random) y los mismos volúmenes (notas 0.35, batería 0.3).</footer>
+  <footer>Versión v24.2 (prueba: Rock tipo The Strokes, Punk grunge, Drum &amp; Bass más seco, Orquesta con coro) · 44 100 muestras por segundo, el mismo generador de ruido que Unity (System.Random) y los mismos volúmenes (notas 0.35, batería 0.3).</footer>
 </div>
 
 <script>
 "use strict";
 // ======================= Sonidos.cs, the same math =======================
 const FS = 44100;
-const INSTRUMENTOS = ["Arpa", "Piano", "Marimba", "Cajita", "Rock", "Punk", "Drum & Bass"];
+const INSTRUMENTOS = ["Arpa", "Piano", "Marimba", "Cajita", "Rock", "Punk", "Drum & Bass", "Orquesta"];
 const PRIMER_CON_RITMO = 4;
 const NOTAS_ESCALA = 13;
 const PENTATONICA = [0, 2, 4, 7, 9];
@@ -177,8 +177,11 @@ function frecuenciaEscala(i) {
   const semitonos = 12 * Math.floor(i / 5) + PENTATONICA[i % 5];
   return 261.63 * Math.pow(2, semitonos / 12);
 }
-const tieneRitmo = i => i >= PRIMER_CON_RITMO && i < INSTRUMENTOS.length;
-const pulsosPorMinuto = i => i === 5 ? 180 : i === 6 ? 174 : 120;
+const tieneRitmo = i => i >= PRIMER_CON_RITMO && i <= 6;
+const pulsosPorMinuto = i => i === 5 ? 180 : i === 6 ? 174 : 130;
+// Volumen de las notas y de la batería de cada instrumento.
+const volumenNota = i => i === 4 ? VOL_MUSICA * 1.3 : i === 5 ? VOL_MUSICA * 0.6 : i === 6 ? VOL_MUSICA * 0.55 : i === 7 ? VOL_MUSICA * 0.7 : VOL_MUSICA;
+const volumenRitmo = i => i === 6 ? 0.45 : VOL_RITMO;
 const pasosPorCompas = i => i === 6 ? 16 : 8;
 const pasosPorNota = i => i === 6 ? 2 : 1;
 
@@ -252,15 +255,117 @@ function percusionElectronica(datos, hz, azar) {
   let fase = 0, bajo = 0;
   for (let i = 0; i < datos.length; i++) {
     const t = i / FS;
-    const f = hz * (1 + 1.5 * Math.exp(-t * 35));
+    const f = hz * (1 + 0.8 * Math.exp(-t * 50));
     fase += PI2 * f / FS;
-    const cuerpo = Math.sin(fase) * Math.exp(-t * 11);
-    const metal = Math.sin(PI2 * hz * 3.5 * t + 2 * Math.sin(PI2 * hz * 5.1 * t)) * Math.exp(-t * 40) * 0.25;
+    const cuerpo = Math.sin(fase) * Math.exp(-t * 28);
+    const metal = Math.sin(PI2 * hz * 3.5 * t + 2 * Math.sin(PI2 * hz * 5.1 * t)) * Math.exp(-t * 90) * 0.15;
     const r = azar.nextDouble() * 2 - 1;
     bajo += (r - bajo) * 0.4;
     const clic = (r - bajo) * Math.exp(-t * 250) * 0.4;
-    datos[i] = Math.tanh((cuerpo + metal + clic) * 1.3) * clamp01(t / 0.001);
+    datos[i] = Math.tanh((cuerpo + metal + clic) * 1.2) * clamp01(t / 0.001);
   }
+}
+
+// Rock tipo The Strokes: guitarra eléctrica casi limpia, brillante y con un poquito de "crunch":
+// la nota y su octava, dos guitarras apenas desafinadas, rasgueo corto.
+function guitarraStrokes(datos, hz, azar) {
+  const limpio = new Float32Array(datos.length);
+  for (const desafino of [1, 1.003]) {
+    cuerda(limpio, hz * desafino, 0.9993, 1, azar);
+    cuerda(limpio, hz * 2 * desafino, 0.9993, 0.45, azar);
+  }
+  let bajo = 0, muyBajo = 0;
+  for (let i = 0; i < datos.length; i++) {
+    const t = i / FS;
+    const v = Math.tanh(limpio[i] * 0.3 * 3);
+    bajo += (v - bajo) * 0.55;
+    muyBajo += (bajo - muyBajo) * 0.04;
+    const brillo = bajo + 0.3 * (bajo - muyBajo); // un poco más de agudos ("presencia")
+    datos[i] = brillo * Math.exp(-t * 3.5) * clamp01(t / 0.0015);
+  }
+}
+
+// Punk / grunge tipo Nirvana: acorde de quinta a fuzz total (como un motor). Cuerdas largas, se les
+// quitan los graves antes de distorsionar (más apretado), fuzz asimétrico, y un "parlante" de guitarra.
+function fuzzGrunge(datos, hz, azar) {
+  const limpio = new Float32Array(datos.length);
+  for (const desafino of [1, 1.006])
+    for (const r of [1, 1.4983, 2])
+      cuerda(limpio, hz * r * desafino, 0.9998, r === 2 ? 0.6 : 1, azar);
+  let lpEntrada = 0, c1 = 0, c2 = 0, lpSalida = 0;
+  const sesgo = 0.25, base = Math.tanh(sesgo);
+  for (let i = 0; i < datos.length; i++) {
+    const t = i / FS;
+    const x = limpio[i] * 0.25;
+    lpEntrada += (x - lpEntrada) * 0.02;
+    const fuzz = Math.tanh((x - lpEntrada) * 28 + sesgo) - base;
+    c1 += (fuzz - c1) * 0.28;
+    c2 += (c1 - c2) * 0.28;
+    lpSalida += (c2 - lpSalida) * 0.005;
+    const motor = 1 + 0.08 * Math.sin(PI2 * 28 * t);
+    datos[i] = (c2 - lpSalida) * motor * Math.exp(-t * 0.8) * clamp01(t / 0.003);
+  }
+}
+
+// Filtro "pasa banda" (deja pasar solo una zona de tonos): sirve para formar la vocal del coro.
+function pasaBanda(entrada, salida, f, ancho, ganancia) {
+  const w = PI2 * f / FS, q = f / ancho, alfa = Math.sin(w) / (2 * q);
+  const a0 = 1 + alfa, b0 = alfa / a0, b2 = -alfa / a0, a1 = -2 * Math.cos(w) / a0, a2 = (1 - alfa) / a0;
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+  for (let i = 0; i < entrada.length; i++) {
+    const x = entrada[i];
+    const y = b0 * x + b2 * x2 - a1 * y1 - a2 * y2;
+    x2 = x1; x1 = x; y2 = y1; y1 = y;
+    salida[i] += y * ganancia;
+  }
+}
+
+// Eco de sala (el mismo de la música del título).
+function eco(datos, mezcla) {
+  const tiempos = [0.0297, 0.0371, 0.0411, 0.0437];
+  const suma = new Float32Array(datos.length);
+  for (const tiempo of tiempos) {
+    const d = rnd(tiempo * FS);
+    const y = new Float32Array(datos.length);
+    for (let i = 0; i < datos.length; i++) {
+      y[i] = datos[i] + (i >= d ? y[i - d] * 0.78 : 0);
+      suma[i] += y[i];
+    }
+  }
+  for (let i = 0; i < datos.length; i++) datos[i] += suma[i] * mezcla / tiempos.length;
+}
+
+// Orquesta con coro: cuerdas (5 sierras desafinadas con vibrato, que entran despacio) + coro cantando
+// "Aaa" (3 voces pasadas por los 3 filtros de la vocal A) + eco de sala.
+function orquesta(datos, hz, azar) {
+  const n = datos.length;
+  const voces = new Float32Array(n);
+  const fases = [0, 0, 0, 0, 0], fasesCoro = [0, 0, 0];
+  let c1 = 0, c2 = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / FS;
+    let cuerdas = 0;
+    for (let v = 0; v < 5; v++) {
+      const f = hz * (1 + (v - 2) * 0.004) * (1 + 0.004 * Math.sin(PI2 * 5.3 * t + v));
+      fases[v] = (fases[v] + f / FS) % 1;
+      cuerdas += fases[v] * 2 - 1;
+    }
+    c1 += (cuerdas - c1) * 0.12;
+    c2 += (c1 - c2) * 0.12;
+    const envCuerdas = clamp01(t / 0.15) * Math.exp(-Math.max(0, t - 0.6) * 2.5);
+    datos[i] = c2 * 0.12 * envCuerdas;
+    let coro = 0;
+    for (let v = 0; v < 3; v++) {
+      const f = hz * [0.997, 1, 1.003][v] * (1 + 0.006 * Math.sin(PI2 * 5 * t + v * 2.1));
+      fasesCoro[v] = (fasesCoro[v] + f / FS) % 1;
+      coro += fasesCoro[v] * 2 - 1;
+    }
+    voces[i] = coro * clamp01(t / 0.2) * Math.exp(-Math.max(0, t - 0.7) * 2.2) + (azar.nextDouble() * 2 - 1) * 0.02;
+  }
+  pasaBanda(voces, datos, 800, 80, 0.5);
+  pasaBanda(voces, datos, 1150, 90, 0.25);
+  pasaBanda(voces, datos, 2900, 120, 0.12);
+  eco(datos, 0.35);
 }
 
 const notasCache = {};
@@ -270,7 +375,7 @@ function notaInstrumento(instr, indice) {
   const clave = instr + "_" + indice;
   if (notasCache[clave]) return notasCache[clave];
   const hz = frecuenciaEscala(indice);
-  const datos = new Float32Array(rnd(FS * 1.3));
+  const datos = new Float32Array(rnd(FS * (instr === 7 ? 2.2 : 1.3)));
   switch (instr) {
     case 0: pulsar(datos, 0, hz, 0.5, new NetRandom(40 + indice)); break;
     case 1:
@@ -300,9 +405,10 @@ function notaInstrumento(instr, indice) {
         datos[i] = v * clamp01(t / 0.0015);
       }
       break;
-    case 4: powerChord(datos, hz * 0.5, 7, 0.9997, 1.2, 0.22, new NetRandom(60 + indice)); break;
-    case 5: powerChord(datos, hz * 0.5, 5, 0.999, 7, 0.5, new NetRandom(80 + indice)); break;
+    case 4: guitarraStrokes(datos, hz * 0.5, new NetRandom(60 + indice)); break;
+    case 5: fuzzGrunge(datos, hz * 0.5, new NetRandom(80 + indice)); break;
     case 6: percusionElectronica(datos, hz * 0.5, new NetRandom(70 + indice)); break;
+    case 7: orquesta(datos, hz, new NetRandom(100 + indice)); break;
   }
   return (notasCache[clave] = clip(datos, 0.6));
 }
@@ -356,7 +462,7 @@ function ritmo(instr) {
   const largo = new Float32Array(n + Math.floor(FS / 2));
   const azar = new NetRandom(90 + instr);
   let b, c, h;
-  if (instr === 4) { b = "x.x..xx."; c = "..o...o."; h = "hhhhhhhH"; }
+  if (instr === 4) { b = "x...x.x."; c = "..o...o."; h = "hhhhhhhh"; }
   else if (instr === 5) { b = "x.x.x.x."; c = "..o...oo"; h = "hhhhhhhh"; }
   else { b = "x.........x....."; c = "....o..g....o.g."; h = "h.h.h.hHh.h.h.hH"; }
   for (let i = 0; i < pasos; i++) {
@@ -406,13 +512,13 @@ function unaVez(buf, vol) {
 function notaMusical(i) {
   if (!ctx) return;
   st.ultimaNota = i;
-  unaVez(notaInstrumento(st.instr, i), VOL_MUSICA);
+  unaVez(notaInstrumento(st.instr, i), volumenNota(st.instr));
   mostrarNota(i);
 }
 function acordeMusical() {
   const base = clampI(Math.floor(st.ultimaNota / 5) * 5, 0, NOTAS_ESCALA - 4);
-  if (conRitmo()) { unaVez(notaInstrumento(st.instr, base), VOL_MUSICA); return; }
-  for (const n of [base, base + 2, base + 3]) unaVez(notaInstrumento(st.instr, n), VOL_MUSICA * 0.7);
+  if (conRitmo()) { unaVez(notaInstrumento(st.instr, base), volumenNota(st.instr)); return; }
+  for (const n of [base, base + 2, base + 3]) unaVez(notaInstrumento(st.instr, n), volumenNota(st.instr) * 0.7);
 }
 const ritmoSonando = () => st.ritmoSrc !== null;
 function muestrasActuales() {
@@ -426,7 +532,7 @@ function empezarRitmo() {
   const s = ctx.createBufferSource();
   s.buffer = c; s.loop = true;
   const g = ctx.createGain();
-  g.gain.value = VOL_RITMO;
+  g.gain.value = volumenRitmo(st.instr);
   s.connect(g).connect(master);
   s.start();
   st.ritmoSrc = s; st.ritmoInicio = ctx.currentTime;
