@@ -282,6 +282,7 @@ public partial class ControlManos : MonoBehaviour
     void Awake()
     {
         Instancia = this;
+        BotonSonido.AplicarSilencio(); // el parlante de silencio recuerda cómo lo dejaste
     }
 
     void OnDestroy()
@@ -332,6 +333,9 @@ public partial class ControlManos : MonoBehaviour
         mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         mr.receiveShadows = false;
         lineasAsas.SetActive(false);
+
+        // Parlante de silencio (arriba a la derecha de lo que miras).
+        BotonSonido.Crear(this, materialNodo);
     }
 
     void Update()
@@ -2494,7 +2498,7 @@ public partial class ControlManos : MonoBehaviour
     string etiquetaMostrada;
     float etiquetaDesde;
 
-    void MostrarEtiqueta(string texto)
+    public void MostrarEtiqueta(string texto)
     {
         etiquetaTemporal = texto;
         etiquetaHasta = Time.time + 0.9f;

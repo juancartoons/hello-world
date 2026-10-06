@@ -6,6 +6,8 @@ using UnityEngine;
 //  - Toca un color con el índice derecho: las líneas nuevas salen de ese color (la puntita del dedo lo muestra).
 //  - Si hay líneas elegidas (azules), se pintan de ese color (se puede deshacer).
 //  - Cuentagotas: con la paleta abierta, toca una línea con el índice derecho = tomas su color.
+//  - En el centro, una línea que tiembla: tócala para cambiar el temblor; debajo, sus opciones
+//    (ver ControlManosTemblor.cs).
 //  - Cierra la mano (o bájala) y la paleta se va.
 public partial class ControlManos
 {
@@ -99,7 +101,7 @@ public partial class ControlManos
                 if (paletaFueraDesde < 0f)
                     paletaFueraDesde = Time.time;
                 // Si la mano derecha está tocando la paleta, la izquierda puede perderse un momento.
-                bool tocando = Der.valida && paleta != null && Vector3.Distance(Der.indice, paleta.position) < 0.09f;
+                bool tocando = Der.valida && paleta != null && Vector3.Distance(Der.indice, paleta.position) < 0.11f;
                 float espera = GestoIzq != Gesto.Ninguno ? 0f : tocando ? 0.8f : 0.35f;
                 if (Time.time - paletaFueraDesde > espera)
                     CerrarPaleta();
@@ -124,11 +126,19 @@ public partial class ControlManos
 
         if (!Der.valida)
         {
+            ActualizarTemblorPaleta(Vector3.zero, false);
             dedoEnColor = false;
             dedoEnLinea = false;
             return;
         }
         Vector3 punta = Der.indice;
+        // ¿Tocó la línea que tiembla o una de sus opciones?
+        if (ActualizarTemblorPaleta(punta, true))
+        {
+            dedoEnColor = false;
+            dedoEnLinea = false;
+            return;
+        }
         // ¿Tocó un color?
         int tocado = -1;
         for (int i = 0; i < botonesColor.Count; i++)
@@ -143,7 +153,7 @@ public partial class ControlManos
         }
         dedoEnColor = false;
         // Cuentagotas: tocar una línea (lejos de la paleta) = tomar su color.
-        if (Vector3.Distance(punta, paleta.position) < 0.08f)
+        if (Vector3.Distance(punta, paleta.position) < 0.1f)
         {
             dedoEnLinea = false;
             return;
@@ -232,6 +242,8 @@ public partial class ControlManos
         paletaAbierta = true;
         dedoEnColor = true;  // no elige nada hasta que el dedo salga y vuelva a entrar
         dedoEnLinea = true;
+        dedoEnTemblor = true;
+        claveMuestra = int.MinValue;
         colorElegido = IndiceColor(dibujo.ColorNuevo);
         if (palmaIzq.valida && Cabeza != null)
         {
@@ -264,11 +276,9 @@ public partial class ControlManos
         var blanco = ColorMaterial(Color.white);
         DiscoPaleta(paleta, negro, 0.118f, new Vector3(0f, 0f, 0.002f));
         DiscoPaleta(paleta, blanco, 0.11f, new Vector3(0f, 0f, 0.001f));
+        // En el centro: una línea que tiembla (del color elegido) y debajo las opciones del temblor.
         materialCentroPaleta = ColorMaterial(dibujo != null ? dibujo.ColorNuevo : Color.black);
-        var centro = new GameObject("ColorActual").transform;
-        centro.SetParent(paleta, false);
-        DiscoPaleta(centro, negro, 0.032f, new Vector3(0f, 0f, 0.0005f));
-        DiscoPaleta(centro, materialCentroPaleta, 0.026f, Vector3.zero);
+        ArmarTemblorPaleta(negro);
         for (int i = 0; i < ColoresPaleta.Length; i++)
         {
             float ang = Mathf.PI * 0.5f - i * Mathf.PI * 2f / ColoresPaleta.Length;
@@ -328,5 +338,6 @@ public partial class ControlManos
             if (m != null)
                 Destroy(m);
         materialesPaleta.Clear();
+        LiberarTemblorPaleta();
     }
 }

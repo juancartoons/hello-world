@@ -46,9 +46,12 @@ public static class Sonidos
 
     // ---------- Música del trazo: escala pentatónica (siempre suena bonita) ----------
     // 13 notas de grave a agudo (Do, Re, Mi, Sol, La en 2 octavas y media). Instrumentos: 0 arpa, 1 piano,
-    // 2 marimba, 3 cajita de música.
+    // 2 marimba, 3 cajita de música, 4 rock (guitarra grunge), 5 punk, 6 drum and bass (bajo "reese").
+    // Los 3 últimos traen batería: suenan al compás (ver Ritmo).
     public const int NotasEscala = 13;
-    public static readonly string[] Instrumentos = { "Arpa", "Piano", "Marimba", "Cajita" };
+    public static readonly string[] Instrumentos = { "Arpa", "Piano", "Marimba", "Cajita", "Rock", "Punk", "Drum & Bass" };
+    public const int PrimerConRitmo = 4;
+    public static bool TieneRitmo(int instrumento) => instrumento >= PrimerConRitmo && instrumento < Instrumentos.Length;
     static readonly int[] Pentatonica = { 0, 2, 4, 7, 9 };
     static AudioClip[,] notasInstrumento;
 
@@ -94,7 +97,16 @@ public static class Sonidos
                     datos[i] = v * Mathf.Clamp01(t / 0.002f);
                 }
                 break;
-            default: // cajita de música: brillante, una octava arriba, con brillo metálico
+            case 4: // rock grunge: acorde de quinta (power chord) grave, guitarras dobladas y muy distorsionadas
+                PowerChord(datos, hz * 0.5f, 7f, 0.9997f, 1.2f, 0.22f, new System.Random(60 + indice));
+                break;
+            case 5: // punk: acorde de quinta corto y apagado con la palma (rasgueo rápido), más brillante
+                PowerChord(datos, hz * 0.5f, 5f, 0.999f, 7f, 0.5f, new System.Random(80 + indice));
+                break;
+            case 6: // drum and bass: bajo "reese" (dos sierras un poco desafinadas, oscuras y gruesas)
+                Reese(datos, hz * 0.5f);
+                break;
+            case 3: // cajita de música: brillante, una octava arriba, con brillo metálico
                 for (int i = 0; i < datos.Length; i++)
                 {
                     float t = i / (float)Frecuencia;
@@ -107,6 +119,203 @@ public static class Sonidos
         }
         notasInstrumento[instrumento, indice] = Clip("Nota" + instrumento + "_" + indice, datos, 0.6f);
         return notasInstrumento[instrumento, indice];
+    }
+
+    // Calcula todas las notas de un instrumento de una vez (al elegirlo), para que luego no se trabe.
+    public static void PrepararInstrumento(int instrumento)
+    {
+        if (instrumento < 0 || instrumento >= Instrumentos.Length)
+            return;
+        for (int i = 0; i < NotasEscala; i++)
+            NotaInstrumento(instrumento, i);
+        if (TieneRitmo(instrumento))
+            Ritmo(instrumento);
+    }
+
+    // Guitarra eléctrica: 2 cuerdas (nota y su quinta) + la octava, tocadas 2 veces un poquito desafinadas
+    // (como 2 guitarras), pasadas por un "amplificador" saturado y un filtro que quita lo chillón.
+    // ganancia = distorsión; apagado = qué tan rápido se apaga (palma sobre las cuerdas).
+    static void PowerChord(float[] datos, float hz, float ganancia, float sostener, float apagado, float brillo, System.Random azar)
+    {
+        var limpio = new float[datos.Length];
+        float[] razones = { 1f, 1.4983f, 2f };
+        foreach (float desafino in new[] { 1f, 1.004f })
+            foreach (float r in razones)
+                Cuerda(limpio, hz * r * desafino, sostener, r == 2f ? 0.5f : 1f, azar);
+        float bajo = 0f;
+        for (int i = 0; i < datos.Length; i++)
+        {
+            float t = i / (float)Frecuencia;
+            float v = (float)System.Math.Tanh(limpio[i] * ganancia);
+            bajo += (v - bajo) * brillo; // filtro: menos brillo = más "grunge" (sucio y grave)
+            datos[i] = bajo * Mathf.Exp(-t * apagado) * Mathf.Clamp01(t / 0.002f);
+        }
+    }
+
+    // Una cuerda Karplus-Strong (como Pulsar, pero con el ruido más brillante: púa de guitarra).
+    static void Cuerda(float[] salida, float hz, float sostener, float volumen, System.Random azar)
+    {
+        int n = Mathf.Max(2, Mathf.RoundToInt(Frecuencia / hz));
+        var cuerda = new float[n];
+        for (int i = 0; i < n; i++)
+            cuerda[i] = (float)(azar.NextDouble() * 2.0 - 1.0);
+        int k = 0;
+        for (int i = 0; i < salida.Length; i++)
+        {
+            int j = (k + 1) % n;
+            float v = cuerda[k];
+            cuerda[k] = (cuerda[k] + cuerda[j]) * 0.5f * sostener;
+            k = j;
+            salida[i] += v * volumen;
+        }
+    }
+
+    // Bajo "reese" del drum and bass: dos ondas de sierra desafinadas (suenan gruesas y se mueven)
+    // con un filtro que se abre y se cierra despacito.
+    static void Reese(float[] datos, float hz)
+    {
+        float f1 = 0f, f2 = 0f, f3 = 0f, b1 = 0f, b2 = 0f;
+        for (int i = 0; i < datos.Length; i++)
+        {
+            float t = i / (float)Frecuencia;
+            f1 = Mathf.Repeat(f1 + hz * 0.993f / Frecuencia, 1f);
+            f2 = Mathf.Repeat(f2 + hz * 1.007f / Frecuencia, 1f);
+            f3 = Mathf.Repeat(f3 + hz * 0.5f / Frecuencia, 1f);
+            float sierra = (f1 * 2f - 1f) + (f2 * 2f - 1f);
+            float sub = Mathf.Sin(2f * Mathf.PI * f3) * 0.8f; // una octava abajo, redondito
+            float corte = 0.04f + 0.1f * (0.5f + 0.5f * Mathf.Sin(2f * Mathf.PI * 2.5f * t));
+            b1 += (sierra - b1) * corte;
+            b2 += (b1 - b2) * corte;
+            float v = (float)System.Math.Tanh((b2 + sub) * 1.6f);
+            datos[i] = v * Mathf.Exp(-t * 2.2f) * Mathf.Clamp01(t / 0.004f);
+        }
+    }
+
+    // ---------- Batería (para Rock, Punk y Drum & Bass) ----------
+    // Cada estilo tiene un compás de batería que se repite mientras dibujas. "Pasos" = en cuántas partes
+    // se divide el compás: las notas de tu línea caen justo en esos pasos (así siempre suena a tiempo).
+    static AudioClip[] ritmos;
+    static AudioClip crash;
+
+    public static float PulsosPorMinuto(int instrumento) => instrumento == 5 ? 180f : instrumento == 6 ? 174f : 120f;
+
+    // Notas por compás: rock y punk en corcheas (8), drum and bass en semicorcheas (16), pero el bajo va cada 2.
+    public static int PasosPorCompas(int instrumento) => instrumento == 6 ? 16 : 8;
+    public static int PasosPorNota(int instrumento) => instrumento == 6 ? 2 : 1;
+
+    public static AudioClip Ritmo(int instrumento)
+    {
+        if (!TieneRitmo(instrumento))
+            return null;
+        if (ritmos == null)
+            ritmos = new AudioClip[Instrumentos.Length];
+        if (ritmos[instrumento] != null)
+            return ritmos[instrumento];
+        float compas = 4f * 60f / PulsosPorMinuto(instrumento);
+        int pasos = PasosPorCompas(instrumento);
+        float paso = compas / pasos;
+        int n = Mathf.RoundToInt(compas * Frecuencia);
+        var largo = new float[n + Frecuencia / 2]; // con espacio para lo que suena después del último golpe
+        var azar = new System.Random(90 + instrumento);
+        // x = bombo, o = caja, h = platillo cerrado (hi-hat), H = abierto, g = caja suavecita (fantasma).
+        string bombo, caja, hat;
+        switch (instrumento)
+        {
+            case 4: // rock grunge (pesado, 120)
+                bombo = "x.x..xx.";
+                caja = "..o...o.";
+                hat = "hhhhhhhH";
+                break;
+            case 5: // punk (rápido, 180)
+                bombo = "x.x.x.x.";
+                caja = "..o...oo";
+                hat = "hhhhhhhh";
+                break;
+            default: // drum and bass (2-step, 174)
+                bombo = "x.........x.....";
+                caja = "....o..g....o.g.";
+                hat = "h.h.h.hHh.h.h.hH";
+                break;
+        }
+        for (int i = 0; i < pasos; i++)
+        {
+            float t = i * paso;
+            if (bombo[i] == 'x') Bombo(largo, t, instrumento == 6 ? 0.9f : 1f);
+            if (caja[i] == 'o') Caja(largo, t, 0.75f, azar);
+            if (caja[i] == 'g') Caja(largo, t, 0.25f, azar);
+            if (hat[i] == 'h') Platillo(largo, t, 0.06f, 0.2f, azar);
+            if (hat[i] == 'H') Platillo(largo, t, 0.25f, 0.22f, azar);
+        }
+        // Lo que sobra al final se suma al principio: así el compás se repite sin cortes.
+        var datos = new float[n];
+        for (int i = 0; i < largo.Length; i++)
+            datos[i % n] += largo[i];
+        ritmos[instrumento] = Clip("Ritmo" + instrumento, datos, 0.8f, false);
+        return ritmos[instrumento];
+    }
+
+    // ¡Crash! Platillo grande del final de la frase.
+    public static AudioClip Crash
+    {
+        get
+        {
+            if (crash != null)
+                return crash;
+            var datos = new float[Mathf.RoundToInt(Frecuencia * 1.8f)];
+            Platillo(datos, 0f, 1.6f, 1f, new System.Random(33));
+            Bombo(datos, 0f, 0.8f);
+            crash = Clip("Crash", datos, 0.75f);
+            return crash;
+        }
+    }
+
+    // Bombo: un tono que cae rápido (de 160 a 50 Hz) más un "clic" del golpe.
+    static void Bombo(float[] salida, float inicio, float volumen)
+    {
+        int desde = Mathf.RoundToInt(inicio * Frecuencia);
+        int largo = Mathf.Min(salida.Length - desde, Mathf.RoundToInt(Frecuencia * 0.35f));
+        float fase = 0f;
+        for (int i = 0; i < largo; i++)
+        {
+            float t = i / (float)Frecuencia;
+            float hz = 50f + 110f * Mathf.Exp(-t * 30f);
+            fase += 2f * Mathf.PI * hz / Frecuencia;
+            float v = Mathf.Sin(fase) * Mathf.Exp(-t * 9f) + Mathf.Sin(2f * Mathf.PI * 1800f * t) * Mathf.Exp(-t * 300f) * 0.3f;
+            salida[desde + i] += (float)System.Math.Tanh(v * 1.5f) * volumen;
+        }
+    }
+
+    // Caja: un tono corto (el parche) más ruido (los alambres de abajo).
+    static void Caja(float[] salida, float inicio, float volumen, System.Random azar)
+    {
+        int desde = Mathf.RoundToInt(inicio * Frecuencia);
+        int largo = Mathf.Min(salida.Length - desde, Mathf.RoundToInt(Frecuencia * 0.25f));
+        float bajo = 0f;
+        for (int i = 0; i < largo; i++)
+        {
+            float t = i / (float)Frecuencia;
+            float r = (float)(azar.NextDouble() * 2.0 - 1.0);
+            bajo += (r - bajo) * 0.3f;
+            float ruido = (r - bajo) * Mathf.Exp(-t * 16f);
+            float tono = Mathf.Sin(2f * Mathf.PI * 190f * t) * Mathf.Exp(-t * 25f);
+            salida[desde + i] += (ruido * 0.9f + tono * 0.6f) * volumen;
+        }
+    }
+
+    // Platillo: ruido agudo (sin graves). duracion corta = hi-hat cerrado; larga = abierto o crash.
+    static void Platillo(float[] salida, float inicio, float duracion, float volumen, System.Random azar)
+    {
+        int desde = Mathf.RoundToInt(inicio * Frecuencia);
+        int largo = Mathf.Min(salida.Length - desde, Mathf.RoundToInt(Frecuencia * duracion * 1.5f));
+        float bajo = 0f;
+        for (int i = 0; i < largo; i++)
+        {
+            float t = i / (float)Frecuencia;
+            float r = (float)(azar.NextDouble() * 2.0 - 1.0);
+            bajo += (r - bajo) * 0.45f;
+            float metal = Mathf.Sin(2f * Mathf.PI * 5400f * t) * Mathf.Sin(2f * Mathf.PI * 7900f * t) * 0.3f;
+            salida[desde + i] += (r - bajo + metal) * Mathf.Exp(-t * 4.5f / duracion) * volumen;
+        }
     }
 
     // Las notas del arpa del título (Re mayor con novena, de grave a agudo).
@@ -320,7 +529,7 @@ public static class Sonidos
     }
 
     // Normaliza (el punto más alto queda en "pico") y crea el AudioClip.
-    static AudioClip Clip(string nombre, float[] datos, float pico)
+    static AudioClip Clip(string nombre, float[] datos, float pico, bool colaSuave = true)
     {
         float max = 1e-6f;
         foreach (float v in datos)
@@ -329,8 +538,8 @@ public static class Sonidos
         int fin = datos.Length;
         for (int i = 0; i < datos.Length; i++)
             datos[i] *= g;
-        // Final suavecito (sin "clic").
-        int cola = Mathf.Min(fin, Frecuencia / 50);
+        // Final suavecito (sin "clic"). Los ritmos que se repiten no lo llevan (el compás debe quedar entero).
+        int cola = colaSuave ? Mathf.Min(fin, Frecuencia / 50) : 0;
         for (int i = 0; i < cola; i++)
             datos[fin - 1 - i] *= i / (float)cola;
         var clip = AudioClip.Create(nombre, datos.Length, 1, Frecuencia, false);

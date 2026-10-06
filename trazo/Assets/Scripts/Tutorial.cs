@@ -1680,6 +1680,7 @@ public class Tutorial : MonoBehaviour
     // ==================== Paso 9: tamaño y giro con las dos manos ====================
 
     int idPaso9 = -1;
+    int notaTamDemo = 5;
     float largoPaso9;
     Vector3 dirPaso9;
 
@@ -1722,6 +1723,18 @@ public class Tutorial : MonoBehaviour
             {
                 PonerVineta(Texto9, VinetaCentro, 1);
                 MostrarNumero(9, JuntoAVineta(VinetaCentro));
+            }
+            // Al separarse las manos suenan notas que suben (igual que al agrandar de verdad).
+            int nota = 5 + Mathf.FloorToInt(Mathf.Log(d / 0.22f) / 0.07f + 0.001f);
+            if (t < 1.2f)
+            {
+                notaTamDemo = 5;
+            }
+            else if (nota != notaTamDemo)
+            {
+                notaTamDemo = nota;
+                if (nota > 5)
+                    control.NotaMusical(nota);
             }
             // La copia de la línea crece y gira con las manos.
             if (lineaDemo != null && camino.Count >= 2)

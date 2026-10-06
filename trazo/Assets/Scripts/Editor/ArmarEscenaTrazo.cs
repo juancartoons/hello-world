@@ -718,16 +718,13 @@ public static class ArmarEscenaTrazo
         panel.btnImagenesVer = f2[2];
         panel.btnBoceto = f2[3];
         panel.btnUnirPlano = f2[4];
-        string[] fila3 = { "Temblor: No", "Hebras: 1", "Grosor vivo", "Ciclo de 3", "Suavidad: Normal", "Velocidad: 8" };
-        var f3 = new BotonTocable[fila3.Length];
-        for (int i = 0; i < fila3.Length; i++)
-            f3[i] = Boton(animar, fila3[i], new Vector3(-0.2f + i * 0.08f, -0.012f, 0f), matBoton, matBotonMarcado);
-        panel.btnTemblor = f3[0];
-        panel.btnHebras = f3[1];
-        panel.btnGrosorVivo = f3[2];
-        panel.btnCicloTemblor = f3[3];
-        panel.btnSuavidad = f3[4];
-        panel.btnVelocidadTemblor = f3[5];
+        // El temblor y sus opciones ahora están en la paleta de colores (palma izquierda).
+        panel.btnTemblor = null;
+        panel.btnHebras = null;
+        panel.btnGrosorVivo = null;
+        panel.btnCicloTemblor = null;
+        panel.btnSuavidad = null;
+        panel.btnVelocidadTemblor = null;
         panel.btnPlano = null;
         panel.btnFondo = null;
         panel.btnGuardar = null;
