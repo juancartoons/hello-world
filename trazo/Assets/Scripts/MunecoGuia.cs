@@ -185,18 +185,29 @@ public sealed class MunecoGuia
     }
 
     // Mueve un poquito cada punto (siempre igual para cada uno de los 3 "dibujos"): parece dibujado a mano.
+    // Como con "gel en las puntas": en los dos extremos de cada palito todas las hebras se juntan exactamente
+    // en el mismo punto (y no tiemblan); solo en la mitad se separan y tiemblan.
     void Temblar(Vector3[] puntos, int linea, int hebra, Vector3 adelante, Vector3 arriba, float s)
     {
         float a = temblor * s;
         if (a <= 0f && hebras == 1)
             return;
-        // Las hebras se separan un poquito entre sí (aunque no haya temblor).
         float separar = hebras > 1 ? 0.0035f * s : 0f;
-        for (int k = 0; k < puntos.Length; k++)
+        int n = puntos.Length;
+        bool cerrada = linea == 5; // la cabeza no tiene puntas
+        for (int k = 0; k < n; k++)
         {
-            float semilla = linea * 7.13f + k * 3.71f + variante * 11.3f + hebra * 17.9f;
-            float amp = a + separar;
-            puntos[k] += adelante * (Mathf.Sin(semilla) * amp) + arriba * (Mathf.Sin(semilla * 1.7f + 2.1f) * amp);
+            float u = n > 1 ? k / (float)(n - 1) : 0.5f;
+            float peso = cerrada ? 0.7f : Mathf.Sin(Mathf.PI * u); // 0 en las puntas, 1 en la mitad
+            if (peso <= 0.001f)
+                continue;
+            // El temblor es igual para todas las hebras; la separación es distinta para cada una.
+            float semilla = linea * 7.13f + k * 3.71f + variante * 11.3f;
+            float semillaHebra = semilla + (hebra + 1) * 17.9f;
+            Vector3 mover = adelante * (Mathf.Sin(semilla) * a) + arriba * (Mathf.Sin(semilla * 1.7f + 2.1f) * a);
+            if (hebras > 1)
+                mover += adelante * (Mathf.Sin(semillaHebra) * separar) + arriba * (Mathf.Sin(semillaHebra * 1.3f + 0.7f) * separar);
+            puntos[k] += mover * peso;
         }
     }
 

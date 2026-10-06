@@ -145,6 +145,8 @@ public static class ArmarEscenaTrazo
             matGuante = Mat("GuanteCaricatura", shaderGuia, new Color(1f, 1f, 1f, 1f));
             if (matGuante.HasProperty("_Opaco"))
                 matGuante.SetFloat("_Opaco", 1f);
+            if (matGuante.HasProperty("_ColorBorde"))
+                matGuante.SetColor("_ColorBorde", Color.black);
         }
         // Los círculos de los nodos (y las imágenes, dianas, flecha y dial) se ven por ambos lados.
         foreach (var m in new[] { matNodo, matNodoActivo, matAsa, matIman, matImagen, matImagenTransparente, matFlecha, matDianaRoja, matDianaVerde, matBlanco, matDial, matIndicador,
@@ -338,11 +340,12 @@ public static class ArmarEscenaTrazo
         ayuda.gameObject.name = "AyudaGesto";
         ayuda.fontSizeMax = 0.25f;
         control.textoGesto = ayuda;
-        // El nombre del gesto, en una viñeta con la colita hacia tu mano.
+        // El nombre del gesto, en una viñeta pequeña, arriba y detrás de tu mano.
         var vinetaGesto = ayuda.gameObject.AddComponent<VinetaComic>();
         vinetaGesto.texto = ayuda;
         vinetaGesto.ajustarAlTexto = true;
-        vinetaGesto.cola = -1;
+        vinetaGesto.cola = 0; // sin colita (va detrás de la mano)
+        ayuda.fontSizeMax = 0.17f;
         vinetaGesto.materialTrama = matTrama;
         vinetaGesto.materialNegro = matTutNegro;
         vinetaGesto.fuente = fuenteComic;

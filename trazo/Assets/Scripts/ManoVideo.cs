@@ -186,6 +186,146 @@ public sealed class ManoVideo
         }
     }
 
+    // ---------- Guante de caricatura (como el de Mickey) ----------
+    // Dedos gorditos y redondos, dorso ovalado y relleno con 3 rayitas, puño en la muñeca y 4 dedos
+    // (el meñique se esconde, como en los cartoons). Parte 0 = guante, 1 = rayitas, 2 = puño.
+
+    static Vector3[] esferaFina;
+    static int[] esferaFinaTri;
+
+    public void UsarGuante(Material rayas)
+    {
+        if (render == null)
+            return;
+        render.sharedMaterials = new[] { materialBase, rayas != null ? rayas : materialBase, materialBase };
+    }
+
+    public void PonerGuante(Vector3[] a, bool izquierda)
+    {
+        bool ver = a != null && a.Length >= 21;
+        if (go.activeSelf != ver)
+            go.SetActive(ver);
+        if (!ver)
+            return;
+        ArmarEsferaFina();
+        vertices.Clear();
+        normales.Clear();
+        foreach (var l in partes)
+            l.Clear();
+
+        // Dedos gorditos: pulgar, índice, medio y anular.
+        triangulos = partes[0];
+        for (int d = 0; d < 4; d++)
+        {
+            int b = 1 + d * 4;
+            float r = d == 0 ? 0.0175f : 0.0158f;
+            for (int k = 0; k < 4; k++)
+            {
+                Esfera(a[b + k], r);
+                if (k > 0)
+                    Tubo(a[b + k - 1], r, a[b + k], r);
+            }
+        }
+
+        // Dorso: un óvalo relleno (sin formas raras).
+        Vector3 F = a[9] - a[0];
+        float largo = F.magnitude;
+        Vector3 S = a[5] - a[13];
+        if (largo > 1e-4f)
+        {
+            F /= largo;
+            S -= F * Vector3.Dot(S, F);
+            float ancho = S.magnitude;
+            S = ancho > 1e-5f ? S / ancho : Vector3.Cross(F, Vector3.up).normalized;
+            Vector3 N = Vector3.Cross(F, S).normalized;
+            Vector3 n = Vector3.Cross(a[5] - a[0], a[17] - a[0]);
+            Vector3 palma = n.sqrMagnitude > 1e-10f ? (izquierda ? n.normalized : -n.normalized) : N;
+            if (Vector3.Dot(N, palma) < 0f)
+                N = -N;
+            Vector3 c = Vector3.Lerp(a[0], a[9], 0.5f);
+            float ex = largo * 0.6f, ey = ancho * 0.5f + 0.022f, ez = 0.026f;
+            Elipsoide(c, F * ex, S * ey, N * ez);
+
+            // Las 3 rayitas negras del dorso.
+            triangulos = partes[1];
+            for (int j = -1; j <= 1; j++)
+            {
+                float v = j * 0.3f;
+                Vector3 previo = Vector3.zero;
+                for (int k = 0; k < 4; k++)
+                {
+                    float u = Mathf.Lerp(-0.4f, 0.25f, k / 3f);
+                    float alto = ez * Mathf.Sqrt(Mathf.Max(0f, 1f - u * u - v * v)) + 0.0015f;
+                    Vector3 p = c + F * (u * ex) + S * (v * ey) - N * alto;
+                    Esfera(p, 0.0028f);
+                    if (k > 0)
+                        Tubo(previo, 0.0028f, p, 0.0028f);
+                    previo = p;
+                }
+            }
+
+            // El puño del guante en la muñeca (un aro ancho con el borde enrollado).
+            triangulos = partes[2];
+            Vector3 atras = -F;
+            Vector3 p0 = a[0] + atras * 0.004f, p1 = a[0] + atras * 0.03f, p2 = a[0] + atras * 0.04f;
+            Tubo(p0, 0.03f, p1, 0.034f);
+            Tubo(p1, 0.038f, p2, 0.038f);
+            Tapa(p0, F, 0.03f);
+            Tapa(p2, atras, 0.038f);
+        }
+
+        malla.Clear();
+        malla.subMeshCount = 3;
+        malla.SetVertices(vertices);
+        malla.SetNormals(normales);
+        for (int k = 0; k < 3; k++)
+            malla.SetTriangles(partes[k], k);
+        malla.RecalculateBounds();
+    }
+
+    // Una esfera estirada (el dorso del guante), con más detalle que las de los dedos.
+    void Elipsoide(Vector3 c, Vector3 ex, Vector3 ey, Vector3 ez)
+    {
+        float lx = Mathf.Max(1e-5f, ex.magnitude), ly = Mathf.Max(1e-5f, ey.magnitude), lz = Mathf.Max(1e-5f, ez.magnitude);
+        Vector3 ux = ex / lx, uy = ey / ly, uz = ez / lz;
+        int b = vertices.Count;
+        foreach (var n in esferaFina)
+        {
+            vertices.Add(c + ex * n.x + ey * n.y + ez * n.z);
+            normales.Add((ux * (n.x / lx) + uy * (n.y / ly) + uz * (n.z / lz)).normalized);
+        }
+        foreach (int i in esferaFinaTri)
+            triangulos.Add(b + i);
+    }
+
+    static void ArmarEsferaFina()
+    {
+        if (esferaFina != null)
+            return;
+        const int lados = 18, paralelos = 12;
+        var v = new List<Vector3>();
+        var t = new List<int>();
+        for (int p = 0; p <= paralelos; p++)
+        {
+            float lat = Mathf.PI * p / paralelos;
+            for (int m = 0; m <= lados; m++)
+            {
+                float lon = 2f * Mathf.PI * m / lados;
+                v.Add(new Vector3(Mathf.Sin(lat) * Mathf.Cos(lon), Mathf.Sin(lat) * Mathf.Sin(lon), Mathf.Cos(lat)));
+            }
+        }
+        for (int p = 0; p < paralelos; p++)
+            for (int m = 0; m < lados; m++)
+            {
+                int i0 = p * (lados + 1) + m;
+                int i1 = i0 + lados + 1;
+                t.Add(i0); t.Add(i1); t.Add(i0 + 1);
+                t.Add(i0 + 1); t.Add(i1); t.Add(i1 + 1);
+            }
+        esferaFina = v.ToArray();
+        esferaFinaTri = t.ToArray();
+    }
+
     public void Destruir()
     {
         if (materialGuante != null)

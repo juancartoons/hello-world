@@ -99,6 +99,7 @@ public class ControlManos : MonoBehaviour
     public Material materialGuante;
     GameObject raizGuante;
     ManoVideo guante;
+    Material materialRayasGuante;
     readonly Vector3[] puntosGuante = new Vector3[21];
     bool conGuante;
 
@@ -2008,6 +2009,10 @@ public class ControlManos : MonoBehaviour
         {
             raizGuante = new GameObject("GuanteCaricatura");
             guante = new ManoVideo(raizGuante.transform, materialGuante, 0, true);
+            materialRayasGuante = new Material(materialGuante);
+            if (materialRayasGuante.HasProperty("_BaseColor"))
+                materialRayasGuante.SetColor("_BaseColor", new Color(0.16f, 0.16f, 0.18f, 1f));
+            guante.UsarGuante(materialRayasGuante);
         }
         if (ver != conGuante)
         {
@@ -2016,7 +2021,7 @@ public class ControlManos : MonoBehaviour
             OcultarMano(true, ver || GestoIzq == Gesto.Borrar || flechaIzq.activa);
         }
         if (guante != null)
-            guante.Poner(ver ? puntosGuante : null);
+            guante.PonerGuante(ver ? puntosGuante : null, true);
     }
 
     void LateUpdate()
@@ -2515,7 +2520,10 @@ public class ControlManos : MonoBehaviour
         Vector3 pos = entreManos
             ? (Izq.PuntoPellizco + Der.PuntoPellizco) * 0.5f
             : (sobre.indice + sobre.pulgar + sobre.medio) / 3f;
-        pos += Vector3.up * 0.09f;
+        // Más arriba y un poquito DETRÁS de la mano: así no tapa lo que dibujas o borras.
+        Vector3 atras = pos - Cabeza.position;
+        atras.y = 0f;
+        pos += Vector3.up * 0.14f + (atras.sqrMagnitude > 1e-6f ? atras.normalized * 0.05f : Vector3.zero);
         Vector3 mirar = pos - Cabeza.position;
         if (mirar.sqrMagnitude > 1e-6f)
             textoGesto.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(mirar, Vector3.up));

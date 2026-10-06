@@ -25,10 +25,13 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
   6. **Frota la línea**: los nodos estallan y el muñeco huye en pánico, siempre a 2 cm de tu dedo. Luego la
      línea vuelve sola (tinta mágica).
   7. **Pulgar + medio** izquierdos (celebración) y arrastrar un nodo con la derecha (otra celebración).
-  8. **Deshacer** (el último): puño izquierdo con el **pulgar a la izquierda** y tocar la **diana roja**.
+  8. **Deshacer**: puño izquierdo con el **pulgar a la izquierda** y tocar la **diana roja** (el nodo vuelve).
+  9. **OK con las dos manos**: separarlas o juntarlas = tamaño; girarlas como un volante = rotar.
+- Entre un paso y otro hay un respiro (se va la viñeta) para que se note que algo terminó.
 - Si pasan 8 segundos sin hacer nada, las manos guía lo repiten. **Skip** lo termina.
-- **Guante de caricatura:** mientras haces el OK para dibujar, tu mano izquierda lleva un guante blanco de cartoon.
-- Los **avisos** y el nombre del gesto sobre la mano también salen en viñetas de cómic.
+- **Guante de caricatura:** mientras haces el OK para dibujar, tu mano izquierda lleva un guante blanco como el de
+  Mickey: dedos gorditos, dorso relleno con 3 rayitas, puño en la muñeca, 4 dedos y contorno negro.
+- Los **avisos** y el nombre del gesto también salen en viñetas de cómic (sin colita; el del gesto, arriba y detrás de la mano).
 - El panel de arriba, cuando lo fijaste en otro lugar, tiene una **X** que lo devuelve a "mirar arriba".
 - Para verlo otra vez: **Mis archivos → Tutorial**. Tu dibujo se aparta antes y vuelve igual al terminar.
 
