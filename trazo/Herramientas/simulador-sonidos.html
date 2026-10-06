@@ -108,21 +108,21 @@ footer { color: var(--muted); font-size: 0.85rem; }
       <div class="card">
         <div class="label">Igual que en el visor</div>
         <ul>
-          <li>Arpa, Piano, Marimba, Cajita, Japan, Orquesta, Voces: una nota cada 3.5 cm que recorres; un acorde al soltar.</li>
+          <li>Arpa, Piano, Marimba, Cajita, Japan, Orquesta: una nota cada 3.5 cm que recorres; un acorde al soltar.</li>
           <li>Rock, Punk, Drum &amp; Bass, Dubstep: la batería arranca con la línea y tus notas caen al compás (solo si tu mano se movió).</li>
           <li>Al soltar (o si dejas la mano quieta), la batería termina en el siguiente pulso con un crash. Si te mueves otra vez, vuelve a arrancar.</li>
         </ul>
       </div>
     </div>
   </div>
-  <footer>Versión v24.3 (prueba: Japan, Rock de batería, Punk "moto", Drum &amp; Bass "pzhht", Dubstep, Orquesta con coro, Voces) · 44 100 muestras por segundo, el mismo generador de ruido que Unity (System.Random) y los mismos volúmenes (notas 0.35, batería 0.3).</footer>
+  <footer>Versión v24.4 (prueba: Rock con batería más real, Punk desgarrador, Dubstep robot en una lata, sin Voces) · 44 100 muestras por segundo, el mismo generador de ruido que Unity (System.Random) y los mismos volúmenes (notas 0.35, batería 0.3).</footer>
 </div>
 
 <script>
 "use strict";
 // ======================= Sonidos.cs, the same math =======================
 const FS = 44100;
-const INSTRUMENTOS = ["Arpa", "Piano", "Marimba", "Cajita", "Japan", "Rock", "Punk", "Drum & Bass", "Dubstep", "Orquesta", "Voces"];
+const INSTRUMENTOS = ["Arpa", "Piano", "Marimba", "Cajita", "Japan", "Rock", "Punk", "Drum & Bass", "Dubstep", "Orquesta"];
 const NOTAS_ESCALA = 13;
 const PENTATONICA = [0, 2, 4, 7, 9];
 const NOMBRES = ["Do", "Re", "Mi", "Sol", "La"];
@@ -177,14 +177,14 @@ function frecuenciaEscala(i) {
   return 261.63 * Math.pow(2, semitonos / 12);
 }
 // 0 Arpa, 1 Piano, 2 Marimba, 3 Cajita, 4 Japan, 5 Rock (batería), 6 Punk, 7 Drum & Bass, 8 Dubstep,
-// 9 Orquesta, 10 Voces. Con batería de fondo: 5 a 8.
+// 9 Orquesta. Con batería de fondo: 5 a 8.
 const tieneRitmo = i => i >= 5 && i <= 8;
 const pulsosPorMinuto = i => ({ 5: 130, 6: 180, 7: 174, 8: 140 })[i] || 120;
 const pasosPorCompas = i => i === 7 || i === 8 ? 16 : 8;
 const pasosPorNota = i => i === 7 ? 2 : i === 8 ? 4 : 1;
 const semillaRitmo = i => ({ 5: 94, 6: 95, 7: 96, 8: 98 })[i] || 90;
 // Volumen de las notas y de la batería de cada instrumento.
-const volumenNota = i => VOL_MUSICA * (({ 4: 1.3, 5: 0.9, 6: 0.6, 7: 0.45, 8: 0.8, 9: 0.7, 10: 0.8 })[i] || 1);
+const volumenNota = i => VOL_MUSICA * (({ 4: 1.3, 5: 0.9, 6: 0.6, 7: 0.45, 8: 0.8, 9: 0.7 })[i] || 1);
 const volumenRitmo = i => i === 7 ? 0.45 : i === 8 ? 0.4 : VOL_RITMO;
 
 let ctx = null, master = null;
@@ -311,56 +311,41 @@ function orquesta(datos, hz, azar) {
   eco(datos, 0.35);
 }
 
-// Rock: la línea toca la batería. Abajo bombo, en medio toms (más arriba = más agudos), arriba caja y platillo.
-function tom(datos, base, azar) {
-  let fase = 0, bajo = 0;
-  for (let i = 0; i < datos.length; i++) {
-    const t = i / FS;
-    const f = base * (1 + 0.5 * Math.exp(-t * 20));
-    fase += PI2 * f / FS;
-    const r = azar.nextDouble() * 2 - 1;
-    bajo += (r - bajo) * 0.3;
-    const v = Math.sin(fase) * Math.exp(-t * 7) + (r - bajo) * Math.exp(-t * 60) * 0.3;
-    datos[i] = Math.tanh(v * 1.3) * clamp01(t / 0.001);
-  }
-}
-function golpeBateria(datos, indice, azar) {
-  if (indice <= 1) bombo(datos, 0, 1);
-  else if (indice <= 9) tom(datos, 70 * Math.pow(2, (indice - 2) / 5), azar);
-  else if (indice <= 11) { caja(datos, 0, 1, azar); if (indice === 11) platillo(datos, 0, 0.06, 0.4, azar); }
-  else { platillo(datos, 0, 0.9, 0.8, azar); bombo(datos, 0, 0.6); }
-}
 
-// Punk / grunge "moto": acorde de quinta grave con ondas ásperas (no cuerdas), el golpe de la púa,
-// un traqueteo de motor (el volumen y el tono tiemblan con un ruido lento), fuzz con recorte duro
-// y un parlante de guitarra que quita lo chillón. Grrrrhhh.
+
+// Punk / grunge "moto" desgarrador (wrang wrang): acorde de quinta grave con ondas ásperas que entra
+// un poco desafinado y sube (como acelerar), un motor que tartamudea (el volumen tiembla 11 veces por
+// segundo con ruido), dos etapas de fuzz (la segunda "rectificada": rasga y suma la octava), un toque
+// de sonido "roto" (muestras repetidas) y un parlante de guitarra más abierto.
 function fuzzMoto(datos, hz, azar) {
   const fases = [0, 0, 0, 0, 0, 0];
   const razones = [1, 1.4983, 2], desafinos = [1, 1.007];
-  let ruidoLento = 0, pre = 0, c1 = 0, c2 = 0, c3 = 0, hp = 0;
-  const sesgo = 0.3, base = Math.tanh(sesgo);
+  let ruidoLento = 0, pre = 0, c1 = 0, c2 = 0, hp = 0, retenido = 0;
   for (let i = 0; i < datos.length; i++) {
     const t = i / FS;
     const ruido = azar.nextDouble() * 2 - 1;
-    ruidoLento += (ruido - ruidoLento) * 0.004;
+    ruidoLento += (ruido - ruidoLento) * 0.006;
+    const acelera = 1 - 0.06 * Math.exp(-t * 9);
     let x = 0, k = 0;
     for (const d of desafinos)
       for (const r of razones) {
-        fases[k] = (fases[k] + hz * r * d * (1 + 0.004 * ruidoLento) / FS) % 1;
+        fases[k] = (fases[k] + hz * r * d * acelera * (1 + 0.006 * ruidoLento) / FS) % 1;
         x += (fases[k] * 2 - 1) * (r === 2 ? 0.6 : 1);
         k++;
       }
-    x += ruido * Math.exp(-t * 40) * 0.8;   // golpe de púa
-    x *= 1 + 6 * ruidoLento;                // traqueteo de motor
+    x += ruido * Math.exp(-t * 30);                                        // golpe de púa
+    x *= (1 + 0.35 * Math.sin(PI2 * 11 * t)) * (1 + 8 * ruidoLento);        // motor que tartamudea
     pre += (x - pre) * 0.05;
-    const xh = x - pre * 0.7;               // menos graves antes del fuzz (más apretado)
-    let y = Math.tanh(xh * 12 + sesgo) - base;
-    y = Math.max(-0.8, Math.min(0.8, y * 1.5));
-    c1 += (y - c1) * 0.22;
-    c2 += (c1 - c2) * 0.22;
-    c3 += (c2 - c3) * 0.35;
-    hp += (c3 - hp) * 0.006;
-    datos[i] = (c3 - hp) * clamp01(t / 0.004) * Math.exp(-t * 0.6);
+    const xh = x - pre * 0.7;
+    let y = Math.tanh(xh * 20 + 0.3) - Math.tanh(0.3);                     // fuzz 1
+    y = 0.55 * y + 0.45 * (Math.abs(y) * 2 - 1);                           // fuzz 2: rasgado (rectificado)
+    y = Math.max(-0.7, Math.min(0.7, y * 2));
+    if (i % 3 === 0) retenido = y;                                         // un poco "roto"
+    y = 0.75 * y + 0.25 * retenido;
+    c1 += (y - c1) * 0.3;
+    c2 += (c1 - c2) * 0.3;
+    hp += (c2 - hp) * 0.008;
+    datos[i] = (c2 - hp) * clamp01(t / 0.004) * Math.exp(-t * 0.6);
   }
 }
 
@@ -386,28 +371,126 @@ function pzhht(datos, hz, azar) {
   }
 }
 
-// Dubstep: bajo "wobble". Dos ondas ásperas + un sub grave, por un filtro resonante que se abre y se
-// cierra 2 veces por pulso ("wub wub"), saturado. Cada nota dura un pulso.
+
+// Dubstep: un ROBOT que canta "yoi-yoi" distorsionado dentro de una lata. Ondas ásperas por 3 filtros
+// de vocal que se mueven de "O" a "A" a "I" (2 veces por pulso), saturado fuerte, y después una "lata"
+// (ecos cortísimos que rebotan muchas veces) y eco de sala. Más un sub grave para el golpe en el pecho.
 function wobble(datos, hz, azar) {
   const f0 = hz * 0.25, lfo = 140 / 60 * 2;
-  let fA = 0, fB = 0, fS = 0, low = 0, band = 0;
-  for (let i = 0; i < datos.length; i++) {
+  const O = [450, 800, 2830], A = [800, 1150, 2900], I = [270, 2140, 2950];
+  const fases = [0, 0, 0];
+  let fS = 0;
+  const lo = [0, 0, 0], ba = [0, 0, 0];
+  const n = datos.length;
+  const lata1 = rnd(0.0029 * FS), lata2 = rnd(0.0043 * FS), lata3 = rnd(0.0061 * FS);
+  const seco = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
     const t = i / FS;
-    fA = (fA + f0 * 0.995 / FS) % 1;
-    fB = (fB + f0 * 1.005 / FS) % 1;
+    let src = 0;
+    for (let v = 0; v < 3; v++) {
+      fases[v] = (fases[v] + f0 * [0.99, 1, 1.01][v] / FS) % 1;
+      src += v === 1 ? (fases[v] < 0.5 ? 1 : -1) : fases[v] * 2 - 1;
+    }
+    src += (azar.nextDouble() * 2 - 1) * 0.05;
+    const w = 0.5 - 0.5 * Math.cos(PI2 * lfo * t);          // 0 = "O", 1 = "I"
+    let voz = 0;
+    for (let k = 0; k < 3; k++) {
+      const fc = w < 0.5 ? O[k] + (A[k] - O[k]) * w * 2 : A[k] + (I[k] - A[k]) * (w - 0.5) * 2;
+      const F = 2 * Math.sin(Math.PI * fc / FS);
+      lo[k] += F * ba[k];
+      const hi = src - lo[k] - 0.18 * ba[k];
+      ba[k] += F * hi;
+      voz += ba[k] * [1, 0.7, 0.35][k];
+    }
     fS = (fS + f0 * 0.5 / FS) % 1;
-    const src = (fA * 2 - 1) + (fB < 0.5 ? 0.7 : -0.7) + (azar.nextDouble() * 2 - 1) * 0.02;
-    const wob = 0.5 - 0.5 * Math.cos(PI2 * lfo * t);
-    const corte = 150 + 3000 * wob * wob;
-    const F = 2 * Math.sin(Math.PI * corte / FS);
-    low += F * band;
-    const high = src - low - 0.25 * band;
-    band += F * high;
-    const y = Math.tanh(low * 1.8 + band * 0.6);
-    const sub = Math.sin(PI2 * fS) * 0.7;
-    const env = clamp01(t / 0.005) * (t < 0.45 ? 1 : Math.max(0, 1 - (t - 0.45) / 0.05));
-    datos[i] = (y * 0.8 + sub * 0.5) * env;
+    const env = clamp01(t / 0.005) * (t < 0.42 ? 1 : Math.max(0, 1 - (t - 0.42) / 0.05));
+    seco[i] = (Math.tanh(voz * 3) * 0.9 + Math.sin(PI2 * fS) * 0.45) * env;
   }
+  // La lata: ecos cortísimos que rebotan muchas veces (suena metálico y futurista).
+  for (let i = 0; i < n; i++) {
+    let v = seco[i];
+    if (i >= lata1) v += datos[i - lata1] * 0.45;
+    if (i >= lata2) v += datos[i - lata2] * 0.3;
+    if (i >= lata3) v += datos[i - lata3] * 0.15;
+    datos[i] = Math.tanh(v);
+  }
+  eco(datos, 0.3);
+}
+
+// ---------- Batería de rock "de verdad": más cuerpo, golpe y sala ----------
+// Bombo: golpe del mazo (clic + ruido) + cuerpo que cae de 120 a 55 Hz, saturado como un micrófono cerca.
+function bomboRock(salida, inicio, volumen, azar) {
+  const desde = rnd(inicio * FS);
+  const largo = Math.min(salida.length - desde, rnd(FS * 0.5));
+  let fase = 0, bajo = 0;
+  for (let i = 0; i < largo; i++) {
+    const t = i / FS;
+    const hz = 55 + 65 * Math.exp(-t * 25);
+    fase += PI2 * hz / FS;
+    const r = azar.nextDouble() * 2 - 1;
+    bajo += (r - bajo) * 0.5;
+    const cuerpo = Math.sin(fase) * Math.exp(-t * 6) + 0.25 * Math.sin(2 * fase) * Math.exp(-t * 14);
+    const mazo = (r - bajo) * Math.exp(-t * 150) * 0.6 + Math.sin(PI2 * 3000 * t) * Math.exp(-t * 250) * 0.3;
+    salida[desde + i] += Math.tanh((cuerpo + mazo) * 2.5) * volumen;
+  }
+}
+// Caja: parche (185 y 330 Hz), "crack" del golpe y los alambres que suenan más tiempo.
+function cajaRock(salida, inicio, volumen, azar) {
+  const desde = rnd(inicio * FS);
+  const largo = Math.min(salida.length - desde, rnd(FS * 0.45));
+  let b1 = 0, b2 = 0;
+  for (let i = 0; i < largo; i++) {
+    const t = i / FS;
+    const r = azar.nextDouble() * 2 - 1;
+    b1 += (r - b1) * 0.35;
+    b2 += (b1 - b2) * 0.35;
+    const alambres = (r - b1) * Math.exp(-t * 9);
+    const crack = (b1 - b2) * Math.exp(-t * 60) * 1.5;
+    const parche = (Math.sin(PI2 * 185 * t) + 0.6 * Math.sin(PI2 * 330 * t)) * Math.exp(-t * 18);
+    salida[desde + i] += Math.tanh((alambres * 0.8 + crack + parche * 0.7) * 2) * volumen;
+  }
+}
+// Tom: parche con su tono y su segundo modo (1.59 veces), golpe de baqueta, saturado.
+function tomRock(salida, inicio, base, volumen, azar) {
+  const desde = rnd(inicio * FS);
+  const largo = Math.min(salida.length - desde, rnd(FS * 0.9));
+  let f1 = 0, f2 = 0, bajo = 0;
+  for (let i = 0; i < largo; i++) {
+    const t = i / FS;
+    const caida = 1 + 0.3 * Math.exp(-t * 18);
+    f1 += PI2 * base * caida / FS;
+    f2 += PI2 * base * 1.59 * caida / FS;
+    const r = azar.nextDouble() * 2 - 1;
+    bajo += (r - bajo) * 0.4;
+    const v = Math.sin(f1) * Math.exp(-t * 5) + 0.4 * Math.sin(f2) * Math.exp(-t * 11) + (r - bajo) * Math.exp(-t * 70) * 0.5;
+    salida[desde + i] += Math.tanh(v * 2) * volumen;
+  }
+}
+// Platillos "metálicos": 6 ondas cuadradas desafinadas (como las cajas de ritmo clásicas) + ruido,
+// sin graves. duracion corta = hi-hat; larga = crash.
+function metalRock(salida, inicio, duracion, volumen, azar) {
+  const desde = rnd(inicio * FS);
+  const largo = Math.min(salida.length - desde, rnd(FS * duracion * 1.5));
+  const fr = [205.3, 304.4, 369.6, 522.7, 540, 800];
+  let bajo = 0;
+  for (let i = 0; i < largo; i++) {
+    const t = i / FS;
+    let m = 0;
+    for (const f of fr) m += ((f * 3.1 * t) % 1) < 0.5 ? 1 : -1;
+    const r = azar.nextDouble() * 2 - 1;
+    const x = m / 6 * 0.6 + r * 0.6;
+    bajo += (x - bajo) * 0.6;
+    salida[desde + i] += (x - bajo) * Math.exp(-t * 4.5 / duracion) * volumen;
+  }
+}
+
+// Rock: la línea toca la batería. Abajo bombo, en medio toms (más arriba = más agudos), arriba caja y platillo.
+function golpeBateria(datos, indice, azar) {
+  if (indice <= 1) bomboRock(datos, 0, 1, azar);
+  else if (indice <= 9) tomRock(datos, 0, 80 * Math.pow(2, (indice - 2) / 5), 1, azar);
+  else if (indice <= 11) { cajaRock(datos, 0, 1, azar); if (indice === 11) bomboRock(datos, 0, 0.5, azar); }
+  else { metalRock(datos, 0, 1.2, 0.9, azar); bomboRock(datos, 0, 0.7, azar); }
+  eco(datos, 0.12); // la sala
 }
 
 // ---------- Voces (síntesis de formantes: la "forma" de cada vocal) ----------
@@ -456,13 +539,6 @@ function coro(salida, hz, azar, fin) {
   formantes(tenores, salida, VOCALES.hombreA, 0.8);
 }
 
-// Una voz sola: cada nota con una vocal distinta (a, o, u, e, i), con su subidita y vibrato.
-function vozSola(datos, hz, indice, azar) {
-  const fuente = new Float32Array(datos.length);
-  cuerdaVocal(fuente, hz, azar, 0.04, datos.length / FS, 0.012, true);
-  formantes(fuente, datos, VOCALES[["a", "o", "u", "e", "i"][indice % 5]], 1);
-  eco(datos, 0.2);
-}
 
 const notasCache = {};
 function notaInstrumento(instr, indice) {
@@ -507,7 +583,6 @@ function notaInstrumento(instr, indice) {
     case 7: pzhht(datos, hz, new NetRandom(70 + indice)); break;
     case 8: wobble(datos, hz, new NetRandom(120 + indice)); break;
     case 9: orquesta(datos, hz, new NetRandom(100 + indice)); break;
-    case 10: vozSola(datos, hz, indice, new NetRandom(130 + indice)); break;
   }
   return (notasCache[clave] = clip(datos, 0.6));
 }
@@ -567,6 +642,13 @@ function ritmo(instr) {
   else { b = "x.....x...x....."; c = "........O......."; h = "h.h.h.h.h.h.h.hH"; } // dubstep, medio tiempo (140)
   for (let i = 0; i < pasos; i++) {
     const t = i * paso;
+    if (instr === 5) {
+      // Rock: batería "de verdad" (ver bomboRock, cajaRock y metalRock).
+      if (b[i] === "x") bomboRock(largo, t, 1, azar);
+      if (c[i] === "o") cajaRock(largo, t, 0.85, azar);
+      if (h[i] === "h") metalRock(largo, t, 0.07, 0.25, azar);
+      continue;
+    }
     if (b[i] === "x") bombo(largo, t, instr === 7 ? 0.9 : 1);
     if (c[i] === "O") caja(largo, t, 1.0, azar);
     if (c[i] === "o") caja(largo, t, 0.75, azar);
@@ -574,6 +656,7 @@ function ritmo(instr) {
     if (h[i] === "h") platillo(largo, t, 0.06, 0.2, azar);
     if (h[i] === "H") platillo(largo, t, 0.25, 0.22, azar);
   }
+  if (instr === 5) eco(largo, 0.12); // la sala
   const datos = new Float32Array(n);
   for (let i = 0; i < largo.length; i++) datos[i % n] += largo[i];
   return (ritmosCache[instr] = clip(datos, 0.8, false));
