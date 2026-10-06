@@ -863,7 +863,7 @@ internal static class FachadaYExterior
         var lista = new List<(Vector3 base0, Vector3 hacia)>();
         foreach (float x in new[] { 6.5f, 15f, 24f, 34f, 46f, 60f, -26f, -40f, -54f })
             lista.Add((new Vector3(x, 0f, -7.7f), Vector3.back));
-        foreach (float x in new[] { -1f, 9f, 20f, 31f, 44f, 58f, -24f, -38f, -52f })
+        foreach (float x in new[] { 9f, 20f, 31f, 44f, 58f, -24f, -38f, -52f }) // (sin poste frente al letrero "LA CIA Agencia")
             lista.Add((new Vector3(x, 0f, -16.3f), Vector3.forward));
         foreach (float z in new[] { 1f, 13f, 24f, 36f, 50f, -27f, -40f })
             lista.Add((new Vector3(-6.7f, 0f, z), Vector3.left));

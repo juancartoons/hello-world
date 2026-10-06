@@ -30,9 +30,10 @@ public class JuegoManager : MonoBehaviour
     public GameObject opcionesNavegacion;
     [Tooltip("Distancia (metros) a la que aparece el panel frente al jugador")]
     public float distanciaPanel = 1.2f;
-    [Tooltip("Al ganar o perder, el aviso sale un poco arriba de los ojos (metros) y se ve por encima de todo")]
-    public float alturaAvisoArriba = 0.3f;
-    public float distanciaAvisoArriba = 1.3f;
+    // (Nombres nuevos a propósito: así la escena no conserva los valores viejos, que lo ponían demasiado arriba.)
+    [Tooltip("Al ganar o perder, el aviso sale apenas un poco arriba de los ojos (metros) y se ve por encima de todo")]
+    public float subidaAvisoPremio = 0.18f;
+    public float distanciaAvisoPremio = 1.3f;
     [Tooltip("Tamaño del aviso del premio comparado con el panel normal")]
     public float tamanoAviso = 0.7f;
     [Tooltip("Si giras la cabeza más de estos grados, el aviso del premio se reacomoda frente a ti")]
@@ -422,7 +423,7 @@ public class JuegoManager : MonoBehaviour
 
     void PosicionAviso(Vector3 frente, out Vector3 posicion, out Vector3 haciaAviso)
     {
-        posicion = cabeza.position + frente * distanciaAvisoArriba + Vector3.up * alturaAvisoArriba;
+        posicion = cabeza.position + frente * distanciaAvisoPremio + Vector3.up * subidaAvisoPremio;
         haciaAviso = posicion - cabeza.position;
     }
 
