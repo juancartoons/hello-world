@@ -109,20 +109,20 @@ footer { color: var(--muted); font-size: 0.85rem; }
         <div class="label">Igual que en el visor</div>
         <ul>
           <li>Arpa, Piano, Marimba, Cajita, Japan, Orquesta: una nota cada 3.5 cm que recorres; un acorde al soltar.</li>
-          <li>Punk, Drum &amp; Bass, Dubstep: la batería arranca con la línea y tus notas caen al compás (solo si tu mano se movió).</li>
+          <li>Post-punk, Drum &amp; Bass, Dubstep, DS2: la batería arranca con la línea y tus notas caen al compás (solo si tu mano se movió).</li>
           <li>Al soltar (o si dejas la mano quieta), la batería termina en el siguiente pulso con un crash. Si te mueves otra vez, vuelve a arrancar.</li>
         </ul>
       </div>
     </div>
   </div>
-  <footer>Versión v24.5 (prueba: sin Rock, Orquesta sinfónica completa con coro, Dubstep gruñido) · 44 100 muestras por segundo, el mismo generador de ruido que Unity (System.Random) y los mismos volúmenes (notas 0.35, batería 0.3).</footer>
+  <footer>Versión v24.6 (prueba: Post-punk, Dubstep de muy grave a muy agudo, DS2, Orquesta con coro grande) · 44 100 muestras por segundo, el mismo generador de ruido que Unity (System.Random) y los mismos volúmenes (notas 0.35, batería 0.3).</footer>
 </div>
 
 <script>
 "use strict";
 // ======================= Sonidos.cs, the same math =======================
 const FS = 44100;
-const INSTRUMENTOS = ["Arpa", "Piano", "Marimba", "Cajita", "Japan", "Punk", "Drum & Bass", "Dubstep", "Orquesta"];
+const INSTRUMENTOS = ["Arpa", "Piano", "Marimba", "Cajita", "Japan", "Post-punk", "Drum & Bass", "Dubstep", "DS2", "Orquesta"];
 const NOTAS_ESCALA = 13;
 const PENTATONICA = [0, 2, 4, 7, 9];
 const NOMBRES = ["Do", "Re", "Mi", "Sol", "La"];
@@ -176,16 +176,18 @@ function frecuenciaEscala(i) {
   const semitonos = 12 * Math.floor(i / 5) + PENTATONICA[i % 5];
   return 261.63 * Math.pow(2, semitonos / 12);
 }
-// 0 Arpa, 1 Piano, 2 Marimba, 3 Cajita, 4 Japan, 5 Punk, 6 Drum & Bass, 7 Dubstep, 8 Orquesta.
-// Con batería de fondo: 5 a 7.
-const tieneRitmo = i => i >= 5 && i <= 7;
-const pulsosPorMinuto = i => ({ 5: 180, 6: 174, 7: 140 })[i] || 120;
-const pasosPorCompas = i => i === 6 || i === 7 ? 16 : 8;
-const pasosPorNota = i => i === 6 ? 2 : i === 7 ? 4 : 1;
-const semillaRitmo = i => ({ 5: 95, 6: 96, 7: 98 })[i] || 90;
+// 0 Arpa, 1 Piano, 2 Marimba, 3 Cajita, 4 Japan, 5 Post-punk, 6 Drum & Bass, 7 Dubstep, 8 DS2
+// (el dubstep anterior, guardado), 9 Orquesta. Con batería de fondo: 5 a 8 (DS2 usa la del Dubstep).
+const tieneRitmo = i => i >= 5 && i <= 8;
+const pulsosPorMinuto = i => ({ 5: 180, 6: 174, 7: 140, 8: 140 })[i] || 120;
+const pasosPorCompas = i => i >= 6 && i <= 8 ? 16 : 8;
+const pasosPorNota = i => i === 6 ? 2 : i === 7 || i === 8 ? 4 : 1;
+const semillaRitmo = i => ({ 5: 95, 6: 96, 7: 98, 8: 98 })[i] || 90;
+// Centímetros que hay que subir para la siguiente nota (el Dubstep cambia más fácil: 2 cm).
+const alturaNota = i => i === 7 ? 0.02 : ALTURA_NOTA;
 // Volumen de las notas y de la batería de cada instrumento.
-const volumenNota = i => VOL_MUSICA * (({ 4: 1.3, 5: 0.6, 6: 0.45, 7: 0.65, 8: 0.7 })[i] || 1);
-const volumenRitmo = i => i === 6 ? 0.45 : i === 7 ? 0.4 : VOL_RITMO;
+const volumenNota = i => VOL_MUSICA * (({ 4: 1.3, 5: 0.6, 6: 0.45, 7: 0.65, 8: 0.65, 9: 0.7 })[i] || 1);
+const volumenRitmo = i => i === 6 ? 0.45 : i === 7 || i === 8 ? 0.4 : VOL_RITMO;
 
 let ctx = null, master = null;
 
@@ -280,12 +282,12 @@ function sumarSeccion(salida, seccion, nivel) {
 //  - chelos (3, una octava abajo),
 //  - cornos (2, una octava abajo; el sonido se abre al soplar y luego se calma),
 //  - flauta (dos octavas arriba, con aire),
-//  - timbal suave al empezar la nota,
-//  - coro (sopranos y tenores cantando "Aaa", ver coro).
+//  - coro grande (ver coro), que es lo que más se oye.
+// Todo entra despacio (sin golpe), para que no suene a piano.
 function orquesta(datos, hz, azar) {
   const n = datos.length, fin = n / FS;
   const violines = new Float32Array(n), chelos = new Float32Array(n), cornos = new Float32Array(n);
-  const flauta = new Float32Array(n), timbal = new Float32Array(n), voces = new Float32Array(n);
+  const flauta = new Float32Array(n), voces = new Float32Array(n);
   const seccion = (salida, cuantos, f, ataque, brillo, vibrato) => {
     for (let v = 0; v < cuantos; v++) {
       const det = 1 + (azar.nextDouble() - 0.5) * 0.008, rv = 4.8 + azar.nextDouble() * 1.2, pv = azar.nextDouble() * PI2;
@@ -303,8 +305,8 @@ function orquesta(datos, hz, azar) {
       }
     }
   };
-  seccion(violines, 6, hz, 0.12, 0.25, 0.006);
-  seccion(chelos, 3, hz * 0.5, 0.15, 0.12, 0.005);
+  seccion(violines, 6, hz, 0.25, 0.25, 0.006);
+  seccion(chelos, 3, hz * 0.5, 0.3, 0.12, 0.005);
   // Cornos: el filtro se abre al soplar y luego se calma.
   for (let v = 0; v < 2; v++) {
     let fase = azar.nextDouble(), a1 = 0, a2 = 0;
@@ -315,28 +317,24 @@ function orquesta(datos, hz, azar) {
       const brillo = 0.03 + 0.12 * clamp01(t / 0.05) * Math.exp(-t * 2);
       a1 += ((fase * 2 - 1) - a1) * brillo;
       a2 += (a1 - a2) * brillo;
-      cornos[i] += a2 * clamp01(t / 0.06) * clamp01((fin - t) / 0.3);
+      cornos[i] += a2 * clamp01(t / 0.2) * clamp01((fin - t) / 0.3);
     }
   }
   // Flauta: tono puro con vibrato y aire.
-  let fF = 0, aire = 0, fT = 0;
+  let fF = 0, aire = 0;
   for (let i = 0; i < n; i++) {
     const t = i / FS;
     fF = (fF + hz * 2 * (1 + 0.008 * clamp01((t - 0.2) / 0.3) * Math.sin(PI2 * 5.2 * t)) / FS) % 1;
     const r = azar.nextDouble() * 2 - 1;
     aire += (r - aire) * 0.1;
     flauta[i] = (Math.sin(PI2 * fF) + aire * 0.15) * clamp01(t / 0.08) * clamp01((fin - t) / 0.3);
-    // Timbal: golpe grave con mazo de fieltro.
-    fT += PI2 * hz * 0.25 * (1 + 0.1 * Math.exp(-t * 10)) / FS;
-    timbal[i] = Math.sin(fT) * Math.exp(-t * 3.5) + r * Math.exp(-t * 80) * 0.2;
   }
   coro(voces, hz, azar, fin);
-  sumarSeccion(datos, violines, 0.35);
-  sumarSeccion(datos, chelos, 0.25);
-  sumarSeccion(datos, cornos, 0.28);
-  sumarSeccion(datos, flauta, 0.1);
-  sumarSeccion(datos, timbal, 0.18);
-  sumarSeccion(datos, voces, 0.35);
+  sumarSeccion(datos, voces, 0.6);      // el coro manda
+  sumarSeccion(datos, violines, 0.18);
+  sumarSeccion(datos, chelos, 0.12);
+  sumarSeccion(datos, cornos, 0.12);
+  sumarSeccion(datos, flauta, 0.06);
   sala(datos, 0.45);
 }
 
@@ -377,7 +375,7 @@ function pasaBanda(entrada, salida, f, ancho, ganancia) {
 
 
 
-// Punk / grunge "moto" desgarrador (wrang wrang): acorde de quinta grave con ondas ásperas que entra
+// Post-punk / grunge "moto" desgarrador (wrang wrang): acorde de quinta grave con ondas ásperas que entra
 // un poco desafinado y sube (como acelerar), un motor que tartamudea (el volumen tiembla 11 veces por
 // segundo con ruido), dos etapas de fuzz (la segunda "rectificada": rasga y suma la octava), un toque
 // de sonido "roto" (muestras repetidas) y un parlante de guitarra más abierto.
@@ -442,8 +440,8 @@ function pzhht(datos, hz, azar) {
 // Dubstep "grrthh": bajo de FM (una onda que hace temblar a otra) cuyo "gruñido" cambia a cada
 // semicorchea y vibra 23 veces por segundo, con mucha distorsión (saturación + "doblado" de la onda)
 // y una reverberación SECA: rebotes cortísimos sin cola de eco (como un cuarto pequeño de metal).
-function gruñido(datos, hz, azar) {
-  const f0 = hz * 0.25, dieciseisavo = 140 / 60 * 4;
+function gruñido(datos, f0, azar) {
+  const dieciseisavo = 140 / 60 * 4;
   const patron = [1.0, 0.3, 0.8, 0.5];
   const n = datos.length;
   const seco = new Float32Array(n);
@@ -506,16 +504,23 @@ function formantes(fuente, salida, v, volumen) {
   for (let k = 0; k < 5; k++) pasaBanda(fuente, salida, v.f[k], v.b[k], v.g[k] * volumen);
 }
 
-// Coro: 4 sopranos cantando "Aaa" + 4 tenores una octava abajo (con su propia "A" de hombre).
+// Coro grande: 5 sopranos ("Aaa"), 4 altos ("Ooo"), 4 tenores y 3 bajos (con la "A" de hombre),
+// todos entrando despacio (sin golpe, para que no suene a piano).
 function coro(salida, hz, azar, fin) {
   const n = salida.length;
-  const sopranos = new Float32Array(n), tenores = new Float32Array(n);
-  for (let v = 0; v < 4; v++) {
-    cuerdaVocal(sopranos, hz * (1 + (azar.nextDouble() - 0.5) * 0.01), azar, 0.25, fin, 0.006, false);
-    cuerdaVocal(tenores, hz * 0.5 * (1 + (azar.nextDouble() - 0.5) * 0.01), azar, 0.3, fin, 0.006, false);
-  }
+  const sopranos = new Float32Array(n), altos = new Float32Array(n), tenores = new Float32Array(n), bajos = new Float32Array(n);
+  const voz = (buf, f, cuantas, ataque) => {
+    for (let v = 0; v < cuantas; v++)
+      cuerdaVocal(buf, f * (1 + (azar.nextDouble() - 0.5) * 0.01), azar, ataque, fin, 0.006, false);
+  };
+  voz(sopranos, hz, 5, 0.3);
+  voz(altos, hz, 4, 0.35);
+  voz(tenores, hz * 0.5, 4, 0.35);
+  voz(bajos, hz * 0.25, 3, 0.4);
   formantes(sopranos, salida, VOCALES.a, 1);
+  formantes(altos, salida, VOCALES.o, 0.6);       // mezclar "Aaa" con "Ooo" suena más natural
   formantes(tenores, salida, VOCALES.hombreA, 0.8);
+  formantes(bajos, salida, VOCALES.hombreA, 0.6);
 }
 
 
@@ -526,7 +531,7 @@ function notaInstrumento(instr, indice) {
   const clave = instr + "_" + indice;
   if (notasCache[clave]) return notasCache[clave];
   const hz = frecuenciaEscala(indice);
-  const datos = new Float32Array(rnd(FS * (instr === 8 ? 2.2 : 1.3)));
+  const datos = new Float32Array(rnd(FS * (instr === 9 ? 2.2 : 1.3)));
   switch (instr) {
     case 0: pulsar(datos, 0, hz, 0.5, new NetRandom(40 + indice)); break;
     case 1:
@@ -559,8 +564,10 @@ function notaInstrumento(instr, indice) {
     case 4: guitarraStrokes(datos, hz * 0.5, new NetRandom(60 + indice)); break;
     case 5: fuzzMoto(datos, hz * 0.25, new NetRandom(80 + indice)); break;
     case 6: pzhht(datos, hz, new NetRandom(70 + indice)); break;
-    case 7: gruñido(datos, hz, new NetRandom(120 + indice)); break;
-    case 8: orquesta(datos, hz, new NetRandom(100 + indice)); break;
+    // Dubstep: del muy grave (38 Hz) al muy agudo (1760 Hz): cada nota sube más que la anterior.
+    case 7: gruñido(datos, hz * 0.25 * Math.pow(2, (indice - 3) * 0.25), new NetRandom(120 + indice)); break;
+    case 8: gruñido(datos, hz * 0.25, new NetRandom(120 + indice)); break;
+    case 9: orquesta(datos, hz, new NetRandom(100 + indice)); break;
   }
   return (notasCache[clave] = clip(datos, 0.6));
 }
@@ -702,7 +709,7 @@ function pasoActualRitmo() {
   const pasos = pasosPorCompas(st.instr);
   return clampI(Math.floor(muestrasActuales() * pasos / st.ritmoClip.length), 0, pasos - 1);
 }
-const indicePorAltura = h => clampI(5 + Math.round(h / ALTURA_NOTA), 0, NOTAS_ESCALA - 1);
+const indicePorAltura = h => clampI(5 + Math.round(h / alturaNota(st.instr)), 0, NOTAS_ESCALA - 1);
 
 // Pointer = right index fingertip; held down = pinching (drawing).
 const ptr = { down: false, trazo: 0, x: 0.2, y: 0.2 };
@@ -894,7 +901,7 @@ function dibujar() {
     g2.font = "500 11px " + "IBM Plex Mono, monospace";
     g2.fillStyle = color("--muted");
     for (let n = 0; n < NOTAS_ESCALA; n++) {
-      const y = y0 - (n - 5) * ALTURA_NOTA * m;
+      const y = y0 - (n - 5) * alturaNota(st.instr) * m;
       if (y < 8 || y > H - 4) continue;
       g2.fillText(nombreNota(n), 6, y + 4);
     }
