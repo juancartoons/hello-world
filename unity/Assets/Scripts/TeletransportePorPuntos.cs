@@ -278,10 +278,15 @@ public class TeletransportePorPuntos : MonoBehaviour
 
     void Teletransportar(PuntoTeletransporte punto)
     {
-        // Mueve el rig para que la cabeza del jugador quede justo encima del punto.
-        Vector3 delta = punto.transform.position - cabeza.position;
-        delta.y = 0f;
-        rig.transform.position += delta;
+        // Mueve el rig para que la cabeza del jugador quede justo encima del punto
+        // (con fundido a negro corto si el modo optimizado está activado).
+        Vector3 destino = punto.transform.position;
+        ModoOptimizado.Teletransportar(() =>
+        {
+            Vector3 delta = destino - cabeza.position;
+            delta.y = 0f;
+            rig.transform.position += delta;
+        });
 
         bloqueadoHasta = Time.time + pausaDespues;
         CambiarApuntado(izquierda, null);

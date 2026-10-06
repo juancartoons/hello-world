@@ -155,19 +155,25 @@ public class JuegoManager : MonoBehaviour
 
         if (aviso != null)
             aviso.Ocultar();
-        MirarHacia(Vector3.forward); // siempre empieza mirando de frente la entrada de la farmacia
-        MoverJugador(puntoAfuera);
-        MostrarPanel("¡Encuentra al personaje escondido!", textoPalmada);
-        MostrarOpciones(true);
+        ModoOptimizado.Teletransportar(() =>
+        {
+            MirarHacia(Vector3.forward); // siempre empieza mirando de frente la entrada de la farmacia
+            MoverJugador(puntoAfuera);
+            MostrarPanel("¡Encuentra al personaje escondido!", textoPalmada);
+            MostrarOpciones(true);
+        });
     }
 
     IEnumerator Entrar()
     {
         estado = Estado.Entrando;
         MostrarOpciones(false);
-        MirarHacia(Vector3.forward); // al entrar, mirando hacia adentro de la farmacia
-        MoverJugador(puntoAdentro);
-        MostrarPanel("¡A buscar!", $"Tienes {Mathf.RoundToInt(segundosParaBuscar)} segundos");
+        ModoOptimizado.Teletransportar(() =>
+        {
+            MirarHacia(Vector3.forward); // al entrar, mirando hacia adentro de la farmacia
+            MoverJugador(puntoAdentro);
+            MostrarPanel("¡A buscar!", $"Tienes {Mathf.RoundToInt(segundosParaBuscar)} segundos");
+        });
         yield return new WaitForSeconds(segundosIntro);
         panel.SetActive(false);
 

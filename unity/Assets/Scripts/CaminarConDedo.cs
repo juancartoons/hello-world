@@ -6,8 +6,8 @@ using UnityEngine;
 // Con controles: apunta con el control y mantén el gatillo.
 public class CaminarConDedo : MonoBehaviour
 {
-    [Tooltip("Velocidad al caminar (m/s). 1.1 ≈ paso tranquilo")]
-    public float velocidad = 1.1f;
+    [Tooltip("Velocidad al caminar (m/s). 0.9 ≈ paso tranquilo (más lento marea menos)")]
+    public float velocidad = 0.9f;
     [Tooltip("Qué tan rápido arranca y frena (m/s²)")]
     public float aceleracion = 3f;
     [Tooltip("Qué tan suave cambia la dirección (más bajo = más estable)")]

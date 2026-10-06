@@ -908,6 +908,27 @@ public static class AplicarEstiloYEscenografia
         UnityEditor.Events.UnityEventTools.AddPersistentListener(tocarDia.alTocar, diaNoche.Dia);
         UnityEditor.Events.UnityEventTools.AddPersistentListener(tocarNoche.alTocar, diaNoche.Noche);
 
+        // ---- Botón secreto: círculo blanco pequeño en la esquina de abajo (gris = modo optimizado activado) ----
+        var secreto = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        secreto.name = "BotonSecreto";
+        Object.DestroyImmediate(secreto.GetComponent<Collider>());
+        secreto.transform.SetParent(opciones.transform, false);
+        secreto.transform.localPosition = new Vector3(0.27f, -0.13f, 0f);
+        secreto.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        secreto.transform.localScale = new Vector3(0.028f, 0.003f, 0.028f);
+        secreto.AddComponent<BoxCollider>();
+        var rendSecreto = secreto.GetComponent<Renderer>();
+        rendSecreto.sharedMaterial = matBoton;
+        var tocarSecreto = secreto.AddComponent<BotonTocable>();
+        var optimizado = manager.GetComponent<ModoOptimizado>();
+        if (optimizado == null)
+            optimizado = Undo.AddComponent<ModoOptimizado>(manager.gameObject);
+        Undo.RecordObject(optimizado, "Modo optimizado");
+        optimizado.boton = rendSecreto;
+        EditorUtility.SetDirty(optimizado);
+        if (tocarSecreto.alTocar == null) tocarSecreto.alTocar = new UnityEngine.Events.UnityEvent();
+        UnityEditor.Events.UnityEventTools.AddPersistentListener(tocarSecreto.alTocar, optimizado.Alternar);
+
         ArreglarSuperficieTeletransporteMeta(modo.teletransporteMeta);
 
         Undo.RecordObject(manager, "Opciones");

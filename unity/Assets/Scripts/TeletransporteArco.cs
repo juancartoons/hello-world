@@ -218,9 +218,12 @@ public class TeletransporteArco : MonoBehaviour
 
     void Teletransportar(Vector3 a)
     {
-        Vector3 delta = a - cabeza.position;
-        delta.y = 0f;
-        rig.transform.position += delta;
+        ModoOptimizado.Teletransportar(() =>
+        {
+            Vector3 delta = a - cabeza.position;
+            delta.y = 0f;
+            rig.transform.position += delta;
+        });
         bloqueadoHasta = Time.time + 0.5f;
         arco.enabled = false;
         aro.enabled = false;
