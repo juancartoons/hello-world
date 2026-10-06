@@ -115,7 +115,7 @@ footer { color: var(--muted); font-size: 0.85rem; }
       </div>
     </div>
   </div>
-  <footer>Versión v24.6 (prueba: Post-punk, Dubstep de muy grave a muy agudo, DS2, Orquesta con coro grande) · 44 100 muestras por segundo, el mismo generador de ruido que Unity (System.Random) y los mismos volúmenes (notas 0.35, batería 0.3).</footer>
+  <footer>Versión v24.7 (prueba: Piano mágico estilo Ghibli, Post-punk, Dubstep de muy grave a muy agudo, DS2, Orquesta con coro grande) · 44 100 muestras por segundo, el mismo generador de ruido que Unity (System.Random) y los mismos volúmenes (notas 0.35, batería 0.3).</footer>
 </div>
 
 <script>
@@ -275,6 +275,31 @@ function pico(a) { let m = 1e-6; for (const v of a) m = Math.max(m, Math.abs(v))
 function sumarSeccion(salida, seccion, nivel) {
   const g = nivel / pico(seccion);
   for (let i = 0; i < salida.length; i++) salida[i] += seccion[i] * g;
+}
+
+// Piano "mágico" estilo películas de Ghibli: martillos de fieltro suaves (pocos agudos), 3 cuerdas
+// por nota un poquito desafinadas (el piano "respira"), sonido que primero baja rápido y luego se queda
+// mucho tiempo (como con el pedal), un brillito de celesta muy suave encima y una sala de conciertos.
+function pianoMagico(datos, hz, azar) {
+  const n = datos.length;
+  const cuerdas = [0.9996, 1, 1.0005];
+  let golpe = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / FS;
+    let v = 0;
+    for (let k = 1; k <= 8; k++) {
+      const fk = hz * k * Math.sqrt(1 + 0.0004 * k * k);
+      const amp = Math.exp(-k * 0.35) / Math.pow(k, 0.8);
+      const caida = 0.8 + k * 0.5;
+      const env = 0.55 * Math.exp(-t * caida * 2.5) + 0.45 * Math.exp(-t * caida * 0.3);
+      for (const c of cuerdas) v += Math.sin(PI2 * fk * c * t) * amp * env;
+    }
+    const r = azar.nextDouble() * 2 - 1;
+    golpe += (r - golpe) * 0.08;
+    const brillo = Math.sin(PI2 * hz * 4 * t) * Math.exp(-t * 1.5) * 0.05;
+    datos[i] = (v / 3 + golpe * Math.exp(-t * 60) * 0.3 + brillo) * clamp01(t / 0.002);
+  }
+  sala(datos, 0.4);
 }
 
 // Orquesta sinfónica con coro. Cada sección por separado y luego juntas en una sala de conciertos:
@@ -531,18 +556,10 @@ function notaInstrumento(instr, indice) {
   const clave = instr + "_" + indice;
   if (notasCache[clave]) return notasCache[clave];
   const hz = frecuenciaEscala(indice);
-  const datos = new Float32Array(rnd(FS * (instr === 9 ? 2.2 : 1.3)));
+  const datos = new Float32Array(rnd(FS * (instr === 9 ? 2.2 : instr === 1 ? 2.8 : 1.3)));
   switch (instr) {
     case 0: pulsar(datos, 0, hz, 0.5, new NetRandom(40 + indice)); break;
-    case 1:
-      for (let i = 0; i < datos.length; i++) {
-        const t = i / FS;
-        let v = 0;
-        for (let k = 1; k <= 6; k++)
-          v += Math.sin(PI2 * hz * k * (1 + 0.0004 * k * k) * t) * Math.exp(-t * (1.6 + k * 1.1)) / (k * k * 0.6 + 0.4);
-        datos[i] = v * clamp01(t / 0.003);
-      }
-      break;
+    case 1: pianoMagico(datos, hz, new NetRandom(140 + indice)); break;
     case 2:
       for (let i = 0; i < datos.length; i++) {
         const t = i / FS;
