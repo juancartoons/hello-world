@@ -90,6 +90,9 @@ public partial class ControlManos : MonoBehaviour
     Trazo trazoActual;
     float inicioTrazo;
 
+    // El tutorial pide borrar nodo por nodo (frotar no borra la línea entera).
+    [System.NonSerialized] public bool soloNodosAlBorrar;
+
     // La línea que se está dibujando ahora (null si no hay). La usa el tutorial.
     public Trazo TrazoActual => trazoActual;
 
@@ -361,6 +364,7 @@ public partial class ControlManos : MonoBehaviour
             CerrarPaleta();
             esperarSoltarIzq = true;
             OcultarModoNodos();
+            ActualizarMusica(false);
             ActualizarCursor();
             ActualizarEtiqueta();
             ActualizarSimbolos();
@@ -397,6 +401,7 @@ public partial class ControlManos : MonoBehaviour
         if (GestoIzq != Gesto.Nodos && figuras != null)
             figuras.OcultarNodos();
         ActualizarFlechas();
+        ActualizarMusica(true);
         if (Der.soltoPellizco)
             finGestoDer = Time.time;
         ActualizarCursor();
@@ -1410,7 +1415,11 @@ public partial class ControlManos : MonoBehaviour
         }
         else if (tipo == Objetivo.Linea)
         {
-            Frotar(t, punta);
+            // En el tutorial se borra nodo por nodo (frotar no borra la línea entera).
+            if (soloNodosAlBorrar)
+                CancelarFrote();
+            else
+                Frotar(t, punta);
         }
         else
         {
@@ -2482,6 +2491,9 @@ public partial class ControlManos : MonoBehaviour
 
     // ---------- Etiqueta sobre la mano (para aprender los gestos) ----------
 
+    string etiquetaMostrada;
+    float etiquetaDesde;
+
     void MostrarEtiqueta(string texto)
     {
         etiquetaTemporal = texto;
@@ -2542,7 +2554,14 @@ public partial class ControlManos : MonoBehaviour
                 sobre = Der;
             }
         }
-        bool ver = mostrarAyudas && texto != null && Cabeza != null
+        // El nombre del gesto se ve un momento (1,5 s) y se va rápido; en el tutorial se queda.
+        if (texto != etiquetaMostrada)
+        {
+            etiquetaMostrada = texto;
+            etiquetaDesde = Time.time;
+        }
+        float desvanecer = Tutorial.EnCurso ? 1f : 1f - Mathf.Clamp01((Time.time - etiquetaDesde - 1.5f) / 0.25f);
+        bool ver = mostrarAyudas && texto != null && Cabeza != null && desvanecer > 0.01f
                    && (entreManos ? Izq.valida && Der.valida : sobre.valida);
         if (textoGesto.gameObject.activeSelf != ver)
             textoGesto.gameObject.SetActive(ver);
@@ -2550,6 +2569,8 @@ public partial class ControlManos : MonoBehaviour
             return;
         if (textoGesto.text != texto)
             textoGesto.text = Idioma.T(texto);
+        textoGesto.transform.localScale = Vector3.one * Mathf.Lerp(0.6f, 1f, desvanecer);
+        textoGesto.alpha = desvanecer;
         Vector3 pos = entreManos
             ? (Izq.PuntoPellizco + Der.PuntoPellizco) * 0.5f
             : (sobre.indice + sobre.pulgar + sobre.medio) / 3f;

@@ -147,6 +147,8 @@ public static class ArmarEscenaTrazo
                 matGuante.SetFloat("_Opaco", 1f);
             if (matGuante.HasProperty("_ColorBorde"))
                 matGuante.SetColor("_ColorBorde", Color.black);
+            if (matGuante.HasProperty("_Borde"))
+                matGuante.SetFloat("_Borde", 0.36f); // contorno un poquito más grueso
         }
         // Los círculos de los nodos (y las imágenes, dianas, flecha y dial) se ven por ambos lados.
         foreach (var m in new[] { matNodo, matNodoActivo, matAsa, matIman, matImagen, matImagenTransparente, matFlecha, matDianaRoja, matDianaVerde, matBlanco, matDial, matIndicador,
@@ -513,11 +515,11 @@ public static class ArmarEscenaTrazo
         fondo.transform.localScale = new Vector3(0.105f, 0.23f, 1f);
         SinSombras(fondo.GetComponent<Renderer>(), matPanel);
 
-        Texto(contenido.transform, "TrazoVR", new Vector3(0f, 0.09f, -0.001f), new Vector2(0.09f, 0.014f), Color.black);
+        Texto(contenido.transform, "JCartoons", new Vector3(0f, 0.09f, -0.001f), new Vector2(0.09f, 0.014f), Color.black);
         panel.textoEstado = Texto(contenido.transform, "", new Vector3(0f, -0.105f, -0.001f), new Vector2(0.098f, 0.02f), new Color(0.2f, 0.2f, 0.25f));
 
         // Dos columnas: Plano / Fondo · Guardar / Cargar · Borrar todo / Imán · Esfera / Cubo · Cilindro / A líneas · Quitar figura
-        string[] nombres = { "Libre (3D)", "Fondo: Cuadrícula", "Guardar", "Archivos", "Borrar todo", "Esfera", "Cubo", "Cilindro", "A líneas", "", "Imán: Sí" };
+        string[] nombres = { "Libre (3D)", "Fondo: Cuadrícula", "Guardar", "Archivos", "Borrar todo", "Esfera", "Cubo", "Cilindro", "A líneas", "Música: Arpa", "Imán: Sí" };
         Vector2[] lugares =
         {
             new Vector2(-0.025f, 0.064f), new Vector2(0.025f, 0.064f),
@@ -540,10 +542,12 @@ public static class ArmarEscenaTrazo
         panel.btnCubo = botones[6];
         panel.btnCilindro = botones[7];
         panel.btnALineas = botones[8];
-        // "Quitar figura" ya no hace falta: la figura elegida tiene su X (y el borrador la borra).
-        Object.DestroyImmediate(botones[9].etiqueta.gameObject);
-        Object.DestroyImmediate(botones[9].gameObject);
+        // "Quitar figura" ya no hace falta (la figura elegida tiene su X). En su lugar: la música del trazo.
         panel.btnQuitarFigura = null;
+        panel.btnMusica = botones[9];
+        botones[9].transform.localScale = new Vector3(0.096f, 0.022f, 0.008f);
+        if (botones[9].etiqueta != null)
+            botones[9].etiqueta.rectTransform.sizeDelta = new Vector2(0.09f, 0.018f);
         panel.btnIman = botones[10];
         // X arriba a la derecha: cerrar el menú a mano.
         panel.btnCerrar = Boton(contenido.transform, "X", new Vector3(0.04f, 0.09f, 0f), matBoton, matBotonMarcado);

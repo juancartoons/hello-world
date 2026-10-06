@@ -30,8 +30,9 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 - Entre un paso y otro hay un respiro (se va la viñeta) para que se note que algo terminó.
 - Si pasan 8 segundos sin hacer nada, las manos guía lo repiten. **Skip** lo termina.
 - **Guante de caricatura:** mientras haces el OK para dibujar, tu mano izquierda lleva un guante blanco como el de
-  Mickey: dedos gorditos, dorso relleno con 3 rayitas, puño en la muñeca, 4 dedos y contorno negro.
-- Los **avisos** y el nombre del gesto también salen en viñetas de cómic (sin colita; el del gesto, arriba y detrás de la mano).
+  Mickey: dedos gorditos y curvos, dorso relleno con 3 rayitas, 4 dedos y contorno negro.
+- Los **avisos** y el nombre del gesto también salen en viñetas de cómic (sin colita; el del gesto, arriba y detrás de la
+  mano, se ve 1,5 segundos y se va; en el tutorial se queda).
 - El panel de arriba, cuando lo fijaste en otro lugar, tiene una **X** que lo devuelve a "mirar arriba".
 - Para verlo otra vez: **Mis archivos → Tutorial**. Tu dibujo se aparta antes y vuelve igual al terminar.
 
@@ -53,6 +54,7 @@ gruesa en el centro y en punta a los lados. Con capas y animación por morph.
 | Izquierda: **doble toque rápido** de pulgar + índice | **Candado (modo seguro)**: no se dibuja, borra, cambia grosor, editan nodos ni mueven líneas o figuras. Sí puedes girar/mover todo para mirar, usar los paneles, deshacer y rehacer. Se ve un candado arriba a la derecha |
 | Menú de la mano: **Esfera / Cubo / Cilindro** | **Figura 3D** que se ve como dibujo (relleno + contorno desde donde la mires). Pellízcala para moverla; con las dos manos: tamaño y giro. Gesto de grosor = suavizar esquinas. Modo nodos = deformarla (pellizca la superficie = nodo nuevo). **A líneas** = convertirla en líneas normales. **Borrarla**: la **X** de su esquina (cuando está elegida), o **frotarla** con el borrador; tocar un nodo con el borrador le quita la deformación (o el nodo) |
 | **Como mirar la hora**: el dorso de la muñeca izquierda hacia tu cara (y la miras) | **Menú**: Libre 3D / Plano 2D, Fondo, Guardar, Archivos, Borrar todo, Imán y figuras. La **X** de arriba lo cierra |
+| Menú del reloj: botón **Música** | **Música del trazo**: mientras dibujas suena una melodía (escala pentatónica) que sube y baja con tu línea; al soltar, un acorde. Arpa, Piano, Marimba, Cajita de música o No |
 | **Palma izquierda abierta** mirando hacia tu cara | **Paleta de colores**: toca un color con el índice derecho (la puntita del dedo lo muestra). Con líneas elegidas, se pintan. **Cuentagotas**: con la paleta abierta, toca una línea = tomas su color |
 | **Las dos manos pellizcando** (índice + pulgar) | Separar/juntar = escalar · girar como un volante = rotar · mover = trasladar (solo la línea seleccionada, o todo si no hay selección) |
 | Tocar un **relleno** con el índice derecho | Cambia su color |

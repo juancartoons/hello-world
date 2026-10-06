@@ -21,6 +21,8 @@ using UnityEngine;
 public class Tutorial : MonoBehaviour
 {
     public static Tutorial Instancia { get; private set; }
+    // El tutorial está en marcha (no cuenta el título).
+    public static bool EnCurso => Instancia != null && Instancia.estado != Estado.Nada && Instancia.estado != Estado.Titulo;
 
     public Dibujo dibujo;
     public ControlManos control;
@@ -46,7 +48,7 @@ public class Tutorial : MonoBehaviour
     const string Nombre = "JCartoons";
     const float MitadLinea = 0.32f;     // de la bandera al centro (metros)
     const float CorrerDerecha = 0.08f;  // todo el tutorial un poco a la derecha
-    const float AnchoMuneco = 0.003f;   // grosor de cada hebra del muñeco
+    const float AnchoMuneco = 0.0035f;  // grosor de cada hebra del muñeco
     const float EscalaMuneco = 0.45f;   // el muñeco del tutorial (unos 18 cm)
     const float AnchoVineta = 0.24f, AltoVineta = 0.075f;
 
@@ -183,6 +185,8 @@ public class Tutorial : MonoBehaviour
     bool teniaDedo;
     int nodosInicio, deshechoInicio, notaArpa;
     float dirHuida;
+    int notaDemo = -1;
+    float recorridoMelodia;
     bool huidaFija;
     readonly Dictionary<int, List<Vector3>> nodosPaso7 = new Dictionary<int, List<Vector3>>();
 
@@ -563,6 +567,8 @@ public class Tutorial : MonoBehaviour
 
     void Terminar()
     {
+        if (control != null)
+            control.soloNodosAlBorrar = false;
         PlayerPrefs.SetInt(ClaveVisto, 1);
         PlayerPrefs.Save();
         primeraVez = false;
@@ -873,6 +879,28 @@ public class Tutorial : MonoBehaviour
             }
             if (t >= 1.1f)
                 PonerLinea(lineaDemo, curvaDemo, Mathf.Clamp(Mathf.RoundToInt(u * (curvaDemo.Count - 1)) + 1, 2, curvaDemo.Count));
+            // La línea de la mano guía también suena (sube = agudo, baja = grave) y termina con un acorde.
+            if (t >= 1.1f && t < 3.9f)
+            {
+                float recorrido = u * MitadLinea * 2f;
+                if (recorrido - recorridoMelodia >= 0.035f || notaDemo < 0)
+                {
+                    recorridoMelodia = recorrido;
+                    notaDemo = ControlManos.IndicePorAltura(Curva(u).y - Curva(0f).y);
+                    control.NotaMusical(notaDemo);
+                }
+            }
+            else if (t >= 3.9f && notaDemo >= 0)
+            {
+                notaDemo = -1;
+                recorridoMelodia = 0f;
+                control.AcordeMusical();
+            }
+            else if (t < 1.1f)
+            {
+                notaDemo = -1;
+                recorridoMelodia = 0f;
+            }
         }
         return t >= 5.2f;
     }
@@ -898,8 +926,7 @@ public class Tutorial : MonoBehaviour
             if (Vector3.Distance(control.Der.indice, B) < 0.07f && LargoCamino >= MitadLinea * 2f * 0.6f)
             {
                 Exito(2, B);
-                PonerVineta(Texto3, VinetaIzq, 1);
-                MostrarNumero(3, JuntoAVineta(VinetaIzq));
+                OcultarVineta(); // un respiro antes del paso 3
                 Cambiar(Estado.Paso3);
             }
             return;
@@ -957,10 +984,16 @@ public class Tutorial : MonoBehaviour
         if (tr != null && tr.Dibujando)
         {
             SeguirLineaNueva(tr);
+            // Primero un respiro (se celebra la bandera); luego aparece el 3 con su viñeta.
+            const float respiro = 1.4f;
+            if (T < respiro)
+                return;
+            PonerVineta(Texto3, VinetaIzq, 1);
+            MostrarNumero(3, JuntoAVineta(VinetaIzq));
             // La mano guía (suave) enseña a abrir los dedos, una y otra vez.
-            float ciclo = Mathf.Repeat(T, 2.2f);
+            float ciclo = Mathf.Repeat(T - respiro, 2.2f);
             float pinza = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(1.0f, 1.3f, ciclo)) * (1f - Mathf.InverseLerp(1.9f, 2.2f, ciclo));
-            PonerAlfaGuia(0.55f * Mathf.Clamp01(T / 0.4f));
+            PonerAlfaGuia(0.55f * Mathf.Clamp01((T - respiro) / 0.4f));
             PonerOkGuia(pinza, 1f);
             // Si no suelta en un buen rato, la línea se termina sola.
             if (T > 12f)
@@ -1283,6 +1316,7 @@ public class Tutorial : MonoBehaviour
             nodosInicio = NodosTutorial();
             borrando = false;
             huidaFija = false;
+            control.soloNodosAlBorrar = true; // aquí se borra nodo por nodo
             teniaDedo = false;
             velDedo = 0f;
             Cambiar(Estado.Paso6);
@@ -1333,9 +1367,13 @@ public class Tutorial : MonoBehaviour
             Huir(sDedo, dirHuida, velDedo > 0.2f);
         else
             ActualizarFigura();
-        bool listo = nodos == 0 || (nodosInicio > 0 && nodos <= nodosInicio / 2) || (borrando && Time.time - borrandoDesde > 3f);
+        // Termina cuando el muñeco llegó hasta el final de la línea (o ya no queda línea).
+        float extremo = dirHuida < 0f ? 0.005f : Mathf.Max(0.005f, LargoCamino - 0.005f);
+        bool alFinal = Mathf.Abs(figuraS - extremo) < 0.015f;
+        bool listo = nodos == 0 || (alFinal && nodosInicio > 0 && nodos <= nodosInicio / 2) || (alFinal && borrando && Time.time - borrandoDesde > 4f);
         if (listo)
         {
+            control.soloNodosAlBorrar = false;
             Exito(6, der.valida ? der.indice : PuntoCamino(figuraS));
             Escapar();
             Pausa(() => Cambiar(Estado.Regresa));
@@ -2120,10 +2158,26 @@ public class Tutorial : MonoBehaviour
 
     // ==================== Números y decorado ====================
 
+    static int GrupoNumero(int n)
+    {
+        return n == 1 || n == 2 ? 1 : n == 5 || n == 6 ? 5 : n;
+    }
+
     void MostrarNumero(int n, Vector3 local)
     {
         if (numeros.ContainsKey(n) || raiz == null)
             return;
+        // Los números de pasos anteriores se van (menos los que se usan juntos: 1 y 2, 5 y 6).
+        var quitar = new List<int>();
+        foreach (var par in numeros)
+            if (GrupoNumero(par.Key) != GrupoNumero(n))
+                quitar.Add(par.Key);
+        foreach (int k in quitar)
+        {
+            if (numeros[k].raiz != null)
+                Destroy(numeros[k].raiz.gameObject);
+            numeros.Remove(k);
+        }
         var num = new Numero { desde = Time.time };
         num.raiz = new GameObject("Numero" + n).transform;
         num.raiz.SetParent(raiz, false);

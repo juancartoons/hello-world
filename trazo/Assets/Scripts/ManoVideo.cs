@@ -200,30 +200,50 @@ public sealed class ManoVideo
         render.sharedMaterials = new[] { materialBase, rayas != null ? rayas : materialBase, materialBase };
     }
 
-    public void PonerGuante(Vector3[] a, bool izquierda)
+    const float EscalaGuante = 0.93f;
+    readonly Vector3[] guanteA = new Vector3[21];
+
+    public void PonerGuante(Vector3[] entrada, bool izquierda)
     {
-        bool ver = a != null && a.Length >= 21;
+        bool ver = entrada != null && entrada.Length >= 21;
         if (go.activeSelf != ver)
             go.SetActive(ver);
         if (!ver)
             return;
         ArmarEsferaFina();
+        // Un poquito más pequeño que tu mano (7%), alrededor del centro del dorso.
+        Vector3 c0 = Vector3.Lerp(entrada[0], entrada[9], 0.5f);
+        for (int i = 0; i < 21; i++)
+            guanteA[i] = c0 + (entrada[i] - c0) * EscalaGuante;
+        var a = guanteA;
         vertices.Clear();
         normales.Clear();
         foreach (var l in partes)
             l.Clear();
 
-        // Dedos gorditos: pulgar, índice, medio y anular.
+        // Dedos gorditos y curvos (pulgar, índice, medio y anular): una "salchichita" suave que pasa por
+        // las articulaciones (curva Catmull-Rom), sin tramos rectos.
         triangulos = partes[0];
         for (int d = 0; d < 4; d++)
         {
             int b = 1 + d * 4;
-            float r = d == 0 ? 0.0175f : 0.0158f;
-            for (int k = 0; k < 4; k++)
+            float r = (d == 0 ? 0.0175f : 0.0158f) * EscalaGuante;
+            Vector3 previo = a[b];
+            const int muestras = 10;
+            for (int k = 0; k <= muestras; k++)
             {
-                Esfera(a[b + k], r);
+                float u = k / (float)muestras * 3f;      // 0..3 (tres tramos entre 4 articulaciones)
+                int tramo = Mathf.Min(2, Mathf.FloorToInt(u));
+                float t = u - tramo;
+                Vector3 p0 = a[b + Mathf.Max(0, tramo - 1)];
+                Vector3 p1 = a[b + tramo];
+                Vector3 p2 = a[b + tramo + 1];
+                Vector3 p3 = a[b + Mathf.Min(3, tramo + 2)];
+                Vector3 p = CatmullRom(p0, p1, p2, p3, t);
+                EsferaFina(p, r);
                 if (k > 0)
-                    Tubo(a[b + k - 1], r, a[b + k], r);
+                    TuboSuave(previo, r, p, r);
+                previo = p;
             }
         }
 
@@ -243,10 +263,10 @@ public sealed class ManoVideo
             if (Vector3.Dot(N, palma) < 0f)
                 N = -N;
             Vector3 c = Vector3.Lerp(a[0], a[9], 0.5f);
-            float ex = largo * 0.6f, ey = ancho * 0.5f + 0.022f, ez = 0.026f;
+            float ex = largo * 0.6f, ey = (ancho * 0.5f + 0.022f) * EscalaGuante, ez = 0.026f * EscalaGuante;
             Elipsoide(c, F * ex, S * ey, N * ez);
 
-            // Las 3 rayitas negras del dorso.
+            // Las 3 rayitas negras del dorso (cortas).
             triangulos = partes[1];
             for (int j = -1; j <= 1; j++)
             {
@@ -254,24 +274,15 @@ public sealed class ManoVideo
                 Vector3 previo = Vector3.zero;
                 for (int k = 0; k < 4; k++)
                 {
-                    float u = Mathf.Lerp(-0.4f, 0.25f, k / 3f);
+                    float u = Mathf.Lerp(-0.3f, 0.13f, k / 3f);
                     float alto = ez * Mathf.Sqrt(Mathf.Max(0f, 1f - u * u - v * v)) + 0.0015f;
                     Vector3 p = c + F * (u * ex) + S * (v * ey) - N * alto;
-                    Esfera(p, 0.0028f);
+                    EsferaFina(p, 0.0026f);
                     if (k > 0)
-                        Tubo(previo, 0.0028f, p, 0.0028f);
+                        TuboSuave(previo, 0.0026f, p, 0.0026f);
                     previo = p;
                 }
             }
-
-            // El puño del guante en la muñeca (un aro ancho con el borde enrollado).
-            triangulos = partes[2];
-            Vector3 atras = -F;
-            Vector3 p0 = a[0] + atras * 0.004f, p1 = a[0] + atras * 0.03f, p2 = a[0] + atras * 0.04f;
-            Tubo(p0, 0.03f, p1, 0.034f);
-            Tubo(p1, 0.038f, p2, 0.038f);
-            Tapa(p0, F, 0.03f);
-            Tapa(p2, atras, 0.038f);
         }
 
         malla.Clear();
@@ -281,6 +292,53 @@ public sealed class ManoVideo
         for (int k = 0; k < 3; k++)
             malla.SetTriangles(partes[k], k);
         malla.RecalculateBounds();
+    }
+
+    static Vector3 CatmullRom(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t)
+    {
+        float t2 = t * t, t3 = t2 * t;
+        return 0.5f * (2f * p1 + (p2 - p0) * t + (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2 + (3f * p1 - p0 - 3f * p2 + p3) * t3);
+    }
+
+    void EsferaFina(Vector3 centro, float radio)
+    {
+        int b = vertices.Count;
+        foreach (var n in esferaFina)
+        {
+            vertices.Add(centro + n * radio);
+            normales.Add(n);
+        }
+        foreach (int i in esferaFinaTri)
+            triangulos.Add(b + i);
+    }
+
+    // Como Tubo, pero con más lados (el contorno se ve redondo, no a pedazos).
+    void TuboSuave(Vector3 a, float ra, Vector3 b, float rb)
+    {
+        Vector3 d = b - a;
+        if (d.sqrMagnitude < 1e-10f)
+            return;
+        const int lados = 18;
+        Vector3 eje = d.normalized;
+        Vector3 u = Vector3.Cross(eje, Mathf.Abs(eje.y) < 0.9f ? Vector3.up : Vector3.right).normalized;
+        Vector3 w = Vector3.Cross(eje, u);
+        int baseIndice = vertices.Count;
+        for (int k = 0; k < lados; k++)
+        {
+            float ang = 2f * Mathf.PI * k / lados;
+            Vector3 radial = u * Mathf.Cos(ang) + w * Mathf.Sin(ang);
+            vertices.Add(a + radial * ra);
+            normales.Add(radial);
+            vertices.Add(b + radial * rb);
+            normales.Add(radial);
+        }
+        for (int k = 0; k < lados; k++)
+        {
+            int i0 = baseIndice + k * 2, i1 = i0 + 1;
+            int j0 = baseIndice + ((k + 1) % lados) * 2, j1 = j0 + 1;
+            triangulos.Add(i0); triangulos.Add(i1); triangulos.Add(j0);
+            triangulos.Add(j0); triangulos.Add(i1); triangulos.Add(j1);
+        }
     }
 
     // Una esfera estirada (el dorso del guante), con más detalle que las de los dedos.

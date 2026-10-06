@@ -44,6 +44,71 @@ public static class Sonidos
             Nota(i);
     }
 
+    // ---------- Música del trazo: escala pentatónica (siempre suena bonita) ----------
+    // 13 notas de grave a agudo (Do, Re, Mi, Sol, La en 2 octavas y media). Instrumentos: 0 arpa, 1 piano,
+    // 2 marimba, 3 cajita de música.
+    public const int NotasEscala = 13;
+    public static readonly string[] Instrumentos = { "Arpa", "Piano", "Marimba", "Cajita" };
+    static readonly int[] Pentatonica = { 0, 2, 4, 7, 9 };
+    static AudioClip[,] notasInstrumento;
+
+    public static float FrecuenciaEscala(int indice)
+    {
+        indice = Mathf.Clamp(indice, 0, NotasEscala - 1);
+        int semitonos = 12 * (indice / 5) + Pentatonica[indice % 5];
+        return 261.63f * Mathf.Pow(2f, semitonos / 12f);
+    }
+
+    public static AudioClip NotaInstrumento(int instrumento, int indice)
+    {
+        if (notasInstrumento == null)
+            notasInstrumento = new AudioClip[Instrumentos.Length, NotasEscala];
+        instrumento = Mathf.Clamp(instrumento, 0, Instrumentos.Length - 1);
+        indice = Mathf.Clamp(indice, 0, NotasEscala - 1);
+        if (notasInstrumento[instrumento, indice] != null)
+            return notasInstrumento[instrumento, indice];
+        float hz = FrecuenciaEscala(indice);
+        var datos = new float[Mathf.RoundToInt(Frecuencia * 1.3f)];
+        switch (instrumento)
+        {
+            case 0: // arpa
+                Pulsar(datos, 0f, hz, 0.5f, new System.Random(40 + indice));
+                break;
+            case 1: // piano suave: armónicos que se apagan (los agudos más rápido)
+                for (int i = 0; i < datos.Length; i++)
+                {
+                    float t = i / (float)Frecuencia;
+                    float v = 0f;
+                    for (int k = 1; k <= 6; k++)
+                        v += Mathf.Sin(2f * Mathf.PI * hz * k * (1f + 0.0004f * k * k) * t) * Mathf.Exp(-t * (1.6f + k * 1.1f)) / (k * k * 0.6f + 0.4f);
+                    datos[i] = v * Mathf.Clamp01(t / 0.003f);
+                }
+                break;
+            case 2: // marimba: madera (fundamental + parcial alto) y un golpecito
+                for (int i = 0; i < datos.Length; i++)
+                {
+                    float t = i / (float)Frecuencia;
+                    float v = Mathf.Sin(2f * Mathf.PI * hz * t) * Mathf.Exp(-t * 5f)
+                              + 0.35f * Mathf.Sin(2f * Mathf.PI * hz * 3.93f * t) * Mathf.Exp(-t * 18f)
+                              + 0.15f * Mathf.Sin(2f * Mathf.PI * hz * 9.2f * t) * Mathf.Exp(-t * 60f);
+                    datos[i] = v * Mathf.Clamp01(t / 0.002f);
+                }
+                break;
+            default: // cajita de música: brillante, una octava arriba, con brillo metálico
+                for (int i = 0; i < datos.Length; i++)
+                {
+                    float t = i / (float)Frecuencia;
+                    float v = Mathf.Sin(2f * Mathf.PI * hz * 2f * t) * Mathf.Exp(-t * 3.2f)
+                              + 0.3f * Mathf.Sin(2f * Mathf.PI * hz * 2f * 2.756f * t) * Mathf.Exp(-t * 7f)
+                              + 0.12f * Mathf.Sin(2f * Mathf.PI * hz * 2f * 5.4f * t) * Mathf.Exp(-t * 14f);
+                    datos[i] = v * Mathf.Clamp01(t / 0.0015f);
+                }
+                break;
+        }
+        notasInstrumento[instrumento, indice] = Clip("Nota" + instrumento + "_" + indice, datos, 0.6f);
+        return notasInstrumento[instrumento, indice];
+    }
+
     // Las notas del arpa del título (Re mayor con novena, de grave a agudo).
     static readonly float[] Arpa = { 293.66f, 369.99f, 440f, 554.37f, 659.25f, 739.99f, 880f, 1108.73f, 1318.51f };
     static AudioClip[] notas;
