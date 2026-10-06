@@ -69,7 +69,7 @@ public static class Exportar
             if (!Dibujo.Editable(t) || t.nodos.Count < 2)
                 continue;
             float grosorMm = t.ancho * escala * 1000f * 0.75f;
-            sb.Append("<path stroke-width=\"").Append(N(grosorMm)).Append("\" d=\"");
+            sb.Append("<path stroke=\"#").Append(ColorUtility.ToHtmlStringRGB(t.color)).Append("\" stroke-width=\"").Append(N(grosorMm)).Append("\" d=\"");
             Camino(sb, t, raiz, derecha, arribaVista);
             sb.AppendLine("\"/>");
         }

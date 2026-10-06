@@ -2,7 +2,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 
-// Menú: aparece con la mano izquierda abierta y la punta del pulgar en la base de los dedos.
+// Menú: aparece como si miraras la hora: el dorso de la muñeca izquierda hacia tu cara (y la miras).
 // Flota unos centímetros hacia ti y sigue a la mano. Los botones se tocan con el índice derecho.
 // También muestra avisos cortos frente a tus ojos ("Deshecho", "Líneas unidas"...).
 public class PanelMuneca : MonoBehaviour

@@ -20,6 +20,7 @@ public class DatosTrazo
     public int estilo;
     public bool crudo; // solo para la repetición: la línea aún se estaba dibujando
     public bool oculto; // línea "hueso": existe (mueve a otras partes) pero no se ve
+    public Color color = Color.black; // color de la línea (los dibujos de antes no lo tienen: negro)
 }
 
 [System.Serializable]
@@ -343,7 +344,55 @@ public class Dibujo : MonoBehaviour
     // Material de la línea según su capa (boceto gris o azul, o tinta normal).
     public Material MaterialDe(Trazo t)
     {
-        return t != null ? MaterialCapa(t.capa, materialLinea) : materialLinea;
+        if (t == null)
+            return materialLinea;
+        var m = MaterialCapa(t.capa, materialLinea);
+        // Boceto (gris o azul) manda; si no, la línea lleva su color.
+        if (m != materialLinea || EsNegro(t.color))
+            return m;
+        return MaterialColor(t.color);
+    }
+
+    // ---------- Colores de las líneas ----------
+
+    // El color de las líneas nuevas (lo elige la paleta de la mano izquierda).
+    public Color ColorNuevo { get; set; } = Color.black;
+
+    readonly Dictionary<int, Material> materialesColor = new Dictionary<int, Material>();
+
+    static bool EsNegro(Color c)
+    {
+        return c.r < 0.02f && c.g < 0.02f && c.b < 0.02f;
+    }
+
+    // Un material de línea de ese color (se hace una sola vez por color).
+    public Material MaterialColor(Color c)
+    {
+        if (materialLinea == null)
+            return null;
+        Color32 c32 = c;
+        int clave = (c32.r << 24) | (c32.g << 16) | (c32.b << 8) | c32.a;
+        Material m;
+        if (materialesColor.TryGetValue(clave, out m) && m != null)
+            return m;
+        m = new Material(materialLinea);
+        if (m.HasProperty("_BaseColor"))
+            m.SetColor("_BaseColor", c);
+        if (m.HasProperty("_ColorLuz"))
+            m.SetColor("_ColorLuz", Color.Lerp(c, Color.white, 0.45f));
+        materialesColor[clave] = m;
+        return m;
+    }
+
+    // Pinta una línea (se puede deshacer si antes se guardó "deshacer").
+    public void PonerColor(Trazo t, Color c)
+    {
+        if (t == null)
+            return;
+        t.color = c;
+        RestaurarMaterial(t);
+        HayCambios = true;
+        Avisar();
     }
 
     public Material MaterialCapa(int capa, Material normal)
@@ -529,6 +578,7 @@ public class Dibujo : MonoBehaviour
         var t = CrearTrazo(AnchoNuevoLocal());
         t.id = siguienteId++;
         t.capa = capaActual;
+        t.color = ColorNuevo;
         AplicarCapaVisual(t);
         trazos.Add(t);
         return t;
@@ -570,6 +620,7 @@ public class Dibujo : MonoBehaviour
         var t = CrearTrazo(d.ancho);
         t.id = siguienteId++;
         t.capa = capaActual;
+        t.color = d.color;
         AplicarCapaVisual(t);
         t.AplicarPose(d, null, 0f);
         trazos.Add(t);
@@ -1700,6 +1751,7 @@ public class Dibujo : MonoBehaviour
                 var t = CrearTrazo(dt.ancho > 0f ? dt.ancho : 0.008f);
                 t.id = dt.id > 0 ? dt.id : siguienteId++;
                 t.capa = Mathf.Clamp(dt.capa, 0, capas.Count - 1);
+                t.color = dt.color;
                 AplicarCapaVisual(t);
                 siguienteId = Mathf.Max(siguienteId, t.id + 1);
                 t.AplicarPose(dt, null, 0f);

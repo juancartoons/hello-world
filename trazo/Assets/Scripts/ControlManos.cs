@@ -17,13 +17,14 @@ using UnityEngine;
 //  Izquierda: DOBLE TOQUE rápido de pulgar + índice -> bloquear / desbloquear el dibujo (candado arriba a la derecha).
 //  Izquierda pulgar + ANULAR y el índice derecho girando en círculos pequeños -> grosor de las líneas nuevas
 //       (a la derecha = más grueso, a la izquierda = más delgado).
-//  Izquierda abierta con el pulgar tocando la base de los dedos -> menú.
+//  Como mirar la hora: dorso de la muñeca izquierda hacia tu cara -> menú.
+//  Palma izquierda abierta hacia tu cara -> paleta de colores (toca un color con el índice derecho).
 //  LAS DOS manos pellizcando (índice + pulgar) -> escalar, girar (como volante) y mover todo.
 //  Tocar un relleno con el índice derecho -> cambiar su color.
 //  Pellizcar una línea con la derecha (sin gesto izquierdo) -> seleccionarla y moverla.
 //  Pellizcar en el aire -> quitar la selección (los cambios vuelven a afectar a todo el dibujo).
 [DefaultExecutionOrder(-50)]
-public class ControlManos : MonoBehaviour
+public partial class ControlManos : MonoBehaviour
 {
     public static ControlManos Instancia { get; private set; }
 
@@ -117,7 +118,6 @@ public class ControlManos : MonoBehaviour
     float curvaIndice, curvaMedio, curvaAnular;  // ~0.5-1 doblado, ~1.5+ estirado
     float pulgarANudillo;                         // punta del pulgar al nudillo del índice
     Vector3 basePulgar;
-    float distanciaMenu;                          // del pulgar a la base de los dedos (pose del menú)
 
     // Nodos y asas visibles
     readonly List<Transform> nodosVisibles = new List<Transform>();
@@ -285,6 +285,7 @@ public class ControlManos : MonoBehaviour
     {
         if (Instancia == this)
             Instancia = null;
+        LiberarPaleta();
     }
 
     void Start()
@@ -357,6 +358,7 @@ public class ControlManos : MonoBehaviour
             lineaMovida = null;
             figuraMovida = null;
             menuAbierto = false;
+            CerrarPaleta();
             esperarSoltarIzq = true;
             OcultarModoNodos();
             ActualizarCursor();
@@ -368,6 +370,7 @@ public class ControlManos : MonoBehaviour
         RevisarCandado();
         ActualizarGestoIzquierdo();
         ActualizarMenu();
+        ActualizarPaleta();
 
         // Mano abierta yendo a chocar los cinco con un personaje: no se edita nada en ese momento.
         bool protegido = DibujoBloqueado || Titere.ManoCerca;
@@ -381,7 +384,7 @@ public class ControlManos : MonoBehaviour
             case Gesto.Borrar: if (!protegido) Borrar(); break;
             case Gesto.Transformar: if (caja != null) caja.Actualizar(Izq, Der); break;
             default:
-                if (!menuAbierto && !protegido)
+                if (!menuAbierto && !paletaAbierta && !protegido)
                 {
                     RevisarAgarreLinea();
                     RevisarToqueRelleno();
@@ -443,11 +446,6 @@ public class ControlManos : MonoBehaviour
         Vector3 dedos = nudilloMedio.position - muneca.position;
         if (dedos.sqrMagnitude > 1e-6f)
             dirDedosIzq = dedos.normalized;
-        // La "base de los dedos": una franja desde el nudillo del índice hasta el del meñique,
-        // un poco hacia la muñeca. Sirve aunque el pulgar toque un poco más abajo.
-        Vector3 a = Vector3.Lerp(nudilloIndice.position, muneca.position, 0.2f);
-        Vector3 b = Vector3.Lerp(nudilloMenique.position, muneca.position, 0.2f);
-        distanciaMenu = DistanciaASegmento(Izq.pulgar, a, b);
         poseValida = true;
     }
 
@@ -2090,8 +2088,10 @@ public class ControlManos : MonoBehaviour
     {
         if (lineaMovida != null)
         {
-            // Se suelta fácil: basta con abrir un poco el pulgar y el índice.
-            bool soltar = !Der.valida || !Der.pellizco || Vector3.Distance(Der.indice, Der.pulgar) > soltarLinea
+            // Se suelta fácil: basta con empezar a abrir el pulgar y el índice (1 cm más que tu pellizco).
+            float abertura = Vector3.Distance(Der.indice, Der.pulgar);
+            pinzaMinLinea = Mathf.Min(pinzaMinLinea, abertura);
+            bool soltar = !Der.valida || !Der.pellizco || abertura > soltarLinea || abertura > pinzaMinLinea + 0.01f
                           || !Dibujo.Editable(lineaMovida);
             if (soltar)
             {
@@ -2190,6 +2190,7 @@ public class ControlManos : MonoBehaviour
         if (figuras != null)
             figuras.Seleccionar(null);
         lineaMovida = t;
+        pinzaMinLinea = Vector3.Distance(Der.indice, Der.pulgar);
         baseLinea.Clear();
         baseLinea.AddRange(t.nodos);
         grupoMovido.Clear();
@@ -2261,10 +2262,15 @@ public class ControlManos : MonoBehaviour
     }
 
     // Al soltar una línea: si fue un toque corto (sin moverla), suma o quita esa línea de la selección.
+    float pinzaMinLinea;
+
     void SoltarLinea()
     {
         var t = lineaMovida;
         lineaMovida = null;
+        // Un "plop" suave: ya está libre.
+        if (t != null && Der.valida)
+            Burbuja(Der.PuntoPellizco, 1.4f);
         bool toque = !toqueMovio && Time.time - toqueLineaDesde < 0.35f;
         grupoMovido.Clear();
         basesGrupo.Clear();
@@ -2373,13 +2379,16 @@ public class ControlManos : MonoBehaviour
         bool borrando = GestoIzq == Gesto.Borrar;
         // Con el borrador, el punto rojo es el borrador (mientras cambias su tamaño, va entre tus dedos).
         cursor.position = borrando && Der.pellizco ? Der.PuntoPellizco : Der.indice;
-        var mat = borrando && materialCursorBorrar != null ? materialCursorBorrar : materialCursor;
+        var mat = borrando && materialCursorBorrar != null ? materialCursorBorrar
+                : dibujo.ColorNuevo != Color.black ? MaterialCursorColor() : materialCursor;
+        if (mat == null)
+            mat = materialCursor;
         if (mat != null && cursorRender.sharedMaterial != mat)
             cursorRender.sharedMaterial = mat;
         cursor.localScale = Vector3.one * (borrando ? RadioBorrador * 2f : Mathf.Max(0.003f, dibujo.AnchoNuevoMundo));
     }
 
-    // Menú: mano izquierda abierta con la punta del pulgar en la base de los dedos.
+    // Menú: como mirar la hora (el dorso de la muñeca izquierda hacia tu cara, y la miras).
     // Una vez abierto, se queda aunque la mano derecha tape un momento a la izquierda
     // (eso pasa al tocar los botones). Se cierra al hacer otro gesto o al quitar el pulgar un rato.
     // La X del menú de la mano: lo cierra (y no se vuelve a abrir hasta que quites el pulgar y lo pongas otra vez).
@@ -2398,23 +2407,29 @@ public class ControlManos : MonoBehaviour
             menuAbierto = false;
             return;
         }
-        bool pose = poseValida
-                    && distanciaMenu < (menuAbierto ? 0.09f : 0.045f)
-                    && (menuAbierto || DedosAbiertos());
+        // Como mirar la hora: el dorso de la muñeca izquierda hacia tu cara (y la estás mirando) un momento.
+        bool pose = PoseReloj(menuAbierto);
         if (esperarSoltarMenu)
         {
             menuAbierto = false;
-            if (!poseValida || distanciaMenu > 0.06f)
+            relojDesde = -1f;
+            if (!PoseReloj(false))
                 esperarSoltarMenu = false;
             return;
         }
         if (pose)
         {
-            menuAbierto = true;
-            menuFueraDesde = -1f;
-            PosicionarMenu();
+            if (relojDesde < 0f)
+                relojDesde = Time.time;
+            if (menuAbierto || Time.time - relojDesde > 0.3f)
+            {
+                menuAbierto = true;
+                menuFueraDesde = -1f;
+                PosicionarMenu();
+            }
             return;
         }
+        relojDesde = -1f;
         if (!menuAbierto)
             return;
         if (menuFueraDesde < 0f)
@@ -2426,13 +2441,31 @@ public class ControlManos : MonoBehaviour
             PosicionarMenu();
     }
 
+    float relojDesde = -1f;
+
+    // El dorso de la mano izquierda (abierta o relajada, no en puño) hacia tu cara, y tú mirándola.
+    bool PoseReloj(bool yaAbierto)
+    {
+        if (!poseValida || !palmaIzq.valida || Cabeza == null)
+            return false;
+        Vector3 aCabeza = Cabeza.position - palmaIzq.centro;
+        float dist = aCabeza.magnitude;
+        if (dist < 0.15f || dist > 0.75f)
+            return false;
+        aCabeza /= dist;
+        float dorso = -Vector3.Dot(palmaIzq.normal, aCabeza);   // 1 = el dorso mira hacia ti
+        float mirar = Vector3.Dot(Cabeza.forward, -aCabeza);    // 1 = la estás mirando
+        bool noPuno = palmaIzq.cierre > 1.2f;                    // el puño con el dorso hacia ti es el borrador
+        return noPuno && dorso > (yaAbierto ? 0.3f : 0.6f) && mirar > (yaAbierto ? 0.55f : 0.8f);
+    }
+
     void PosicionarMenu()
     {
         Vector3 haciaCabeza = Cabeza.position - palmaIzq.centro;
         if (haciaCabeza.sqrMagnitude < 1e-6f)
             return;
-        // Unos centímetros hacia ti y un poco arriba, para que la mano derecha no tape a la izquierda.
-        Vector3 pos = palmaIzq.centro + haciaCabeza.normalized * 0.1f + Vector3.up * 0.06f;
+        // Encima de la muñeca (como la pantalla de un reloj), un poco hacia ti.
+        Vector3 pos = palmaIzq.centro + haciaCabeza.normalized * 0.08f + Vector3.up * 0.08f;
         Vector3 mirar = pos - Cabeza.position;
         if (mirar.sqrMagnitude < 1e-6f)
             return;

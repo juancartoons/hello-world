@@ -38,6 +38,7 @@ public class Trazo : MonoBehaviour
     public int colorRelleno;
     [Tooltip("Grosor máximo (en el centro), en unidades locales del Dibujo")]
     public float ancho = 0.008f;
+    public Color color = Color.black;                       // color de la línea (la paleta de la mano izquierda)
     public EstiloLinea estilo = EstiloLinea.Cinta;
 
     // La curva ya calculada (local), para tocarla y medirla.
@@ -445,7 +446,8 @@ public class Trazo : MonoBehaviour
             colorRelleno = colorRelleno,
             ancho = ancho,
             estilo = (int)estilo,
-            oculto = oculto
+            oculto = oculto,
+            color = color
         };
     }
 
