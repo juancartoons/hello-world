@@ -5,7 +5,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@500&display=swap">
 <style>
-/* Layout: a comic-panel workbench — instrument chips on top, the play pad (a square of air, 40 cm) beside a readout column. */
+/* Layout: a comic-panel workbench — the play pad (a square of air, 40 cm) beside a readout column; the sound picker floats top-right, like in the headset. */
 :root {
   --bg: #f3f1ea;
   --panel: #ffffff;
@@ -39,12 +39,25 @@ header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
 h1 { font-family: var(--display); font-weight: 400; font-size: 2.4rem; letter-spacing: 0.02em; margin: 0; line-height: 1; text-wrap: balance; }
 h1 span { background: var(--pop); color: #16181b; padding: 0 0.25em; border: 2px solid #16181b; box-shadow: 3px 3px 0 #16181b; display: inline-block; transform: rotate(-1.5deg); }
 .sub { color: var(--muted); margin: 0; max-width: 62ch; }
-.chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.chip { font: 700 0.95rem var(--body); padding: 7px 14px; border-radius: 999px; border: 2px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
-.chip:hover { border-color: var(--ink); }
-.chip[aria-pressed="true"] { background: var(--pop); color: #16181b; border-color: #16181b; box-shadow: 2px 2px 0 #16181b; }
-.chip .drum { font-family: var(--mono); font-size: 0.72rem; font-weight: 500; opacity: 0.7; margin-left: 6px; }
 .chip:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+/* Selector de sonido (como en el visor: arriba a la derecha, sobre el parlante) */
+.widget { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); right: 16px; z-index: 5; width: 220px; display: grid; justify-items: center; gap: 4px; }
+.carrusel { position: relative; width: 220px; height: 80px; touch-action: none; user-select: none; cursor: grab; }
+.carrusel.arrastrando { cursor: grabbing; }
+.item { position: absolute; left: 50%; top: 50%; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; background: #ffffff; border: 3px solid #16181b; display: grid; place-items: center; will-change: transform, opacity; }
+.item.centro { box-shadow: 3px 3px 0 #16181b; background: var(--pop); }
+.item svg { width: 44px; height: 44px; display: block; }
+.nombre { font: 400 1.15rem var(--display); letter-spacing: 0.05em; background: #ffffff; color: #16181b; border: 2px solid #16181b; padding: 0 10px; border-radius: 4px; min-height: 1.6em; }
+.parlante { width: 46px; height: 46px; border-radius: 50%; border: 3px solid #16181b; background: #ffffff; display: grid; place-items: center; cursor: pointer; padding: 0; }
+.parlante svg { width: 30px; height: 30px; }
+header { padding-right: 240px; }
+@media (max-width: 760px) {
+  .widget { position: static; margin: 0 auto; }
+  header { padding-right: 0; }
+}
+.opciones { display: flex; flex-wrap: wrap; gap: 6px; }
+.opcion { font: 700 0.85rem var(--body); padding: 5px 12px; border-radius: 999px; border: 2px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+.opcion[aria-pressed="true"] { background: var(--pop); color: #16181b; border-color: #16181b; }
 .main { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; align-items: start; }
 @media (max-width: 760px) { .main { grid-template-columns: minmax(0, 1fr); } }
 .padbox { position: relative; border: 3px solid var(--ink); border-radius: 6px; background: var(--pad); aspect-ratio: 1; max-width: 100%; touch-action: none; user-select: none; cursor: grab; }
@@ -75,10 +88,14 @@ footer { color: var(--muted); font-size: 0.85rem; }
 <div class="wrap">
   <header>
     <h1><span>JCartoons</span> Laboratorio de sonidos</h1>
-    <p class="sub">Las mismas fórmulas de sonido de la app (Sonidos.cs): lo que oyes aquí es lo que oyes en el visor, sin el sonido 3D. Arrastra el punto negro: mantener presionado el mouse es el pellizco.</p>
+    <p class="sub">Arriba a la derecha está el selector de sonido, como quedará en el visor: arrastra los íconos a la izquierda o a la derecha (o toca uno de los lados). Debajo, el parlante silencia todo. Las mismas fórmulas de sonido de la app (Sonidos.cs): lo que oyes aquí es lo que oyes en el visor, sin el sonido 3D. Arrastra el punto negro: mantener presionado el mouse es el pellizco.</p>
   </header>
 
-  <div class="chips" id="chips" role="group" aria-label="Instrumento"></div>
+  <div class="widget" id="widget">
+    <div class="carrusel" id="carrusel" role="listbox" aria-label="Sonido: arrastra a la izquierda o a la derecha"></div>
+    <div class="nombre" id="nombreInstr">—</div>
+    <button class="parlante" id="parlante" type="button" aria-label="Silenciar o activar el sonido"></button>
+  </div>
 
   <div class="main">
     <div>
@@ -106,6 +123,10 @@ footer { color: var(--muted); font-size: 0.85rem; }
         <div class="mono">Separar = notas que suben · juntar = notas que bajan (una nota cada 7 %)</div>
       </div>
       <div class="card">
+        <div class="label">Ícono de Drum &amp; Bass (elige)</div>
+        <div class="opciones" id="opcionesDnb"></div>
+      </div>
+      <div class="card">
         <div class="label">Igual que en el visor</div>
         <ul>
           <li>Arpa, Piano, Marimba, Cajita, Japan, Orquesta: una nota cada 3.5 cm que recorres; un acorde al soltar.</li>
@@ -115,7 +136,7 @@ footer { color: var(--muted); font-size: 0.85rem; }
       </div>
     </div>
   </div>
-  <footer>Versión v24.7 (prueba: Piano mágico estilo Ghibli, Post-punk, Dubstep de muy grave a muy agudo, DS2, Orquesta con coro grande) · 44 100 muestras por segundo, el mismo generador de ruido que Unity (System.Random) y los mismos volúmenes (notas 0.35, batería 0.3).</footer>
+  <footer>Versión v24.8 (prueba: selector de sonido en carrusel sobre el parlante, en el orden de la app) · 44 100 muestras por segundo, el mismo generador de ruido que Unity (System.Random) y los mismos volúmenes (notas 0.35, batería 0.3).</footer>
 </div>
 
 <script>
@@ -801,22 +822,155 @@ function mostrarNota(i) {
   $("nota").textContent = nombreNota(i);
 }
 
-function armarChips() {
-  const caja = $("chips");
-  INSTRUMENTOS.forEach((n, i) => {
-    const b = document.createElement("button");
-    b.className = "chip";
-    b.id = "instr" + i;
-    b.type = "button";
-    b.innerHTML = n.replace("&", "&amp;") + (tieneRitmo(i) ? '<span class="drum">+ batería</span>' : "");
-    b.addEventListener("click", () => elegir(i));
-    caja.appendChild(b);
-  });
+// ---------- Selector de sonido (carrusel sobre el parlante) ----------
+// Orden en la app: Piano, Arpa, Orquesta, Cajita, Japan, Post-punk, Drum & Bass, Dubstep, Marimba.
+const ORDEN = [1, 0, 9, 3, 4, 5, 6, 7, 2];
+// Íconos hechos solo con rectángulos, círculos, polígonos y rayas (así se pueden armar igual en el visor).
+const T = "#16181b";
+const ICONOS_DNB = {
+  gafas: `<path d="M5 19h16l-1.5 10h-12z M27 19h16l-1.5 10h-12z" fill="${T}"/><path d="M21 21h6 M5 19l-2-3 M43 19l2-3" stroke="${T}" stroke-width="2.5" stroke-linecap="round"/><path d="M9 21l4 5 M31 21l4 5" stroke="#fff" stroke-width="2" stroke-linecap="round"/>`,
+  rayo: `<path d="M28 4L10 27h12l-4 17 20-25H26z" fill="${T}"/>`,
+  audifonos: `<path d="M8 30v-6a16 16 0 0 1 32 0v6" fill="none" stroke="${T}" stroke-width="3.5"/><rect x="5" y="27" width="9" height="14" rx="3" fill="${T}"/><rect x="34" y="27" width="9" height="14" rx="3" fill="${T}"/>`,
+};
+let iconoDnb = "gafas";
+function icono(id) {
+  switch (id) {
+    case 1: return `<rect x="5" y="11" width="38" height="26" rx="3" fill="#fff" stroke="${T}" stroke-width="2.5"/><path d="M12.6 11v26 M20.2 11v26 M27.8 11v26 M35.4 11v26" stroke="${T}" stroke-width="2"/><rect x="10.4" y="11" width="4.4" height="15" fill="${T}"/><rect x="18" y="11" width="4.4" height="15" fill="${T}"/><rect x="33.2" y="11" width="4.4" height="15" fill="${T}"/>`;
+    case 0: return `<path d="M12 7v34 M12 7l10-2 8 3 8 6 M38 14L14 41 M11 41h7" fill="none" stroke="${T}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 6.5v30 M22 5.5v25 M27 7v19 M32 9.5v11" stroke="${T}" stroke-width="1.5"/>`;
+    case 9: return `<circle cx="24" cy="31" r="9" fill="${T}"/><circle cx="24" cy="19" r="6.5" fill="${T}"/><rect x="22.5" y="3" width="3" height="14" fill="${T}"/><circle cx="24" cy="4" r="2.5" fill="${T}"/><path d="M21 27v8 M27 27v8" stroke="#fff" stroke-width="1.5"/><path d="M6 42L40 10" stroke="${T}" stroke-width="2.2" stroke-linecap="round"/>`;
+    case 3: return `<rect x="7" y="21" width="28" height="18" fill="#fff" stroke="${T}" stroke-width="2.5"/><rect x="5" y="15" width="32" height="6" fill="${T}"/><path d="M35 30h7v7" fill="none" stroke="${T}" stroke-width="2.5" stroke-linecap="round"/><circle cx="42" cy="38" r="2.5" fill="${T}"/><circle cx="25" cy="9" r="3" fill="${T}"/><path d="M28 9V2l5 2" fill="none" stroke="${T}" stroke-width="2" stroke-linecap="round"/>`;
+    case 4: return `<path d="M3 9h42l-3 5H6z" fill="${T}"/><rect x="8" y="18" width="32" height="3.5" fill="${T}"/><rect x="12" y="14" width="4.5" height="30" fill="${T}"/><rect x="31.5" y="14" width="4.5" height="30" fill="${T}"/><rect x="22" y="14" width="4" height="4" fill="${T}"/>`;
+    case 5: return `<circle cx="15" cy="34" r="8" fill="${T}"/><circle cx="21" cy="27" r="6.5" fill="${T}"/><path d="M21 27L38 9" stroke="${T}" stroke-width="3.5" stroke-linecap="round"/><path d="M36 5l6 3-3 6-5-3z" fill="${T}"/><path d="M14 31l5 5 M17 28l5 5" stroke="#fff" stroke-width="1.5"/>`;
+    case 6: return ICONOS_DNB[iconoDnb];
+    case 7: return `<path d="M24 11V5" stroke="${T}" stroke-width="2.5"/><circle cx="24" cy="4" r="2.5" fill="${T}"/><rect x="10" y="11" width="28" height="28" rx="7" fill="#fff" stroke="${T}" stroke-width="2.5"/><rect x="5" y="20" width="5" height="10" fill="${T}"/><rect x="38" y="20" width="5" height="10" fill="${T}"/><rect x="14" y="18" width="20" height="8" rx="2" fill="${T}"/><circle cx="19" cy="22" r="1.8" fill="#3cc2b8"/><circle cx="29" cy="22" r="1.8" fill="#3cc2b8"/><path d="M18 32v3 M22 32v3 M26 32v3 M30 32v3" stroke="${T}" stroke-width="2"/>`;
+    case 2: return `<rect x="7" y="8" width="5" height="22" fill="${T}"/><rect x="14.5" y="10" width="5" height="18" fill="${T}"/><rect x="22" y="12" width="5" height="14" fill="${T}"/><rect x="29.5" y="14" width="5" height="10" fill="${T}"/><rect x="37" y="16" width="5" height="6" fill="${T}"/><path d="M10 44l10-11 M38 44L28 33" stroke="${T}" stroke-width="2.2" stroke-linecap="round"/><circle cx="20.5" cy="32.5" r="3" fill="${T}"/><circle cx="27.5" cy="32.5" r="3" fill="${T}"/>`;
+  }
+  return "";
 }
+
+const carrusel = { sel: 0, vista: 0, arrastre: null, items: [], animando: null };
+const ESPACIO = 70; // píxeles entre un ícono y el siguiente
+
+function armarCarrusel() {
+  const cajaCarrusel = $("carrusel");
+  cajaCarrusel.innerHTML = "";
+  carrusel.items = ORDEN.map((id, k) => {
+    const d = document.createElement("div");
+    d.className = "item";
+    d.setAttribute("role", "option");
+    d.setAttribute("aria-label", INSTRUMENTOS[id]);
+    d.innerHTML = `<svg viewBox="0 0 48 48" aria-hidden="true">${icono(id)}</svg>`;
+    d.dataset.k = k;
+    cajaCarrusel.appendChild(d);
+    return d;
+  });
+  pintarCarrusel();
+}
+// Cada ícono según su distancia al centro: el del centro grande; los de al lado más chicos; los demás no se ven.
+function pintarCarrusel() {
+  const v = carrusel.vista;
+  carrusel.items.forEach((d, k) => {
+    const pos = k - v;
+    const a = Math.abs(pos);
+    const escala = 1 - 0.38 * Math.min(1, a);
+    const opac = a <= 1 ? 1 : Math.max(0, 1 - (a - 1) * 2);
+    d.style.transform = `translateX(${pos * ESPACIO}px) scale(${escala})`;
+    d.style.opacity = opac;
+    d.style.zIndex = String(10 - Math.round(a * 3));
+    d.classList.toggle("centro", a < 0.5);
+    d.setAttribute("aria-selected", k === carrusel.sel ? "true" : "false");
+  });
+  const k = clampI(Math.round(v), 0, ORDEN.length - 1);
+  $("nombreInstr").textContent = INSTRUMENTOS[ORDEN[k]];
+}
+function irA(k) {
+  k = clampI(k, 0, ORDEN.length - 1);
+  const cambio = k !== carrusel.sel;
+  carrusel.sel = k;
+  const desde = carrusel.vista, t0 = performance.now();
+  cancelAnimationFrame(carrusel.animando);
+  const paso = () => {
+    const u = Math.min(1, (performance.now() - t0) / 220);
+    const e = 1 - Math.pow(1 - u, 3);
+    carrusel.vista = desde + (k - desde) * e;
+    pintarCarrusel();
+    if (u < 1) carrusel.animando = requestAnimationFrame(paso);
+  };
+  paso();
+  if (cambio) elegir(ORDEN[k]);
+}
+const cajaCarrusel = $("carrusel");
+cajaCarrusel.addEventListener("pointerdown", e => {
+  encender();
+  if (ctx.state === "suspended") ctx.resume();
+  cajaCarrusel.setPointerCapture(e.pointerId);
+  cancelAnimationFrame(carrusel.animando);
+  carrusel.arrastre = { x0: e.clientX, v0: carrusel.vista, movio: false, k: e.target.closest(".item")?.dataset.k };
+  cajaCarrusel.classList.add("arrastrando");
+});
+cajaCarrusel.addEventListener("pointermove", e => {
+  const a = carrusel.arrastre;
+  if (!a) return;
+  const dx = e.clientX - a.x0;
+  if (Math.abs(dx) > 4) a.movio = true;
+  // Arrastrar a la izquierda = ir al siguiente. En las puntas cuesta un poco más (como un resorte).
+  let v = a.v0 - dx / ESPACIO;
+  const max = ORDEN.length - 1;
+  if (v < 0) v = v * 0.3;
+  if (v > max) v = max + (v - max) * 0.3;
+  carrusel.vista = v;
+  pintarCarrusel();
+});
+function soltarCarrusel() {
+  const a = carrusel.arrastre;
+  if (!a) return;
+  carrusel.arrastre = null;
+  cajaCarrusel.classList.remove("arrastrando");
+  if (!a.movio && a.k !== undefined) irA(parseInt(a.k, 10)); // tocar un ícono de al lado
+  else irA(Math.round(carrusel.vista));
+}
+cajaCarrusel.addEventListener("pointerup", soltarCarrusel);
+cajaCarrusel.addEventListener("pointercancel", soltarCarrusel);
+cajaCarrusel.tabIndex = 0;
+cajaCarrusel.addEventListener("keydown", e => {
+  if (e.key === "ArrowRight") { encender(); irA(carrusel.sel + 1); }
+  if (e.key === "ArrowLeft") { encender(); irA(carrusel.sel - 1); }
+});
+
+// Parlante: verde azulado con ondas = suena; gris oscuro con X = silencio.
+let silencio = false;
+function pintarParlante() {
+  const c = silencio ? "#3a3a3d" : "#1f9d94";
+  const extra = silencio
+    ? `<path d="M30 19l9 10 M39 19l-9 10" stroke="${c}" stroke-width="3.5" stroke-linecap="round"/>`
+    : `<path d="M29 18a8 8 0 0 1 0 12 M33 13a15 15 0 0 1 0 22" fill="none" stroke="${c}" stroke-width="3.5" stroke-linecap="round"/>`;
+  $("parlante").innerHTML = `<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 19h7l10-8v26l-10-8H8z" fill="${c}"/>${extra}</svg>`;
+  if (master) master.gain.value = silencio ? 0 : 1;
+}
+$("parlante").addEventListener("click", () => { encender(); silencio = !silencio; pintarParlante(); });
+
+function armarOpcionesDnb() {
+  const c = $("opcionesDnb");
+  [["gafas", "Gafas oscuras"], ["rayo", "Rayo"], ["audifonos", "Audífonos"]].forEach(([k, n]) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "opcion";
+    b.id = "dnb_" + k;
+    b.textContent = n;
+    b.addEventListener("click", () => {
+      iconoDnb = k;
+      document.querySelectorAll(".opcion").forEach(x => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+      armarCarrusel();
+      irA(ORDEN.indexOf(6));
+    });
+    c.appendChild(b);
+  });
+  $("dnb_gafas").setAttribute("aria-pressed", "true");
+}
+
 function elegir(i) {
   st.instr = i;
   try { localStorage.setItem("jcartoons_sim_instr", String(i)); } catch (e) {}
-  INSTRUMENTOS.forEach((_, k) => $("instr" + k).setAttribute("aria-pressed", k === i ? "true" : "false"));
   armarPasos();
   if (ctx) {
     prepararInstrumento(i);
@@ -848,6 +1002,7 @@ function encender() {
   ctx = new AC();
   master = ctx.createGain();
   master.connect(ctx.destination);
+  master.gain.value = silencio ? 0 : 1;
   prepararInstrumento(st.instr);
   crash();
   $("activar").hidden = true;
@@ -961,11 +1116,13 @@ function bucle() {
   requestAnimationFrame(bucle);
 }
 
-armarChips();
-let guardado = 6;
-try { const v = parseInt(localStorage.getItem("jcartoons_sim_instr"), 10); if (v >= 0 && v < INSTRUMENTOS.length) guardado = v; } catch (e) {}
+let guardado = 1;
+try { const v = parseInt(localStorage.getItem("jcartoons_sim_instr"), 10); if (ORDEN.includes(v)) guardado = v; } catch (e) {}
 st.instr = guardado;
-INSTRUMENTOS.forEach((_, k) => $("instr" + k).setAttribute("aria-pressed", k === guardado ? "true" : "false"));
+carrusel.sel = carrusel.vista = ORDEN.indexOf(guardado);
+armarCarrusel();
+armarOpcionesDnb();
+pintarParlante();
 armarPasos();
 mostrarNota(5);
 requestAnimationFrame(bucle);
