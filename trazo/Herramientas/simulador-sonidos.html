@@ -1,0 +1,678 @@
+<title>Laboratorio de sonidos JCartoons</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: a comic-panel workbench — instrument chips on top, the play pad (a square of air, 40 cm) beside a readout column. */
+:root {
+  --bg: #f3f1ea;
+  --panel: #ffffff;
+  --ink: #16181b;
+  --muted: #5d6168;
+  --line: #d9d6cc;
+  --pop: #ffd84a;
+  --accent: #1f9d94;
+  --pad: #fffdf6;
+  --grid: rgba(22, 24, 27, 0.09);
+  --display: "Bangers", "Impact", "Arial Black", sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Consolas", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141619; --panel: #1d2024; --ink: #f1efe6; --muted: #a3a7ad; --line: #34383e;
+    --pop: #ffd84a; --accent: #3cc2b8; --pad: #202328; --grid: rgba(241, 239, 230, 0.08);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141619; --panel: #1d2024; --ink: #f1efe6; --muted: #a3a7ad; --line: #34383e;
+  --pop: #ffd84a; --accent: #3cc2b8; --pad: #202328; --grid: rgba(241, 239, 230, 0.08);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; margin: 0; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 40px; display: grid; gap: 18px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+h1 { font-family: var(--display); font-weight: 400; font-size: 2.4rem; letter-spacing: 0.02em; margin: 0; line-height: 1; text-wrap: balance; }
+h1 span { background: var(--pop); color: #16181b; padding: 0 0.25em; border: 2px solid #16181b; box-shadow: 3px 3px 0 #16181b; display: inline-block; transform: rotate(-1.5deg); }
+.sub { color: var(--muted); margin: 0; max-width: 62ch; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font: 700 0.95rem var(--body); padding: 7px 14px; border-radius: 999px; border: 2px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; }
+.chip:hover { border-color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--pop); color: #16181b; border-color: #16181b; box-shadow: 2px 2px 0 #16181b; }
+.chip .drum { font-family: var(--mono); font-size: 0.72rem; font-weight: 500; opacity: 0.7; margin-left: 6px; }
+.chip:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.main { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 760px) { .main { grid-template-columns: minmax(0, 1fr); } }
+.padbox { position: relative; border: 3px solid var(--ink); border-radius: 6px; background: var(--pad); aspect-ratio: 1; max-width: 100%; touch-action: none; user-select: none; cursor: grab; }
+.padbox.drawing { cursor: grabbing; }
+canvas { display: block; width: 100%; height: 100%; }
+.hint { position: absolute; left: 12px; bottom: 10px; right: 12px; color: var(--muted); font-size: 0.85rem; pointer-events: none; }
+.side { display: grid; gap: 14px; min-width: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 8px; min-width: 0; }
+.label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 700; }
+.big { font-family: var(--display); font-size: 2.2rem; line-height: 1; letter-spacing: 0.03em; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 0.85rem; color: var(--muted); }
+.steps { display: grid; grid-template-columns: repeat(16, 1fr); gap: 3px; }
+.steps.ocho { grid-template-columns: repeat(8, 1fr); }
+.step { height: 14px; border-radius: 3px; background: var(--line); }
+.step.beat { background: color-mix(in srgb, var(--line) 60%, var(--ink)); }
+.step.on { background: var(--accent); }
+.state { font-weight: 700; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+.row { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.start { font: 400 1.4rem var(--display); letter-spacing: 0.04em; padding: 10px 18px; border: 3px solid #16181b; background: var(--pop); color: #16181b; box-shadow: 3px 3px 0 #16181b; border-radius: 6px; cursor: pointer; justify-self: start; }
+.start[hidden] { display: none; }
+ul { margin: 0; padding-left: 1.1em; color: var(--muted); }
+li + li { margin-top: 4px; }
+footer { color: var(--muted); font-size: 0.85rem; }
+@media (prefers-reduced-motion: reduce) { h1 span { transform: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1><span>JCartoons</span> Laboratorio de sonidos</h1>
+    <p class="sub">Las mismas fórmulas de sonido de la app (Sonidos.cs): lo que oyes aquí es lo que oyes en el visor, sin el sonido 3D. Arrastra el punto negro: mantener presionado el mouse es el pellizco.</p>
+  </header>
+
+  <div class="chips" id="chips" role="group" aria-label="Instrumento"></div>
+
+  <div class="main">
+    <div>
+      <div class="padbox" id="pad" aria-label="Espacio para tocar: 40 por 40 centímetros">
+        <canvas id="lienzo"></canvas>
+        <div class="hint" id="hint">Presiona y arrastra el punto · arriba = agudo, abajo = grave · 1 cuadrito = 3 cm</div>
+      </div>
+    </div>
+
+    <div class="side">
+      <button class="start" id="activar">Encender sonido</button>
+      <div class="card">
+        <div class="label">Nota</div>
+        <div class="big" id="nota">—</div>
+        <div class="mono" id="detalle">Escalón 5 de 12 · recorrido 0.0 cm</div>
+      </div>
+      <div class="card">
+        <div class="row"><span class="label">Batería (compás)</span><span class="mono" id="bpm">—</span></div>
+        <div class="steps" id="pasos"></div>
+        <div class="state" id="estado">Este instrumento no lleva batería</div>
+      </div>
+      <div class="card">
+        <div class="row"><label class="label" for="tamano">Tamaño con las dos manos</label><span class="mono" id="tamanoValor">25 cm</span></div>
+        <input type="range" id="tamano" min="10" max="60" step="0.5" value="25">
+        <div class="mono">Separar = notas que suben · juntar = notas que bajan (una nota cada 7 %)</div>
+      </div>
+      <div class="card">
+        <div class="label">Igual que en el visor</div>
+        <ul>
+          <li>Arpa, Piano, Marimba, Cajita: una nota cada 3.5 cm que recorres; un acorde al soltar.</li>
+          <li>Rock, Punk, Drum &amp; Bass: la batería arranca con la línea y tus notas caen al compás (solo si tu mano se movió).</li>
+          <li>Al soltar, la batería sigue un poco. Si dibujas otra vez, la canción continúa; si no, termina en el siguiente compás con un crash.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <footer>Versión v24.1 · 44 100 muestras por segundo, el mismo generador de ruido que Unity (System.Random) y los mismos volúmenes (notas 0.35, batería 0.3).</footer>
+</div>
+
+<script>
+"use strict";
+// ======================= Sonidos.cs, the same math =======================
+const FS = 44100;
+const INSTRUMENTOS = ["Arpa", "Piano", "Marimba", "Cajita", "Rock", "Punk", "Drum & Bass"];
+const PRIMER_CON_RITMO = 4;
+const NOTAS_ESCALA = 13;
+const PENTATONICA = [0, 2, 4, 7, 9];
+const NOMBRES = ["Do", "Re", "Mi", "Sol", "La"];
+const VOL_MUSICA = 0.35, VOL_RITMO = 0.3;
+const PASO_NOTA = 0.035, ALTURA_NOTA = 0.03, PASO_TAMANO = 0.07;
+const LADO_PAD = 0.40; // metros que representa el cuadrado
+
+// System.Random de .NET/Mono (mismo algoritmo y misma semilla = el mismo ruido que en Unity).
+class NetRandom {
+  constructor(seed) {
+    const MBIG = 2147483647, MSEED = 161803398;
+    this.a = new Array(56).fill(0);
+    let sub = seed === -2147483648 ? 2147483647 : Math.abs(seed);
+    let mj = MSEED - sub;
+    this.a[55] = mj;
+    let mk = 1;
+    for (let i = 1; i < 55; i++) {
+      const ii = (21 * i) % 55;
+      this.a[ii] = mk;
+      mk = mj - mk;
+      if (mk < 0) mk += MBIG;
+      mj = this.a[ii];
+    }
+    for (let k = 1; k < 5; k++)
+      for (let i = 1; i < 56; i++) {
+        this.a[i] -= this.a[1 + (i + 30) % 55];
+        if (this.a[i] < 0) this.a[i] += MBIG;
+      }
+    this.inext = 0; this.inextp = 21;
+  }
+  nextDouble() {
+    const MBIG = 2147483647;
+    let i = this.inext, p = this.inextp;
+    if (++i >= 56) i = 1;
+    if (++p >= 56) p = 1;
+    let r = this.a[i] - this.a[p];
+    if (r === MBIG) r--;
+    if (r < 0) r += MBIG;
+    this.a[i] = r; this.inext = i; this.inextp = p;
+    return r * (1.0 / MBIG);
+  }
+}
+
+const clamp01 = x => x < 0 ? 0 : x > 1 ? 1 : x;
+const clampI = (x, a, b) => Math.max(a, Math.min(b, x));
+const rnd = x => Math.round(x);
+const PI2 = Math.PI * 2;
+
+function frecuenciaEscala(i) {
+  i = clampI(i, 0, NOTAS_ESCALA - 1);
+  const semitonos = 12 * Math.floor(i / 5) + PENTATONICA[i % 5];
+  return 261.63 * Math.pow(2, semitonos / 12);
+}
+const tieneRitmo = i => i >= PRIMER_CON_RITMO && i < INSTRUMENTOS.length;
+const pulsosPorMinuto = i => i === 5 ? 180 : i === 6 ? 174 : 120;
+const pasosPorCompas = i => i === 6 ? 16 : 8;
+const pasosPorNota = i => i === 6 ? 2 : 1;
+
+let ctx = null, master = null;
+
+function clip(datos, pico, colaSuave = true) {
+  let max = 1e-6;
+  for (const v of datos) max = Math.max(max, Math.abs(v));
+  const g = pico / max;
+  const fin = datos.length;
+  for (let i = 0; i < fin; i++) datos[i] *= g;
+  const cola = colaSuave ? Math.min(fin, Math.floor(FS / 50)) : 0;
+  for (let i = 0; i < cola; i++) datos[fin - 1 - i] *= i / cola;
+  const b = ctx.createBuffer(1, fin, FS);
+  b.copyToChannel(datos, 0);
+  return b;
+}
+
+function pulsar(salida, inicio, hz, volumen, azar) {
+  const n = Math.max(2, rnd(FS / hz));
+  const cuerda = new Float32Array(n);
+  let previo = 0;
+  for (let i = 0; i < n; i++) {
+    const r = azar.nextDouble() * 2 - 1;
+    previo = previo * 0.55 + r * 0.45;
+    cuerda[i] = previo;
+  }
+  const desde = rnd(inicio * FS);
+  if (desde >= salida.length) return;
+  const largo = Math.min(salida.length - desde, rnd(FS * 3.2));
+  let k = 0;
+  for (let i = 0; i < largo; i++) {
+    const j = (k + 1) % n;
+    const v = cuerda[k];
+    cuerda[k] = (cuerda[k] + cuerda[j]) * 0.5 * 0.9996;
+    k = j;
+    salida[desde + i] += v * volumen * clamp01(i / (FS * 0.003));
+  }
+}
+
+function cuerda(salida, hz, sostener, volumen, azar) {
+  const n = Math.max(2, rnd(FS / hz));
+  const c = new Float32Array(n);
+  for (let i = 0; i < n; i++) c[i] = azar.nextDouble() * 2 - 1;
+  let k = 0;
+  for (let i = 0; i < salida.length; i++) {
+    const j = (k + 1) % n;
+    const v = c[k];
+    c[k] = (c[k] + c[j]) * 0.5 * sostener;
+    k = j;
+    salida[i] += v * volumen;
+  }
+}
+
+function powerChord(datos, hz, ganancia, sostener, apagado, brillo, azar) {
+  const limpio = new Float32Array(datos.length);
+  const razones = [1, 1.4983, 2];
+  for (const desafino of [1, 1.004])
+    for (const r of razones)
+      cuerda(limpio, hz * r * desafino, sostener, r === 2 ? 0.5 : 1, azar);
+  let bajo = 0;
+  for (let i = 0; i < datos.length; i++) {
+    const t = i / FS;
+    const v = Math.tanh(limpio[i] * ganancia);
+    bajo += (v - bajo) * brillo;
+    datos[i] = bajo * Math.exp(-t * apagado) * clamp01(t / 0.002);
+  }
+}
+
+function percusionElectronica(datos, hz, azar) {
+  let fase = 0, bajo = 0;
+  for (let i = 0; i < datos.length; i++) {
+    const t = i / FS;
+    const f = hz * (1 + 1.5 * Math.exp(-t * 35));
+    fase += PI2 * f / FS;
+    const cuerpo = Math.sin(fase) * Math.exp(-t * 11);
+    const metal = Math.sin(PI2 * hz * 3.5 * t + 2 * Math.sin(PI2 * hz * 5.1 * t)) * Math.exp(-t * 40) * 0.25;
+    const r = azar.nextDouble() * 2 - 1;
+    bajo += (r - bajo) * 0.4;
+    const clic = (r - bajo) * Math.exp(-t * 250) * 0.4;
+    datos[i] = Math.tanh((cuerpo + metal + clic) * 1.3) * clamp01(t / 0.001);
+  }
+}
+
+const notasCache = {};
+function notaInstrumento(instr, indice) {
+  instr = clampI(instr, 0, INSTRUMENTOS.length - 1);
+  indice = clampI(indice, 0, NOTAS_ESCALA - 1);
+  const clave = instr + "_" + indice;
+  if (notasCache[clave]) return notasCache[clave];
+  const hz = frecuenciaEscala(indice);
+  const datos = new Float32Array(rnd(FS * 1.3));
+  switch (instr) {
+    case 0: pulsar(datos, 0, hz, 0.5, new NetRandom(40 + indice)); break;
+    case 1:
+      for (let i = 0; i < datos.length; i++) {
+        const t = i / FS;
+        let v = 0;
+        for (let k = 1; k <= 6; k++)
+          v += Math.sin(PI2 * hz * k * (1 + 0.0004 * k * k) * t) * Math.exp(-t * (1.6 + k * 1.1)) / (k * k * 0.6 + 0.4);
+        datos[i] = v * clamp01(t / 0.003);
+      }
+      break;
+    case 2:
+      for (let i = 0; i < datos.length; i++) {
+        const t = i / FS;
+        const v = Math.sin(PI2 * hz * t) * Math.exp(-t * 5)
+          + 0.35 * Math.sin(PI2 * hz * 3.93 * t) * Math.exp(-t * 18)
+          + 0.15 * Math.sin(PI2 * hz * 9.2 * t) * Math.exp(-t * 60);
+        datos[i] = v * clamp01(t / 0.002);
+      }
+      break;
+    case 3:
+      for (let i = 0; i < datos.length; i++) {
+        const t = i / FS;
+        const v = Math.sin(PI2 * hz * 2 * t) * Math.exp(-t * 3.2)
+          + 0.3 * Math.sin(PI2 * hz * 2 * 2.756 * t) * Math.exp(-t * 7)
+          + 0.12 * Math.sin(PI2 * hz * 2 * 5.4 * t) * Math.exp(-t * 14);
+        datos[i] = v * clamp01(t / 0.0015);
+      }
+      break;
+    case 4: powerChord(datos, hz * 0.5, 7, 0.9997, 1.2, 0.22, new NetRandom(60 + indice)); break;
+    case 5: powerChord(datos, hz * 0.5, 5, 0.999, 7, 0.5, new NetRandom(80 + indice)); break;
+    case 6: percusionElectronica(datos, hz * 0.5, new NetRandom(70 + indice)); break;
+  }
+  return (notasCache[clave] = clip(datos, 0.6));
+}
+
+function bombo(salida, inicio, volumen) {
+  const desde = rnd(inicio * FS);
+  const largo = Math.min(salida.length - desde, rnd(FS * 0.35));
+  let fase = 0;
+  for (let i = 0; i < largo; i++) {
+    const t = i / FS;
+    const hz = 50 + 110 * Math.exp(-t * 30);
+    fase += PI2 * hz / FS;
+    const v = Math.sin(fase) * Math.exp(-t * 9) + Math.sin(PI2 * 1800 * t) * Math.exp(-t * 300) * 0.3;
+    salida[desde + i] += Math.tanh(v * 1.5) * volumen;
+  }
+}
+function caja(salida, inicio, volumen, azar) {
+  const desde = rnd(inicio * FS);
+  const largo = Math.min(salida.length - desde, rnd(FS * 0.25));
+  let bajo = 0;
+  for (let i = 0; i < largo; i++) {
+    const t = i / FS;
+    const r = azar.nextDouble() * 2 - 1;
+    bajo += (r - bajo) * 0.3;
+    const ruido = (r - bajo) * Math.exp(-t * 16);
+    const tono = Math.sin(PI2 * 190 * t) * Math.exp(-t * 25);
+    salida[desde + i] += (ruido * 0.9 + tono * 0.6) * volumen;
+  }
+}
+function platillo(salida, inicio, duracion, volumen, azar) {
+  const desde = rnd(inicio * FS);
+  const largo = Math.min(salida.length - desde, rnd(FS * duracion * 1.5));
+  let bajo = 0;
+  for (let i = 0; i < largo; i++) {
+    const t = i / FS;
+    const r = azar.nextDouble() * 2 - 1;
+    bajo += (r - bajo) * 0.45;
+    const metal = Math.sin(PI2 * 5400 * t) * Math.sin(PI2 * 7900 * t) * 0.3;
+    salida[desde + i] += (r - bajo + metal) * Math.exp(-t * 4.5 / duracion) * volumen;
+  }
+}
+
+const ritmosCache = {};
+function ritmo(instr) {
+  if (!tieneRitmo(instr)) return null;
+  if (ritmosCache[instr]) return ritmosCache[instr];
+  const compas = 4 * 60 / pulsosPorMinuto(instr);
+  const pasos = pasosPorCompas(instr);
+  const paso = compas / pasos;
+  const n = rnd(compas * FS);
+  const largo = new Float32Array(n + Math.floor(FS / 2));
+  const azar = new NetRandom(90 + instr);
+  let b, c, h;
+  if (instr === 4) { b = "x.x..xx."; c = "..o...o."; h = "hhhhhhhH"; }
+  else if (instr === 5) { b = "x.x.x.x."; c = "..o...oo"; h = "hhhhhhhh"; }
+  else { b = "x.........x....."; c = "....o..g....o.g."; h = "h.h.h.hHh.h.h.hH"; }
+  for (let i = 0; i < pasos; i++) {
+    const t = i * paso;
+    if (b[i] === "x") bombo(largo, t, instr === 6 ? 0.9 : 1);
+    if (c[i] === "o") caja(largo, t, 0.75, azar);
+    if (c[i] === "g") caja(largo, t, 0.25, azar);
+    if (h[i] === "h") platillo(largo, t, 0.06, 0.2, azar);
+    if (h[i] === "H") platillo(largo, t, 0.25, 0.22, azar);
+  }
+  const datos = new Float32Array(n);
+  for (let i = 0; i < largo.length; i++) datos[i % n] += largo[i];
+  return (ritmosCache[instr] = clip(datos, 0.8, false));
+}
+
+let crashBuf = null;
+function crash() {
+  if (crashBuf) return crashBuf;
+  const datos = new Float32Array(rnd(FS * 1.8));
+  platillo(datos, 0, 1.6, 1, new NetRandom(33));
+  bombo(datos, 0, 0.8);
+  return (crashBuf = clip(datos, 0.75));
+}
+
+function prepararInstrumento(i) {
+  for (let n = 0; n < NOTAS_ESCALA; n++) notaInstrumento(i, n);
+  if (tieneRitmo(i)) ritmo(i);
+}
+
+// ======================= ControlManosMusica.cs, the same behavior =======================
+const st = {
+  instr: 6, ultimaNota: 5, trazoMusica: 0, inicio: null, previo: null, recorrido: 0,
+  ritmoSrc: null, ritmoClip: null, ritmoInicio: 0, pasoRitmo: -1, muestrasRitmo: 0, ritmoSoltado: -100,
+  distTam: -1, notaTam: 5,
+};
+const ahora = () => performance.now() / 1000;
+const conRitmo = () => tieneRitmo(st.instr);
+
+function unaVez(buf, vol) {
+  const s = ctx.createBufferSource();
+  s.buffer = buf;
+  const g = ctx.createGain();
+  g.gain.value = vol;
+  s.connect(g).connect(master);
+  s.start();
+}
+function notaMusical(i) {
+  if (!ctx) return;
+  st.ultimaNota = i;
+  unaVez(notaInstrumento(st.instr, i), VOL_MUSICA);
+  mostrarNota(i);
+}
+function acordeMusical() {
+  const base = clampI(Math.floor(st.ultimaNota / 5) * 5, 0, NOTAS_ESCALA - 4);
+  if (conRitmo()) { unaVez(notaInstrumento(st.instr, base), VOL_MUSICA); return; }
+  for (const n of [base, base + 2, base + 3]) unaVez(notaInstrumento(st.instr, n), VOL_MUSICA * 0.7);
+}
+const ritmoSonando = () => st.ritmoSrc !== null;
+function muestrasActuales() {
+  return Math.floor((ctx.currentTime - st.ritmoInicio) * FS) % st.ritmoClip.length;
+}
+function empezarRitmo() {
+  const c = ritmo(st.instr);
+  if (!c) return false;
+  if (st.ritmoClip !== c) { pararRitmo(false); st.ritmoClip = c; }
+  if (ritmoSonando()) return false;
+  const s = ctx.createBufferSource();
+  s.buffer = c; s.loop = true;
+  const g = ctx.createGain();
+  g.gain.value = VOL_RITMO;
+  s.connect(g).connect(master);
+  s.start();
+  st.ritmoSrc = s; st.ritmoInicio = ctx.currentTime;
+  st.muestrasRitmo = 0; st.pasoRitmo = 0;
+  return true;
+}
+function pararRitmo(conCrash) {
+  if (!ritmoSonando()) return;
+  st.ritmoSrc.stop();
+  st.ritmoSrc = null;
+  if (conCrash) unaVez(crash(), VOL_MUSICA);
+}
+function pasoActualRitmo() {
+  const pasos = pasosPorCompas(st.instr);
+  return clampI(Math.floor(muestrasActuales() * pasos / st.ritmoClip.length), 0, pasos - 1);
+}
+const indicePorAltura = h => clampI(5 + Math.round(h / ALTURA_NOTA), 0, NOTAS_ESCALA - 1);
+
+// Pointer = right index fingertip; held down = pinching (drawing).
+const ptr = { down: false, trazo: 0, x: 0.2, y: 0.2 };
+let trazos = 0;
+
+function cuadro() {
+  if (!ctx) return;
+  const dibujando = ptr.down;
+  let vuelta = false;
+  if (ritmoSonando()) {
+    const m = muestrasActuales();
+    vuelta = m < st.muestrasRitmo;
+    st.muestrasRitmo = m;
+    if (!conRitmo()) pararRitmo(false);
+  }
+  if (!dibujando) {
+    if (st.trazoMusica) {
+      acordeMusical();
+      st.trazoMusica = 0;
+      st.ritmoSoltado = ahora();
+    }
+    if (vuelta && ahora() - st.ritmoSoltado > 0.9) pararRitmo(true);
+    return;
+  }
+  const p = { x: ptr.x, y: ptr.y };
+  if (st.trazoMusica !== ptr.trazo) {
+    st.trazoMusica = ptr.trazo;
+    st.inicio = p; st.previo = p; st.recorrido = 0;
+    if (!conRitmo() || empezarRitmo()) {
+      notaMusical(indicePorAltura(0));
+    } else {
+      st.recorrido = 0.01;
+      st.pasoRitmo = pasoActualRitmo();
+    }
+    return;
+  }
+  st.recorrido += Math.hypot(p.x - st.previo.x, p.y - st.previo.y);
+  st.previo = p;
+  if (conRitmo()) {
+    if (!ritmoSonando()) { empezarRitmo(); return; }
+    const paso = pasoActualRitmo();
+    if (paso === st.pasoRitmo) return;
+    st.pasoRitmo = paso;
+    if (paso % pasosPorNota(st.instr) !== 0 || st.recorrido < 0.01) return;
+    st.recorrido = 0;
+    notaMusical(indicePorAltura(p.y - st.inicio.y));
+    return;
+  }
+  if (st.recorrido >= PASO_NOTA) {
+    st.recorrido = 0;
+    notaMusical(indicePorAltura(p.y - st.inicio.y));
+  }
+}
+
+// ======================= Page =======================
+const $ = id => document.getElementById(id);
+const pad = $("pad"), lienzo = $("lienzo"), g2 = lienzo.getContext("2d");
+
+function nombreNota(i) { return NOMBRES[i % 5] + " " + (4 + Math.floor(i / 5)); }
+function mostrarNota(i) {
+  $("nota").textContent = nombreNota(i);
+}
+
+function armarChips() {
+  const caja = $("chips");
+  INSTRUMENTOS.forEach((n, i) => {
+    const b = document.createElement("button");
+    b.className = "chip";
+    b.id = "instr" + i;
+    b.type = "button";
+    b.innerHTML = n.replace("&", "&amp;") + (tieneRitmo(i) ? '<span class="drum">+ batería</span>' : "");
+    b.addEventListener("click", () => elegir(i));
+    caja.appendChild(b);
+  });
+}
+function elegir(i) {
+  st.instr = i;
+  try { localStorage.setItem("jcartoons_sim_instr", String(i)); } catch (e) {}
+  INSTRUMENTOS.forEach((_, k) => $("instr" + k).setAttribute("aria-pressed", k === i ? "true" : "false"));
+  armarPasos();
+  if (ctx) {
+    prepararInstrumento(i);
+    pararRitmo(false);
+    notaMusical(7);
+  }
+}
+function armarPasos() {
+  const caja = $("pasos");
+  caja.innerHTML = "";
+  if (!conRitmo()) {
+    caja.className = "steps ocho";
+    $("bpm").textContent = "—";
+    return;
+  }
+  const n = pasosPorCompas(st.instr);
+  caja.className = n === 8 ? "steps ocho" : "steps";
+  for (let k = 0; k < n; k++) {
+    const d = document.createElement("div");
+    d.className = "step" + (k % (n / 4) === 0 ? " beat" : "");
+    caja.appendChild(d);
+  }
+  $("bpm").textContent = pulsosPorMinuto(st.instr) + " BPM";
+}
+
+function encender() {
+  if (ctx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  ctx = new AC();
+  master = ctx.createGain();
+  master.connect(ctx.destination);
+  prepararInstrumento(st.instr);
+  crash();
+  $("activar").hidden = true;
+}
+$("activar").addEventListener("click", () => { encender(); notaMusical(7); });
+
+function posDesdeEvento(e) {
+  const r = pad.getBoundingClientRect();
+  const x = clamp01((e.clientX - r.left) / r.width);
+  const y = clamp01((e.clientY - r.top) / r.height);
+  return { x: x * LADO_PAD, y: (1 - y) * LADO_PAD };
+}
+pad.addEventListener("pointerdown", e => {
+  encender();
+  if (ctx.state === "suspended") ctx.resume();
+  pad.setPointerCapture(e.pointerId);
+  const p = posDesdeEvento(e);
+  ptr.x = p.x; ptr.y = p.y;
+  ptr.down = true;
+  ptr.trazo = ++trazos;
+  pad.classList.add("drawing");
+});
+pad.addEventListener("pointermove", e => {
+  if (!ptr.down) return;
+  const p = posDesdeEvento(e);
+  ptr.x = p.x; ptr.y = p.y;
+});
+function soltar() { ptr.down = false; pad.classList.remove("drawing"); }
+pad.addEventListener("pointerup", soltar);
+pad.addEventListener("pointercancel", soltar);
+
+// Both hands: the slider is the distance between the two pinches.
+const tam = $("tamano");
+tam.addEventListener("pointerdown", () => { encender(); st.distTam = -1; });
+tam.addEventListener("focus", () => { st.distTam = -1; });
+tam.addEventListener("input", () => {
+  encender();
+  const d = parseFloat(tam.value) / 100;
+  $("tamanoValor").textContent = tam.value + " cm";
+  if (st.distTam < 0) { st.distTam = d; st.notaTam = 5; return; }
+  const cambio = Math.log(d / st.distTam);
+  if (Math.abs(cambio) < PASO_TAMANO) return;
+  st.distTam = d;
+  st.notaTam = clampI(st.notaTam + (cambio > 0 ? 1 : -1), 0, NOTAS_ESCALA - 1);
+  notaMusical(st.notaTam);
+});
+
+function color(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function dibujar() {
+  const r = lienzo.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+  if (lienzo.width !== w || lienzo.height !== h) { lienzo.width = w; lienzo.height = h; }
+  g2.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const W = r.width, H = r.height, m = W / LADO_PAD;
+  g2.clearRect(0, 0, W, H);
+  // 3 cm grid (one note per square in height).
+  g2.strokeStyle = color("--grid");
+  g2.lineWidth = 1;
+  for (let k = 1; k * ALTURA_NOTA < LADO_PAD; k++) {
+    const q = k * ALTURA_NOTA * m;
+    g2.beginPath(); g2.moveTo(q, 0); g2.lineTo(q, H); g2.stroke();
+    g2.beginPath(); g2.moveTo(0, H - q); g2.lineTo(W, H - q); g2.stroke();
+  }
+  // While drawing: the note bands relative to where the line started.
+  if (ptr.down && st.inicio) {
+    const y0 = H - st.inicio.y * m;
+    g2.font = "500 11px " + "IBM Plex Mono, monospace";
+    g2.fillStyle = color("--muted");
+    for (let n = 0; n < NOTAS_ESCALA; n++) {
+      const y = y0 - (n - 5) * ALTURA_NOTA * m;
+      if (y < 8 || y > H - 4) continue;
+      g2.fillText(nombreNota(n), 6, y + 4);
+    }
+    g2.strokeStyle = color("--accent");
+    g2.setLineDash([4, 4]);
+    g2.beginPath(); g2.moveTo(0, y0); g2.lineTo(W, y0); g2.stroke();
+    g2.setLineDash([]);
+  }
+  // The black dot (fingertip). A yellow ring = pinching.
+  const cx = ptr.x * m, cy = H - ptr.y * m;
+  if (ptr.down) {
+    g2.fillStyle = color("--pop");
+    g2.beginPath(); g2.arc(cx, cy, 22, 0, PI2); g2.fill();
+  }
+  g2.fillStyle = "#16181b";
+  g2.beginPath(); g2.arc(cx, cy, 14, 0, PI2); g2.fill();
+  g2.strokeStyle = "#ffffff";
+  g2.lineWidth = 2;
+  g2.beginPath(); g2.arc(cx, cy, 14, 0, PI2); g2.stroke();
+}
+
+function actualizarPanel() {
+  $("detalle").textContent = "Escalón " + st.ultimaNota + " de 12 · recorrido " + (st.recorrido * 100).toFixed(1) + " cm";
+  const pasos = $("pasos").children;
+  if (!conRitmo()) {
+    $("estado").textContent = "Este instrumento no lleva batería";
+    return;
+  }
+  const actual = ritmoSonando() ? pasoActualRitmo() : -1;
+  for (let k = 0; k < pasos.length; k++) pasos[k].classList.toggle("on", k === actual);
+  $("estado").textContent = !ritmoSonando() ? "Batería en silencio · arranca al dibujar"
+    : ptr.down ? "Batería sonando · tus notas caen al compás"
+    : "Termina en el siguiente compás (con crash) si no vuelves a dibujar";
+}
+
+function bucle() {
+  cuadro();
+  dibujar();
+  if (ctx) actualizarPanel();
+  requestAnimationFrame(bucle);
+}
+
+armarChips();
+let guardado = 6;
+try { const v = parseInt(localStorage.getItem("jcartoons_sim_instr"), 10); if (v >= 0 && v < INSTRUMENTOS.length) guardado = v; } catch (e) {}
+st.instr = guardado;
+INSTRUMENTOS.forEach((_, k) => $("instr" + k).setAttribute("aria-pressed", k === guardado ? "true" : "false"));
+armarPasos();
+mostrarNota(5);
+requestAnimationFrame(bucle);
+</script>

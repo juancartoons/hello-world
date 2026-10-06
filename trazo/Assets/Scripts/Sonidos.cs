@@ -46,7 +46,7 @@ public static class Sonidos
 
     // ---------- Música del trazo: escala pentatónica (siempre suena bonita) ----------
     // 13 notas de grave a agudo (Do, Re, Mi, Sol, La en 2 octavas y media). Instrumentos: 0 arpa, 1 piano,
-    // 2 marimba, 3 cajita de música, 4 rock (guitarra grunge), 5 punk, 6 drum and bass (bajo "reese").
+    // 2 marimba, 3 cajita de música, 4 rock (guitarra grunge), 5 punk, 6 drum and bass (percusión electrónica).
     // Los 3 últimos traen batería: suenan al compás (ver Ritmo).
     public const int NotasEscala = 13;
     public static readonly string[] Instrumentos = { "Arpa", "Piano", "Marimba", "Cajita", "Rock", "Punk", "Drum & Bass" };
@@ -103,8 +103,8 @@ public static class Sonidos
             case 5: // punk: acorde de quinta corto y apagado con la palma (rasgueo rápido), más brillante
                 PowerChord(datos, hz * 0.5f, 5f, 0.999f, 7f, 0.5f, new System.Random(80 + indice));
                 break;
-            case 6: // drum and bass: bajo "reese" (dos sierras un poco desafinadas, oscuras y gruesas)
-                Reese(datos, hz * 0.5f);
+            case 6: // drum and bass: percusión electrónica afinada (tom de caja de ritmos + golpecito metálico)
+                PercusionElectronica(datos, hz * 0.5f, new System.Random(70 + indice));
                 break;
             case 3: // cajita de música: brillante, una octava arriba, con brillo metálico
                 for (int i = 0; i < datos.Length; i++)
@@ -170,24 +170,22 @@ public static class Sonidos
         }
     }
 
-    // Bajo "reese" del drum and bass: dos ondas de sierra desafinadas (suenan gruesas y se mueven)
-    // con un filtro que se abre y se cierra despacito.
-    static void Reese(float[] datos, float hz)
+    // Percusión electrónica afinada (drum and bass): un golpe cuyo tono cae rápido ("pew", como un tom
+    // de caja de ritmos), un brillo metálico cortito y un clic de ruido al principio.
+    static void PercusionElectronica(float[] datos, float hz, System.Random azar)
     {
-        float f1 = 0f, f2 = 0f, f3 = 0f, b1 = 0f, b2 = 0f;
+        float fase = 0f, bajo = 0f;
         for (int i = 0; i < datos.Length; i++)
         {
             float t = i / (float)Frecuencia;
-            f1 = Mathf.Repeat(f1 + hz * 0.993f / Frecuencia, 1f);
-            f2 = Mathf.Repeat(f2 + hz * 1.007f / Frecuencia, 1f);
-            f3 = Mathf.Repeat(f3 + hz * 0.5f / Frecuencia, 1f);
-            float sierra = (f1 * 2f - 1f) + (f2 * 2f - 1f);
-            float sub = Mathf.Sin(2f * Mathf.PI * f3) * 0.8f; // una octava abajo, redondito
-            float corte = 0.04f + 0.1f * (0.5f + 0.5f * Mathf.Sin(2f * Mathf.PI * 2.5f * t));
-            b1 += (sierra - b1) * corte;
-            b2 += (b1 - b2) * corte;
-            float v = (float)System.Math.Tanh((b2 + sub) * 1.6f);
-            datos[i] = v * Mathf.Exp(-t * 2.2f) * Mathf.Clamp01(t / 0.004f);
+            float f = hz * (1f + 1.5f * Mathf.Exp(-t * 35f));
+            fase += 2f * Mathf.PI * f / Frecuencia;
+            float cuerpo = Mathf.Sin(fase) * Mathf.Exp(-t * 11f);
+            float metal = Mathf.Sin(2f * Mathf.PI * hz * 3.5f * t + 2f * Mathf.Sin(2f * Mathf.PI * hz * 5.1f * t)) * Mathf.Exp(-t * 40f) * 0.25f;
+            float r = (float)(azar.NextDouble() * 2.0 - 1.0);
+            bajo += (r - bajo) * 0.4f;
+            float clic = (r - bajo) * Mathf.Exp(-t * 250f) * 0.4f;
+            datos[i] = (float)System.Math.Tanh((cuerpo + metal + clic) * 1.3f) * Mathf.Clamp01(t / 0.001f);
         }
     }
 
