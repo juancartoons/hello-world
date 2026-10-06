@@ -37,6 +37,8 @@ public partial class ControlManos : MonoBehaviour
     [Tooltip("Material que no dibuja nada (para esconder la mano)")]
     public Material materialInvisible;
     public Material materialNodo;
+    [Tooltip("Material transparente para los íconos de instrumentos (carrusel sobre el parlante)")]
+    public Material materialIconos;
     public Material materialNodoActivo;
     public Material materialAsa;
     public Material materialIman;
@@ -334,8 +336,9 @@ public partial class ControlManos : MonoBehaviour
         mr.receiveShadows = false;
         lineasAsas.SetActive(false);
 
-        // Parlante de silencio (arriba a la derecha de lo que miras).
-        BotonSonido.Crear(this, materialNodo);
+        // Parlante de silencio con el carrusel de instrumentos encima (arriba a la derecha de lo que miras).
+        BotonSonido.Crear(this, materialNodo, materialIconos);
+        PrepararMusica();
     }
 
     void Update()
@@ -761,6 +764,9 @@ public partial class ControlManos : MonoBehaviour
         if (LapizLevantado(local))
             return;
         if (trazoActual == null && permitirEmpezarLinea != null && !permitirEmpezarLinea(Der.indice))
+            return;
+        // Con el dedo en el parlante o en el carrusel de instrumentos no empieza una línea.
+        if (trazoActual == null && BotonSonido.DedoCerca)
             return;
         if (trazoActual == null)
         {
@@ -1326,7 +1332,8 @@ public partial class ControlManos : MonoBehaviour
     void Borrar()
     {
         hoverTipo = Objetivo.Nada;
-        if (!Der.valida)
+        // Con el dedo en el parlante o en el carrusel de instrumentos no se borra nada.
+        if (!Der.valida || BotonSonido.DedoCerca)
         {
             CancelarFrote();
             MostrarModoNodos(false, null);
@@ -2384,7 +2391,8 @@ public partial class ControlManos : MonoBehaviour
     {
         if (cursor == null)
             return;
-        bool ver = Der.valida && GestoIzq != Gesto.Transformar && !flechaDer.activa;
+        // Cerca del parlante o del carrusel de instrumentos la bolita se esconde (se ve bien lo que tocas).
+        bool ver = Der.valida && GestoIzq != Gesto.Transformar && !flechaDer.activa && !BotonSonido.DedoCerca;
         if (cursor.gameObject.activeSelf != ver)
             cursor.gameObject.SetActive(ver);
         if (!ver)

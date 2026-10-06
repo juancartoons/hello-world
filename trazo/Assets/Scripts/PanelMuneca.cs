@@ -14,8 +14,6 @@ public class PanelMuneca : MonoBehaviour
     public BotonTocable btnPlano, btnFondo, btnGuardar, btnCargar, btnBorrar;
     [Tooltip("Imán de la capa activa (con su ícono de imán encendido o apagado)")]
     public BotonTocable btnIman;
-    [Tooltip("Música del trazo: Arpa, Piano, Marimba, Cajita o No")]
-    public BotonTocable btnMusica;
     [Tooltip("Abre la paleta de colores (por si el gesto de la palma no la abre)")]
     public BotonTocable btnColores;
     [Tooltip("X para cerrar el menú")]
@@ -56,7 +54,6 @@ public class PanelMuneca : MonoBehaviour
         if (control != null)
         {
             Conectar(btnCerrar, control.CerrarMenu);
-            Conectar(btnMusica, () => { control.SiguienteInstrumento(); Refrescar(); });
             Conectar(btnColores, control.AlternarPaleta);
         }
         if (figuras == null && dibujo != null)
@@ -178,11 +175,6 @@ public class PanelMuneca : MonoBehaviour
         }
         if (btnFondo != null && escenario != null)
             btnFondo.PonerTexto("Fondo: " + Escenario.Nombres[escenario.modo]);
-        if (btnMusica != null && control != null)
-        {
-            btnMusica.PonerTexto(control.NombreMusica);
-            btnMusica.Marcar(control.MusicaEncendida);
-        }
         if (btnIman != null && dibujo != null)
         {
             bool iman = dibujo.CapaActual.iman;

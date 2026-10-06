@@ -92,6 +92,9 @@ public static class ArmarEscenaTrazo
         var matImagen = Mat("Imagen", unlit, Color.white);
         var matImagenTransparente = Mat("ImagenTransparente", unlit, new Color(1f, 1f, 1f, 0.5f));
         Transparente(matImagenTransparente);
+        // Íconos de instrumentos (carrusel sobre el parlante): transparentes, los de los lados al 70 %.
+        var matIconos = Mat("IconosSonido", unlit, Color.white);
+        Transparente(matIconos);
         var matManoFantasma = Mat("ManoFantasma", shaderLinea, new Color(0.6f, 0.6f, 0.63f));
         if (matManoFantasma.HasProperty("_ColorLuz"))
             matManoFantasma.SetColor("_ColorLuz", new Color(0.8f, 0.8f, 0.82f));
@@ -214,6 +217,7 @@ public static class ArmarEscenaTrazo
         control.dibujo = dibujo;
         control.caja = caja;
         control.materialNodo = matNodo;
+        control.materialIconos = matIconos;
         control.materialNodoActivo = matNodoActivo;
         control.materialCursor = matCursor;
         control.materialAsa = matAsa;
@@ -519,7 +523,7 @@ public static class ArmarEscenaTrazo
         panel.textoEstado = Texto(contenido.transform, "", new Vector3(0f, -0.105f, -0.001f), new Vector2(0.098f, 0.02f), new Color(0.2f, 0.2f, 0.25f));
 
         // Dos columnas: Plano / Fondo · Guardar / Cargar · Borrar todo / Imán · Esfera / Cubo · Cilindro / A líneas · Quitar figura
-        string[] nombres = { "Libre (3D)", "Fondo: Cuadrícula", "Guardar", "Archivos", "Borrar todo", "Esfera", "Cubo", "Cilindro", "A líneas", "Música: Arpa", "Imán: Sí" };
+        string[] nombres = { "Libre (3D)", "Fondo: Cuadrícula", "Guardar", "Archivos", "Borrar todo", "Esfera", "Cubo", "Cilindro", "A líneas", "Imán: Sí" };
         Vector2[] lugares =
         {
             new Vector2(-0.025f, 0.064f), new Vector2(0.025f, 0.064f),
@@ -527,7 +531,6 @@ public static class ArmarEscenaTrazo
             new Vector2(-0.025f, 0.012f),
             new Vector2(-0.025f, -0.022f), new Vector2(0.025f, -0.022f),
             new Vector2(-0.025f, -0.048f), new Vector2(0.025f, -0.048f),
-            new Vector2(0f, -0.074f),
             new Vector2(0.025f, 0.012f),
         };
         var botones = new BotonTocable[nombres.Length];
@@ -542,13 +545,10 @@ public static class ArmarEscenaTrazo
         panel.btnCubo = botones[6];
         panel.btnCilindro = botones[7];
         panel.btnALineas = botones[8];
-        // "Quitar figura" ya no hace falta (la figura elegida tiene su X). En su lugar: la música del trazo.
+        // "Quitar figura" ya no hace falta (la figura elegida tiene su X). La música se elige en el carrusel
+        // de íconos que está sobre el parlante (arriba a la derecha).
         panel.btnQuitarFigura = null;
-        panel.btnMusica = botones[9];
-        botones[9].transform.localScale = new Vector3(0.096f, 0.022f, 0.008f);
-        if (botones[9].etiqueta != null)
-            botones[9].etiqueta.rectTransform.sizeDelta = new Vector2(0.09f, 0.018f);
-        panel.btnIman = botones[10];
+        panel.btnIman = botones[9];
         // X arriba a la derecha: cerrar el menú a mano.
         panel.btnCerrar = Boton(contenido.transform, "X", new Vector3(0.04f, 0.09f, 0f), matBoton, matBotonMarcado);
         panel.btnCerrar.transform.localScale = new Vector3(0.016f, 0.016f, 0.008f);

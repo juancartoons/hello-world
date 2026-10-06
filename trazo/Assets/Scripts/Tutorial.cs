@@ -568,7 +568,10 @@ public class Tutorial : MonoBehaviour
     void Terminar()
     {
         if (control != null)
+        {
             control.soloNodosAlBorrar = false;
+            control.InstrumentoDelTutorial(-1); // vuelve el instrumento que tú elegiste
+        }
         PlayerPrefs.SetInt(ClaveVisto, 1);
         PlayerPrefs.Save();
         primeraVez = false;
@@ -706,6 +709,13 @@ public class Tutorial : MonoBehaviour
         if (raiz != null)
             Destroy(raiz.gameObject);
         raiz = null;
+        flechasGiro = null; // se fue con la raíz
+        if (mallaFlechasGiro != null)
+            Destroy(mallaFlechasGiro);
+        if (matFlechasGiro != null)
+            Destroy(matFlechasGiro);
+        mallaFlechasGiro = null;
+        matFlechasGiro = null;
         if (manoIzq != null) manoIzq.Destruir();
         if (manoDer != null) manoDer.Destruir();
         manoIzq = manoDer = null;
@@ -736,10 +746,11 @@ public class Tutorial : MonoBehaviour
 
     // ==================== Paso 1: el OK ====================
 
-    // La curva de ejemplo (en el marco del tutorial): una ola suave de A (izquierda) a B (derecha).
+    // La curva de ejemplo (en el marco del tutorial): de A (izquierda) a B (derecha) sube, baja y vuelve a
+    // subir bien marcado (así se nota de una vez que arriba suena agudo y abajo grave).
     static Vector3 Curva(float u)
     {
-        float y = 0.032f * (Mathf.Sin(u * Mathf.PI * 2f - 0.4f) + Mathf.Sin(0.4f));
+        float y = 0.075f * Mathf.Sin(u * Mathf.PI * 3f);
         return new Vector3(Mathf.Lerp(-MitadLinea, MitadLinea, u), y, 0f);
     }
 
@@ -776,10 +787,11 @@ public class Tutorial : MonoBehaviour
     }
 
     // Solo el paso 1: la mano del OK (dos veces), el número y su viñeta. Nada del paso 2 todavía.
+    // Al terminar, la mano NO se va (queda suave esperando tu OK); se va justo cuando tú lo haces.
     bool Demo1(float t, bool completa)
     {
-        float alfa = Mathf.Clamp01(t / 0.4f) * (1f - Mathf.Clamp01((t - 4.3f) / 0.5f));
-        PonerAlfaGuia(completa ? alfa : alfa * 0.75f);
+        float alfa = Mathf.Clamp01(t / 0.4f);
+        PonerAlfaGuia(completa ? Mathf.Lerp(alfa, 0.75f, Mathf.Clamp01((t - 4.3f) / 0.5f)) : alfa * 0.75f);
         PonerOkGuia(PinzaDosVeces(t), alfa);
         manoDer.Poner(null);
         if (completa && t >= 0.4f)
@@ -792,7 +804,6 @@ public class Tutorial : MonoBehaviour
 
     void EntrarPaso1()
     {
-        OcultarGuia();
         PonerVineta(Texto1, VinetaIzq, 1);
         Cambiar(Estado.Paso1);
     }
@@ -802,6 +813,7 @@ public class Tutorial : MonoBehaviour
         if (control.GestoIzq == ControlManos.Gesto.Dibujar)
         {
             PararPista();
+            OcultarGuia(); // ¡hiciste el OK! ahora sí se va la mano guía
             Exito(1, control.Izq.PuntoPellizco);
             // Del OK cae una gota de tinta que se vuelve el punto A.
             gotaDesde = control.Izq.PuntoPellizco;
@@ -815,8 +827,19 @@ public class Tutorial : MonoBehaviour
         }
         if (control.GestoIzq != ControlManos.Gesto.Ninguno)
             ultimaActividad = Time.time;
-        if (TocaPista() && Demo1(Time.time - pistaDesde, false))
-            PararPista();
+        if (TocaPista())
+        {
+            if (Demo1(Time.time - pistaDesde, false))
+                PararPista();
+        }
+        else
+        {
+            // Mientras esperas: la mano guía se queda quieta y suave, lista para el OK.
+            PonerAlfaGuia(0.75f);
+            PonerOkGuia(0f, 1f);
+            if (manoDer != null)
+                manoDer.Poner(null);
+        }
     }
 
     void Gota()
@@ -840,7 +863,11 @@ public class Tutorial : MonoBehaviour
             }
         }
         if (T > 1.7f)
+        {
+            // La línea de la mano guía suena con la orquesta (y el carrusel del parlante lo muestra).
+            control.InstrumentoDelTutorial(Sonidos.Orquesta);
             Cambiar(Estado.Demo2);
+        }
     }
 
     // ==================== Paso 2: la línea (desde el punto A hasta la bandera) ====================
@@ -908,6 +935,8 @@ public class Tutorial : MonoBehaviour
     void EntrarPaso2()
     {
         OcultarGuia();
+        // Tu línea suena con el piano (el carrusel pasa al piano: hay varios sonidos para elegir).
+        control.InstrumentoDelTutorial(Sonidos.Piano);
         if (lineaDemo != null)
             lineaDemo.positionCount = 0;
         PonerVineta(Texto2, VinetaLinea, -1);
@@ -1161,16 +1190,114 @@ public class Tutorial : MonoBehaviour
         Cambiar(Estado.Demo56);
     }
 
-    // Puño de la demostración: cierra, gira la muñeca de lado y vuelve; abre; otra vez igual y se queda.
+    // Puño de la demostración: cierra, gira la muñeca de lado y vuelve RÁPIDO (dos veces); abre;
+    // otra vez igual y se queda.
     static void PunoDemo(float t, float fin, out float puno, out float giro)
     {
         float c1 = Mathf.InverseLerp(0.6f, 0.9f, t), a1 = Mathf.InverseLerp(2.3f, 2.6f, t);
         float c2 = Mathf.InverseLerp(2.9f, 3.2f, t), a2 = Mathf.InverseLerp(fin, fin + 0.3f, t);
         float p = t < 2.6f ? c1 * (1f - a1) : c2 * (1f - a2);
         puno = Mathf.SmoothStep(0f, 1f, p);
-        float g1 = Suave((t - 1.1f) / 0.5f) * (1f - Suave((t - 1.6f) / 0.5f));
-        float g2 = Suave((t - 3.3f) / 0.5f) * (1f - Suave((t - 3.8f) / 0.5f));
+        float g1 = Mathf.Max(GiroRapido(t, 1.05f), GiroRapido(t, 1.6f));
+        float g2 = Mathf.Max(GiroRapido(t, 3.25f), GiroRapido(t, 3.8f));
         giro = Mathf.Max(g1, g2);
+    }
+
+    // Un giro rápido de la muñeca: va (0.18 s), se queda un instante y vuelve (0.18 s).
+    static float GiroRapido(float t, float inicio)
+    {
+        return Suave((t - inicio) / 0.18f) * (1f - Suave((t - inicio - 0.22f) / 0.18f));
+    }
+
+    // ---------- Flechas del giro: dos flechas amarillas curvas alrededor de la muñeca ----------
+    // Como un anillo de Saturno partido en dos (con dos huecos); cada flecha tiene punta en los dos lados
+    // (la muñeca va y vuelve) y el anillo gira junto con la muñeca.
+    Transform flechasGiro;
+    Mesh mallaFlechasGiro;
+    Material matFlechasGiro;
+
+    void PonerFlechasGiro(bool ver, Vector3 centro, Vector3 eje, float giro)
+    {
+        if (!ver)
+        {
+            if (flechasGiro != null && flechasGiro.gameObject.activeSelf)
+                flechasGiro.gameObject.SetActive(false);
+            return;
+        }
+        if (flechasGiro == null)
+        {
+            if (raiz == null || materialBlanco == null)
+                return;
+            mallaFlechasGiro = MallaFlechasGiro();
+            matFlechasGiro = new Material(materialBlanco);
+            var amarillo = new Color(1f, 0.82f, 0.1f);
+            if (matFlechasGiro.HasProperty("_BaseColor"))
+                matFlechasGiro.SetColor("_BaseColor", amarillo);
+            if (matFlechasGiro.HasProperty("_Color"))
+                matFlechasGiro.SetColor("_Color", amarillo);
+            var go = new GameObject("FlechasGiro");
+            go.transform.SetParent(raiz, false);
+            go.AddComponent<MeshFilter>().sharedMesh = mallaFlechasGiro;
+            var r = go.AddComponent<MeshRenderer>();
+            r.sharedMaterial = matFlechasGiro;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            r.receiveShadows = false;
+            flechasGiro = go.transform;
+        }
+        if (!flechasGiro.gameObject.activeSelf)
+            flechasGiro.gameObject.SetActive(true);
+        flechasGiro.SetPositionAndRotation(centro, Quaternion.LookRotation(eje) * Quaternion.AngleAxis(giro * 70f, Vector3.forward));
+    }
+
+    // Dos arcos (de 20° a 160° y de 200° a 340°) en el plano XY, con punta de flecha en cada extremo.
+    static Mesh MallaFlechasGiro()
+    {
+        const float radio = 0.042f, medio = 0.0035f, puntaAncho = 0.009f, puntaGrados = 20f;
+        var v = new List<Vector3>();
+        var t = new List<int>();
+        System.Action<int, int, int> tri = (a, b, c) =>
+        {
+            t.Add(a); t.Add(b); t.Add(c);
+            t.Add(a); t.Add(c); t.Add(b); // por los dos lados
+        };
+        System.Func<float, float, Vector3> punto = (grados, r) =>
+        {
+            float a = grados * Mathf.Deg2Rad;
+            return new Vector3(Mathf.Cos(a) * r, Mathf.Sin(a) * r, 0f);
+        };
+        foreach (var arco in new[] { new Vector2(20f, 160f), new Vector2(200f, 340f) })
+        {
+            float desde = arco.x + puntaGrados, hasta = arco.y - puntaGrados;
+            const int pasos = 12;
+            int inicio = v.Count;
+            for (int i = 0; i <= pasos; i++)
+            {
+                float g = Mathf.Lerp(desde, hasta, i / (float)pasos);
+                v.Add(punto(g, radio - medio));
+                v.Add(punto(g, radio + medio));
+                if (i > 0)
+                {
+                    int a = inicio + (i - 1) * 2;
+                    tri(a, a + 1, a + 3);
+                    tri(a, a + 3, a + 2);
+                }
+            }
+            // Puntas de flecha en los dos extremos.
+            foreach (var extremo in new[] { new Vector2(arco.x, desde), new Vector2(arco.y, hasta) })
+            {
+                int b = v.Count;
+                v.Add(punto(extremo.x, radio));
+                v.Add(punto(extremo.y, radio - puntaAncho));
+                v.Add(punto(extremo.y, radio + puntaAncho));
+                tri(b, b + 1, b + 2);
+            }
+        }
+        var m = new Mesh { name = "FlechasGiro" };
+        m.SetVertices(v);
+        m.SetTriangles(t, 0);
+        m.RecalculateNormals();
+        m.RecalculateBounds();
+        return m;
     }
 
     // Las manos guía enseñan el puño (5) y frotar la línea (6). "completa" = con la línea que se borra y el muñeco que huye.
@@ -1185,6 +1312,8 @@ public class Tutorial : MonoBehaviour
         Vector3 palma = Vector3.Slerp(Dir(0.45f, 0.1f, 1f), Dir(1f, 0.1f, -0.1f), giro);
         PoseMano.Calcular(puntosIzq, true, raiz.TransformPoint(ManoIzqPecho), Dir(0.05f, 1f, 0.2f), palma, 0f, puno, 0f);
         manoIzq.Poner(alfa > 0.01f ? puntosIzq : null);
+        // Mientras el puño está cerrado (paso 5): las flechas amarillas del giro alrededor de la muñeca.
+        PonerFlechasGiro(alfa > 0.01f && t >= 0.85f && t < 4.0f && puno > 0.6f, raiz.TransformPoint(ManoIzqPecho), Dir(0.05f, 1f, 0.2f), giro);
 
         float largo = LargoCamino;
         Vector3 descanso = raiz.TransformPoint(ManoDerDescanso);
@@ -1680,6 +1809,7 @@ public class Tutorial : MonoBehaviour
     // ==================== Paso 9: tamaño y giro con las dos manos ====================
 
     int idPaso9 = -1;
+    float logradoPaso9 = -1f;
     int notaTamDemo = 5;
     float largoPaso9;
     Vector3 dirPaso9;
@@ -1760,6 +1890,7 @@ public class Tutorial : MonoBehaviour
         // Se recuerda el tamaño y la dirección de tu línea, para saber cuándo la agrandaste o giraste.
         idPaso9 = lineaUsuario != null ? lineaUsuario.id : -1;
         largoPaso9 = 0f;
+        logradoPaso9 = -1f;
         var t = LineaPaso9();
         if (t != null)
         {
@@ -1798,7 +1929,12 @@ public class Tutorial : MonoBehaviour
             Vector3 b = dibujo.transform.TransformPoint(t.nodos[t.nodos.Count - 1]);
             float escala = (b - a).magnitude / largoPaso9;
             float angulo = Vector3.Angle(b - a, dirPaso9);
-            if (Mathf.Abs(escala - 1f) > 0.15f || angulo > 15f)
+            if (logradoPaso9 < 0f && (Mathf.Abs(escala - 1f) > 0.15f || angulo > 15f))
+                logradoPaso9 = Time.time;
+            // ¡Ya lo hiciste! Pero te deja seguir jugando (agrandar, achicar, girar): se celebra cuando
+            // sueltas las dos manos, o a los 12 segundos si sigues y sigues.
+            bool sigue = control.GestoIzq == ControlManos.Gesto.Transformar;
+            if (logradoPaso9 >= 0f && ((!sigue && Time.time - logradoPaso9 > 0.3f) || Time.time - logradoPaso9 > 12f))
             {
                 Exito(9, (a + b) * 0.5f);
                 Pausa(EntrarFinal);
@@ -1849,6 +1985,7 @@ public class Tutorial : MonoBehaviour
     {
         if (manoIzq != null) manoIzq.Poner(null);
         if (manoDer != null) manoDer.Poner(null);
+        PonerFlechasGiro(false, Vector3.zero, Vector3.forward, 0f);
         if (puntoBorrador != null && puntoBorrador.gameObject.activeSelf)
             puntoBorrador.gameObject.SetActive(false);
     }
