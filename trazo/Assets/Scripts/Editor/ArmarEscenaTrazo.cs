@@ -555,6 +555,11 @@ public static class ArmarEscenaTrazo
         if (panel.btnCerrar.etiqueta != null)
             panel.btnCerrar.etiqueta.rectTransform.sizeDelta = new Vector2(0.014f, 0.014f);
         Texto(contenido.transform, "Figuras 3D", new Vector3(0f, -0.004f, -0.001f), new Vector2(0.09f, 0.01f), new Color(0.3f, 0.3f, 0.35f));
+        // Botón pequeño debajo del menú: abre la paleta de colores (por si el gesto de la palma no la abre).
+        panel.btnColores = Boton(contenido.transform, "Colores", new Vector3(0f, -0.14f, 0f), matBoton, matBotonMarcado);
+        panel.btnColores.transform.localScale = new Vector3(0.06f, 0.02f, 0.008f);
+        if (panel.btnColores.etiqueta != null)
+            panel.btnColores.etiqueta.rectTransform.sizeDelta = new Vector2(0.055f, 0.016f);
         return panel;
     }
 

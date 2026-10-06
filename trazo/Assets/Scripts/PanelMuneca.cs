@@ -16,6 +16,8 @@ public class PanelMuneca : MonoBehaviour
     public BotonTocable btnIman;
     [Tooltip("Música del trazo: Arpa, Piano, Marimba, Cajita o No")]
     public BotonTocable btnMusica;
+    [Tooltip("Abre la paleta de colores (por si el gesto de la palma no la abre)")]
+    public BotonTocable btnColores;
     [Tooltip("X para cerrar el menú")]
     public BotonTocable btnCerrar;
     Renderer[] iconoIman;
@@ -55,6 +57,7 @@ public class PanelMuneca : MonoBehaviour
         {
             Conectar(btnCerrar, control.CerrarMenu);
             Conectar(btnMusica, () => { control.SiguienteInstrumento(); Refrescar(); });
+            Conectar(btnColores, control.AlternarPaleta);
         }
         if (figuras == null && dibujo != null)
             figuras = dibujo.figuras;

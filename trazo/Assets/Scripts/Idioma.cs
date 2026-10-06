@@ -311,6 +311,7 @@ public static class Idioma
         "Deshecho", "Undone",
         "Cuentagotas: color tomado", "Eyedropper: color picked",
         "Música: Arpa", "Music: Harp",
+        "Colores", "Colors",
         "Música: Piano", "Music: Piano",
         "Música: Marimba", "Music: Marimba",
         "Música: Cajita", "Music: Music box",

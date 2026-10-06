@@ -37,26 +37,53 @@ public partial class ControlManos
 
     public bool PaletaAbierta => paletaAbierta;
 
-    // Palma izquierda bien abierta, mirando hacia tu cara (y la estás mirando).
+    // Palma izquierda abierta, más o menos mirando hacia tu cara (pocas condiciones, para que salga fácil).
     bool PosePaleta(bool yaAbierta)
     {
-        if (!poseValida || !palmaIzq.valida || Cabeza == null)
+        if (!palmaIzq.valida || Cabeza == null)
             return false;
         Vector3 aCabeza = Cabeza.position - palmaIzq.centro;
         float dist = aCabeza.magnitude;
-        if (dist < 0.15f || dist > 0.8f)
+        if (dist < 0.12f || dist > 0.95f)
             return false;
         aCabeza /= dist;
         float palma = Vector3.Dot(palmaIzq.normal, aCabeza);
         float mirar = Vector3.Dot(Cabeza.forward, -aCabeza);
-        bool abierta = palmaIzq.cierre > (yaAbierta ? 1.35f : 1.5f) && DedosAbiertos();
-        return abierta && palma > (yaAbierta ? 0.45f : 0.7f) && mirar > (yaAbierta ? 0.5f : 0.75f);
+        bool abierta = palmaIzq.cierre > (yaAbierta ? 1.15f : 1.3f);
+        return abierta && palma > (yaAbierta ? 0.3f : 0.5f) && mirar > 0.3f;
+    }
+
+    // Botón "Colores" (debajo del menú del reloj): abre o cierra la paleta sin el gesto.
+    // Así abierta se queda junto al menú; se cierra al elegir un color, con el botón otra vez o sola en 25 s.
+    bool paletaFija;
+    float paletaFijaHasta;
+
+    public void AlternarPaleta()
+    {
+        if (paletaAbierta)
+        {
+            CerrarPaleta();
+            return;
+        }
+        AbrirPaleta();
+        if (paleta == null || Cabeza == null)
+            return;
+        paletaFija = true;
+        paletaFijaHasta = Time.time + 25f;
+        Vector3 pos = posMenu + Cabeza.right * 0.13f;
+        paleta.SetPositionAndRotation(pos, Quaternion.LookRotation(pos - Cabeza.position, Vector3.up));
     }
 
     void ActualizarPaleta()
     {
         bool pose = GestoIzq == Gesto.Ninguno && !menuAbierto && PosePaleta(paletaAbierta);
-        if (pose)
+        if (paletaFija)
+        {
+            // Abierta con el botón: no depende del gesto.
+            if (Time.time > paletaFijaHasta)
+                CerrarPaleta();
+        }
+        else if (pose)
         {
             paletaFueraDesde = -1f;
             if (paletaDesde < 0f)
@@ -82,7 +109,7 @@ public partial class ControlManos
             return;
 
         // La paleta flota sobre tu palma, mirando hacia ti.
-        if (palmaIzq.valida && poseValida)
+        if (!paletaFija && palmaIzq.valida && poseValida)
         {
             Vector3 pos = palmaIzq.centro + palmaIzq.normal * 0.04f + Vector3.up * 0.01f;
             Quaternion rot = Quaternion.LookRotation(pos - Cabeza.position, Vector3.up);
@@ -174,6 +201,9 @@ public partial class ControlManos
         {
             MostrarEtiqueta("Color");
         }
+        // Abierta con el botón: después de elegir, se cierra sola.
+        if (paletaFija)
+            paletaFijaHasta = Mathf.Min(paletaFijaHasta, Time.time + 0.8f);
     }
 
     static int IndiceColor(Color c)
@@ -214,6 +244,7 @@ public partial class ControlManos
 
     void CerrarPaleta()
     {
+        paletaFija = false;
         paletaAbierta = false;
         paletaDesde = -1f;
         paletaFueraDesde = -1f;
