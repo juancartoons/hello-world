@@ -548,10 +548,26 @@ public class Tutorial : MonoBehaviour
 
     // ==================== Empezar y terminar el tutorial ====================
 
+    // El panel "?" con las secciones del tutorial (botón ? del menú de la mano o Mis archivos > Tutorial).
+    public void AbrirSecciones()
+    {
+        TutorialRellenos.CerrarSiAbierto(this);
+        PanelTutoriales.Abrir(this);
+    }
+
+    // Sección 2: rellenos (cubeta, tocar dentro y tinta invisible). Aparte del tutorial de presentación.
+    public void EmpezarRellenos()
+    {
+        PanelTutoriales.CerrarSiAbierto(this);
+        TutorialRellenos.Abrir(this);
+    }
+
     public void Empezar()
     {
         if (dibujo == null || control == null || control.Cabeza == null)
             return;
+        PanelTutoriales.CerrarSiAbierto(this);
+        TutorialRellenos.CerrarSiAbierto(this);
         if (estado == Estado.Titulo)
             QuitarTitulo();   // si lo piden durante el título, el título se va de una vez
         else if (estado != Estado.Nada)
@@ -710,6 +726,9 @@ public class Tutorial : MonoBehaviour
             Destroy(raiz.gameObject);
         raiz = null;
         flechasGiro = null; // se fue con la raíz
+        if (lineaTitere != null)
+            lineaTitere.Destruir();
+        lineaTitere = null;
         if (mallaFlechasGiro != null)
             Destroy(mallaFlechasGiro);
         if (matFlechasGiro != null)
@@ -864,8 +883,8 @@ public class Tutorial : MonoBehaviour
         }
         if (T > 1.7f)
         {
-            // La línea de la mano guía suena con la orquesta (y el carrusel del parlante lo muestra).
-            control.InstrumentoDelTutorial(Sonidos.Orquesta);
+            // La línea de la mano guía suena con la marimba (y el carrusel del parlante lo muestra).
+            control.InstrumentoDelTutorial(Sonidos.Marimba);
             Cambiar(Estado.Demo2);
         }
     }
@@ -937,6 +956,8 @@ public class Tutorial : MonoBehaviour
         OcultarGuia();
         // Tu línea suena con el piano (el carrusel pasa al piano: hay varios sonidos para elegir).
         control.InstrumentoDelTutorial(Sonidos.Piano);
+        // Si tu mano izquierda sigue en OK desde el paso 1, ya cuenta (no hace falta abrir y cerrar).
+        control.AceptarPellizcoActual();
         if (lineaDemo != null)
             lineaDemo.positionCount = 0;
         PonerVineta(Texto2, VinetaLinea, -1);
@@ -1109,11 +1130,19 @@ public class Tutorial : MonoBehaviour
             // Mano más de 4 cm abajo = agacharse.
             float agacharMano = Mathf.Clamp01((yCal - der.indice.y - 0.04f) / 0.06f);
             ActualizarSalto(agacharMano);
+            // Raya punteada de tu índice al tronco del muñeco: tú lo controlas.
+            if (lineaTitere == null)
+                lineaTitere = new LineaPunteada();
+            Vector3 tronco = PuntoCamino(figuraS) + Vector3.up * (0.003f + figuraAltura + 0.4f * EscalaMuneco * 0.55f * figuraTam);
+            if (control.Cabeza != null)
+                lineaTitere.Poner(der.indice, tronco, control.Cabeza.position);
         }
         else
         {
             ActualizarSalto(0f);
             ActualizarFigura();
+            if (lineaTitere != null)
+                lineaTitere.Ocultar();
         }
         if (T > 2.5f)
             MostrarBoton(btnSiguiente, true);
@@ -1132,6 +1161,8 @@ public class Tutorial : MonoBehaviour
                 MarcarNumero(4);
             figuraAltura = 0f;
             figuraAgachar = 0f;
+            if (lineaTitere != null)
+                lineaTitere.Ocultar();
             Pausa(EmpezarDemo56);
         }
     }
@@ -1810,6 +1841,7 @@ public class Tutorial : MonoBehaviour
 
     int idPaso9 = -1;
     float logradoPaso9 = -1f;
+    LineaPunteada lineaTitere;
     int notaTamDemo = 5;
     float largoPaso9;
     Vector3 dirPaso9;
@@ -2308,20 +2340,16 @@ public class Tutorial : MonoBehaviour
 
     // ==================== Números y decorado ====================
 
-    static int GrupoNumero(int n)
-    {
-        return n == 1 || n == 2 ? 1 : n == 5 || n == 6 ? 5 : n;
-    }
+    // El número del paso: SIEMPRE arriba al centro, en el mismo lugar, y solo uno a la vez.
+    static readonly Vector3 LugarNumero = new Vector3(0f, 0.205f, 0.08f);
 
     void MostrarNumero(int n, Vector3 local)
     {
+        local = LugarNumero;
         if (numeros.ContainsKey(n) || raiz == null)
             return;
-        // Los números de pasos anteriores se van (menos los que se usan juntos: 1 y 2, 5 y 6).
-        var quitar = new List<int>();
-        foreach (var par in numeros)
-            if (GrupoNumero(par.Key) != GrupoNumero(n))
-                quitar.Add(par.Key);
+        // El número anterior se va.
+        var quitar = new List<int>(numeros.Keys);
         foreach (int k in quitar)
         {
             if (numeros[k].raiz != null)

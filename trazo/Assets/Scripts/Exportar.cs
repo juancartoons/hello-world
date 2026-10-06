@@ -53,9 +53,9 @@ public static class Exportar
         sb.AppendLine("<g id=\"rellenos\" stroke=\"none\">");
         foreach (var t in dibujo.trazos)
         {
-            if (!Dibujo.Editable(t) || t.nodos.Count < 3 || !t.cerrado || !t.relleno)
+            if (!Dibujo.Editable(t) || t.nodos.Count < 3 || (!t.cerrado && !t.rellenoAbierto) || !t.relleno)
                 continue;
-            Color c = Trazo.Paleta[Mathf.Abs(t.colorRelleno) % Trazo.Paleta.Length];
+            Color c = t.ColorDelRelleno;
             sb.Append("<path fill=\"#").Append(ColorUtility.ToHtmlStringRGB(c)).Append("\" d=\"");
             Camino(sb, t, raiz, derecha, arribaVista);
             sb.AppendLine("\"/>");
@@ -66,7 +66,7 @@ public static class Exportar
         float escala = dibujo.EscalaMundo;
         foreach (var t in dibujo.trazos)
         {
-            if (!Dibujo.Editable(t) || t.nodos.Count < 2)
+            if (!Dibujo.Editable(t) || t.nodos.Count < 2 || t.Invisible)
                 continue;
             float grosorMm = t.ancho * escala * 1000f * 0.75f;
             sb.Append("<path stroke=\"#").Append(ColorUtility.ToHtmlStringRGB(t.color)).Append("\" stroke-width=\"").Append(N(grosorMm)).Append("\" d=\"");

@@ -28,7 +28,7 @@ public partial class ControlManos
     float distanciaTamano = -1f;
     int notaTamano = 5;
 
-    // El tutorial puede tocar con otro instrumento un momento (la orquesta en su demostración, el piano
+    // El tutorial puede tocar con otro instrumento un momento (la marimba en su demostración, el piano
     // en tu primera línea) sin cambiar el que elegiste. -1 = el tuyo.
     [System.NonSerialized] public int instrumentoTutorial = -1;
 
@@ -151,7 +151,7 @@ public partial class ControlManos
     {
         Sonidos.PrepararInstrumento(Instrumento);
         Sonidos.PrepararInstrumento(Sonidos.Piano);
-        Sonidos.PrepararInstrumento(Sonidos.Orquesta);
+        Sonidos.PrepararInstrumento(Sonidos.Marimba);
     }
 
     void AsegurarFuenteMusica()

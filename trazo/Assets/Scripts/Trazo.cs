@@ -39,6 +39,14 @@ public class Trazo : MonoBehaviour
     [Tooltip("Grosor máximo (en el centro), en unidades locales del Dibujo")]
     public float ancho = 0.008f;
     public Color color = Color.black;                       // color de la línea (la paleta de la mano izquierda)
+    // Relleno ABIERTO (la cubeta): se rellena aunque las puntas no se unan, como si una línea invisible las uniera.
+    public bool rellenoAbierto;
+    // Color del relleno elegido en la paleta (si es transparente, se usa Paleta[colorRelleno]).
+    public Color colorFondo;
+    // Tinta invisible: la línea no se ve (pero su relleno sí). Se ve gris clarito mientras editas.
+    public bool Invisible => color.a < 0.01f;
+    public static bool verInvisibles;
+    public Color ColorDelRelleno => colorFondo.a > 0.01f ? colorFondo : Paleta[Mathf.Abs(colorRelleno) % Paleta.Length];
     public EstiloLinea estilo = EstiloLinea.Cinta;
 
     // La curva ya calculada (local), para tocarla y medirla.
@@ -219,7 +227,7 @@ public class Trazo : MonoBehaviour
         asaManual.Clear();
         grosorNodo.Clear();
         cerrado = false;
-        relleno = false;
+        relleno = rellenoAbierto; // con la cubeta, el relleno se queda aunque no se cierre
         Simplificar(crudos, toleranciaSimplificar / Escala, nodos);
         crudos.Clear();
         Reconstruir();
@@ -447,7 +455,9 @@ public class Trazo : MonoBehaviour
             ancho = ancho,
             estilo = (int)estilo,
             oculto = oculto,
-            color = color
+            color = color,
+            rellenoAbierto = rellenoAbierto && !cerrado,
+            colorFondo = colorFondo
         };
     }
 
@@ -489,7 +499,9 @@ public class Trazo : MonoBehaviour
             grosorNodo.Add(g);
         }
         cerrado = a.cerrado && n >= 3;
-        relleno = a.relleno && cerrado;
+        rellenoAbierto = a.rellenoAbierto && !cerrado;
+        relleno = a.relleno && (cerrado || rellenoAbierto);
+        colorFondo = a.colorFondo;
         oculto = a.oculto;
         colorRelleno = a.colorRelleno;
         ancho = mezclar ? Mathf.Lerp(a.ancho, b.ancho, u) : a.ancho;
@@ -561,8 +573,9 @@ public class Trazo : MonoBehaviour
     {
         AsegurarMalla();
         var mr = GetComponent<MeshRenderer>();
-        if (mr != null && mr.forceRenderingOff != oculto)
-            mr.forceRenderingOff = oculto;
+        bool sinLinea = oculto || (Invisible && !verInvisibles);
+        if (mr != null && mr.forceRenderingOff != sinLinea)
+            mr.forceRenderingOff = sinLinea;
         if (rellenoRenderer != null && rellenoRenderer.forceRenderingOff != oculto)
             rellenoRenderer.forceRenderingOff = oculto;
         if (!silenciar)
@@ -748,7 +761,8 @@ public class Trazo : MonoBehaviour
     void ConstruirRelleno()
     {
         PoligonoValido = false;
-        if (CerradoAhora && curva.Count >= 4)
+        // Cerrada; o abierta ya terminada (para poder rellenarla tocándola); o con la cubeta mientras la dibujas.
+        if ((CerradoAhora || (!cerrado && (crudos.Count == 0 || rellenoAbierto))) && curva.Count >= 4)
             PrepararPoligono();
 
         bool mostrar = PoligonoValido && relleno;
@@ -780,7 +794,7 @@ public class Trazo : MonoBehaviour
         colores.Clear();
         vertices.AddRange(poli3D);
         Triangular(poli2D, indices, vertices);
-        Color c = Paleta[Mathf.Abs(colorRelleno) % Paleta.Length];
+        Color c = ColorDelRelleno;
         var estiloVivo = Estilo();
         uvs3.Clear();
         uvs4.Clear();
@@ -805,7 +819,8 @@ public class Trazo : MonoBehaviour
     {
         poli3D.Clear();
         poli2D.Clear();
-        int total = curva.Count - 1; // el último punto repite el primero
+        bool abierta = !CerradoAhora;
+        int total = abierta ? curva.Count : curva.Count - 1; // cerrada: el último punto repite el primero
         int paso = Mathf.Max(1, Mathf.CeilToInt(total / (float)maxPuntosRelleno));
         for (int i = 0; i < total; i += paso)
             poli3D.Add(curva[i]);
@@ -822,6 +837,16 @@ public class Trazo : MonoBehaviour
             suma += Vector3.Cross(poli3D[i] - c, poli3D[(i + 1) % m] - c);
         if (suma.sqrMagnitude < 1e-14f)
             return;
+        if (abierta)
+        {
+            // Abierta: solo si encierra algo (una línea casi recta no se rellena).
+            float perimetro = 0f;
+            for (int i = 0; i < m; i++)
+                perimetro += Vector3.Distance(poli3D[i], poli3D[(i + 1) % m]);
+            float area = suma.magnitude * 0.5f;
+            if (area < 0.01f * perimetro * perimetro)
+                return;
+        }
 
         poliCentro = c;
         poliN = suma.normalized;

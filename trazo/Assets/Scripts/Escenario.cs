@@ -3,8 +3,10 @@ using UnityEngine;
 
 // Fondo de TrazoVR. Tres modos:
 //  0 = blanco con piso de cuadrícula, 1 = todo blanco, 2 = realidad (passthrough: ves tu cuarto).
+// La PRIMERA vez la app empieza en Realidad (passthrough: dibujas sobre tu cuarto); después recuerda el último.
 public class Escenario : MonoBehaviour
 {
+    const string ClaveFondo = "jcartoons_fondo";
     public Material materialCuadricula;
     [Tooltip("0 cuadrícula, 1 blanco, 2 realidad (passthrough)")]
     public int modo;
@@ -43,7 +45,7 @@ public class Escenario : MonoBehaviour
         camara = rig != null && rig.centerEyeAnchor != null ? rig.centerEyeAnchor.GetComponent<Camera>() : Camera.main;
         if (passthrough == null)
             passthrough = FindFirstObjectByType<OVRPassthroughLayer>(FindObjectsInactive.Include);
-        PonerModo(modo);
+        PonerModo(PlayerPrefs.GetInt(ClaveFondo, 2));
     }
 
     public void SiguienteModo()
@@ -54,6 +56,7 @@ public class Escenario : MonoBehaviour
     public void PonerModo(int nuevo)
     {
         modo = Mathf.Clamp(nuevo, 0, 2);
+        PlayerPrefs.SetInt(ClaveFondo, modo);
         bool realidad = modo == 2;
         if (cuadricula != null)
             cuadricula.SetActive(modo == 0);

@@ -549,6 +549,11 @@ public static class ArmarEscenaTrazo
         // de íconos que está sobre el parlante (arriba a la derecha).
         panel.btnQuitarFigura = null;
         panel.btnIman = botones[9];
+        // ? arriba a la izquierda: las secciones del tutorial.
+        panel.btnAyuda = Boton(contenido.transform, "?", new Vector3(-0.04f, 0.09f, 0f), matBoton, matBotonMarcado);
+        panel.btnAyuda.transform.localScale = new Vector3(0.016f, 0.016f, 0.008f);
+        if (panel.btnAyuda.etiqueta != null)
+            panel.btnAyuda.etiqueta.rectTransform.sizeDelta = new Vector2(0.014f, 0.014f);
         // X arriba a la derecha: cerrar el menú a mano.
         panel.btnCerrar = Boton(contenido.transform, "X", new Vector3(0.04f, 0.09f, 0f), matBoton, matBotonMarcado);
         panel.btnCerrar.transform.localScale = new Vector3(0.016f, 0.016f, 0.008f);

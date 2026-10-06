@@ -8,6 +8,7 @@ using UnityEngine;
 //    más pequeños, más al fondo y un poco transparentes, el anterior y el siguiente.
 //    Arrastra con la punta del índice derecho a la izquierda o a la derecha para cambiar (como en la Mac),
 //    o toca uno de los de al lado. Al soltar, se acomoda y suena una notita del instrumento.
+//    En silencio el carrusel no se ve.
 // Mientras el dedo está cerca, la bolita de la tinta o del borrador se esconde (y no dibuja ni borra),
 // para que se vea bien lo que tocas.
 public class BotonSonido : MonoBehaviour
@@ -19,6 +20,7 @@ public class BotonSonido : MonoBehaviour
     static readonly Vector3 Lugar = new Vector3(0.16f, 0.13f, 0.45f);
     // El parlante: un poco más abajo, para que el carrusel se vea cómodo encima.
     static readonly Vector3 LugarParlante = new Vector3(0f, -0.042f, 0f);
+    const float Escala = 0.82f;          // todo (parlante y carrusel) un 18 % más pequeño
     const float TamanoParlante = 0.04f;
     const float RadioToque = 0.026f;
     // El carrusel.
@@ -92,6 +94,7 @@ public class BotonSonido : MonoBehaviour
     {
         if (baseMaterial == null)
             return;
+        transform.localScale = Vector3.one * Escala;
         parlante = new GameObject("Parlante").transform;
         parlante.SetParent(transform, false);
         parlante.localPosition = LugarParlante;
@@ -221,6 +224,15 @@ public class BotonSonido : MonoBehaviour
     {
         if (items == null)
             return;
+        // En silencio no hay instrumentos que elegir: el carrusel no se ve (solo el parlante gris).
+        if (Silenciado)
+        {
+            arrastrando = false;
+            foreach (var it in items)
+                if (it.gameObject.activeSelf)
+                    it.gameObject.SetActive(false);
+            return;
+        }
         int n = items.Length;
         bool dentro = dedoValido && Mathf.Abs(local.x) < 0.065f && Mathf.Abs(local.y - AlturaCarrusel) < 0.02f
                       && local.z > -0.03f && local.z < 0.03f;
@@ -333,7 +345,7 @@ public class BotonSonido : MonoBehaviour
         ActualizarCarrusel(dedo, local, Time.deltaTime);
 
         // Tocar el parlante con la punta del índice derecho.
-        bool toca = dedo && Vector3.Distance(punta, parlante.position) < RadioToque;
+        bool toca = dedo && Vector3.Distance(punta, parlante.position) < RadioToque * Escala;
         if (toca && !dedoEnParlante && Time.time >= bloqueadoHasta)
         {
             bloqueadoHasta = Time.time + 0.6f;

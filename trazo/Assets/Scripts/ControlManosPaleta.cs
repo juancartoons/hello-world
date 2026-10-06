@@ -121,12 +121,15 @@ public partial class ControlManos
         }
         for (int i = 0; i < botonesColor.Count; i++)
             botonesColor[i].localScale = Vector3.one * TamColor * (i == colorElegido ? 1.3f : 1f);
+        // La línea del centro lleva el color elegido (con tinta invisible, gris clarito).
         if (materialCentroPaleta != null && materialCentroPaleta.HasProperty("_BaseColor"))
-            materialCentroPaleta.SetColor("_BaseColor", dibujo.ColorNuevo);
+            materialCentroPaleta.SetColor("_BaseColor", dibujo.ColorNuevo.a > 0.01f ? dibujo.ColorNuevo : new Color(0.72f, 0.74f, 0.8f));
 
         if (!Der.valida)
         {
             ActualizarTemblorPaleta(Vector3.zero, false);
+            ActualizarRellenoPaleta(Vector3.zero, false);
+            dedoEnRelleno = false;
             dedoEnColor = false;
             dedoEnLinea = false;
             return;
@@ -134,6 +137,13 @@ public partial class ControlManos
         Vector3 punta = Der.indice;
         // ¿Tocó la línea que tiembla o una de sus opciones?
         if (ActualizarTemblorPaleta(punta, true))
+        {
+            dedoEnColor = false;
+            dedoEnLinea = false;
+            return;
+        }
+        // ¿Tocó la tinta invisible o la cubeta?
+        if (ActualizarRellenoPaleta(punta, true))
         {
             dedoEnColor = false;
             dedoEnLinea = false;
@@ -147,7 +157,7 @@ public partial class ControlManos
         if (tocado >= 0)
         {
             if (!dedoEnColor)
-                ElegirColor(tocado, botonesColor[tocado].position);
+                ElegirColor(ColoresPaleta[tocado], tocado, botonesColor[tocado].position);
             dedoEnColor = true;
             return;
         }
@@ -156,6 +166,7 @@ public partial class ControlManos
         if (Vector3.Distance(punta, paleta.position) < 0.1f)
         {
             dedoEnLinea = false;
+            dedoEnRelleno = false;
             return;
         }
         Trazo cerca = null;
@@ -183,16 +194,19 @@ public partial class ControlManos
                 MostrarEtiqueta("Cuentagotas: color tomado");
             }
             dedoEnLinea = true;
+            dedoEnRelleno = false;
         }
         else
         {
             dedoEnLinea = false;
+            // No hay línea cerca: ¿está DENTRO de una forma? = rellenarla.
+            RellenarAlTocar(local, punta);
         }
     }
 
-    void ElegirColor(int i, Vector3 donde)
+    // i = cuál de los 12 colores (-1 = tinta invisible).
+    void ElegirColor(Color c, int i, Vector3 donde)
     {
-        Color c = ColoresPaleta[i];
         colorElegido = i;
         dibujo.ColorNuevo = c;
         Burbuja(donde, 1.1f);
@@ -209,7 +223,7 @@ public partial class ControlManos
         }
         else
         {
-            MostrarEtiqueta("Color");
+            MostrarEtiqueta(c.a < 0.01f ? "Tinta invisible" : "Color");
         }
         // Abierta con el botón: después de elegir, se cierra sola.
         if (paletaFija)
@@ -218,6 +232,8 @@ public partial class ControlManos
 
     static int IndiceColor(Color c)
     {
+        if (c.a < 0.01f)
+            return -1; // tinta invisible
         int mejor = 0;
         float distancia = float.MaxValue;
         for (int i = 0; i < ColoresPaleta.Length; i++)
@@ -243,6 +259,8 @@ public partial class ControlManos
         dedoEnColor = true;  // no elige nada hasta que el dedo salga y vuelva a entrar
         dedoEnLinea = true;
         dedoEnTemblor = true;
+        dedoEnBotonRelleno = true;
+        dedoEnRelleno = true;
         claveMuestra = int.MinValue;
         colorElegido = IndiceColor(dibujo.ColorNuevo);
         if (palmaIzq.valida && Cabeza != null)
@@ -279,6 +297,7 @@ public partial class ControlManos
         // En el centro: una línea que tiembla (del color elegido) y debajo las opciones del temblor.
         materialCentroPaleta = ColorMaterial(dibujo != null ? dibujo.ColorNuevo : Color.black);
         ArmarTemblorPaleta(negro);
+        ArmarRellenoPaleta(negro);
         for (int i = 0; i < ColoresPaleta.Length; i++)
         {
             float ang = Mathf.PI * 0.5f - i * Mathf.PI * 2f / ColoresPaleta.Length;

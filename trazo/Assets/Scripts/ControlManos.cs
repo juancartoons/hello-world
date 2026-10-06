@@ -109,6 +109,13 @@ public partial class ControlManos : MonoBehaviour
     readonly Vector3[] puntosGuante = new Vector3[21];
     bool conGuante;
 
+    // Para el tutorial: si tu mano izquierda YA está haciendo el OK, cuenta como OK (sin tener que abrir
+    // y cerrar los dedos otra vez).
+    public void AceptarPellizcoActual()
+    {
+        esperarSoltarIzq = false;
+    }
+
     // Termina la línea que se está dibujando (y espera a que sueltes los dedos para lo siguiente).
     public void TerminarLineaActual()
     {
@@ -382,6 +389,8 @@ public partial class ControlManos : MonoBehaviour
         ActualizarGestoIzquierdo();
         ActualizarMenu();
         ActualizarPaleta();
+        // Las líneas de tinta invisible se ven (gris clarito) mientras editas.
+        dibujo.VerInvisibles(paletaAbierta || GestoIzq == Gesto.Nodos || GestoIzq == Gesto.Borrar || GestoIzq == Gesto.Grosor);
 
         // Mano abierta yendo a chocar los cinco con un personaje: no se edita nada en ese momento.
         bool protegido = DibujoBloqueado || Titere.ManoCerca;
@@ -774,6 +783,7 @@ public partial class ControlManos : MonoBehaviour
                 dibujo.DefinirPlano(local, Cabeza.forward);
             dibujo.Seleccionar(null);
             trazoActual = dibujo.NuevoTrazo();
+            AplicarCubeta(trazoActual); // con la cubeta encendida se va rellenando mientras dibujas
             inicioTrazo = Time.time;
         }
         trazoActual.AgregarPuntoCrudo(dibujo.ProyectarEnPlano(local));
@@ -2371,7 +2381,7 @@ public partial class ControlManos : MonoBehaviour
         Trazo tocado = null;
         foreach (var t in dibujo.trazos)
         {
-            if (Dibujo.Editable(t) && t.cerrado && t.DentroDeRelleno(local, grosor))
+            if (Dibujo.Editable(t) && (t.cerrado || (t.rellenoAbierto && t.relleno)) && t.DentroDeRelleno(local, grosor))
             {
                 tocado = t;
                 break;
@@ -2401,7 +2411,7 @@ public partial class ControlManos : MonoBehaviour
         // Con el borrador, el punto rojo es el borrador (mientras cambias su tamaño, va entre tus dedos).
         cursor.position = borrando && Der.pellizco ? Der.PuntoPellizco : Der.indice;
         var mat = borrando && materialCursorBorrar != null ? materialCursorBorrar
-                : dibujo.ColorNuevo != Color.black ? MaterialCursorColor() : materialCursor;
+                : dibujo.ColorNuevo != Color.black && dibujo.ColorNuevo.a > 0.01f ? MaterialCursorColor() : materialCursor;
         if (mat == null)
             mat = materialCursor;
         if (mat != null && cursorRender.sharedMaterial != mat)

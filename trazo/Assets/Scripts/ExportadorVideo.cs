@@ -354,6 +354,7 @@ public class ExportadorVideo : MonoBehaviour
             t.capa = d.capa;
             lineas[d.id] = t;
         }
+        t.color = d.color; // así la tinta invisible tampoco sale en el video
         if (d.crudo)
         {
             t.ancho = d.ancho > 0f ? d.ancho : 0.008f;

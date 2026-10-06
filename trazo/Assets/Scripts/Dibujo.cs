@@ -21,6 +21,8 @@ public class DatosTrazo
     public bool crudo; // solo para la repetición: la línea aún se estaba dibujando
     public bool oculto; // línea "hueso": existe (mueve a otras partes) pero no se ve
     public Color color = Color.black; // color de la línea (los dibujos de antes no lo tienen: negro)
+    public bool rellenoAbierto;       // rellena aunque las puntas no se unan (la cubeta)
+    public Color colorFondo;          // color del relleno elegido en la paleta (transparente = el de siempre)
 }
 
 [System.Serializable]
@@ -350,13 +352,53 @@ public class Dibujo : MonoBehaviour
         // Boceto (gris o azul) manda; si no, la línea lleva su color.
         if (m != materialLinea || EsNegro(t.color))
             return m;
+        // Tinta invisible: no se ve; mientras editas se muestra gris clarito.
+        if (t.Invisible)
+            return MaterialColor(ColorInvisibleEditando);
         return MaterialColor(t.color);
     }
 
     // ---------- Colores de las líneas ----------
 
-    // El color de las líneas nuevas (lo elige la paleta de la mano izquierda).
+    // El color de las líneas nuevas (lo elige la paleta de la mano izquierda). Transparente = tinta invisible.
     public Color ColorNuevo { get; set; } = Color.black;
+    public static readonly Color TintaInvisible = new Color(0f, 0f, 0f, 0f);
+    static readonly Color ColorInvisibleEditando = new Color(0.72f, 0.74f, 0.8f, 1f);
+
+    // Con la paleta abierta o editando (nodos, borrador...), las líneas de tinta invisible se ven gris clarito.
+    public void VerInvisibles(bool ver)
+    {
+        if (Trazo.verInvisibles == ver)
+            return;
+        Trazo.verInvisibles = ver;
+        foreach (var t in trazos)
+            if (t != null && t.Invisible)
+                t.Reconstruir(true);
+    }
+
+    // La cubeta: rellena una forma (aunque esté abierta) con un color. Con tinta invisible = quita el relleno.
+    public void RellenarConColor(Trazo t, Color c)
+    {
+        if (t == null)
+            return;
+        GuardarParaDeshacer();
+        if (c.a < 0.01f)
+        {
+            t.relleno = false;
+            t.rellenoAbierto = false;
+        }
+        else
+        {
+            if (!t.cerrado)
+                t.rellenoAbierto = true;
+            t.relleno = true;
+            t.colorFondo = new Color(c.r, c.g, c.b, 1f);
+        }
+        t.Reconstruir();
+        Trazo.huboCambio = false;
+        HayCambios = true;
+        Avisar();
+    }
 
     readonly Dictionary<int, Material> materialesColor = new Dictionary<int, Material>();
 
@@ -920,11 +962,13 @@ public class Dibujo : MonoBehaviour
     // Tocar un relleno: si no tiene color lo pinta; si ya tiene, pasa al siguiente color.
     public void CambiarColorRelleno(Trazo t)
     {
-        if (t == null || !t.cerrado)
+        if (t == null || (!t.cerrado && !t.rellenoAbierto))
             return;
         GuardarParaDeshacer();
         if (!t.relleno)
             t.relleno = true;
+        else if (t.colorFondo.a > 0.01f)
+            t.colorFondo = new Color(0f, 0f, 0f, 0f); // tenía un color de la paleta: vuelve a los de siempre
         else
             t.colorRelleno = (t.colorRelleno + 1) % Trazo.Paleta.Length;
         t.Reconstruir();
@@ -936,6 +980,7 @@ public class Dibujo : MonoBehaviour
         if (t == null)
             return;
         t.relleno = false;
+        t.rellenoAbierto = false;
         t.Reconstruir();
         Avisar();
     }

@@ -16,6 +16,8 @@ public class PanelMuneca : MonoBehaviour
     public BotonTocable btnIman;
     [Tooltip("Abre la paleta de colores (por si el gesto de la palma no la abre)")]
     public BotonTocable btnColores;
+    [Tooltip("? = las secciones del tutorial")]
+    public BotonTocable btnAyuda;
     [Tooltip("X para cerrar el menú")]
     public BotonTocable btnCerrar;
     Renderer[] iconoIman;
@@ -55,6 +57,12 @@ public class PanelMuneca : MonoBehaviour
         {
             Conectar(btnCerrar, control.CerrarMenu);
             Conectar(btnColores, control.AlternarPaleta);
+            Conectar(btnAyuda, () =>
+            {
+                control.CerrarMenu();
+                if (Tutorial.Instancia != null)
+                    Tutorial.Instancia.AbrirSecciones();
+            });
         }
         if (figuras == null && dibujo != null)
             figuras = dibujo.figuras;

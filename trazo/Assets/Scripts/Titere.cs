@@ -120,6 +120,8 @@ public class Titere : MonoBehaviour
     [Tooltip("Material del aro indicador (apagar con la palma arriba)")]
     public Material materialIndicador;
     readonly Transform[] aros = new Transform[2];
+    // Raya punteada del dedo índice al tronco de cada personaje que controlas (así se ve quién lo mueve).
+    readonly LineaPunteada[] lineasControl = new LineaPunteada[2];
     readonly Transform[] rellenos = new Transform[2];
 
     // Dedos (para posar)
@@ -682,6 +684,7 @@ public class Titere : MonoBehaviour
         if (dibujo == null || control == null)
             return;
         ActualizarMarcos();
+        ActualizarLineasControl();
 
         // "Choca esos cinco" con cada mano.
         if (fase != Fase.Posando && fase != Fase.CuentaGrabar)
@@ -1025,6 +1028,34 @@ public class Titere : MonoBehaviour
         r.sharedMaterial = materialIndicador;
         r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         r.receiveShadows = false;
+    }
+
+    // Raya punteada de la punta del índice (derecho para la mano 0, izquierdo para la 1) al tronco del personaje.
+    void ActualizarLineasControl()
+    {
+        for (int h = 0; h < 2; h++)
+        {
+            var m = manos[h];
+            var mano = h == 0 ? control.Der : control.Izq;
+            bool ver = m != null && m.listo && fase != Fase.Posando && mano.valida && control.Cabeza != null;
+            if (!ver)
+            {
+                if (lineasControl[h] != null)
+                    lineasControl[h].Ocultar();
+                continue;
+            }
+            if (lineasControl[h] == null)
+                lineasControl[h] = new LineaPunteada();
+            Vector3 tronco = Centro(m.datos) + Vector3.up * (m.LargoPiernaMundo * 0.6f);
+            lineasControl[h].Poner(mano.indice, tronco, control.Cabeza.position);
+        }
+    }
+
+    void OnDestroy()
+    {
+        foreach (var l in lineasControl)
+            if (l != null)
+                l.Destruir();
     }
 
     // La cadera del personaje, en el mundo.
