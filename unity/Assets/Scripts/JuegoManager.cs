@@ -79,6 +79,7 @@ public class JuegoManager : MonoBehaviour
     Estado estado;
     Coroutine rutina;
     AvisoLlamativo aviso;
+    PajaroEncima pajaroEncima;
     bool avisoArriba, reacomodando;
     Graphic[] graficosPanel;
     Material[] materialesNormales, materialesEncima;
@@ -104,6 +105,7 @@ public class JuegoManager : MonoBehaviour
         personaje.alSerEncontrado.AddListener(AlEncontrarlo);
 
         aviso = GetComponent<AvisoLlamativo>();
+        pajaroEncima = GetComponent<PajaroEncima>();
 
         var palmadas = GetComponent<DetectorPalmadas>();
         if (palmadas == null)
@@ -150,6 +152,8 @@ public class JuegoManager : MonoBehaviour
         ignorarPalmadasHasta = Time.time + 1f;
         personaje.Activo = false;
         personaje.Reiniciar();
+        if (pajaroEncima != null)
+            pajaroEncima.Subir(personaje, false);
         EsconderPersonaje();
         MostrarCronometro(false);
 
@@ -240,6 +244,8 @@ public class JuegoManager : MonoBehaviour
     {
         string codigo = codigos.Length > 0 ? codigos[Random.Range(0, codigos.Length)] : "";
         Terminar("¡Me encontraste!\nTu bono de descuento:", codigo + textoOtraVez);
+        if (pajaroEncima != null)
+            pajaroEncima.Subir(personaje, true); // el aviso tapa todo menos al pájaro
 
         if (confeti != null)
         {

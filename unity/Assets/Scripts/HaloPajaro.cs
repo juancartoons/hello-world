@@ -22,6 +22,8 @@ public class HaloPajaro : MonoBehaviour
     float aparicion;
     bool visible;
 
+    public Renderer Render => render;
+
     void Start()
     {
         var rig = FindFirstObjectByType<OVRCameraRig>();

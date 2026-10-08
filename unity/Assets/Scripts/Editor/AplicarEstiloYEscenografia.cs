@@ -908,26 +908,43 @@ public static class AplicarEstiloYEscenografia
         UnityEditor.Events.UnityEventTools.AddPersistentListener(tocarDia.alTocar, diaNoche.Dia);
         UnityEditor.Events.UnityEventTools.AddPersistentListener(tocarNoche.alTocar, diaNoche.Noche);
 
-        // ---- Botón secreto: círculo blanco pequeño en la esquina de abajo (gris = modo optimizado activado) ----
-        var secreto = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        secreto.name = "BotonSecreto";
-        Object.DestroyImmediate(secreto.GetComponent<Collider>());
-        secreto.transform.SetParent(opciones.transform, false);
-        secreto.transform.localPosition = new Vector3(0.27f, -0.13f, 0f);
-        secreto.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-        secreto.transform.localScale = new Vector3(0.028f, 0.003f, 0.028f);
-        secreto.AddComponent<BoxCollider>();
-        var rendSecreto = secreto.GetComponent<Renderer>();
-        rendSecreto.sharedMaterial = matBoton;
-        var tocarSecreto = secreto.AddComponent<BotonTocable>();
+        // ---- Botones secretos: círculos pequeños sin texto en las esquinas de abajo (blanco = apagado, gris = activado) ----
+        BotonTocable CrearBotonSecreto(string nombre, float x, out Renderer render)
+        {
+            var secreto = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            secreto.name = nombre;
+            Object.DestroyImmediate(secreto.GetComponent<Collider>());
+            secreto.transform.SetParent(opciones.transform, false);
+            secreto.transform.localPosition = new Vector3(x, -0.13f, 0f);
+            secreto.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            secreto.transform.localScale = new Vector3(0.028f, 0.003f, 0.028f);
+            secreto.AddComponent<BoxCollider>();
+            render = secreto.GetComponent<Renderer>();
+            render.sharedMaterial = matBoton;
+            var tocar = secreto.AddComponent<BotonTocable>();
+            if (tocar.alTocar == null) tocar.alTocar = new UnityEngine.Events.UnityEvent();
+            return tocar;
+        }
+
+        // Derecha: modo optimizado (ajustes de URP + fundido al teletransportarse)
+        var tocarSecreto = CrearBotonSecreto("BotonSecreto", 0.27f, out var rendSecreto);
         var optimizado = manager.GetComponent<ModoOptimizado>();
         if (optimizado == null)
             optimizado = Undo.AddComponent<ModoOptimizado>(manager.gameObject);
         Undo.RecordObject(optimizado, "Modo optimizado");
         optimizado.boton = rendSecreto;
         EditorUtility.SetDirty(optimizado);
-        if (tocarSecreto.alTocar == null) tocarSecreto.alTocar = new UnityEngine.Events.UnityEvent();
         UnityEditor.Events.UnityEventTools.AddPersistentListener(tocarSecreto.alTocar, optimizado.Alternar);
+
+        // Izquierda: el pájaro encontrado se ve por encima del aviso del premio
+        var tocarSecreto2 = CrearBotonSecreto("BotonSecreto2", -0.27f, out var rendSecreto2);
+        var pajaroEncima = manager.GetComponent<PajaroEncima>();
+        if (pajaroEncima == null)
+            pajaroEncima = Undo.AddComponent<PajaroEncima>(manager.gameObject);
+        Undo.RecordObject(pajaroEncima, "Pájaro encima");
+        pajaroEncima.boton = rendSecreto2;
+        EditorUtility.SetDirty(pajaroEncima);
+        UnityEditor.Events.UnityEventTools.AddPersistentListener(tocarSecreto2.alTocar, pajaroEncima.Alternar);
 
         ArreglarSuperficieTeletransporteMeta(modo.teletransporteMeta);
 
