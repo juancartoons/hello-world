@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 9 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v26***
+*Actualizado: 9 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v27***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,10 +16,23 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ---
 
-## 1. Próxima tanda (ya aprobado)
+## 0. Hecho en la v27 (falta probarlo en el visor)
 
-- [ ] **Fondo verde (croma)** para grabar videos: se graba en el Quest con fondo verde y luego, en un editor gratis (CapCut o DaVinci Resolve), se pone encima de un video real de tu cuarto. Así se ve como el passthrough de un Quest 3.
-- [ ] **Fondo "Mi cuarto" (foto 360)**: una foto panorámica 360° de tu cuarto, tomada con el celular, que la app muestra alrededor tuyo como si fuera el passthrough. Sirve para grabar con el Quest 2.
+- [x] **Nodos con el índice**: tocas un nodo y se pega a tu dedo; lo sueltas abriendo la mano izquierda (pulgar + medio).
+  - Respaldo de la versión con pellizco (v26): `trazo/Respaldos/nodos-con-pellizco-v26/` (con un LEEME de cómo volver a ella).
+- [x] **Lazo**: empiezas en un lugar vacío, rodeas varios nodos (se ponen naranjas) y al tocar uno se mueven todos juntos.
+- [x] **Plastilina**: índice + medio derechos juntos y estirados al tocar un nodo = los vecinos lo siguen con suavidad (se ven naranja claro).
+- [x] **Nodo nuevo**: dejar el dedo quieto medio segundo sobre la línea elegida.
+- [x] **Tutorial "3 · Nodos: lazo y plastilina"** en el panel "?", y el paso 7 del tutorial de presentación actualizado.
+- [x] **Plano 2D**: el dedo puede pasar detrás de la hoja y la línea sigue; se ve una copia de tu mano (guante) sobre la hoja y un anillito naranja en la punta. Alejarlo hacia ti sigue levantando el lápiz.
+- [x] **Manos de la simulación** (tutorial) más suaves y realistas: sin rayas de polígonos, con más carne en el dorso.
+- [x] **Muñeco del tutorial** huyendo a 1.5 cm del dedo borrador.
+- [x] **Fondo 360**: "Cuarto 360" (un cuarto real de prueba, de Poly Haven) y "Mi foto 360" (cualquier foto 360 que elijas). Se cambian con el botón **Fondo**.
+- [x] **Imagen +** ahora abre un buscador con TODAS las imágenes del Quest (Descargas, Cámara, capturas, WhatsApp, Facebook…): tocas una, la ves en grande y decides **Importar** o **Fondo 360**. La primera vez el Quest pide permiso para ver tus fotos.
+
+## 1. Próxima tanda
+
+- [ ] **Fondo verde (croma)** para grabar videos (pospuesto: "todavía no es urgente"). Se graba en el Quest con fondo verde y luego, en un editor gratis (CapCut o DaVinci Resolve), se pone encima de un video real de tu cuarto.
 
 ## 2. Propuestas esperando tu decisión (escribe HY para hacerlas)
 
@@ -53,6 +66,16 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ## 5. Para probar en el visor (desde la v21 casi nada se ha probado)
 
+**Nuevo en la v27:**
+- [ ] Nodos: tocar, seguir el dedo y soltar abriendo la izquierda. ¿Se agarran nodos sin querer?
+- [ ] Lazo (que no se active al mover un nodo) y plastilina (índice + medio).
+- [ ] Plano 2D: pasar el dedo detrás de la hoja (copia de la mano + anillito).
+- [ ] Fondo: Cuarto 360 y Mi foto 360 (¿se ve nítido? ¿hay una rayita en la unión de la foto?).
+- [ ] Imagen +: la ventana de permiso, las carpetas, las miniaturas, Importar y Fondo 360.
+- [ ] Manos del tutorial: ¿se ven bien la palma, el dorso y el pulgar?
+
+**De antes:**
+
 - [ ] **Paleta en la palma**: abre fácil; botón "Colores" debajo del menú.
 - [ ] **Temblor dentro de la paleta**: la línea del centro y los 5 botoncitos de abajo.
 - [ ] **Carrusel de instrumentos sobre el parlante**: arrastrar, tocar los de los lados, tamaño (18 % más chico), desaparece en silencio, la bolita del dedo se esconde cerca.
@@ -73,7 +96,7 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [ ] Enviar la app.
 
 **Cómo grabar con el Quest 2** (las grabaciones del Quest no capturan el passthrough):
-1. **Foto 360 de tu cuarto** como fondo: rápido y fácil (pendiente en la próxima tanda).
+1. **Foto 360 de tu cuarto** como fondo (ya está en la v27): toma una foto 360 de tu cuarto (con una app gratis de fotos 360 en el celular; tiene que ser el doble de ancha que de alta), pásala al Quest y elígela en **Imagen + → Fondo 360**.
 2. **Fondo verde + video real de tu cuarto**: lo más realista, para tomas en primera persona.
 3. **Mixed Reality Capture** (gratis, con PC + OBS + cámara o celular): te filma a ti dibujando en tu cuarto, en tercera persona. Ideal para el tráiler.
 

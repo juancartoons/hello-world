@@ -26,6 +26,10 @@ public class ManoSeguida
 
     public Vector3 PuntoPellizco => (indice + pulgar) * 0.5f;
 
+    // Índice y medio estirados y juntos (como diciendo "dos"): el anular queda doblado, lejos del medio.
+    // (Con la mano plana, el anular también está junto: así no se confunde.)
+    public bool DosDedos => valida && Vector3.Distance(indice, medio) < 0.025f && Vector3.Distance(medio, anular) > 0.03f;
+
     public float TiempoPellizco => pellizco ? Time.time - pellizcoDesde : 0f;
 
     public void Actualizar(Transform ancla, float suavizado, float entra, float sale)

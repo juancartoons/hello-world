@@ -353,6 +353,12 @@ public class Referencias : MonoBehaviour
         }
         string ruta = archivos[siguienteArchivo % archivos.Count];
         siguienteArchivo++;
+        Poner(Path.GetFileName(ruta), cabeza);
+    }
+
+    // Pone frente a tus ojos una imagen que ya está en la carpeta de imágenes de la app (Dibujos/Imagenes).
+    public bool Poner(string archivo, Transform cabeza)
+    {
         if (ocultas)
         {
             ocultas = false;
@@ -367,7 +373,7 @@ public class Referencias : MonoBehaviour
         Vector3 ojos = cabeza != null ? cabeza.position : new Vector3(0f, 1.5f, 0f);
         var d = new DatosImagen
         {
-            archivo = Path.GetFileName(ruta),
+            archivo = archivo,
             posicion = ojos + adelante * 0.7f,
             rotacion = Quaternion.LookRotation(adelante, Vector3.up),
             escala = 0.4f
@@ -376,11 +382,12 @@ public class Referencias : MonoBehaviour
         if (img == null)
         {
             Mensaje("No se pudo abrir " + d.archivo);
-            return;
+            return false;
         }
         Seleccionar(img.raiz);
         Guardar();
         Mensaje("Imagen: " + d.archivo);
+        return true;
     }
 
     public void QuitarSeleccionada()

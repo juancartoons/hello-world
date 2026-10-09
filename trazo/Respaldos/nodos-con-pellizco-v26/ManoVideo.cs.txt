@@ -1,31 +1,35 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// Una mano "humana" suave (las manos guía del tutorial y las del video del proceso):
-//  - PALMA: un "cojín" de piel (sección casi rectangular con los bordes bien redondeados) que va de la
-//    muñeca a los nudillos y sigue un poquito más (la piel entre los dedos). Dorso con carne, sin aristas.
-//  - DEDOS: "salchichas" suaves que siguen una curva por sus articulaciones, más gruesas en la base y con
-//    la punta redondeada. El pulgar nace carnoso cerca de la muñeca (como la base real del pulgar).
-//  - Todo con normales suaves: el contorno de la mano guía se ve limpio (sin líneas de triángulos).
-// En el video lleva un GUANTE NEGRO SIN DEDOS (palma y base del pulgar) y una MANGA larga y cerrada.
-// Se arma con las 21 articulaciones (en coordenadas del mundo).
+// Una mano "normal" para el video del proceso (en vez de las líneas de los huesos):
+// dedos redondeados que se afinan hacia la punta y una palma con grosor.
+// Lleva un GUANTE NEGRO SIN DEDOS (los dedos quedan descubiertos desde su base) y una MANGA de ropa
+// larga y cerrada (así el brazo no se ve hueco).
+// Se arma con las 21 articulaciones que guardó GrabadorProceso (en coordenadas del mundo).
 public sealed class ManoVideo
 {
-    // Radio de cada dedo en sus 4 puntos (base, nudillo, nudillo, punta), en metros:
-    // pulgar, índice, medio, anular y meñique.
-    static readonly float[,] RadioDedo =
+    // Grosor (radio en metros) de cada articulación: muñeca, pulgar (4), índice (4), medio (4), anular (4), meñique (4).
+    static readonly float[] Radio =
     {
-        { 0.0185f, 0.0124f, 0.0104f, 0.0092f },
-        { 0.0100f, 0.0091f, 0.0082f, 0.0074f },
-        { 0.0103f, 0.0094f, 0.0085f, 0.0076f },
-        { 0.0098f, 0.0089f, 0.0080f, 0.0072f },
-        { 0.0088f, 0.0079f, 0.0071f, 0.0064f },
+        0.021f,
+        0.0135f, 0.012f, 0.0105f, 0.0092f,
+        0.0108f, 0.0097f, 0.0087f, 0.0077f,
+        0.0111f, 0.0100f, 0.0089f, 0.0079f,
+        0.0105f, 0.0095f, 0.0085f, 0.0075f,
+        0.0094f, 0.0084f, 0.0076f, 0.0068f,
     };
-    const int LadosDedo = 16;        // vueltas redondas (contorno suave)
-    const int MuestrasTramo = 6;     // puntos de la curva entre dos articulaciones
-    const int LadosPalma = 24;
-    const int FilasPalma = 18;
-    const float ExpPalma = 2.6f;     // 2 = óvalo; más = más "rectangular" (con bordes redondeados)
+    static readonly int[] Segmentos =
+    {
+        0, 1, 1, 2, 2, 3, 3, 4,
+        5, 6, 6, 7, 7, 8,
+        9, 10, 10, 11, 11, 12,
+        13, 14, 14, 15, 15, 16,
+        17, 18, 18, 19, 19, 20,
+        0, 5, 0, 17,
+    };
+    static readonly int[] Palma = { 0, 1, 5, 9, 13, 17 };
+    const int Lados = 10;
+    const int Paralelos = 6;
 
     // Partes: 0 = piel (dedos), 1 = guante (palma, muñeca, base de los dedos), 2 = manga.
     const int Piel = 0, Guante = 1, Manga = 2;
@@ -40,12 +44,8 @@ public sealed class ManoVideo
     readonly List<Vector3> normales = new List<Vector3>();
     readonly List<int>[] partes = { new List<int>(), new List<int>(), new List<int>() };
     List<int> triangulos;
-    readonly Vector3[] curva = new Vector3[3 * MuestrasTramo + 1];
-    readonly float[] radios = new float[3 * MuestrasTramo + 1];
-    readonly Vector3[] tangentes = new Vector3[3 * MuestrasTramo + 1];
-    readonly Vector3[] palmaGrilla = new Vector3[(FilasPalma + 1) * LadosPalma];
-    readonly Vector3[] palmaCentros = new Vector3[FilasPalma + 1];
-    readonly Vector3[] puntosDedo = new Vector3[4];
+    static Vector3[] esfera;
+    static int[] esferaTri;
 
     readonly bool guia;
     MeshRenderer render;
@@ -77,11 +77,12 @@ public sealed class ManoVideo
         }
         mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         mr.receiveShadows = false;
+        ArmarEsfera();
     }
 
     public void Poner(Vector3[] a)
     {
-        bool ver = a != null && a.Length >= 21;
+        bool ver = a != null && a.Length >= Radio.Length;
         if (go.activeSelf != ver)
             go.SetActive(ver);
         if (!ver)
@@ -90,11 +91,26 @@ public sealed class ManoVideo
         normales.Clear();
         foreach (var l in partes)
             l.Clear();
+        for (int i = 0; i < Radio.Length; i++)
+        {
+            triangulos = partes[EnResaltado(i) ? Manga : DeGuante(i) ? Guante : Piel];
+            Esfera(a[i], Radio[i]);
+        }
+        for (int k = 0; k + 1 < Segmentos.Length; k += 2)
+        {
+            int i0 = Segmentos[k], i1 = Segmentos[k + 1];
+            // El tubo va con guante si sus dos puntas están dentro del guante (palma y base del pulgar).
+            triangulos = partes[EnResaltado(i0) && EnResaltado(i1) ? Manga : DeGuante(i0) && DeGuante(i1) ? Guante : Piel];
+            Tubo(a[i0], Radio[i0], a[i1], Radio[i1]);
+        }
         triangulos = partes[Guante];
-        PalmaSuave(a);
-        for (int d = 0; d < 5; d++)
-            DedoSuave(a, d);
-        // Manga (solo en el video): desde la muñeca hacia atrás, larga y cerrada al final.
+        PalmaGruesa(a);
+        // Relleno del dorso y la palma (redondeado, ni flaco ni gordo).
+        Esfera(Vector3.Lerp(a[0], a[9], 0.5f), 0.019f);
+        Esfera(Vector3.Lerp(a[0], a[5], 0.55f), 0.0165f);
+        Esfera(Vector3.Lerp(a[0], a[13], 0.55f), 0.0165f);
+        Esfera(Vector3.Lerp(a[0], a[17], 0.5f), 0.0145f);
+        // Manga: desde la muñeca hacia atrás, larga y cerrada al final.
         Vector3 atras = a[0] - a[9];
         if (!guia && atras.sqrMagnitude > 1e-8f)
         {
@@ -102,9 +118,10 @@ public sealed class ManoVideo
             triangulos = partes[Manga];
             Vector3 inicio = a[0] + atras * 0.012f;
             Vector3 fin = a[0] + atras * LargoManga;
-            TuboSuave(inicio, 0.0235f, fin, 0.0285f);
-            Tapa(inicio, -atras, 0.0235f);
-            Tapa(fin, atras, 0.0285f);
+            // Manga ajustada al brazo (un poquito más ancha que la muñeca).
+            Tubo(inicio, Radio[0] * 1.12f, fin, Radio[0] * 1.35f);
+            Tapa(inicio, -atras, Radio[0] * 1.12f);
+            Tapa(fin, atras, Radio[0] * 1.35f);
         }
         malla.Clear();
         malla.subMeshCount = 3;
@@ -113,208 +130,6 @@ public sealed class ManoVideo
         for (int k = 0; k < 3; k++)
             malla.SetTriangles(partes[k], k);
         malla.RecalculateBounds();
-    }
-
-    // La palma: un "cojín" de la muñeca a los nudillos. En cada fila, la sección es una "superelipse"
-    // (casi rectangular con los bordes muy redondeados): más ancha en los nudillos, con carne en el dorso.
-    // Las dos puntas se redondean como la punta de un huevo.
-    void PalmaSuave(Vector3[] a)
-    {
-        Vector3 nudillos = (a[5] + a[9] + a[13] + a[17]) * 0.25f;
-        Vector3 F = nudillos - a[0];
-        float largo = F.magnitude;
-        if (largo < 1e-4f)
-            return;
-        F /= largo;
-        Vector3 S = a[5] - a[17];
-        S -= F * Vector3.Dot(S, F);
-        float anchoNudillos = S.magnitude;
-        if (anchoNudillos < 1e-5f)
-            return;
-        S /= anchoNudillos;
-        Vector3 N = Vector3.Cross(F, S).normalized;
-        // Mitad del ancho y mitad del grosor (metros): en la muñeca, en el medio y en los nudillos.
-        float anchoMuneca = 0.0245f, anchoFin = anchoNudillos * 0.5f + 0.0095f;
-        const float grosorMuneca = 0.0155f, grosorMedio = 0.016f, grosorFin = 0.0125f;
-        // v: 0 = muñeca, 1 = nudillos. Empieza un poco detrás de la muñeca y termina un poco después
-        // de los nudillos (la piel entre los dedos).
-        const float vAtras = -0.16f, vAdelante = 1.12f;
-        for (int f = 0; f <= FilasPalma; f++)
-        {
-            float v = Mathf.Lerp(vAtras, vAdelante, f / (float)FilasPalma);
-            float vc = Mathf.Clamp01(v);
-            float tapa = 1f;
-            if (v < 0f)
-            {
-                float e = v / vAtras;
-                tapa = Mathf.Sqrt(Mathf.Max(0f, 1f - e * e));
-            }
-            else if (v > 1f)
-            {
-                float e = (v - 1f) / (vAdelante - 1f);
-                tapa = Mathf.Sqrt(Mathf.Max(0f, 1f - e * e));
-            }
-            float w = Mathf.Lerp(anchoMuneca, anchoFin, Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(vc / 0.65f))) * tapa;
-            float t = (vc < 0.5f ? Mathf.Lerp(grosorMuneca, grosorMedio, vc * 2f) : Mathf.Lerp(grosorMedio, grosorFin, (vc - 0.5f) * 2f)) * tapa;
-            Vector3 c = a[0] + F * (v * largo);
-            palmaCentros[f] = c;
-            for (int k = 0; k < LadosPalma; k++)
-            {
-                float ang = 2f * Mathf.PI * k / LadosPalma;
-                float cs = Mathf.Cos(ang), sn = Mathf.Sin(ang);
-                float x = Mathf.Sign(cs) * Mathf.Pow(Mathf.Abs(cs), 2f / ExpPalma);
-                float y = Mathf.Sign(sn) * Mathf.Pow(Mathf.Abs(sn), 2f / ExpPalma);
-                palmaGrilla[f * LadosPalma + k] = c + S * (x * w) + N * (y * t);
-            }
-        }
-        // Normales suaves (de la forma de la superficie, mirando hacia afuera).
-        int b = vertices.Count;
-        for (int f = 0; f <= FilasPalma; f++)
-            for (int k = 0; k < LadosPalma; k++)
-            {
-                Vector3 p = palmaGrilla[f * LadosPalma + k];
-                Vector3 n;
-                if (f == 0)
-                {
-                    n = -F;
-                }
-                else if (f == FilasPalma)
-                {
-                    n = F;
-                }
-                else
-                {
-                    Vector3 dk = palmaGrilla[f * LadosPalma + (k + 1) % LadosPalma] - palmaGrilla[f * LadosPalma + (k + LadosPalma - 1) % LadosPalma];
-                    Vector3 dv = palmaGrilla[(f + 1) * LadosPalma + k] - palmaGrilla[(f - 1) * LadosPalma + k];
-                    n = Vector3.Cross(dk, dv);
-                    Vector3 fuera = p - palmaCentros[f];
-                    if (n.sqrMagnitude < 1e-16f)
-                        n = fuera;
-                    if (Vector3.Dot(n, fuera) < 0f)
-                        n = -n;
-                    n = n.sqrMagnitude > 1e-16f ? n.normalized : F;
-                }
-                vertices.Add(p);
-                normales.Add(n);
-            }
-        for (int f = 0; f < FilasPalma; f++)
-            for (int k = 0; k < LadosPalma; k++)
-            {
-                int i0 = b + f * LadosPalma + k, i1 = b + (f + 1) * LadosPalma + k;
-                int j0 = b + f * LadosPalma + (k + 1) % LadosPalma, j1 = b + (f + 1) * LadosPalma + (k + 1) % LadosPalma;
-                triangulos.Add(i0); triangulos.Add(i1); triangulos.Add(j0);
-                triangulos.Add(j0); triangulos.Add(i1); triangulos.Add(j1);
-            }
-    }
-
-    // Un dedo: una "salchicha" suave por la curva de sus 4 puntos (Catmull-Rom), del grosor de la base al
-    // de la punta, con las dos puntas redondeadas (la de la punta, un poco achatada, como una yema).
-    void DedoSuave(Vector3[] a, int d)
-    {
-        int b = 1 + d * 4;
-        for (int k = 0; k < 4; k++)
-            puntosDedo[k] = a[b + k];
-        // La base del pulgar se hunde un poco en la palma: así se ve carnosa (no un tubo pegado).
-        if (d == 0)
-            puntosDedo[0] = Vector3.Lerp(a[1], Vector3.Lerp(a[0], a[9], 0.45f), 0.35f);
-        int n = curva.Length;
-        for (int s = 0; s < n; s++)
-        {
-            float u = s / (float)MuestrasTramo;           // 0..3
-            int tramo = Mathf.Min(2, Mathf.FloorToInt(u));
-            float t = u - tramo;
-            Vector3 p0 = puntosDedo[Mathf.Max(0, tramo - 1)];
-            Vector3 p1 = puntosDedo[tramo];
-            Vector3 p2 = puntosDedo[tramo + 1];
-            Vector3 p3 = puntosDedo[Mathf.Min(3, tramo + 2)];
-            curva[s] = CatmullRom(p0, p1, p2, p3, t);
-            radios[s] = Mathf.Lerp(RadioDedo[d, tramo], RadioDedo[d, tramo + 1], t);
-        }
-        for (int s = 0; s < n; s++)
-        {
-            Vector3 dir = curva[Mathf.Min(n - 1, s + 1)] - curva[Mathf.Max(0, s - 1)];
-            tangentes[s] = dir.sqrMagnitude > 1e-12f ? dir.normalized : (s > 0 ? tangentes[s - 1] : Vector3.forward);
-        }
-        // Los dedos de la mano guía pueden ir resaltados (otro color); en el video, la base del pulgar va con guante.
-        List<int> lista = guia && resaltado == d ? partes[Manga] : partes[Piel];
-        List<int> listaBase = !guia && d == 0 ? partes[Guante] : lista;
-        // Marco que no se tuerce a lo largo del dedo (transporte paralelo).
-        Vector3 eje0 = tangentes[0];
-        Vector3 nn = Vector3.Cross(eje0, Mathf.Abs(eje0.y) < 0.9f ? Vector3.up : Vector3.right).normalized;
-        Vector3 nnBase = nn, wwBase = Vector3.Cross(eje0, nn), nnPunta = nn, wwPunta = wwBase;
-        int inicio = vertices.Count;
-        for (int s = 0; s < n; s++)
-        {
-            Vector3 eje = tangentes[s];
-            nn -= eje * Vector3.Dot(nn, eje);
-            if (nn.sqrMagnitude < 1e-10f)
-                nn = Vector3.Cross(eje, Mathf.Abs(eje.y) < 0.9f ? Vector3.up : Vector3.right);
-            nn.Normalize();
-            Vector3 ww = Vector3.Cross(eje, nn);
-            if (s == 0)
-            {
-                nnBase = nn;
-                wwBase = ww;
-            }
-            nnPunta = nn;
-            wwPunta = ww;
-            for (int k = 0; k < LadosDedo; k++)
-            {
-                float ang = 2f * Mathf.PI * k / LadosDedo;
-                Vector3 radial = nn * Mathf.Cos(ang) + ww * Mathf.Sin(ang);
-                vertices.Add(curva[s] + radial * radios[s]);
-                normales.Add(radial);
-            }
-            if (s > 0)
-            {
-                var tri = s <= MuestrasTramo ? listaBase : lista;
-                int r0 = inicio + (s - 1) * LadosDedo, r1 = inicio + s * LadosDedo;
-                for (int k = 0; k < LadosDedo; k++)
-                {
-                    int i0 = r0 + k, i1 = r1 + k, j0 = r0 + (k + 1) % LadosDedo, j1 = r1 + (k + 1) % LadosDedo;
-                    tri.Add(i0); tri.Add(i1); tri.Add(j0);
-                    tri.Add(j0); tri.Add(i1); tri.Add(j1);
-                }
-            }
-        }
-        Cupula(inicio, curva[0], -tangentes[0], nnBase, wwBase, radios[0], 1f, listaBase);
-        Cupula(inicio + (n - 1) * LadosDedo, curva[n - 1], tangentes[n - 1], nnPunta, wwPunta, radios[n - 1], 0.6f, lista);
-    }
-
-    // Tapa redonda en la punta de un dedo, cosida al último anillo. largo menor que 1 = más achatada.
-    void Cupula(int anillo, Vector3 centro, Vector3 eje, Vector3 nn, Vector3 ww, float radio, float largo, List<int> tri)
-    {
-        const int filas = 4;
-        int previo = anillo;
-        for (int j = 1; j < filas; j++)
-        {
-            float fi = 0.5f * Mathf.PI * j / filas;
-            float cf = Mathf.Cos(fi), sf = Mathf.Sin(fi);
-            int fila = vertices.Count;
-            for (int k = 0; k < LadosDedo; k++)
-            {
-                float ang = 2f * Mathf.PI * k / LadosDedo;
-                Vector3 radial = nn * Mathf.Cos(ang) + ww * Mathf.Sin(ang);
-                vertices.Add(centro + radial * (radio * cf) + eje * (radio * largo * sf));
-                normales.Add((radial * cf + eje * (sf / largo)).normalized);
-            }
-            for (int k = 0; k < LadosDedo; k++)
-            {
-                int i0 = previo + k, i1 = fila + k, j0 = previo + (k + 1) % LadosDedo, j1 = fila + (k + 1) % LadosDedo;
-                tri.Add(i0); tri.Add(i1); tri.Add(j0);
-                tri.Add(j0); tri.Add(i1); tri.Add(j1);
-            }
-            previo = fila;
-        }
-        int polo = vertices.Count;
-        vertices.Add(centro + eje * (radio * largo));
-        normales.Add(eje);
-        for (int k = 0; k < LadosDedo; k++)
-        {
-            tri.Add(previo + k);
-            tri.Add(polo);
-            tri.Add(previo + (k + 1) % LadosDedo);
-        }
     }
 
     // Mano guía: un dedo de otro color (0 pulgar, 1 índice, 2 medio, 3 anular, 4 meñique; -1 = ninguno).
@@ -328,6 +143,17 @@ public sealed class ManoVideo
             return;
         resaltado = nuevo;
         render.sharedMaterials = new[] { materialBase, materialBase, nuevo >= 0 ? m : materialBase };
+    }
+
+    bool EnResaltado(int i)
+    {
+        return guia && resaltado >= 0 && i >= 1 + resaltado * 4 && i <= 4 + resaltado * 4;
+    }
+
+    // Con guante: la muñeca, la base del pulgar y los nudillos (la base de cada dedo). Lo demás es piel.
+    static bool DeGuante(int i)
+    {
+        return i == 0 || i == 1 || i == 2 || i == 5 || i == 9 || i == 13 || i == 17;
     }
 
     static Material Copia(Material m, Color c)
@@ -346,17 +172,17 @@ public sealed class ManoVideo
         int c = vertices.Count;
         vertices.Add(centro);
         normales.Add(normal);
-        for (int k = 0; k < LadosDedo; k++)
+        for (int k = 0; k < Lados; k++)
         {
-            float ang = 2f * Mathf.PI * k / LadosDedo;
+            float ang = 2f * Mathf.PI * k / Lados;
             vertices.Add(centro + (u * Mathf.Cos(ang) + w * Mathf.Sin(ang)) * radio);
             normales.Add(normal);
         }
-        for (int k = 0; k < LadosDedo; k++)
+        for (int k = 0; k < Lados; k++)
         {
             triangulos.Add(c);
             triangulos.Add(c + 1 + k);
-            triangulos.Add(c + 1 + (k + 1) % LadosDedo);
+            triangulos.Add(c + 1 + (k + 1) % Lados);
         }
     }
 
@@ -374,7 +200,7 @@ public sealed class ManoVideo
         render.sharedMaterials = new[] { materialBase, rayas != null ? rayas : materialBase, materialBase };
     }
 
-    public const float EscalaGuante = 0.93f;
+    const float EscalaGuante = 0.93f;
     readonly Vector3[] guanteA = new Vector3[21];
 
     public void PonerGuante(Vector3[] entrada, bool izquierda)
@@ -568,5 +394,116 @@ public sealed class ManoVideo
             Object.Destroy(malla);
         if (go != null)
             Object.Destroy(go);
+    }
+
+    static void ArmarEsfera()
+    {
+        if (esfera != null)
+            return;
+        var v = new List<Vector3>();
+        var t = new List<int>();
+        for (int p = 0; p <= Paralelos; p++)
+        {
+            float lat = Mathf.PI * p / Paralelos;
+            for (int m = 0; m <= Lados; m++)
+            {
+                float lon = 2f * Mathf.PI * m / Lados;
+                v.Add(new Vector3(Mathf.Sin(lat) * Mathf.Cos(lon), Mathf.Cos(lat), Mathf.Sin(lat) * Mathf.Sin(lon)));
+            }
+        }
+        for (int p = 0; p < Paralelos; p++)
+            for (int m = 0; m < Lados; m++)
+            {
+                int a = p * (Lados + 1) + m;
+                int b = a + Lados + 1;
+                t.Add(a); t.Add(b); t.Add(a + 1);
+                t.Add(a + 1); t.Add(b); t.Add(b + 1);
+            }
+        esfera = v.ToArray();
+        esferaTri = t.ToArray();
+    }
+
+    void Esfera(Vector3 centro, float radio)
+    {
+        int b = vertices.Count;
+        foreach (var n in esfera)
+        {
+            vertices.Add(centro + n * radio);
+            normales.Add(n);
+        }
+        foreach (int i in esferaTri)
+            triangulos.Add(b + i);
+    }
+
+    void Tubo(Vector3 a, float ra, Vector3 b, float rb)
+    {
+        Vector3 d = b - a;
+        if (d.sqrMagnitude < 1e-8f)
+            return;
+        Vector3 eje = d.normalized;
+        Vector3 u = Vector3.Cross(eje, Mathf.Abs(eje.y) < 0.9f ? Vector3.up : Vector3.right).normalized;
+        Vector3 w = Vector3.Cross(eje, u);
+        int baseIndice = vertices.Count;
+        for (int k = 0; k < Lados; k++)
+        {
+            float ang = 2f * Mathf.PI * k / Lados;
+            Vector3 radial = u * Mathf.Cos(ang) + w * Mathf.Sin(ang);
+            vertices.Add(a + radial * ra);
+            normales.Add(radial);
+            vertices.Add(b + radial * rb);
+            normales.Add(radial);
+        }
+        for (int k = 0; k < Lados; k++)
+        {
+            int i0 = baseIndice + k * 2, i1 = i0 + 1;
+            int j0 = baseIndice + ((k + 1) % Lados) * 2, j1 = j0 + 1;
+            triangulos.Add(i0); triangulos.Add(i1); triangulos.Add(j0);
+            triangulos.Add(j0); triangulos.Add(i1); triangulos.Add(j1);
+        }
+    }
+
+    // La palma: una "tabla" con grosor entre la muñeca, el pulgar y los nudillos.
+    void PalmaGruesa(Vector3[] a)
+    {
+        Vector3 centro = Vector3.zero;
+        foreach (int i in Palma)
+            centro += a[i];
+        centro /= Palma.Length;
+        Vector3 normal = Vector3.Cross(a[5] - a[0], a[17] - a[0]);
+        if (normal.sqrMagnitude < 1e-10f)
+            return;
+        normal.Normalize();
+        const float grosor = 0.0145f;
+        for (int cara = 0; cara < 2; cara++)
+        {
+            Vector3 lado = normal * (cara == 0 ? grosor : -grosor);
+            int c = vertices.Count;
+            vertices.Add(centro + lado);
+            normales.Add(cara == 0 ? normal : -normal);
+            foreach (int i in Palma)
+            {
+                vertices.Add(a[i] + lado);
+                normales.Add(cara == 0 ? normal : -normal);
+            }
+            for (int k = 0; k < Palma.Length; k++)
+            {
+                int p0 = c + 1 + k, p1 = c + 1 + (k + 1) % Palma.Length;
+                triangulos.Add(c); triangulos.Add(p0); triangulos.Add(p1);
+            }
+        }
+        // Los costados de la palma.
+        for (int k = 0; k < Palma.Length; k++)
+        {
+            Vector3 p0 = a[Palma[k]], p1 = a[Palma[(k + 1) % Palma.Length]];
+            Vector3 fuera = ((p0 + p1) * 0.5f - centro);
+            fuera = fuera.sqrMagnitude > 1e-10f ? fuera.normalized : normal;
+            int b = vertices.Count;
+            vertices.Add(p0 + normal * grosor); vertices.Add(p0 - normal * grosor);
+            vertices.Add(p1 + normal * grosor); vertices.Add(p1 - normal * grosor);
+            for (int r = 0; r < 4; r++)
+                normales.Add(fuera);
+            triangulos.Add(b); triangulos.Add(b + 1); triangulos.Add(b + 2);
+            triangulos.Add(b + 2); triangulos.Add(b + 1); triangulos.Add(b + 3);
+        }
     }
 }

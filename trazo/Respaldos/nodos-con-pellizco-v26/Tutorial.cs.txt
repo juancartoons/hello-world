@@ -51,7 +51,6 @@ public class Tutorial : MonoBehaviour
     const float AnchoMuneco = 0.0035f;  // grosor de cada hebra del muñeco
     const float EscalaMuneco = 0.45f;   // el muñeco del tutorial (unos 18 cm)
     const float AnchoVineta = 0.24f, AltoVineta = 0.075f;
-    const float SeparacionHuida = 0.015f + 0.025f; // 1.5 cm de aire + medio muñeco corriendo
 
     // Lugares (en el marco del tutorial: x derecha, y arriba, z adelante)
     static readonly Vector3 ManoIzqPecho = new Vector3(-0.11f, -0.16f, -0.14f);   // a la altura del pecho izquierdo
@@ -102,9 +101,7 @@ public class Tutorial : MonoBehaviour
                                "6. Frota la línea con el índice DERECHO: ¡los nodos estallan!");
     static string Texto7 => Tx("7. Join your thumb with the MIDDLE finger (the yellow one, next to the index) on your left hand and hold: the nodes appear",
                                "7. Junta el pulgar con el dedo MEDIO (el amarillo, al lado del índice) de la mano izquierda y mantenlo: aparecen los nodos");
-    static string Texto7b => Tx("Now TOUCH a node with your RIGHT index finger: it sticks to your finger. Move it, and OPEN your left hand to let it go",
-                                "Ahora TOCA un nodo con el índice DERECHO: se pega a tu dedo. Muévelo, y para soltarlo ABRE la mano izquierda");
-    static string Texto7c => Tx("Great! Now OPEN your left hand to let the node go", "¡Muy bien! Ahora ABRE la mano izquierda para soltar el nodo");
+    static string Texto7b => Tx("Now pinch a node with your RIGHT hand and drag it", "Ahora pellizca un nodo con la mano DERECHA y arrástralo");
     static string Texto9 => Tx("9. Make the OK with BOTH hands: move them apart or together = size; turn them like a steering wheel = rotate",
                                "9. Haz el OK con las DOS manos: sepáralas o júntalas = tamaño; gíralas como un volante = rotar");
     static string Texto8 => Tx("8. Changed your mind? LEFT fist with the THUMB pointing left, then touch the red target: undo!",
@@ -554,7 +551,7 @@ public class Tutorial : MonoBehaviour
     // El panel "?" con las secciones del tutorial (botón ? del menú de la mano o Mis archivos > Tutorial).
     public void AbrirSecciones()
     {
-        TarjetaTutorial.CerrarTodas(this);
+        TutorialRellenos.CerrarSiAbierto(this);
         PanelTutoriales.Abrir(this);
     }
 
@@ -562,14 +559,7 @@ public class Tutorial : MonoBehaviour
     public void EmpezarRellenos()
     {
         PanelTutoriales.CerrarSiAbierto(this);
-        TarjetaTutorial.Abrir<TutorialRellenos>(this);
-    }
-
-    // Sección 3: nodos (tocar y soltar, nodo nuevo, lazo y plastilina).
-    public void EmpezarNodos()
-    {
-        PanelTutoriales.CerrarSiAbierto(this);
-        TarjetaTutorial.Abrir<TutorialNodos>(this);
+        TutorialRellenos.Abrir(this);
     }
 
     public void Empezar()
@@ -577,7 +567,7 @@ public class Tutorial : MonoBehaviour
         if (dibujo == null || control == null || control.Cabeza == null)
             return;
         PanelTutoriales.CerrarSiAbierto(this);
-        TarjetaTutorial.CerrarTodas(this);
+        TutorialRellenos.CerrarSiAbierto(this);
         if (estado == Estado.Titulo)
             QuitarTitulo();   // si lo piden durante el título, el título se va de una vez
         else if (estado != Estado.Nada)
@@ -1424,7 +1414,7 @@ public class Tutorial : MonoBehaviour
             }
             // El muñeco huye en pánico, siempre 2 cm delante del dedo (y se va al final).
             if (frotando)
-                Huir(sDedo, -1f, true, 0.008f + SeparacionHuida);
+                Huir(sDedo, -1f, true);
             else if (t >= 7.8f)
                 Escapar();
             else
@@ -1434,12 +1424,10 @@ public class Tutorial : MonoBehaviour
     }
 
     // El muñeco corre en pánico (brazos arriba) justo delante del dedo que borra, sin salirse de la línea.
-    // "separacion" = del centro del borrador al centro del muñeco (metros): el radio del borrador, 1.5 cm de
-    // aire y medio muñeco corriendo (sus piernas y brazos), así nunca queda encima del dedo.
-    void Huir(float sDedo, float direccion, bool rapido, float separacion)
+    void Huir(float sDedo, float direccion, bool rapido)
     {
         float largo = LargoCamino;
-        float objetivo = Mathf.Clamp(sDedo + direccion * separacion, 0.005f, Mathf.Max(0.005f, largo - 0.005f));
+        float objetivo = Mathf.Clamp(sDedo + direccion * 0.02f, 0.005f, Mathf.Max(0.005f, largo - 0.005f));
         float paso = Mathf.Clamp(objetivo - figuraS, -1.5f * Time.deltaTime, 1.5f * Time.deltaTime);
         figuraS += paso;
         dirFigura = direccion;
@@ -1536,7 +1524,7 @@ public class Tutorial : MonoBehaviour
             huidaFija = true;
         bool cerca = der.valida && distancia < 0.12f && (goma || borrando);
         if (cerca || borrando)
-            Huir(sDedo, dirHuida, velDedo > 0.2f, control.RadioBorradorMundo + SeparacionHuida);
+            Huir(sDedo, dirHuida, velDedo > 0.2f);
         else
             ActualizarFigura();
         // Termina cuando el muñeco llegó hasta el final de la línea (o ya no queda línea).
@@ -1617,14 +1605,13 @@ public class Tutorial : MonoBehaviour
         Cambiar(Estado.Demo7);
     }
 
-    // Pulgar + medio izquierdos (aparecen los nodos); el índice derecho TOCA un nodo y lo lleva (se pega al
-    // dedo); luego la mano izquierda se ABRE = el nodo se suelta y se queda donde quedó.
+    // Pulgar + medio izquierdos (aparecen los nodos) y la derecha pellizca un nodo y lo arrastra.
     bool Demo7(float t, bool completa)
     {
-        float alfa = Mathf.Clamp01(t / 0.4f) * (1f - Mathf.Clamp01((t - 6.4f) / 0.5f));
+        float alfa = Mathf.Clamp01(t / 0.4f) * (1f - Mathf.Clamp01((t - 7.4f) / 0.5f));
         PonerAlfaGuia(completa ? alfa : alfa * 0.75f);
         ResaltarDedo(2); // el dedo MEDIO (el que sigue al índice)
-        float medio = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.6f, 0.9f, t)) * (1f - Mathf.InverseLerp(4.6f, 4.9f, t));
+        float medio = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.6f, 0.9f, t)) * (1f - Mathf.InverseLerp(6.9f, 7.2f, t));
         PoseMano.Calcular(puntosIzq, true, raiz.TransformPoint(ManoIzqPecho), Dir(-0.3f, 1f, 0.1f), Dir(0.7f, 0f, 0.7f), 0f, 0f, 0f, medio, 0f);
         manoIzq.Poner(alfa > 0.01f ? puntosIzq : null);
 
@@ -1633,20 +1620,19 @@ public class Tutorial : MonoBehaviour
         Vector3 nodo = k < nodosDemo.Count ? nodosDemo[k].pos : (camino.Count > 0 ? PuntoCamino(LargoCamino * 0.5f) : raiz.position);
         float sNodo = k < nodosDemo.Count ? nodosDemo[k].s : LargoCamino * 0.5f;
         Vector3 arrastre = Vector3.up * 0.07f + (control.Cabeza != null ? (control.Cabeza.position - nodo).normalized * 0.02f : Vector3.zero);
-        float tirar = Suave((t - 2.7f) / 1.6f);
-        bool pegado = t >= 2.5f && t < 4.75f; // el nodo va pegado al dedo hasta que se abre la mano izquierda
+        float tirar = Suave((t - 2.8f) / 1.6f);
+        float pinza = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(2.5f, 2.8f, t)) * (1f - Mathf.InverseLerp(4.4f, 4.7f, t));
         Vector3 descanso = raiz.TransformPoint(ManoDerDescanso);
         Vector3 punta;
         if (t < 1.8f)
             punta = descanso;
         else if (t < 2.5f)
             punta = Vector3.Lerp(descanso, nodo, Suave((t - 1.8f) / 0.7f));
-        else if (t < 5.0f)
+        else if (t < 4.7f)
             punta = nodo + arrastre * tirar;
         else
-            punta = Vector3.Lerp(nodo + arrastre, descanso, Suave((t - 5.0f) / 0.6f));
-        // El índice derecho señala (sin pellizco): solo toca.
-        PoseMano.ConIndiceEn(puntosDer, false, punta, Dir(-0.2f, 0.35f, 1f), Dir(0.2f, -1f, 0.1f), 0f, 0f, 1f);
+            punta = Vector3.Lerp(nodo + arrastre, descanso, Suave((t - 4.7f) / 0.6f));
+        PoseMano.ConIndiceEn(puntosDer, false, punta, Dir(-0.2f, 0.35f, 1f), Dir(0.2f, -1f, 0.1f), pinza, 0f, 0f);
         manoDer.Poner(alfa > 0.01f && t > 0.2f ? puntosDer : null);
 
         if (completa)
@@ -1662,15 +1648,14 @@ public class Tutorial : MonoBehaviour
             }
             if (t >= 1.9f)
                 PonerVineta(Texto7b, VinetaLinea, -1);
-            // Los nodos aparecen con el gesto y el del medio se lleva con el dedo (la línea lo sigue, suave).
-            // Al abrir la mano izquierda, los nodos se van y la línea queda así.
-            float ver = Rebote(Mathf.Clamp01((t - 0.9f) / 0.35f)) * (1f - Mathf.Clamp01((t - 4.75f) / 0.25f));
+            // Los nodos aparecen con el gesto y el del medio se arrastra (la línea lo sigue, suave).
+            float ver = Rebote(Mathf.Clamp01((t - 0.9f) / 0.35f)) * (1f - Mathf.Clamp01((t - 7.0f) / 0.3f));
             Vector3 mover = arrastre * tirar;
             for (int i = 0; i < nodosDemo.Count; i++)
             {
                 var nd = nodosDemo[i];
                 nd.t.position = nd.pos + mover * Peso(nd.s, sNodo);
-                nd.t.localScale = Vector3.one * 0.016f * ver * (i == k && pegado ? 1.3f : 1f);
+                nd.t.localScale = Vector3.one * 0.016f * ver * (i == k && pinza > 0.5f ? 1.3f : 1f);
                 if (control.Cabeza != null)
                     nd.t.rotation = Quaternion.LookRotation(nd.t.position - control.Cabeza.position, Vector3.up);
             }
@@ -1680,13 +1665,11 @@ public class Tutorial : MonoBehaviour
                 for (int i = 0; i < camino.Count; i++)
                     lineaDemo.SetPosition(i, camino[i] + mover * Peso(caminoLargo[i], sNodo));
             }
-            if (t >= 2.5f && t - Time.deltaTime < 2.5f)
-                Pasito(0.2f); // se pega al dedo
-            if (t >= 4.75f && t - Time.deltaTime < 4.75f)
-                Pasito(0.25f); // se suelta
+            if (t >= 2.8f && t - Time.deltaTime < 2.8f)
+                Pasito(0.2f);
             ActualizarFigura();
         }
-        return t >= 7.0f;
+        return t >= 8.0f;
     }
 
     static float Peso(float s, float centro)
@@ -1739,7 +1722,7 @@ public class Tutorial : MonoBehaviour
         {
             ultimaActividad = Time.time;
         }
-        // Segunda celebración: moviste un nodo más de 2.5 cm Y lo soltaste (abriste la mano izquierda).
+        // Segunda celebración: moviste un nodo más de 2.5 cm.
         foreach (var t in dibujo.trazos)
         {
             List<Vector3> antes;
@@ -1751,11 +1734,6 @@ public class Tutorial : MonoBehaviour
                 Vector3 ahora = dibujo.transform.TransformPoint(t.nodos[i]);
                 if (Vector3.Distance(ahora, antes[i]) > 0.025f)
                 {
-                    if (control.GestoIzq == ControlManos.Gesto.Nodos)
-                    {
-                        PonerVineta(Texto7c, VinetaIzq, 1); // falta soltarlo
-                        break;
-                    }
                     Exito(7, ahora);
                     Pausa(EmpezarDemo8);
                     return;

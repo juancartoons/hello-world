@@ -202,7 +202,7 @@ public class PanelArriba : MonoBehaviour
         }
         if (referencias != null)
         {
-            Conectar(btnImagenMas, () => referencias.AgregarSiguiente(control != null ? control.Cabeza : null));
+            Conectar(btnImagenMas, () => BuscadorImagenes.Abrir(referencias, control != null ? control.Cabeza : null));
             Conectar(btnImagenMenos, referencias.QuitarSeleccionada);
             Conectar(btnImagenesVer, referencias.AlternarTodas);
         }
@@ -1231,6 +1231,8 @@ public class PanelArriba : MonoBehaviour
         { "CAPAS (lista plegable)", "LAYERS (folding list)\nOpens or closes the list of layers above the timeline. Each row: pick the layer, Show/Hidden and ITS keys (each layer has its own keys).\nThe big bar shows the active layer's keys." },
         { "CAPA 1-4", "LAYER 1-4\nChoose the layer you draw on. Each layer has its own style (wobble, strands, sketch, plane, magnet) and its own keys.\nTip: sketch on layer 1 (Sketch: Gray) and ink on layer 2." },
         { "VER / OCULTA", "SHOW / HIDDEN\nShows or hides that layer. A hidden layer can't be edited." },
+        { "LIBRE (3D) / PLANO (2D)", "FREE (3D) / PLANE (2D)\nPlane: you draw on an invisible sheet in front of you (if you move your finger more than ~2.5 cm toward you, the line ends, like lifting the pencil; if you push it BEHIND the sheet, the line goes on and you see a copy of your hand on the sheet). Free: you draw in the air, in 3D.\nWith a Sketch layer in Plane mode, you draw with a pencil on paper." },
+        { "FONDO", "BACKGROUND\nChanges the background: grid, white, your real room (passthrough), a 360 test room or your own 360 photo (pick it in Image + > 360 background)." },
         { "ARCHIVOS", "FILES\nOpens \"My files\": your drawings, videos, photos and SVG with a thumbnail. Filters on top. Tap one to select it, then Open (or View) or Delete (tap again to confirm).\nAt the top: the current file with Save, Save copy and Rename, and the language button." },
         { "CREAR SVG", "CREATE SVG\nExports the lines as vector curves (for Illustrator, Inkscape...). In Plane mode it's seen straight on; in 3D, from where you are." },
         { "FOTO", "PHOTO\nSaves a PNG image of the drawing from where you are. Panels, nodes, images and sketch layers don't appear.\nWHERE: Quest Files app → Pictures → JCartoons." },
@@ -1239,7 +1241,7 @@ public class PanelArriba : MonoBehaviour
         { "VIDEO PROCESO", "PROCESS VIDEO\nTurns your recording into an MP4: lines + your hands (gloves and sleeves). Choose the speed first with Speed.\nWHERE: Quest Files app → Movies → JCartoons." },
         { "VEL x1 / x2 / x4 / x8", "SPEED x1 / x2 / x4 / x8\nHow fast the process video plays." },
         { "VIDEO ANIM", "ANIM VIDEO\nExports the animation as an MP4 (1280x720), with the mouths' audio if there is one. You need at least 2 keys.\nWHERE: Quest Files app → Movies → JCartoons." },
-        { "IMAGEN +", "IMAGE +\nPuts the next image from Dibujos/Imagenes in front of you (copy them with the cable or Meta Quest Developer Hub).\nTo trace: in Plane mode, drop the image near the plane and it sticks behind it." },
+        { "IMAGEN +", "IMAGE +\nOpens your Quest images (Downloads, Camera, screenshots, WhatsApp, Facebook...). Tap one to see it big and choose: Import (it appears in front of you) or, if it's a 360 photo, 360 background.\nTo trace: in Plane mode, drop the image near the plane and it sticks behind it." },
         { "IMAGEN -", "IMAGE -\nRemoves the selected image (bluish one). Pinch an image to select it, or tap the X on its corner." },
         { "IMÁGENES: VER / OCULTAS", "IMAGES: SHOW / HIDDEN\nHides or shows all reference images at once." },
         { "TEMBLOR (capa activa)", "WOBBLE (active layer)\nLive lines, like hand-drawn animation: No, Soft, Medium, Strong. It doesn't change your nodes, only how they look." },
@@ -1322,8 +1324,8 @@ public class PanelArriba : MonoBehaviour
         if (btnVer != null)
             foreach (var b in btnVer)
                 Poner(d, b, "VER / OCULTA\nMuestra o esconde esa capa. Una capa oculta no se puede editar.");
-        Poner(d, btnPlano, "LIBRE (3D) / PLANO (2D)\nPlano: dibujas sobre una hoja invisible frente a ti (si alejas el dedo más de ~2.5 cm, la línea se corta, como levantar el lápiz). Libre: dibujas en el aire, en 3D.\nCon una capa de Boceto en Plano, dibujas con lápiz sobre papel.");
-        Poner(d, btnFondo, "FONDO\nCambia el fondo: blanco, cuadrícula o tu cuarto real (passthrough).");
+        Poner(d, btnPlano, "LIBRE (3D) / PLANO (2D)\nPlano: dibujas sobre una hoja invisible frente a ti (si alejas el dedo hacia ti más de ~2.5 cm, la línea se corta, como levantar el lápiz; si lo pasas DETRÁS de la hoja, la línea sigue y ves una copia de tu mano sobre la hoja). Libre: dibujas en el aire, en 3D.\nCon una capa de Boceto en Plano, dibujas con lápiz sobre papel.");
+        Poner(d, btnFondo, "FONDO\nCambia el fondo: cuadrícula, blanco, tu cuarto real (passthrough), un cuarto 360 de prueba o tu propia foto 360 (elígela en Imagen + > Fondo 360).");
         Poner(d, btnGuardar, "GUARDAR\nGuarda el dibujo con su propio nombre (Dibujo 1, Dibujo 2...). Si ya tiene nombre, lo actualiza.\nPara empezar uno NUEVO: Borrar todo y luego Guardar (recibe otro nombre).");
         Poner(d, btnCargar, "ARCHIVOS\nAbre \"Mis archivos\": tus dibujos, videos, fotos y SVG con una miniatura. Filtros arriba. Toca uno para elegirlo y luego Abrir (o Ver) o Borrar (pide tocar otra vez).\nGuarda antes lo que tienes (Guardar). Si te arrepientes de abrir otro: deshacer.");
         Poner(d, btnBorrarTodo, "BORRAR TODO\nBorra todo el dibujo y empieza uno nuevo (al guardar recibe otro nombre). Se puede deshacer.");
@@ -1336,7 +1338,7 @@ public class PanelArriba : MonoBehaviour
         Poner(d, btnVideoProceso, "VIDEO PROCESO\nConvierte tu grabación (botón Grabar) en un video MP4: líneas + manos en gris. Elige antes la velocidad con Vel.\nDÓNDE QUEDA: app Archivos del Quest → Movies → JCartoons (también lo dice abajo en esta página).");
         Poner(d, btnVelocidad, "VEL x1 / x2 / x4 / x8\nQué tan rápido se ve el video del proceso.");
         Poner(d, btnVideoAnim, "VIDEO ANIM\nExporta la animación como MP4 (1280x720), con el audio de las bocas si hay. Necesitas al menos 2 claves.\nDÓNDE QUEDA: app Archivos del Quest → Movies → JCartoons.");
-        Poner(d, btnImagenMas, "IMAGEN +\nPone frente a ti la siguiente imagen de la carpeta Dibujos/Imagenes (cópialas con el cable o Meta Quest Developer Hub).\nPara calcar: en Plano, suelta la imagen cerca del plano y se pega detrás.");
+        Poner(d, btnImagenMas, "IMAGEN +\nAbre las imágenes de tu Quest (Descargas, Cámara, capturas, WhatsApp, Facebook...). Toca una para verla en grande y elige: Importar (aparece frente a ti) o, si es una foto 360, Fondo 360.\nPara calcar: en Plano, suelta la imagen cerca del plano y se pega detrás.");
         Poner(d, btnImagenMenos, "IMAGEN -\nQuita la imagen seleccionada (la que tiene tono azul). Pellizca una imagen para elegirla.");
         Poner(d, btnImagenesVer, "IMÁGENES: VER / OCULTAS\nEsconde o muestra todas las imágenes de referencia a la vez.");
         Poner(d, btnTemblor, "TEMBLOR (capa activa)\nLíneas vivas, como en la animación dibujada a mano: No, Suave, Medio, Fuerte. No cambia tus nodos, solo cómo se ven.");

@@ -1110,6 +1110,14 @@ public class Dibujo : MonoBehaviour
         return Mathf.Abs(Vector3.Dot(local - planoPunto, planoNormal)) * EscalaMundo;
     }
 
+    // Igual, pero con signo: + = del lado al que apunta la normal (lejos de donde estabas al crear el plano).
+    public float DistanciaConSignoMundo(Vector3 local)
+    {
+        if (!PlanoActivo)
+            return 0f;
+        return Vector3.Dot(local - planoPunto, planoNormal) * EscalaMundo;
+    }
+
     public Vector3 ProyectarEnPlano(Vector3 local)
     {
         if (!PlanoActivo)

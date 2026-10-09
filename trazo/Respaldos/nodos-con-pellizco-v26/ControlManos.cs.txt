@@ -278,7 +278,6 @@ public partial class ControlManos : MonoBehaviour
     Vector3 dialBorrarCentro, dialBorrarPrevio;
     float dialBorrarAngulo, tamanoBorradorInicio = 1f;
     float RadioBorrador => radioBorrador * tamanoBorrador;
-    public float RadioBorradorMundo => RadioBorrador;
     readonly List<Trazo> seleccionPrevia = new List<Trazo>();
     float toqueLineaDesde;
     bool toqueYaSeleccionada, toqueMovio;
@@ -659,8 +658,6 @@ public partial class ControlManos : MonoBehaviour
             SoltarImagen();
         if (dibujo.animacion != null)
             dibujo.animacion.Pausar();
-        if (g == Gesto.Nodos)
-            EmpezarModoNodos();
         if (g == Gesto.Grosor)
         {
             alturaInicialGrosor = Izq.pulgar.y;
@@ -743,8 +740,6 @@ public partial class ControlManos : MonoBehaviour
             OcultarMano(true, false);
             CancelarFrote();
         }
-        if (GestoIzq == Gesto.Nodos)
-            TerminarModoNodos();
         if (dibujo.hojas != null)
             dibujo.hojas.Terminar();
         lapizTiene = false;
@@ -869,9 +864,8 @@ public partial class ControlManos : MonoBehaviour
         if (dibujo.plano && !dibujo.HayPlano && Cabeza != null)
             dibujo.DefinirPlano(local, Cabeza.forward);
         var hojas = dibujo.hojas;
-        // Detrás del plano = el lápiz apretado al máximo (la línea sigue pegada a la hoja).
-        float p = ProfundidadTrasPlano(local);
-        lejosDelPlano = p < -hojas.alcance || p > MaxDetrasPlano;
+        float d = dibujo.DistanciaAlPlanoMundo(local);
+        lejosDelPlano = d > hojas.alcance;
         if (lejosDelPlano)
         {
             hojas.Terminar();
@@ -879,12 +873,11 @@ public partial class ControlManos : MonoBehaviour
             return;
         }
         dibujo.Seleccionar(null);
-        hojas.Pintar(local, Mathf.Max(0f, -p), goma);
+        hojas.Pintar(local, d, goma);
     }
 
     // En Plano (2D): el dedo tiene que estar sobre el plano para dibujar, como un lápiz en el papel.
-    // Empieza a menos de 1.5 cm (o detrás del plano); si se aleja más de 2.5 cm HACIA TI, la línea termina ahí.
-    // Si el dedo pasa DETRÁS del plano, la línea sigue pegada al plano (y se ve una copia de tu mano).
+    // Empieza a menos de 1.5 cm; si se aleja más de 2.5 cm, la línea termina ahí.
     // El gesto de la mano izquierda sigue activo: al volver al plano empieza otra línea.
     bool LapizLevantado(Vector3 local)
     {
@@ -893,13 +886,13 @@ public partial class ControlManos : MonoBehaviour
             lejosDelPlano = false;
             return false;
         }
-        float p = ProfundidadTrasPlano(local);
+        float d = dibujo.DistanciaAlPlanoMundo(local);
         if (trazoActual == null)
         {
-            lejosDelPlano = p < -0.015f || p > MaxDetrasPlano;
+            lejosDelPlano = d > 0.015f;
             return lejosDelPlano;
         }
-        if (p >= -0.025f && p <= MaxDetrasPlano)
+        if (d <= 0.025f)
         {
             lejosDelPlano = false;
             return false;
@@ -956,8 +949,62 @@ public partial class ControlManos : MonoBehaviour
             OcultarModoNodos();
             return;
         }
-        // Las líneas: con el dedo índice (ver ControlManosNodos.cs).
-        EditarNodosConDedo();
+        if (!Der.valida)
+        {
+            if (arrastre != Objetivo.Nada)
+                TerminarArrastre();
+            MostrarModoNodos(true, dibujo.Seleccion);
+            return;
+        }
+        Vector3 pinza = Der.PuntoPellizco;
+
+        if (arrastre != Objetivo.Nada && !Der.pellizco)
+            TerminarArrastre();
+
+        Trazo solo = dibujo.Seleccion;
+        if (arrastre != Objetivo.Nada)
+        {
+            ContinuarArrastre(pinza);
+            MostrarModoNodos(true, solo);
+            return;
+        }
+
+        Objetivo tipo = Objetivo.Nada;
+        Trazo t;
+        int i;
+        bool salida = false;
+        if (BuscarNodoCercano(Der.indice, pinza, radioAgarreNodo, solo, out t, out i))
+            tipo = Objetivo.Nodo;
+        else if (BuscarAsaCercana(Der.indice, pinza, out salida))
+        {
+            tipo = Objetivo.Asa;
+            t = selTrazo;
+            i = selIndice;
+        }
+        hoverTipo = tipo;
+        hoverTrazo = t;
+        hoverIndice = i;
+        hoverSalida = salida;
+
+        if (Der.empezoPellizco)
+        {
+            if (tipo == Objetivo.Nodo || tipo == Objetivo.Asa)
+            {
+                dibujo.Seleccionar(t);
+                EmpezarArrastre(tipo, t, i, salida, pinza);
+            }
+            else
+            {
+                // Pellizcar la línea seleccionada (lejos de sus nodos) = agregar un nodo ahí.
+                // Pellizcar otra línea = seleccionarla (y ver solo sus nodos).
+                var otra = LineaBajo(pinza, Der.indice);
+                if (otra != null && otra == dibujo.Seleccion)
+                    AgregarNodoEn(otra, pinza);
+                else if (otra != null)
+                    dibujo.Seleccionar(otra);
+            }
+        }
+        MostrarModoNodos(true, dibujo.Seleccion);
     }
 
     // Agrega un nodo en el punto de la línea más cercano a la pinza y empieza a arrastrarlo.
@@ -1189,7 +1236,7 @@ public partial class ControlManos : MonoBehaviour
                 }
                 else
                 {
-                    dibujo.Mensaje("Primero activa las hebras (en la paleta de colores)");
+                    dibujo.Mensaje("Primero activa las hebras (página Medios)");
                 }
             }
             else
@@ -1561,19 +1608,14 @@ public partial class ControlManos : MonoBehaviour
                               || (t == grosorTrazo && i == grosorIndice)
                               || (hoverTipo == Objetivo.Nodo && t == hoverTrazo && i == hoverIndice)
                               || (conAsas && t == selTrazo && i == selIndice);
-                // Elegidos con el lazo: naranjas. Los vecinos de la plastilina: naranja clarito (más grandes
-                // los que más se mueven).
-                float peso = PesoEnGrupo(t, i);
-                activo |= EnLazo(t, i) || (peso >= 0f && !grupoPlastilina) || (peso >= 0.999f && grupoPlastilina);
-                bool vecino = grupoPlastilina && peso >= 0f && peso < 0.999f;
                 bool iman = t == imanTrazo && i == imanIndice;
                 bool punta = !t.cerrado && (i == 0 || i == t.nodos.Count - 1);
                 var malla = punta ? MallaAnillo() : MallaDisco();
                 if (nodosFiltro[n].sharedMesh != malla)
                     nodosFiltro[n].sharedMesh = malla;
-                float tam = tamanoNodo * (punta ? 1.3f : 1f) * (activo || iman ? 1.5f : vecino ? 1f + 0.5f * peso : 1f);
+                float tam = tamanoNodo * (punta ? 1.3f : 1f) * (activo || iman ? 1.5f : 1f);
                 nodo.localScale = Vector3.one * tam;
-                var mat = iman ? materialIman : activo ? materialNodoActivo : vecino ? MaterialNodoPlastilina() : materialNodo;
+                var mat = iman ? materialIman : activo ? materialNodoActivo : materialNodo;
                 if (mat != null && nodosRender[n].sharedMaterial != mat)
                     nodosRender[n].sharedMaterial = mat;
                 n++;
@@ -1954,7 +1996,7 @@ public partial class ControlManos : MonoBehaviour
         }
         else
         {
-            Forzar(izquierda ? rendsIzq : rendsDer, ocultarTodas || (!izquierda && ocultarDerPlano));
+            Forzar(izquierda ? rendsIzq : rendsDer, ocultarTodas);
         }
     }
 
@@ -1964,7 +2006,7 @@ public partial class ControlManos : MonoBehaviour
         ocultarTodas = ocultar;
         BuscarRenderersMano();
         Forzar(rendsIzq, ocultar || ocultarIzq);
-        Forzar(rendsDer, ocultar || ocultarDer || ocultarDerPlano);
+        Forzar(rendsDer, ocultar || ocultarDer);
     }
 
     static void Forzar(List<Renderer> lista, bool apagar)
@@ -1995,7 +2037,10 @@ public partial class ControlManos : MonoBehaviour
         {
             raizGuante = new GameObject("GuanteCaricatura");
             guante = new ManoVideo(raizGuante.transform, materialGuante, 0, true);
-            guante.UsarGuante(RayasGuante());
+            materialRayasGuante = new Material(materialGuante);
+            if (materialRayasGuante.HasProperty("_BaseColor"))
+                materialRayasGuante.SetColor("_BaseColor", new Color(0.16f, 0.16f, 0.18f, 1f));
+            guante.UsarGuante(materialRayasGuante);
         }
         if (ver != conGuante)
         {
@@ -2007,30 +2052,17 @@ public partial class ControlManos : MonoBehaviour
             guante.PonerGuante(ver ? puntosGuante : null, true);
     }
 
-    // Las rayitas negras del dorso del guante (las comparten el guante y la copia de la mano en el plano).
-    Material RayasGuante()
-    {
-        if (materialRayasGuante == null && materialGuante != null)
-        {
-            materialRayasGuante = new Material(materialGuante);
-            if (materialRayasGuante.HasProperty("_BaseColor"))
-                materialRayasGuante.SetColor("_BaseColor", new Color(0.16f, 0.16f, 0.18f, 1f));
-        }
-        return materialRayasGuante;
-    }
-
     void LateUpdate()
     {
         ActualizarGuante();
         EjecutarLapiz();
-        ActualizarManoCopia();
-        if (!ocultarIzq && !ocultarDer && !ocultarDerPlano && !ocultarTodas)
+        if (!ocultarIzq && !ocultarDer && !ocultarTodas)
             return;
         if (Time.time >= proximaBusquedaManos)
             BuscarRenderersMano();
         if (ocultarIzq || ocultarTodas)
             Forzar(rendsIzq, true);
-        if (ocultarDer || ocultarDerPlano || ocultarTodas)
+        if (ocultarDer || ocultarTodas)
             Forzar(rendsDer, true);
     }
 
@@ -2044,7 +2076,7 @@ public partial class ControlManos : MonoBehaviour
     void Juntar(List<Renderer> lista, ManoSeguida mano, Transform ancla, bool izquierda)
     {
         // Las que estaban escondidas y ya no son de la mano, se vuelven a mostrar.
-        bool escondida = ocultarTodas || (izquierda ? ocultarIzq : ocultarDer || ocultarDerPlano);
+        bool escondida = ocultarTodas || (izquierda ? ocultarIzq : ocultarDer);
         var nuevas = new List<Renderer>();
         if (mano.hand != null)
             nuevas.AddRange(mano.hand.GetComponentsInChildren<Renderer>(true));
@@ -2377,10 +2409,7 @@ public partial class ControlManos : MonoBehaviour
             return;
         bool borrando = GestoIzq == Gesto.Borrar;
         // Con el borrador, el punto rojo es el borrador (mientras cambias su tamaño, va entre tus dedos).
-        // Con el dedo detrás del plano 2D, la bolita queda sobre el plano (dentro del anillito).
-        Vector3 enPlano, haciaTi;
-        cursor.position = borrando && Der.pellizco ? Der.PuntoPellizco
-                        : !borrando && DedoTrasPlano(out enPlano, out haciaTi) ? enPlano : Der.indice;
+        cursor.position = borrando && Der.pellizco ? Der.PuntoPellizco : Der.indice;
         var mat = borrando && materialCursorBorrar != null ? materialCursorBorrar
                 : dibujo.ColorNuevo != Color.black && dibujo.ColorNuevo.a > 0.01f ? MaterialCursorColor() : materialCursor;
         if (mat == null)

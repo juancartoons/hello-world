@@ -170,6 +170,7 @@ public static class ArmarEscenaTrazo
         goEscenario.transform.SetParent(raiz.transform, false);
         var escenario = goEscenario.AddComponent<Escenario>();
         escenario.materialCuadricula = matCuadricula;
+        escenario.materialFondo360 = MaterialFondo360();
 
         var goDibujo = new GameObject("Dibujo");
         goDibujo.transform.SetParent(raiz.transform, false);
@@ -854,6 +855,62 @@ public static class ArmarEscenaTrazo
             Debug.LogWarning("TrazoVR: no pude preparar la letra de cómic: " + e.Message);
             return null;
         }
+    }
+
+    // Fondo "Cuarto 360": la foto 360 que viene en Plugins/Fondos (cuarto360.jpg), en un material de cielo.
+    static Material MaterialFondo360()
+    {
+        Texture2D tex = null;
+        string rutaTex = null;
+        foreach (var guid in AssetDatabase.FindAssets("cuarto360 t:Texture2D"))
+        {
+            rutaTex = AssetDatabase.GUIDToAssetPath(guid);
+            tex = AssetDatabase.LoadAssetAtPath<Texture2D>(rutaTex);
+            if (tex != null)
+                break;
+        }
+        if (tex == null)
+        {
+            Debug.LogWarning("TrazoVR: no encontré la foto cuarto360 (copia otra vez la carpeta Plugins). El fondo 360 no estará.");
+            return null;
+        }
+        var imp = AssetImporter.GetAtPath(rutaTex) as TextureImporter;
+        if (imp != null && (imp.maxTextureSize != 4096 || imp.mipmapEnabled || imp.wrapModeV != TextureWrapMode.Clamp))
+        {
+            imp.maxTextureSize = 4096;
+            imp.mipmapEnabled = false; // sin mipmaps: así no aparece una rayita donde se unen los bordes de la foto
+            imp.wrapModeU = TextureWrapMode.Repeat;
+            imp.wrapModeV = TextureWrapMode.Clamp;
+            imp.SaveAndReimport();
+            tex = AssetDatabase.LoadAssetAtPath<Texture2D>(rutaTex);
+        }
+        var shader = Shader.Find("Skybox/Panoramic");
+        if (shader == null)
+        {
+            Debug.LogWarning("TrazoVR: no encontré el shader Skybox/Panoramic. El fondo 360 no estará.");
+            return null;
+        }
+        string ruta = carpeta + "/Fondo360.mat";
+        var m = AssetDatabase.LoadAssetAtPath<Material>(ruta);
+        if (m == null)
+        {
+            m = new Material(shader);
+            AssetDatabase.CreateAsset(m, ruta);
+        }
+        else
+        {
+            m.shader = shader;
+        }
+        m.SetTexture("_MainTex", tex);
+        if (m.HasProperty("_Mapping")) m.SetFloat("_Mapping", 1f);     // latitud-longitud (la foto 360 de siempre)
+        if (m.HasProperty("_ImageType")) m.SetFloat("_ImageType", 0f); // 360 grados
+        if (m.HasProperty("_Exposure")) m.SetFloat("_Exposure", 1f);
+        if (m.HasProperty("_Rotation")) m.SetFloat("_Rotation", 0f);
+        m.DisableKeyword("_MAPPING_6_FRAMES_LAYOUT");
+        m.EnableKeyword("_MAPPING_LATITUDE_LONGITUDE_LAYOUT");
+        EditorUtility.SetDirty(m);
+        AssetDatabase.SaveAssets();
+        return m;
     }
 
     static bool PonerEnum(SerializedProperty prop, string nombre)

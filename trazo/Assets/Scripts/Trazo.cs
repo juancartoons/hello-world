@@ -297,6 +297,13 @@ public class Trazo : MonoBehaviour
         Reconstruir();
     }
 
+    // Para mover varios nodos juntos: se cambian todos y al final se llama Reconstruir una sola vez.
+    public void MoverNodoSinReconstruir(int i, Vector3 posicionLocal)
+    {
+        if (i >= 0 && i < nodos.Count)
+            nodos[i] = posicionLocal;
+    }
+
     // Mueve un asa; la otra asa del mismo nodo gira en espejo (nodo suave, como en Illustrator).
     public void MoverAsa(int i, bool salida, Vector3 desplazamiento)
     {

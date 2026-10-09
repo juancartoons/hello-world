@@ -1,0 +1,9 @@
+cuarto360.jpg — fondo "Cuarto 360" de JCartoons (foto 360 de prueba).
+
+Origen: HDRI "Small Empty Room 2" de Poly Haven
+  https://polyhaven.com/a/small_empty_room_2
+Poly Haven publica sus HDRI con licencia CC0 (dominio público). La copia que usamos venía en los
+ejemplos del motor PlayCanvas, que la marcan como CC BY 4.0: por eso damos el crédito igual.
+  https://creativecommons.org/licenses/by/4.0/
+
+Cambios: convertida de HDR a JPG (4096 x 2048) con un ajuste de tonos (ACES) para verse en el visor.

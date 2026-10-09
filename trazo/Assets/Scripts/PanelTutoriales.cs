@@ -5,6 +5,7 @@ using UnityEngine;
 // las secciones del tutorial.
 //  1 · Primeros pasos: el tutorial de presentación (el de las manos guía).
 //  2 · Rellenos: la cubeta, tocar dentro para rellenar y la tinta invisible (TutorialRellenos).
+//  3 · Nodos: tocar y soltar, nodo nuevo, lazo y plastilina (TutorialNodos).
 public class PanelTutoriales : MonoBehaviour
 {
     Transform raiz;
@@ -44,24 +45,31 @@ public class PanelTutoriales : MonoBehaviour
         raiz = new GameObject("PanelTutoriales").transform;
         raiz.SetPositionAndRotation(cab.position + adelante * 0.45f - Vector3.up * 0.06f, Quaternion.LookRotation(adelante, Vector3.up));
 
-        Fondo(raiz, new Vector2(0.3f, 0.17f), tutorial.materialNegro, tutorial.materialBlanco);
-        var titulo = Texto(raiz, Tx("? Tutorials", "? Tutoriales"), new Vector3(0f, 0.062f, -0.004f), new Vector2(0.22f, 0.03f), 0.3f, tutorial.fuenteComic);
+        Fondo(raiz, new Vector2(0.3f, 0.215f), tutorial.materialNegro, tutorial.materialBlanco);
+        var titulo = Texto(raiz, Tx("? Tutorials", "? Tutoriales"), new Vector3(0f, 0.084f, -0.004f), new Vector2(0.22f, 0.03f), 0.3f, tutorial.fuenteComic);
         titulo.color = Color.black;
-        var b1 = Boton(raiz, Tx("1 · First steps", "1 · Primeros pasos"), new Vector3(0f, 0.018f, 0f), new Vector2(0.25f, 0.034f),
+        var b1 = Boton(raiz, Tx("1 · First steps", "1 · Primeros pasos"), new Vector3(0f, 0.04f, 0f), new Vector2(0.25f, 0.034f),
                        tutorial.materialBoton, tutorial.materialBotonMarcado);
         b1.alTocar.AddListener(() =>
         {
             Cerrar();
             tutorial.Empezar();
         });
-        var b2 = Boton(raiz, Tx("2 · Fills (bucket and invisible ink)", "2 · Rellenos (cubeta y tinta invisible)"), new Vector3(0f, -0.028f, 0f),
+        var b2 = Boton(raiz, Tx("2 · Fills (bucket and invisible ink)", "2 · Rellenos (cubeta y tinta invisible)"), new Vector3(0f, -0.006f, 0f),
                        new Vector2(0.25f, 0.034f), tutorial.materialBoton, tutorial.materialBotonMarcado);
         b2.alTocar.AddListener(() =>
         {
             Cerrar();
             tutorial.EmpezarRellenos();
         });
-        var x = Boton(raiz, "X", new Vector3(0.13f, 0.065f, 0f), new Vector2(0.024f, 0.024f), tutorial.materialBoton, tutorial.materialBotonMarcado);
+        var b3 = Boton(raiz, Tx("3 · Nodes (lasso and clay)", "3 · Nodos (lazo y plastilina)"), new Vector3(0f, -0.052f, 0f),
+                       new Vector2(0.25f, 0.034f), tutorial.materialBoton, tutorial.materialBotonMarcado);
+        b3.alTocar.AddListener(() =>
+        {
+            Cerrar();
+            tutorial.EmpezarNodos();
+        });
+        var x = Boton(raiz, "X", new Vector3(0.13f, 0.087f, 0f), new Vector2(0.024f, 0.024f), tutorial.materialBoton, tutorial.materialBotonMarcado);
         x.alTocar.AddListener(Cerrar);
     }
 
