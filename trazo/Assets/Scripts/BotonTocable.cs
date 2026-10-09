@@ -18,6 +18,13 @@ public class BotonTocable : MonoBehaviour
     public float distancia = 0.01f;
     [Tooltip("Segundos de espera entre toques")]
     public float pausa = 0.6f;
+    // false = acercar el dedo no esconde la bolita (por ejemplo, los botoncitos de las imágenes para calcar).
+    [System.NonSerialized] public bool esconderDedo = true;
+
+    // Cerca de cualquier botón (de cualquier menú), la bolita del dedo y el borrador se esconden y no se dibuja.
+    const float DistanciaCerca = 0.045f;
+    static int cercaCuadro = -10;
+    public static bool DedoCerca => Time.frameCount - cercaCuadro <= 1;
 
     Collider miCollider;
     Renderer miRenderer;
@@ -50,7 +57,10 @@ public class BotonTocable : MonoBehaviour
             return;
         }
         Vector3 punta = control.Der.indice;
-        bool toca = Vector3.Distance(miCollider.ClosestPoint(punta), punta) < distancia;
+        float d = Vector3.Distance(miCollider.ClosestPoint(punta), punta);
+        if (d < DistanciaCerca && esconderDedo)
+            cercaCuadro = Time.frameCount;
+        bool toca = d < distancia;
         if (toca && !dentro && Time.time >= bloqueadoHasta)
         {
             bloqueadoHasta = Time.time + pausa;

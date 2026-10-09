@@ -27,6 +27,8 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [x] **Plastilina**: índice y medio estirados (juntos o en V) con el anular y el meñique doblados.
 - [x] **Imagen +**: ahora puedes **pellizcar** una imagen (en la lista o en grande) y **sacarla del panel**: queda donde la sueltas (crece al alejarla; cerca del plano 2D se pega detrás).
 
+**Correcciones v28.1:** en el modo nodos no se ve la bolita del dedo; los tiradores Bézier se ven siempre (aunque queden detrás de una línea); cerca de cualquier botón de un menú (arriba, archivos, mano, buscador, tutoriales) la bolita y el borrador se esconden y no se dibuja ni se borra.
+
 ## 0b. Hecho en la v27
 
 - [x] **Nodos con el índice**: tocas un nodo y se pega a tu dedo; lo sueltas abriendo la mano izquierda (pulgar + medio).

@@ -71,7 +71,9 @@ public static class ArmarEscenaTrazo
         var matNodoActivo = Mat("NodoActivo", unlit, new Color(1f, 0.5f, 0.1f));
         var matCursor = Mat("Cursor", unlit, new Color(0.3f, 0.3f, 0.32f));
         var matRelleno = Mat("Relleno", shaderRelleno, Color.white);
-        var matAsa = Mat("Asa", unlit, new Color(0.2f, 0.8f, 0.3f));
+        // Los tiradores Bézier se ven siempre, aunque queden detrás de una línea (shader TrazoVR/Encima).
+        var shaderEncima = Shader.Find("TrazoVR/Encima");
+        var matAsa = Mat("Asa", shaderEncima != null ? shaderEncima : unlit, new Color(0.2f, 0.8f, 0.3f));
         var matIman = Mat("Iman", unlit, new Color(0.1f, 0.95f, 0.35f));
         var matCaja = Mat("Caja", unlit, new Color(0.65f, 0.78f, 1f));
         var matGuia = Mat("Guia", unlit, new Color(0.7f, 0.8f, 0.95f));

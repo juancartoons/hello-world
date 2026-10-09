@@ -783,8 +783,8 @@ public partial class ControlManos : MonoBehaviour
             return;
         if (trazoActual == null && permitirEmpezarLinea != null && !permitirEmpezarLinea(Der.indice))
             return;
-        // Con el dedo en el parlante o en el carrusel de instrumentos no empieza una línea.
-        if (trazoActual == null && BotonSonido.DedoCerca)
+        // Con el dedo en el parlante, en el carrusel de instrumentos o junto a un botón de un menú no empieza una línea.
+        if (trazoActual == null && (BotonSonido.DedoCerca || BotonTocable.DedoCerca))
             return;
         if (trazoActual == null)
         {
@@ -1299,8 +1299,8 @@ public partial class ControlManos : MonoBehaviour
     void Borrar()
     {
         hoverTipo = Objetivo.Nada;
-        // Con el dedo en el parlante o en el carrusel de instrumentos no se borra nada.
-        if (!Der.valida || BotonSonido.DedoCerca)
+        // Con el dedo en el parlante, en el carrusel de instrumentos o junto a un botón de un menú no se borra nada.
+        if (!Der.valida || BotonSonido.DedoCerca || BotonTocable.DedoCerca)
         {
             CancelarFrote();
             MostrarModoNodos(false, null);
@@ -2382,7 +2382,9 @@ public partial class ControlManos : MonoBehaviour
         if (cursor == null)
             return;
         // Cerca del parlante o del carrusel de instrumentos la bolita se esconde (se ve bien lo que tocas).
-        bool ver = Der.valida && GestoIzq != Gesto.Transformar && !flechaDer.activa && !BotonSonido.DedoCerca && !LapizAtrapado;
+        // En el modo nodos tampoco (no estás dibujando: estás moviendo nodos), ni cerca de un botón de un menú.
+        bool ver = Der.valida && GestoIzq != Gesto.Transformar && GestoIzq != Gesto.Nodos && !flechaDer.activa
+                   && !BotonSonido.DedoCerca && !BotonTocable.DedoCerca && !LapizAtrapado;
         if (cursor.gameObject.activeSelf != ver)
             cursor.gameObject.SetActive(ver);
         if (!ver)

@@ -245,6 +245,7 @@ public class Referencias : MonoBehaviour
         var boton = cubo.AddComponent<BotonTocable>();
         boton.materialNormal = materialBoton;
         boton.materialMarcado = materialBoton;
+        boton.esconderDedo = false; // al calcar cerca de la imagen, la bolita del dedo se sigue viendo
         var texto = new GameObject("Texto", typeof(RectTransform));
         texto.transform.SetParent(contenedor, false);
         texto.transform.localPosition = new Vector3(x, 0f, -0.0035f);
