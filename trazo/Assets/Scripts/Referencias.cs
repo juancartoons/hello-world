@@ -359,35 +359,47 @@ public class Referencias : MonoBehaviour
     // Pone frente a tus ojos una imagen que ya está en la carpeta de imágenes de la app (Dibujos/Imagenes).
     public bool Poner(string archivo, Transform cabeza)
     {
-        if (ocultas)
-        {
-            ocultas = false;
-            foreach (var otra in imagenes)
-                AplicarVista(otra);
-        }
         Vector3 adelante = cabeza != null ? cabeza.forward : Vector3.forward;
         adelante.y = 0f;
         if (adelante.sqrMagnitude < 1e-4f)
             adelante = Vector3.forward;
         adelante.Normalize();
         Vector3 ojos = cabeza != null ? cabeza.position : new Vector3(0f, 1.5f, 0f);
+        return PonerEn(archivo, ojos + adelante * 0.7f, Quaternion.LookRotation(adelante, Vector3.up), 0.4f) != null;
+    }
+
+    // Pone esa imagen en un lugar exacto (por ejemplo, la que vas sacando del buscador con el pellizco).
+    public Transform PonerEn(string archivo, Vector3 posicion, Quaternion rotacion, float escala)
+    {
+        if (ocultas)
+        {
+            ocultas = false;
+            foreach (var otra in imagenes)
+                AplicarVista(otra);
+        }
         var d = new DatosImagen
         {
             archivo = archivo,
-            posicion = ojos + adelante * 0.7f,
-            rotacion = Quaternion.LookRotation(adelante, Vector3.up),
-            escala = 0.4f
+            posicion = posicion,
+            rotacion = rotacion,
+            escala = escala
         };
         var img = Crear(d);
         if (img == null)
         {
             Mensaje("No se pudo abrir " + d.archivo);
-            return false;
+            return null;
         }
         Seleccionar(img.raiz);
         Guardar();
         Mensaje("Imagen: " + d.archivo);
-        return true;
+        return img.raiz;
+    }
+
+    // Quita una imagen (por ejemplo, si la soltaste otra vez sobre el buscador).
+    public void Quitar(Transform raiz)
+    {
+        QuitarImagen(Buscar(raiz));
     }
 
     public void QuitarSeleccionada()

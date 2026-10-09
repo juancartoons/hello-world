@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 9 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v27***
+*Actualizado: 9 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v28***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,7 +16,18 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ---
 
-## 0. Hecho en la v27 (falta probarlo en el visor)
+## 0. Hecho en la v28 (falta probarlo en el visor)
+
+- [x] **Fondos 360 en 3D**: "Cuarto 360", "Roma de noche" y "Amanecer" (fotos reales de Poly Haven) con **profundidad calculada con IA** (Depth Anything V2 Small): cada cosa queda a su distancia, se ve en 3D con los dos ojos y cambia al mover la cabeza. El piso de la foto coincide con tu piso.
+  - Herramienta para calcular la profundidad de otras fotos: `trazo/Herramientas/profundidad360.py`.
+- [x] **Varias fotos 360 tuyas** (hasta 8): cada una que eliges con **Imagen + → Fondo 360** queda en el botón **Fondo** ("Mi foto 360 1, 2…"), con "piso real" (sin IA, por ahora).
+- [x] **Mano copia del plano 2D**: ahora es una copia de **tu misma mano** (no el guante de Mickey).
+- [x] **Tutorial, paso 2**: al llegar a la bandera, la mano derecha queda **atrapada** ahí (una copia quieta), la línea ya no crece y hay que **abrir la mano izquierda** para seguir. La bandera ahora es **a cuadros** (de meta).
+- [x] **Tiradores Bézier**: al **acercar** el dedo a un nodo (sin tocarlo) aparecen sus tiradores; tocas la punta de uno y se pega al dedo.
+- [x] **Plastilina**: índice y medio estirados (juntos o en V) con el anular y el meñique doblados.
+- [x] **Imagen +**: ahora puedes **pellizcar** una imagen (en la lista o en grande) y **sacarla del panel**: queda donde la sueltas (crece al alejarla; cerca del plano 2D se pega detrás).
+
+## 0b. Hecho en la v27
 
 - [x] **Nodos con el índice**: tocas un nodo y se pega a tu dedo; lo sueltas abriendo la mano izquierda (pulgar + medio).
   - Respaldo de la versión con pellizco (v26): `trazo/Respaldos/nodos-con-pellizco-v26/` (con un LEEME de cómo volver a ella).
@@ -31,6 +42,9 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [x] **Imagen +** ahora abre un buscador con TODAS las imágenes del Quest (Descargas, Cámara, capturas, WhatsApp, Facebook…): tocas una, la ves en grande y decides **Importar** o **Fondo 360**. La primera vez el Quest pide permiso para ver tus fotos.
 
 ## 1. Próxima tanda
+
+- [ ] **Profundidad con IA para tus propias fotos 360** (dentro del Quest, con Unity Inference Engine, gratis). Por ahora usan "piso real".
+- [ ] Más fondos 360 temáticos (café de París, mesita en el andén, terraza al atardecer, sala de lujo): bájalos gratis de polyhaven.com (JPG 4K) y ponlos en **Plugins/Fondos** o elígelos con **Imagen + → Fondo 360**.
 
 - [ ] **Fondo verde (croma)** para grabar videos (pospuesto: "todavía no es urgente"). Se graba en el Quest con fondo verde y luego, en un editor gratis (CapCut o DaVinci Resolve), se pone encima de un video real de tu cuarto.
 
@@ -66,11 +80,17 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ## 5. Para probar en el visor (desde la v21 casi nada se ha probado)
 
+**Nuevo en la v28:**
+- [ ] Fondos 360 en 3D: ¿se siente la profundidad? ¿el piso de la foto coincide con tu piso? ¿se estiran mucho los bordes al moverte?
+- [ ] Mano copia en el plano 2D (tu misma mano) y la mano atrapada en la bandera del tutorial.
+- [ ] Tiradores al acercar el dedo; plastilina con dos dedos (juntos o en V).
+- [ ] Sacar imágenes del buscador con el pellizco.
+
 **Nuevo en la v27:**
 - [ ] Nodos: tocar, seguir el dedo y soltar abriendo la izquierda. ¿Se agarran nodos sin querer?
 - [ ] Lazo (que no se active al mover un nodo) y plastilina (índice + medio).
 - [ ] Plano 2D: pasar el dedo detrás de la hoja (copia de la mano + anillito).
-- [ ] Fondo: Cuarto 360 y Mi foto 360 (¿se ve nítido? ¿hay una rayita en la unión de la foto?).
+- [ ] Fondo: los 360 (¿se ve nítido? ¿hay una rayita en la unión de la foto?).
 - [ ] Imagen +: la ventana de permiso, las carpetas, las miniaturas, Importar y Fondo 360.
 - [ ] Manos del tutorial: ¿se ven bien la palma, el dorso y el pulgar?
 

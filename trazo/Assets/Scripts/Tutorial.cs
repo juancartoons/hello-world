@@ -666,16 +666,13 @@ public class Tutorial : MonoBehaviour
         var palo = Pieza(PrimitiveType.Cube, bandera, materialNegro);
         palo.transform.localPosition = new Vector3(0f, 0.065f, 0f);
         palo.transform.localScale = new Vector3(0.004f, 0.13f, 0.004f);
+        // Bandera de META a cuadros (blanco y negro), un poco ondulada.
         tela = new GameObject("Tela").transform;
         tela.SetParent(bandera, false);
         tela.localPosition = new Vector3(0.002f, 0.13f, 0f);
-        var mallaTela = new Mesh { name = "Tela" };
-        mallaTela.vertices = new[] { Vector3.zero, new Vector3(0.065f, -0.022f, 0f), new Vector3(0f, -0.044f, 0f) };
-        mallaTela.triangles = new[] { 0, 1, 2 };
-        mallaTela.RecalculateNormals();
-        mallaTela.RecalculateBounds();
-        Malla(tela, "Trapo", mallaTela, materialRojo, Vector3.zero);
-        var baseB = Pieza(PrimitiveType.Sphere, bandera, materialRojo);
+        Malla(tela, "CuadrosNegros", MallaCuadros(true), materialNegro, Vector3.zero);
+        Malla(tela, "CuadrosBlancos", MallaCuadros(false), materialBlanco, Vector3.zero);
+        var baseB = Pieza(PrimitiveType.Sphere, bandera, materialNegro);
         baseB.transform.localScale = Vector3.one * 0.014f;
         metaVisible = false;
         puntoA.gameObject.SetActive(false);
@@ -985,6 +982,9 @@ public class Tutorial : MonoBehaviour
             // ¡Llegaste a la bandera! (paso 2). Ahora hay que abrir los dedos (paso 3).
             if (Vector3.Distance(control.Der.indice, B) < 0.07f && LargoCamino >= MitadLinea * 2f * 0.6f)
             {
+                // La mano derecha queda "atrapada" en la bandera (una copia quieta) y la línea ya no crece:
+                // aunque sigas moviendo la mano, no se daña el camino. Para seguir hay que abrir la mano izquierda.
+                control.AtraparLapiz();
                 Exito(2, B);
                 OcultarVineta(); // un respiro antes del paso 3
                 Cambiar(Estado.Paso3);
@@ -1055,9 +1055,7 @@ public class Tutorial : MonoBehaviour
             float pinza = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(1.0f, 1.3f, ciclo)) * (1f - Mathf.InverseLerp(1.9f, 2.2f, ciclo));
             PonerAlfaGuia(0.55f * Mathf.Clamp01((T - respiro) / 0.4f));
             PonerOkGuia(pinza, 1f);
-            // Si no suelta en un buen rato, la línea se termina sola.
-            if (T > 12f)
-                control.TerminarLineaActual();
+            // La línea no se termina sola: hay que abrir la mano izquierda para seguir (la mano está atrapada).
             return;
         }
         // ¡Abrió los dedos! La línea queda terminada.
@@ -2675,6 +2673,36 @@ public class Tutorial : MonoBehaviour
     static GameObject Disco(Transform padre, Material m, float diametro, Vector3 local)
     {
         return Malla(padre, "Disco", ControlManos.MallaDisco(), m, local, diametro);
+    }
+
+    // Los cuadros de la bandera de meta (4 x 3), los negros o los blancos. Ondulada como tela al viento.
+    static Mesh MallaCuadros(bool negros)
+    {
+        const int cols = 4, filas = 3;
+        const float ancho = 0.068f, alto = 0.046f;
+        var v = new List<Vector3>();
+        var tri = new List<int>();
+        for (int f = 0; f < filas; f++)
+            for (int c = 0; c < cols; c++)
+            {
+                if (((c + f) % 2 == 0) != negros)
+                    continue;
+                int b = v.Count;
+                for (int k = 0; k < 4; k++)
+                {
+                    float x = (c + (k == 1 || k == 2 ? 1 : 0)) * ancho / cols;
+                    float y = -(f + (k >= 2 ? 1 : 0)) * alto / filas;
+                    v.Add(new Vector3(x, y, Mathf.Sin(x / ancho * Mathf.PI * 1.6f) * 0.005f));
+                }
+                tri.Add(b); tri.Add(b + 1); tri.Add(b + 2);
+                tri.Add(b); tri.Add(b + 2); tri.Add(b + 3);
+            }
+        var m = new Mesh { name = negros ? "CuadrosNegros" : "CuadrosBlancos" };
+        m.SetVertices(v);
+        m.SetTriangles(tri, 0);
+        m.RecalculateNormals();
+        m.RecalculateBounds();
+        return m;
     }
 
     static GameObject Malla(Transform padre, string nombre, Mesh malla, Material m, Vector3 local, float escala = 1f)

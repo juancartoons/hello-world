@@ -117,7 +117,7 @@ public class PanelMuneca : MonoBehaviour
             return;
         escenario.SiguienteModo();
         Refrescar();
-        Mensaje("Fondo: " + Escenario.Nombres[escenario.modo]);
+        Mensaje("Fondo: " + escenario.NombreModo);
     }
 
     void Update()
@@ -182,7 +182,7 @@ public class PanelMuneca : MonoBehaviour
             }
         }
         if (btnFondo != null && escenario != null)
-            btnFondo.PonerTexto("Fondo: " + Escenario.Nombres[escenario.modo]);
+            btnFondo.PonerTexto("Fondo: " + escenario.NombreModo);
         if (btnIman != null && dibujo != null)
         {
             bool iman = dibujo.CapaActual.iman;

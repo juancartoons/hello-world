@@ -11,6 +11,8 @@ using UnityEngine.Android;
 //  - Arriba: las carpetas (Todas, Descargas, Cámara, WhatsApp...) y la X para cerrar.
 //  - Toca una miniatura para verla en grande. Tú decides:
 //      Importar  = la copia a la app y la pone frente a ti (imagen de referencia, para calcar).
+//  - O PELLÍZCALA (en la lista o en grande) y sácala del panel: se trae a la app y queda donde la sueltes
+//    (crece al alejarla del panel; cerca del plano 2D se pega detrás, como imán). Soltarla sobre el panel = nada.
 //      Fondo 360 = (solo fotos 360: el doble de anchas que de altas) la pone de fondo a tu alrededor.
 //      Volver    = regresar a la lista.
 //  - < y > cambian de página.
@@ -46,6 +48,7 @@ public class BuscadorImagenes : MonoBehaviour
         public Texture2D textura;
         public int item = -1;
         public bool intentada;
+        public Vector2 centro;   // en el panel
     }
 
     Transform raiz, cabeza;
@@ -63,6 +66,10 @@ public class BuscadorImagenes : MonoBehaviour
     int filtro, pagina, elegido = -1;
     volatile bool permisoRespondio;
     bool esperandoPermiso;
+    Transform arrastrada;       // la imagen que vas sacando del panel con el pellizco
+    static BuscadorImagenes activo;
+
+    const float EscalaArrastreInicio = 0.1f, EscalaArrastreFinal = 0.4f;
 
     public bool Abierto => raiz != null && raiz.gameObject.activeSelf;
     bool VisorAbierto => visor != null && visor.gameObject.activeSelf;
@@ -102,6 +109,7 @@ public class BuscadorImagenes : MonoBehaviour
     void AbrirPanel(Transform cab)
     {
         BuscarPiezas();
+        activo = this;
         cabeza = cab;
         if (raiz == null)
             Armar();
@@ -122,11 +130,12 @@ public class BuscadorImagenes : MonoBehaviour
             PedirPermiso();
         Listar();
         Mostrar();
-        Mensaje(esperandoPermiso ? "Permite que JCartoons vea tus fotos (ventana del Quest)" : "Toca una imagen para verla en grande");
+        Mensaje(esperandoPermiso ? "Permite que JCartoons vea tus fotos (ventana del Quest)" : "Toca una imagen para verla en grande, o pellízcala y sácala del panel");
     }
 
     public void Cerrar()
     {
+        TerminarArrastre();
         CerrarVisor();
         LiberarMiniaturas();
         if (raiz != null)
@@ -150,9 +159,105 @@ public class BuscadorImagenes : MonoBehaviour
             if (!TienePermiso())
                 Mensaje("Sin permiso solo ves las imágenes de la app. Para dárselo: Ajustes del Quest > Apps > JCartoons > Permisos");
         }
+        ArrastrarConPellizco();
         // Las miniaturas se cargan de a una por cuadro (así no se traba la vista).
-        if (!VisorAbierto)
+        if (!VisorAbierto && arrastrada == null)
             CargarUnaMiniatura();
+    }
+
+    // ---------- Sacar imágenes del panel con el pellizco ----------
+
+    // ¿Ese punto está sobre el panel abierto? (así el pellizco es del panel y no de las líneas de atrás)
+    public static bool Contiene(Vector3 mundo)
+    {
+        if (activo == null || !activo.Abierto)
+            return false;
+        Vector3 l = activo.raiz.InverseTransformPoint(mundo);
+        return Mathf.Abs(l.x) < 0.33f && Mathf.Abs(l.y) < 0.25f && l.z > -0.07f && l.z < 0.03f;
+    }
+
+    void ArrastrarConPellizco()
+    {
+        var control = ControlManos.Instancia;
+        if (control == null || referencias == null)
+            return;
+        var der = control.Der;
+        if (arrastrada != null)
+        {
+            if (!der.valida || !der.pellizco)
+            {
+                SoltarArrastre();
+                return;
+            }
+            // Sigue a la pinza, mirándote, y crece mientras la alejas del panel.
+            Vector3 p = der.PuntoPellizco;
+            float lejos = Mathf.Max(0f, -raiz.InverseTransformPoint(p).z - 0.02f);
+            float escala = Mathf.Lerp(EscalaArrastreInicio, EscalaArrastreFinal, Mathf.Clamp01(lejos / 0.2f));
+            arrastrada.localScale = Vector3.one * escala;
+            if (cabeza != null && (p - cabeza.position).sqrMagnitude > 1e-4f)
+                arrastrada.rotation = Quaternion.LookRotation(p - cabeza.position, Vector3.up);
+            referencias.MoverA(arrastrada, p);
+            return;
+        }
+        if (!der.valida || !der.empezoPellizco || control.GestoIzq != ControlManos.Gesto.Ninguno)
+            return;
+        Vector3 local = raiz.InverseTransformPoint(der.PuntoPellizco);
+        if (local.z < -0.05f || local.z > 0.02f)
+            return;
+        int k = -1;
+        if (VisorAbierto)
+        {
+            Vector3 tam = visor.transform.localScale;
+            Vector3 c = visor.transform.localPosition;
+            if (Mathf.Abs(local.x - c.x) < tam.x * 0.5f && Mathf.Abs(local.y - c.y) < tam.y * 0.5f)
+                k = elegido;
+        }
+        else
+        {
+            foreach (var f in fichas)
+                if (f != null && f.item >= 0 && Mathf.Abs(local.x - f.centro.x) < 0.069f && Mathf.Abs(local.y - f.centro.y) < 0.0525f)
+                    k = f.item;
+        }
+        if (k < 0 || k >= lista.Count)
+            return;
+        string archivo = ImportarArchivo(lista[k]);
+        if (archivo == null)
+            return;
+        Vector3 pinza = der.PuntoPellizco;
+        Quaternion mira = cabeza != null && (pinza - cabeza.position).sqrMagnitude > 1e-4f
+            ? Quaternion.LookRotation(pinza - cabeza.position, Vector3.up) : raiz.rotation;
+        arrastrada = referencias.PonerEn(archivo, pinza, mira, EscalaArrastreInicio);
+        if (arrastrada != null)
+            Burbuja(pinza);
+    }
+
+    void SoltarArrastre()
+    {
+        var img = arrastrada;
+        arrastrada = null;
+        if (img == null)
+            return;
+        // Soltada sobre el panel: no se pone (te arrepentiste).
+        if (Contiene(img.position))
+        {
+            referencias.Quitar(img);
+            return;
+        }
+        referencias.AlSoltar(img);
+    }
+
+    void TerminarArrastre()
+    {
+        if (arrastrada != null && referencias != null)
+            referencias.AlSoltar(arrastrada);
+        arrastrada = null;
+    }
+
+    static void Burbuja(Vector3 donde)
+    {
+        var control = ControlManos.Instancia;
+        if (control != null)
+            control.SonidoBurbuja(donde);
     }
 
     void Mensaje(string texto)
@@ -549,6 +654,8 @@ public class BuscadorImagenes : MonoBehaviour
     // Toca una miniatura: se ve en grande y tú decides qué hacer.
     void Elegir(int i)
     {
+        if (arrastrada != null)
+            return;
         int k = pagina * PorPagina + i;
         if (k >= lista.Count)
             return;
@@ -598,7 +705,7 @@ public class BuscadorImagenes : MonoBehaviour
         Ver(btnFondo360, false);
         Ver(btnVolver, false);
         if (textoAyuda != null)
-            Idioma.Poner(textoAyuda, "Toca una imagen para verla en grande");
+            Idioma.Poner(textoAyuda, "Toca una imagen para verla en grande, o pellízcala y sácala del panel");
     }
 
     void Volver()
@@ -621,7 +728,18 @@ public class BuscadorImagenes : MonoBehaviour
     {
         if (elegido < 0 || elegido >= lista.Count || referencias == null)
             return;
-        var it = lista[elegido];
+        string archivo = ImportarArchivo(lista[elegido]);
+        if (archivo == null)
+            return;
+        Cerrar();
+        referencias.Poner(archivo, cabeza);
+    }
+
+    // La trae a la carpeta de imágenes de la app (si no estaba). Devuelve el nombre del archivo, o null.
+    string ImportarArchivo(Item it)
+    {
+        if (referencias == null)
+            return null;
         string archivo;
         if (it.id < 0)
         {
@@ -653,29 +771,28 @@ public class BuscadorImagenes : MonoBehaviour
             if (!bien)
             {
                 Mensaje("No se pudo importar esa imagen");
-                return;
+                return null;
             }
         }
-        Cerrar();
-        referencias.Poner(archivo, cabeza);
+        return archivo;
     }
 
-    // Fondo 360: la copia como "Mi foto 360" y la pone de fondo.
+    // Fondo 360: la copia a tus fotos 360 (se guardan las 8 más nuevas) y la pone de fondo.
     void UsarDeFondo()
     {
         if (elegido < 0 || elegido >= lista.Count)
             return;
-        if (escenario == null || escenario.materialFondo360 == null)
+        if (escenario == null || !escenario.Hay360)
         {
             Mensaje("Falta el fondo 360: en Unity, vuelve a tocar TrazoVR > ★ Armar escena");
             return;
         }
         var it = lista[elegido];
-        string destino = Escenario.RutaFoto360;
+        string destino = null;
         bool bien = false;
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(destino));
+            destino = Escenario.NuevaRutaFoto360();
             if (it.id >= 0)
             {
                 string ext = Path.GetExtension(it.nombre ?? "").ToLowerInvariant();
@@ -698,8 +815,8 @@ public class BuscadorImagenes : MonoBehaviour
             return;
         }
         Cerrar();
-        escenario.UsarFoto360();
-        Mensaje("Fondo: " + Escenario.Nombres[escenario.modo]);
+        escenario.UsarFotoNueva(destino);
+        Mensaje("Fondo: " + escenario.NombreModo);
     }
 
     static string Limpiar(string s)
@@ -734,7 +851,7 @@ public class BuscadorImagenes : MonoBehaviour
         }
         var btnCerrar = Boton(raiz, "X", new Vector3(0.295f, 0.205f, 0f), new Vector2(0.024f, 0.022f));
         btnCerrar.alTocar.AddListener(Cerrar);
-        textoAyuda = Texto(raiz, "Toca una imagen para verla en grande", new Vector3(0f, 0.172f, -0.002f), new Vector2(0.5f, 0.018f), 0.12f);
+        textoAyuda = Texto(raiz, "Toca una imagen para verla en grande, o pellízcala y sácala del panel", new Vector3(0f, 0.172f, -0.002f), new Vector2(0.56f, 0.018f), 0.12f);
 
         grilla = new GameObject("Grilla");
         grilla.transform.SetParent(raiz, false);
@@ -745,6 +862,7 @@ public class BuscadorImagenes : MonoBehaviour
             float y = 0.1f - fila * 0.112f;
             var f = new Ficha();
             f.boton = Boton(grilla.transform, "", new Vector3(x, y, 0f), new Vector2(0.138f, 0.105f));
+            f.centro = new Vector2(x, y);
             int indice = i;
             f.boton.alTocar.AddListener(() => Elegir(indice));
             var vista = GameObject.CreatePrimitive(PrimitiveType.Quad);

@@ -11,6 +11,8 @@ public class ManoSeguida
     public float sinSenal;       // segundos desde que se perdió la mano
     public Vector3 indice, pulgar, medio, anular, menique; // puntas de los dedos (suavizadas)
     public Vector3 indiceCrudo;  // punta del índice SIN suavizar (para el lápiz: va pegado al dedo)
+    // Qué tan estirado está cada dedo: (punta a muñeca) ÷ (nudillo a muñeca). ~1.8 estirado, ~1 doblado.
+    public float estiradoIndice, estiradoMedio, estiradoAnular, estiradoMenique = 1f;
 
     // Pellizco índice + pulgar (con histéresis: entra con poca distancia, sale con más).
     public bool pellizco, empezoPellizco, soltoPellizco;
@@ -26,11 +28,20 @@ public class ManoSeguida
 
     public Vector3 PuntoPellizco => (indice + pulgar) * 0.5f;
 
-    // Índice y medio estirados y juntos (como diciendo "dos"): el anular queda doblado, lejos del medio.
-    // (Con la mano plana, el anular también está junto: así no se confunde.)
-    public bool DosDedos => valida && Vector3.Distance(indice, medio) < 0.025f && Vector3.Distance(medio, anular) > 0.03f;
+    // Índice y medio estirados (juntos o en V, da igual) y el anular y el meñique doblados: "dos dedos".
+    // Así no importa que el Quest no vea bien los dos dedos pegados: basta con que sean los únicos estirados.
+    public bool DosDedos => valida && estiradoIndice > 1.5f && estiradoMedio > 1.5f
+                            && estiradoAnular < 1.32f && estiradoMenique < 1.38f;
 
     public float TiempoPellizco => pellizco ? Time.time - pellizcoDesde : 0f;
+
+    static float Estirado(Transform muneca, Transform nudillo, Transform punta)
+    {
+        if (muneca == null || nudillo == null || punta == null)
+            return 1f;
+        float baseDedo = Vector3.Distance(nudillo.position, muneca.position);
+        return baseDedo > 1e-4f ? Vector3.Distance(punta.position, muneca.position) / baseDedo : 1f;
+    }
 
     public void Actualizar(Transform ancla, float suavizado, float entra, float sale)
     {
@@ -77,6 +88,13 @@ public class ManoSeguida
         menique = teniaDatos ? Vector3.Lerp(menique, objetivoMenique, a) : objetivoMenique;
         teniaDatos = true;
         valida = true;
+
+        Transform tMuneca = ManosUtil.Hueso(esqueleto, "WristRoot", "Wrist");
+        estiradoIndice = Estirado(tMuneca, ManosUtil.Hueso(esqueleto, "Index1", "IndexProximal"), tIndice);
+        estiradoMedio = Estirado(tMuneca, ManosUtil.Hueso(esqueleto, "Middle1", "MiddleProximal"), tMedio);
+        estiradoAnular = Estirado(tMuneca, ManosUtil.Hueso(esqueleto, "Ring1", "RingProximal"), tAnular);
+        // Sin meñique, cuenta como doblado.
+        estiradoMenique = tMenique != null ? Estirado(tMuneca, ManosUtil.Hueso(esqueleto, "Pinky1", "LittleProximal"), tMenique) : 1f;
 
         float d = Vector3.Distance(indice, pulgar);
         if (!pellizco && d < entra)

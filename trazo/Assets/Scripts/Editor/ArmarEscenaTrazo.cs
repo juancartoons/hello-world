@@ -170,7 +170,7 @@ public static class ArmarEscenaTrazo
         goEscenario.transform.SetParent(raiz.transform, false);
         var escenario = goEscenario.AddComponent<Escenario>();
         escenario.materialCuadricula = matCuadricula;
-        escenario.materialFondo360 = MaterialFondo360();
+        PrepararFondos360(escenario, unlit);
 
         var goDibujo = new GameObject("Dibujo");
         goDibujo.transform.SetParent(raiz.transform, false);
@@ -857,60 +857,89 @@ public static class ArmarEscenaTrazo
         }
     }
 
-    // Fondo "Cuarto 360": la foto 360 que viene en Plugins/Fondos (cuarto360.jpg), en un material de cielo.
-    static Material MaterialFondo360()
+    // Fondos 360 en 3D: las fotos de Plugins/Fondos (con sus distancias calculadas con IA).
+    static readonly string[,] Fondos360 =
     {
-        Texture2D tex = null;
-        string rutaTex = null;
-        foreach (var guid in AssetDatabase.FindAssets("cuarto360 t:Texture2D"))
+        { "cuarto360", "Cuarto 360" },
+        { "roma360", "Roma de noche" },
+        { "amanecer360", "Amanecer" },
+    };
+
+    static void PrepararFondos360(Escenario escenario, Shader unlit)
+    {
+        var lista = new List<Escenario.Foto360>();
+        var usadas = new HashSet<string>();
+        for (int k = 0; k < Fondos360.GetLength(0); k++)
         {
-            rutaTex = AssetDatabase.GUIDToAssetPath(guid);
-            tex = AssetDatabase.LoadAssetAtPath<Texture2D>(rutaTex);
-            if (tex != null)
-                break;
+            string archivo = Fondos360[k, 0];
+            foreach (var guid in AssetDatabase.FindAssets(archivo + " t:Texture2D"))
+            {
+                string rutaTex = AssetDatabase.GUIDToAssetPath(guid);
+                if (System.IO.Path.GetFileNameWithoutExtension(rutaTex) != archivo)
+                    continue;
+                var f = PrepararFoto360(rutaTex, Fondos360[k, 1]);
+                if (f != null)
+                {
+                    lista.Add(f);
+                    usadas.Add(rutaTex);
+                    break;
+                }
+            }
         }
-        if (tex == null)
-        {
-            Debug.LogWarning("TrazoVR: no encontré la foto cuarto360 (copia otra vez la carpeta Plugins). El fondo 360 no estará.");
-            return null;
-        }
+        // Cualquier otra foto 360 (el doble de ancha que de alta) que pongas en Plugins/Fondos también entra.
+        const string carpetaFondos = "Assets/Plugins/Fondos";
+        if (AssetDatabase.IsValidFolder(carpetaFondos))
+            foreach (var guid in AssetDatabase.FindAssets("t:Texture2D", new[] { carpetaFondos }))
+            {
+                string rutaTex = AssetDatabase.GUIDToAssetPath(guid);
+                if (usadas.Contains(rutaTex))
+                    continue;
+                var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(rutaTex);
+                if (tex == null || Mathf.Abs(tex.width - tex.height * 2) > tex.height / 20)
+                    continue;
+                var f = PrepararFoto360(rutaTex, System.IO.Path.GetFileNameWithoutExtension(rutaTex));
+                if (f != null)
+                    lista.Add(f);
+            }
+        if (lista.Count == 0)
+            Debug.LogWarning("TrazoVR: no encontré las fotos 360 (copia otra vez la carpeta Plugins).");
+        escenario.fondos360 = lista.ToArray();
+        // Material sin luz (se ve igual desde cualquier lado); la foto se pone al elegir el fondo.
+        var m = Mat("Fondo360", unlit, Color.white);
+        if (m.HasProperty("_Cull"))
+            m.SetFloat("_Cull", 0f);
+        EditorUtility.SetDirty(m);
+        AssetDatabase.SaveAssets();
+        escenario.materialFondo360 = m;
+    }
+
+    // Una foto 360: tamaño máximo 4096, sin mipmaps, y sus distancias (archivo <nombre>_profundidad) si las tiene.
+    static Escenario.Foto360 PrepararFoto360(string rutaTex, string nombre)
+    {
         var imp = AssetImporter.GetAtPath(rutaTex) as TextureImporter;
         if (imp != null && (imp.maxTextureSize != 4096 || imp.mipmapEnabled || imp.wrapModeV != TextureWrapMode.Clamp))
         {
             imp.maxTextureSize = 4096;
-            imp.mipmapEnabled = false; // sin mipmaps: así no aparece una rayita donde se unen los bordes de la foto
+            imp.mipmapEnabled = false;
             imp.wrapModeU = TextureWrapMode.Repeat;
             imp.wrapModeV = TextureWrapMode.Clamp;
             imp.SaveAndReimport();
-            tex = AssetDatabase.LoadAssetAtPath<Texture2D>(rutaTex);
         }
-        var shader = Shader.Find("Skybox/Panoramic");
-        if (shader == null)
-        {
-            Debug.LogWarning("TrazoVR: no encontré el shader Skybox/Panoramic. El fondo 360 no estará.");
+        var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(rutaTex);
+        if (tex == null)
             return null;
-        }
-        string ruta = carpeta + "/Fondo360.mat";
-        var m = AssetDatabase.LoadAssetAtPath<Material>(ruta);
-        if (m == null)
+        string archivo = System.IO.Path.GetFileNameWithoutExtension(rutaTex);
+        TextAsset profundidad = null;
+        foreach (var guid in AssetDatabase.FindAssets(archivo + "_profundidad t:TextAsset"))
         {
-            m = new Material(shader);
-            AssetDatabase.CreateAsset(m, ruta);
+            string ruta = AssetDatabase.GUIDToAssetPath(guid);
+            if (System.IO.Path.GetFileNameWithoutExtension(ruta) != archivo + "_profundidad")
+                continue;
+            profundidad = AssetDatabase.LoadAssetAtPath<TextAsset>(ruta);
+            if (profundidad != null)
+                break;
         }
-        else
-        {
-            m.shader = shader;
-        }
-        m.SetTexture("_MainTex", tex);
-        if (m.HasProperty("_Mapping")) m.SetFloat("_Mapping", 1f);     // latitud-longitud (la foto 360 de siempre)
-        if (m.HasProperty("_ImageType")) m.SetFloat("_ImageType", 0f); // 360 grados
-        if (m.HasProperty("_Exposure")) m.SetFloat("_Exposure", 1f);
-        if (m.HasProperty("_Rotation")) m.SetFloat("_Rotation", 0f);
-        m.DisableKeyword("_MAPPING_6_FRAMES_LAYOUT");
-        m.EnableKeyword("_MAPPING_LATITUDE_LONGITUDE_LAYOUT");
-        EditorUtility.SetDirty(m);
-        AssetDatabase.SaveAssets();
-        return m;
+        return new Escenario.Foto360 { nombre = nombre, foto = tex, profundidad = profundidad };
     }
 
     static bool PonerEnum(SerializedProperty prop, string nombre)

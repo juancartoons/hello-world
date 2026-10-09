@@ -41,8 +41,8 @@ public class TutorialNodos : TarjetaTutorial
         {
             case 0:
                 return Tx(
-                    "LEFT hand: thumb + MIDDLE finger = the nodes appear. TOUCH a node with your RIGHT index: it sticks to your finger and follows it. To let it go, OPEN your left hand.",
-                    "Mano IZQUIERDA: pulgar + dedo MEDIO = aparecen los nodos. TOCA un nodo con el índice DERECHO: se pega a tu dedo y lo sigue. Para soltarlo, ABRE la mano izquierda.");
+                    "LEFT hand: thumb + MIDDLE finger = the nodes appear. TOUCH a node with your RIGHT index: it sticks to your finger and follows it. To let it go, OPEN your left hand.\nCurves: bring your finger CLOSE to a node (without touching it) and its handles appear; touch the tip of one to bend the line.",
+                    "Mano IZQUIERDA: pulgar + dedo MEDIO = aparecen los nodos. TOCA un nodo con el índice DERECHO: se pega a tu dedo y lo sigue. Para soltarlo, ABRE la mano izquierda.\nCurvas: ACERCA el dedo a un nodo (sin tocarlo) y aparecen sus tiradores; toca la punta de uno para curvar la línea.");
             case 1:
                 return Tx(
                     "Touch the line (away from its nodes) and stay STILL for half a second: a new node is born right there, stuck to your finger. Touching another line selects it.",
@@ -53,8 +53,8 @@ public class TutorialNodos : TarjetaTutorial
                     "Empieza en un espacio VACÍO y dibuja un círculo alrededor de varios nodos: quedan naranjas. Toca uno de ellos y se mueven todos juntos. Al abrir la mano izquierda se sueltan.");
             default:
                 return Tx(
-                    "Touch a node with your INDEX and MIDDLE fingers together (like saying \"two\"): its neighbors follow softly, like clay (the light orange ones). One finger = only that node.",
-                    "Toca un nodo con el ÍNDICE y el MEDIO juntos (como diciendo \"dos\"): sus vecinos lo siguen suave, como plastilina (los naranja clarito). Un dedo = solo ese nodo.");
+                    "Stretch out your INDEX and MIDDLE fingers (together or in a V) with the other fingers folded, and touch a node: its neighbors follow softly, like clay (the light orange ones). One finger = only that node.",
+                    "Estira el ÍNDICE y el MEDIO (juntos o en V) con los demás dedos doblados, y toca un nodo: sus vecinos lo siguen suave, como plastilina (los naranja clarito). Un dedo = solo ese nodo.");
         }
     }
 

@@ -300,6 +300,9 @@ public partial class ControlManos : MonoBehaviour
         if (Instancia == this)
             Instancia = null;
         LiberarPaleta();
+        foreach (var p in piezasCopia)
+            if (p.propia && p.malla != null)
+                Destroy(p.malla);
     }
 
     void Start()
@@ -745,6 +748,7 @@ public partial class ControlManos : MonoBehaviour
         }
         if (GestoIzq == Gesto.Nodos)
             TerminarModoNodos();
+        SoltarLapizAtrapado();
         if (dibujo.hojas != null)
             dibujo.hojas.Terminar();
         lapizTiene = false;
@@ -767,7 +771,7 @@ public partial class ControlManos : MonoBehaviour
     {
         if (!Der.valida)
             return;
-        if (DibujoBloqueado)
+        if (DibujoBloqueado || LapizAtrapado)
             return;
         Vector3 local = dibujo.transform.InverseTransformPoint(Der.indice);
         if (dibujo.UsaHoja)
@@ -916,7 +920,7 @@ public partial class ControlManos : MonoBehaviour
     {
         if (!Der.valida)
             return;
-        if (DibujoBloqueado)
+        if (DibujoBloqueado || LapizAtrapado)
             return;
         Vector3 local = dibujo.transform.InverseTransformPoint(Der.indice);
         if (LapizLevantado(local))
@@ -1922,6 +1926,12 @@ public partial class ControlManos : MonoBehaviour
     AudioSource fuenteSonidos;
 
     // tono: 1 = burbuja normal; más bajo = burbuja más grande (más grave).
+    // Para otros paneles (por ejemplo, al sacar una imagen del buscador).
+    public void SonidoBurbuja(Vector3 donde)
+    {
+        Burbuja(donde, 1f);
+    }
+
     void Burbuja(Vector3 donde, float tono)
     {
         if (fuenteSonidos == null)
@@ -2148,8 +2158,10 @@ public partial class ControlManos : MonoBehaviour
         }
         if (!Der.valida || !Der.empezoPellizco)
             return;
-        // Pellizcos sobre el panel de arriba son del panel.
+        // Pellizcos sobre el panel de arriba (o sobre el buscador de imágenes) son del panel.
         if (panelArriba != null && panelArriba.Contiene(Der.PuntoPellizco))
+            return;
+        if (BuscadorImagenes.Contiene(Der.PuntoPellizco))
             return;
         var t = LineaBajo(Der.PuntoPellizco, Der.indice);
         seleccionPrevia.Clear();
@@ -2370,7 +2382,7 @@ public partial class ControlManos : MonoBehaviour
         if (cursor == null)
             return;
         // Cerca del parlante o del carrusel de instrumentos la bolita se esconde (se ve bien lo que tocas).
-        bool ver = Der.valida && GestoIzq != Gesto.Transformar && !flechaDer.activa && !BotonSonido.DedoCerca;
+        bool ver = Der.valida && GestoIzq != Gesto.Transformar && !flechaDer.activa && !BotonSonido.DedoCerca && !LapizAtrapado;
         if (cursor.gameObject.activeSelf != ver)
             cursor.gameObject.SetActive(ver);
         if (!ver)

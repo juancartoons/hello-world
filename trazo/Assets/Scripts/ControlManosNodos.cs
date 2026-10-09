@@ -2,10 +2,12 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Nodos con el DEDO (parte de ControlManos). Mano izquierda: pulgar + medio = modo nodos.
-//  - TOCAR un nodo (o un asa) con el índice derecho = se pega al dedo y lo sigue.
+//  - TOCAR un nodo con el índice derecho = se pega al dedo y lo sigue.
 //    Para SOLTARLO: abre los dedos de la mano izquierda.
-//  - ÍNDICE + MEDIO juntos (como diciendo "dos") al tocar un nodo = PLASTILINA: los vecinos de la misma
-//    línea lo siguen suave (más cerca, más se mueven) y brillan en naranja clarito.
+//  - TIRADORES (Bézier): al ACERCAR el dedo a un nodo (sin tocarlo) aparecen sus tiradores; toca la punta
+//    de uno y se pega al dedo (para curvar la línea). Se suelta igual: abriendo la mano izquierda.
+//  - ÍNDICE + MEDIO estirados (juntos o en V) y los otros dedos doblados, al tocar un nodo = PLASTILINA:
+//    los vecinos de la misma línea lo siguen suave (más cerca, más se mueven) y brillan en naranja clarito.
 //  - LAZO: empieza en un espacio vacío y dibuja un círculo alrededor de varios nodos: quedan naranjas.
 //    Toca uno de ellos y se mueven todos juntos (exactos, sin plastilina).
 //  - Tocar la línea elegida (lejos de sus nodos) y quedarte quieto medio segundo = nodo nuevo, pegado al dedo.
@@ -20,6 +22,7 @@ public partial class ControlManos
     const float EsperaNodoNuevo = 0.5f;      // segundos quieto sobre la línea para crear un nodo
     const float LargoMinimoLazo = 0.12f;     // metros que hay que recorrer antes de poder cerrar el lazo
     const float CierreLazo = 0.03f;          // metros del inicio para que el lazo se cierre
+    const float RadioVerAsas = 0.06f;        // metros: al acercar el dedo a un nodo se ven sus tiradores
 
     // Un nodo de un grupo (lazo o plastilina): su línea, cuál es, dónde estaba y cuánto se mueve (0..1).
     struct NodoGrupo
@@ -93,20 +96,26 @@ public partial class ControlManos
             return;
         }
 
-        // 2. ¿Qué toca el dedo?
+        // 2. Los tiradores (Bézier) del nodo al que acercas el dedo, aunque no lo toques.
+        ActualizarNodoConAsas(punta, solo);
+
+        // 3. ¿Qué toca el dedo? Si tocas un nodo y la punta de su tirador a la vez, gana el más cercano.
         Trazo t;
         int i;
         bool salida = false;
         Objetivo tipo = Objetivo.Nada;
-        if (BuscarNodoCercano(punta, punta, RadioToqueNodo, solo, out t, out i))
-        {
-            tipo = Objetivo.Nodo;
-        }
-        else if (BuscarAsaCercana(punta, punta, out salida))
+        bool hayNodo = BuscarNodoCercano(punta, punta, RadioToqueNodo, solo, out t, out i);
+        bool hayAsa = BuscarAsaCercana(punta, punta, out salida);
+        if (hayAsa && (!hayNodo || Vector3.Distance(punta, PuntaAsaMundo(selTrazo, selIndice, salida))
+                                   < Vector3.Distance(punta, dibujo.transform.TransformPoint(t.nodos[i]))))
         {
             tipo = Objetivo.Asa;
             t = selTrazo;
             i = selIndice;
+        }
+        else if (hayNodo)
+        {
+            tipo = Objetivo.Nodo;
         }
         Trazo linea = tipo == Objetivo.Nada ? LineaBajo(punta, punta) : null;
         if (linea != lineaBajoDedo)
@@ -130,7 +139,7 @@ public partial class ControlManos
             return;
         }
 
-        // 3. Tocó un nodo: se agarra (con su grupo del lazo, con plastilina o él solo).
+        // 4. Tocó un nodo: se agarra (con su grupo del lazo, con plastilina o él solo).
         if (tipo == Objetivo.Nodo)
         {
             CancelarLazo();
@@ -161,7 +170,7 @@ public partial class ControlManos
             return;
         }
 
-        // 4. Tocó una línea (lejos de sus nodos): elegirla, o (si ya es la elegida) quedarse quieto = nodo nuevo.
+        // 5. Tocó una línea (lejos de sus nodos): elegirla, o (si ya es la elegida) quedarse quieto = nodo nuevo.
         if (lineaFirme)
         {
             CancelarLazo();
@@ -191,9 +200,36 @@ public partial class ControlManos
         esperarSalirLinea = false;
         esperaDesde = -1f;
 
-        // 5. Espacio vacío: el lazo.
+        // 6. Espacio vacío: el lazo.
         ActualizarLazo(punta);
         MostrarModoNodos(true, solo);
+    }
+
+    // El nodo cuyos tiradores se ven: el más cercano al dedo. Se mantiene mientras el dedo siga cerca de él
+    // o de las puntas de sus tiradores (así puedes ir hasta la punta de un tirador sin que desaparezca).
+    void ActualizarNodoConAsas(Vector3 punta, Trazo solo)
+    {
+        if (SeleccionValida && (solo == null || selTrazo == solo))
+        {
+            float cerca = Vector3.Distance(punta, dibujo.transform.TransformPoint(selTrazo.nodos[selIndice]));
+            for (int k = 0; k < 2; k++)
+                if (selTrazo.AsaUsada(selIndice, k == 1))
+                    cerca = Mathf.Min(cerca, Vector3.Distance(punta, PuntaAsaMundo(selTrazo, selIndice, k == 1)));
+            if (cerca < RadioVerAsas)
+                return;
+        }
+        Trazo t;
+        int i;
+        if (BuscarNodoCercano(punta, punta, RadioVerAsas * 0.75f, solo, out t, out i))
+        {
+            selTrazo = t;
+            selIndice = i;
+        }
+        else
+        {
+            selTrazo = null;
+            selIndice = -1;
+        }
     }
 
     // ---------- Grupo (lazo o plastilina) ----------
