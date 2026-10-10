@@ -1,0 +1,457 @@
+<title>Menú de arriba JCartoons</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bangers&family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Diseño: la página es la "sala" del visor; en el centro flota el panel del app (siempre claro, como en el Quest).
+   Pestañas arriba para pasar de una vista a otra; debajo de cada panel, la ayuda azul (como el botón ? del app). */
+:root {
+  --bg: #e9edf4;
+  --fg: #1c2230;
+  --muted: #586174;
+  --line: #c9d0dc;
+  --card: #f7f8fb;
+  --accent: #ff7f1a;          /* naranja de las claves y nodos */
+  --accent-ink: #8a3c00;
+  --help-bg: #2a5bd7;          /* la copia azul de ayuda */
+  --help-fg: #ffffff;
+  /* El panel del app: siempre claro, igual en los dos temas */
+  --panel: #f7f7fa;
+  --panel-edge: #b9bfcc;
+  --btn: #e3e6ee;
+  --btn-edge: #c3c8d4;
+  --btn-ink: #101318;
+  --btn-on: #2b2f3a;
+  --btn-on-ink: #ffffff;
+  --bar: #cfd5e2;
+  --head: #e5004f;
+  --idea: #8a93a6;
+  --display: "Bangers", "Impact", "Arial Narrow", sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Consolas", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #141821; --fg: #e6e9f1; --muted: #a2aabb; --line: #2c3342; --card: #1c212c;
+    --accent: #ff8f33; --accent-ink: #ffc08a; --help-bg: #2f5fd9; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #141821; --fg: #e6e9f1; --muted: #a2aabb; --line: #2c3342; --card: #1c212c;
+  --accent: #ff8f33; --accent-ink: #ffc08a; --help-bg: #2f5fd9; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.envoltura { max-width: 1060px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 48px; }
+h1 { font-family: var(--display); font-weight: 400; letter-spacing: .03em; font-size: clamp(30px, 5vw, 44px); margin: 0; line-height: 1.05; text-wrap: balance; }
+.sub { color: var(--muted); margin: 6px 0 0; max-width: 68ch; }
+nav.vistas {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  display: flex; flex-wrap: wrap; gap: 6px; padding-block: 12px; margin-top: 14px; border-bottom: 1px solid var(--line);
+}
+nav.vistas button {
+  font: 700 14px var(--body); color: var(--fg); background: var(--card); border: 1px solid var(--line);
+  border-radius: 999px; padding: 7px 14px; cursor: pointer;
+}
+nav.vistas button[aria-selected="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+nav.vistas button:focus-visible, .b:focus-visible, .pest:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.vista { margin-top: 20px; }
+.dos { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 22px; align-items: start; }
+@media (max-width: 860px) { .dos { grid-template-columns: minmax(0, 1fr); } }
+.nota { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.nota h3 { margin: 0 0 6px; font-size: 15px; }
+.nota p, .nota li { color: var(--muted); margin: 0 0 8px; }
+.nota ul { padding-left: 18px; margin: 0; }
+.etq { display: inline-block; font: 700 11px var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--accent-ink);
+  border: 1px solid var(--accent); border-radius: 4px; padding: 1px 6px; }
+
+/* ---------- El panel del app ---------- */
+.panel {
+  background: var(--panel); color: var(--btn-ink); border: 2px solid var(--panel-edge); border-radius: 14px;
+  padding: 10px 14px 14px; box-shadow: 0 18px 40px rgba(20, 30, 60, .18); min-width: 0;
+}
+.asa { width: 150px; max-width: 40%; height: 10px; border-radius: 6px; background: #8fb1ff; margin: 18px auto 8px; position: relative; }
+.asa span { position: absolute; left: 50%; top: -18px; transform: translateX(-50%); font-size: 10px; color: #6b7386; white-space: nowrap; }
+.fila { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-top: 7px; }
+.fila.centro { justify-content: center; }
+.b {
+  font: 700 12.5px var(--body); color: var(--btn-ink); background: var(--btn); border: 1px solid var(--btn-edge);
+  border-bottom-width: 3px; border-radius: 6px; padding: 5px 9px; cursor: pointer; position: relative; line-height: 1.2;
+}
+.b:hover { filter: brightness(.96); }
+.b.on { background: var(--btn-on); color: var(--btn-on-ink); border-color: var(--btn-on); }
+.b.chico { padding: 5px 7px; min-width: 30px; }
+.b.idea { background: transparent; border-style: dashed; color: var(--idea); font-weight: 400; }
+.b.grande { padding: 10px 14px; font-size: 14px; }
+.b.mueve::after, .b.llega::after {
+  content: ""; position: absolute; top: -4px; right: -4px; width: 10px; height: 10px; border-radius: 50%;
+  border: 2px solid var(--panel);
+}
+.b.llega::after { background: var(--accent); }
+.b.mueve, .pest.mueve { box-shadow: inset 0 0 0 2px var(--accent); }
+.b.mueve::after { background: var(--accent); }
+.marco { font-family: var(--mono); font-size: 12px; color: #39404f; margin-left: auto; }
+.pregunta { font-family: var(--display); font-size: 16px; letter-spacing: .04em; }
+.linea-tiempo { position: relative; height: 22px; background: var(--bar); border-radius: 5px; margin-top: 8px; border: 1px solid var(--btn-edge); }
+.linea-tiempo i { position: absolute; top: 3px; width: 6px; height: 14px; background: var(--accent); border-radius: 2px; }
+.linea-tiempo b { position: absolute; top: -6px; width: 3px; height: 32px; background: var(--head); border-radius: 2px; }
+.pestanas { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--btn-edge); }
+.pest { font: 700 12.5px var(--body); background: var(--btn); color: var(--btn-ink); border: 1px solid var(--btn-edge);
+  border-radius: 6px 6px 0 0; padding: 5px 12px; cursor: pointer; }
+.pest[aria-selected="true"] { background: var(--btn-on); color: var(--btn-on-ink); border-color: var(--btn-on); }
+.pagina { background: #fff; border: 1px solid var(--btn-edge); border-radius: 0 8px 8px 8px; padding: 8px 10px 10px; min-height: 88px; }
+.pista { font-size: 11.5px; color: #59607a; margin: 8px 0 0; }
+.capas { margin-top: 8px; border: 1px solid var(--btn-edge); border-radius: 8px; background: #fff; padding: 6px 8px; }
+.capa { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin: 4px 0; }
+.capa .mini-tiempo { flex: 1 1 120px; }
+.mini-tiempo { height: 12px; background: var(--bar); border-radius: 4px; position: relative; min-width: 0; }
+.mini-tiempo i { position: absolute; top: 2px; width: 4px; height: 8px; background: var(--accent); border-radius: 1px; }
+.ayuda { margin-top: 12px; background: var(--help-bg); color: var(--help-fg); border-radius: 10px; padding: 10px 14px; min-height: 64px; }
+.ayuda strong { font-family: var(--display); font-weight: 400; letter-spacing: .05em; font-size: 18px; display: block; }
+.ayuda p { margin: 2px 0 0; }
+
+/* Mis archivos */
+.grilla { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+@media (max-width: 560px) { .grilla { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ficha { background: var(--btn); border: 1px solid var(--btn-edge); border-radius: 6px; padding: 6px; font-size: 11px; color: #333a48; }
+.ficha .mini { aspect-ratio: 16 / 9; border-radius: 4px; margin-bottom: 4px; max-width: 100%; }
+.desc { font-size: 12px; color: #4f5668; margin: 6px 0 0; }
+
+/* Tabla de cambios */
+.tabla { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 14px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+td.donde { white-space: nowrap; }
+.decidir { counter-reset: q; list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.decidir li { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.decidir li::before { counter-increment: q; content: "Pregunta " counter(q); display: block; font: 700 12px var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--accent-ink); }
+.leyenda { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+.punto { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); margin-right: 6px; vertical-align: -1px; }
+.anillo { display: inline-block; width: 14px; height: 12px; border-radius: 4px; box-shadow: inset 0 0 0 2px var(--accent); margin-right: 6px; vertical-align: -2px; }
+@media (prefers-reduced-motion: no-preference) { .ayuda { transition: background .2s; } }
+</style>
+
+<div class="envoltura">
+  <h1>Menú de arriba · propuesta</h1>
+  <p class="sub">Simulación para repensar el menú de arriba de JCartoons: arriba queda solo lo de <b>animación</b> y lo demás pasa a <b>Mis archivos</b>. Toca cualquier botón para ver qué hace; abajo de cada panel sale la ayuda azul, como con el botón <b>?</b> del visor.</p>
+
+  <nav class="vistas" role="tablist" aria-label="Vistas">
+    <button role="tab" id="t-arriba" data-vista="arriba" aria-selected="true">1 · Menú de arriba (nuevo)</button>
+    <button role="tab" id="t-archivos" data-vista="archivos" aria-selected="false">2 · Mis archivos (nuevo)</button>
+    <button role="tab" id="t-cambios" data-vista="cambios" aria-selected="false">3 · Qué se mueve y preguntas</button>
+    <button role="tab" id="t-antes" data-vista="antes" aria-selected="false">4 · Cómo es hoy</button>
+  </nav>
+
+  <!-- ================= 1. MENÚ DE ARRIBA (NUEVO) ================= -->
+  <section class="vista" id="arriba" role="tabpanel" aria-labelledby="t-arriba">
+    <div class="dos">
+      <div>
+        <div class="panel" data-ayuda-en="ay-arriba">
+          <div class="asa"><span>pellizca aquí para mover · + otra mano = tamaño</span></div>
+          <div class="fila">
+            <button class="b" data-plegar="capas-nuevo" data-h="CAPAS ▾|Abre la lista de capas encima de la línea de tiempo. Cada fila: elegir la capa, Ver/Oculta, su estilo (Boceto y Plano, que antes estaban en la página Animar) y SUS claves.">Capas ▾</button>
+            <span class="marco">Fotograma 12 / 2000</span>
+            <button class="b chico pregunta" data-h="?|Muestra la ayuda azul de cada botón (como esta).">?</button>
+          </div>
+          <div class="capas" id="capas-nuevo" hidden>
+            <div class="capa"><button class="b on" data-h="CAPA 1|Eliges en qué capa dibujas.">Capa 1</button><button class="b" data-h="VER / OCULTA|Muestra o esconde esa capa.">Ver</button><button class="b llega opc" data-h="BOCETO (de esta capa)|Antes estaba en la página Animar. Ahora es parte de cada capa: No, Gris o Azul.">Boceto: Gris</button><button class="b llega opc" data-h="PLANO (de esta capa)|Antes estaba en la página Animar. Plano propio o unido a las otras capas.">Plano: propio</button><div class="mini-tiempo"><i style="left:6%"></i><i style="left:40%"></i></div></div>
+            <div class="capa"><button class="b" data-h="CAPA 2|Eliges en qué capa dibujas.">Capa 2</button><button class="b" data-h="VER / OCULTA|Muestra o esconde esa capa.">Ver</button><button class="b llega opc" data-h="BOCETO (de esta capa)|No, Gris o Azul.">Boceto: No</button><button class="b llega opc" data-h="PLANO (de esta capa)|Plano propio o unido.">Plano: unido</button><div class="mini-tiempo"><i style="left:12%"></i><i style="left:55%"></i><i style="left:80%"></i></div></div>
+            <div class="capa"><button class="b" data-h="CAPA 3|Eliges en qué capa dibujas.">Capa 3</button><button class="b" data-h="VER / OCULTA|Muestra o esconde esa capa.">Ver</button><button class="b llega opc" data-h="BOCETO (de esta capa)|No, Gris o Azul.">Boceto: No</button><button class="b llega opc" data-h="PLANO (de esta capa)|Plano propio o unido.">Plano: propio</button><div class="mini-tiempo"></div></div>
+            <div class="capa"><button class="b" data-h="CAPA 4|Eliges en qué capa dibujas.">Capa 4</button><button class="b" data-h="VER / OCULTA|Muestra o esconde esa capa.">Ver</button><button class="b llega opc" data-h="BOCETO (de esta capa)|No, Gris o Azul.">Boceto: No</button><button class="b llega opc" data-h="PLANO (de esta capa)|Plano propio o unido.">Plano: propio</button><div class="mini-tiempo"></div></div>
+          </div>
+          <div class="linea-tiempo" data-h="LÍNEA DE TIEMPO|Toca la barra = ir a un fotograma · pellizca una clave (naranja) = moverla." role="button" tabindex="0">
+            <i style="left:6%"></i><i style="left:12%"></i><i style="left:40%"></i><i style="left:55%"></i><i style="left:80%"></i><b style="left:11%"></b>
+          </div>
+          <div class="fila">
+            <button class="b" data-h="INICIO|Va al fotograma 1.">Inicio</button>
+            <button class="b chico" data-h="&lt; (ANTERIOR)|Retrocede un fotograma.">&lt;</button>
+            <button class="b" id="play-nuevo" data-h="PLAY / PAUSA|Reproduce la animación: las líneas se transforman entre las claves.">Play</button>
+            <button class="b chico" data-h="&gt; (SIGUIENTE)|Avanza un fotograma.">&gt;</button>
+            <button class="b" data-h="+ CLAVE|Guarda la forma de las líneas en este fotograma.">+ Clave</button>
+            <button class="b" data-h="- CLAVE|Quita la clave de este fotograma.">− Clave</button>
+            <button class="b" data-h="FPS|12, 24, 30 o 60 cuadros por segundo.">12 fps</button>
+            <button class="b llega" data-h="ZOOM|Antes era una pestaña. Ahora va con el reproductor: cuántos fotogramas caben en la barra (Todo, 400, 100, 25).">Zoom: 100</button>
+          </div>
+          <div class="pestanas" role="tablist" aria-label="Páginas del menú">
+            <button class="pest" role="tab" data-grupo="nuevo" data-pag="n-animar" aria-selected="true">Animar</button>
+            <button class="pest" role="tab" data-grupo="nuevo" data-pag="n-bocas" aria-selected="false">Bocas</button>
+            <button class="pest" role="tab" data-grupo="nuevo" data-pag="n-titere" aria-selected="false">Títere</button>
+            <button class="pest" data-h="FIJAR AQUÍ / SEGUIRME|Fijar aquí: el panel se queda en ese lugar. Seguirme: aparece cuando miras hacia arriba." style="margin-left:auto">Fijar aquí</button>
+          </div>
+          <div class="pagina" data-grupo="nuevo" id="n-animar">
+            <div class="fila" style="margin-top:0">
+              <button class="b" data-h="VIDEO ANIM|Exporta la animación como MP4 (1280x720) con el audio de las bocas. Se guarda en Descargas → JCartoons. (Ver pregunta 1: ¿se queda aquí o va a Archivos?)">Video anim</button>
+              <button class="b idea" data-h="PAPEL CEBOLLA (idea)|Ver fantasmas del cuadro anterior (rojo) y del siguiente (verde) mientras animas. Está en tus pendientes.">Papel cebolla (idea)</button>
+              <button class="b idea" data-h="CÁMARA DE CINE (idea)|Poner cámaras alrededor del dibujo y exportar un recorrido. Está en tus pendientes.">Cámara de cine (idea)</button>
+              <button class="b idea" data-h="DAR VIDA (idea)|Respirar, parpadear y mover la boca solo. Está en tus pendientes.">Dar vida (idea)</button>
+            </div>
+            <p class="pista">Esta página queda para las herramientas de animación (las punteadas son ideas de tus pendientes, todavía no existen).</p>
+          </div>
+          <div class="pagina" data-grupo="nuevo" id="n-bocas" hidden>
+            <div class="fila" style="margin-top:0">
+              <button class="b" data-h="BOCA|Guarda o usa la forma de boca Reposo.">Reposo</button><button class="b chico" data-h="BOCA A|Forma de boca A.">A</button><button class="b chico" data-h="BOCA E|Forma de boca E.">E</button><button class="b chico" data-h="BOCA I|Forma de boca I.">I</button><button class="b chico" data-h="BOCA O|Forma de boca O.">O</button><button class="b chico" data-h="BOCA U|Forma de boca U.">U</button><button class="b chico" data-h="BOCA M|Forma de boca M.">M</button>
+            </div>
+            <div class="fila">
+              <button class="b" data-h="MODO|Guardar una boca o usarla.">Modo: Guardar</button><button class="b" data-h="VOZ|Graba tu voz para el lipsync.">Voz</button><button class="b" data-h="AUDIO|Elige un audio de Dibujos/Audio.">Audio</button><button class="b" data-h="LIPSYNC|Crea las claves de boca según el audio.">Lipsync</button><button class="b" data-h="QUITAR AUDIO|Quita el audio de la animación.">Quitar audio</button>
+            </div>
+            <p class="pista">Sin cambios: todo esto es animación.</p>
+          </div>
+          <div class="pagina" data-grupo="nuevo" id="n-titere" hidden>
+            <div class="fila" style="margin-top:0">
+              <button class="b" data-h="TIPO|Palito u otro personaje.">Tipo: Palito</button><button class="b" data-h="CREAR|Crea el personaje (se enciende solo).">Crear Palito</button><button class="b" data-h="GRABAR|Graba el movimiento del títere.">Grabar</button>
+            </div>
+            <div class="fila">
+              <button class="b" data-h="POSAR DEDOS|Posa el títere con los dedos.">Posar dedos</button><button class="b" data-h="CICLO|Manual o automático.">Ciclo: Manual</button><button class="b" data-h="GUARDAR CICLO|Guarda el ciclo de caminado.">Guardar ciclo</button><button class="b" data-h="VOLTEAR|Voltea el personaje.">Voltear</button><button class="b" data-h="PISO|Sube o baja el piso.">Piso +/-</button>
+            </div>
+            <div class="fila">
+              <button class="b" data-h="PIERNA 1|Marca la pierna 1.">Pierna 1</button><button class="b" data-h="PIERNA 2|Marca la pierna 2.">Pierna 2</button><button class="b" data-h="BRAZO 1|Marca el brazo 1.">Brazo 1</button><button class="b" data-h="BRAZO 2|Marca el brazo 2.">Brazo 2</button><button class="b" data-h="CUERPO|Más o menos cuerpo.">Cuerpo +/-</button>
+            </div>
+            <p class="pista">Sin cambios: todo esto es animación.</p>
+          </div>
+          <div class="ayuda" id="ay-arriba" aria-live="polite"><strong>Toca un botón</strong><p>Aquí aparece lo que hace, como la copia azul del botón ? en el visor.</p></div>
+        </div>
+        <div class="leyenda"><span><span class="punto"></span>llega a este lugar desde otro</span><span><span class="b idea" style="padding:0 6px;font-size:11px;cursor:default">idea</span> todavía no existe</span></div>
+      </div>
+      <aside class="nota">
+        <span class="etq">Propuesta</span>
+        <h3 style="margin-top:8px">Arriba solo animación</h3>
+        <ul>
+          <li>Se quitan 11 botones de la página Animar.</li>
+          <li><b>Boceto</b> y <b>Plano</b> pasan a cada fila de <b>Capas</b>: son el estilo de cada capa.</li>
+          <li><b>Zoom</b> deja de ser pestaña y va con el reproductor.</li>
+          <li>Foto, SVG, Grabar proceso e imágenes van a <b>Mis archivos</b> (vista 2).</li>
+          <li>Prueba: toca <b>Capas ▾</b> y las pestañas <b>Bocas</b> y <b>Títere</b>.</li>
+        </ul>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ================= 2. MIS ARCHIVOS (NUEVO) ================= -->
+  <section class="vista" id="archivos" role="tabpanel" aria-labelledby="t-archivos" hidden>
+    <div class="dos">
+      <div>
+        <div class="panel">
+          <div class="fila" style="margin-top:0">
+            <span class="pregunta" style="font-size:20px">Mis archivos</span>
+            <span style="margin-left:auto"></span>
+            <button class="b chico" data-h="X|Cierra Mis archivos.">X</button>
+          </div>
+          <div class="fila">
+            <span class="desc" style="margin:0 6px 0 0">Actual: <b>Dibujo 3</b> · sin guardar</span>
+            <button class="b" data-h="GUARDAR|Guarda el dibujo con su nombre.">Guardar</button>
+            <button class="b" data-h="GUARDAR COPIA|Guarda otra copia con otro nombre.">Guardar copia</button>
+            <button class="b" data-h="RENOMBRAR|Cambia el nombre (teclado del visor).">Renombrar</button>
+            <button class="b" data-h="IDIOMA|Español / English para toda la app.">Idioma: ESP</button>
+            <button class="b" data-h="TUTORIAL|Abre las secciones del tutorial (igual que el ?).">Tutorial</button>
+          </div>
+          <div class="pestanas" role="tablist" aria-label="Secciones de Mis archivos">
+            <button class="pest" role="tab" data-grupo="arch" data-pag="a-archivos" aria-selected="true">Archivos</button>
+            <button class="pest" role="tab" data-grupo="arch" data-pag="a-crear" aria-selected="false">Crear (exportar)</button>
+            <button class="pest" role="tab" data-grupo="arch" data-pag="a-proceso" aria-selected="false">Grabar proceso</button>
+            <button class="pest" role="tab" data-grupo="arch" data-pag="a-imagenes" aria-selected="false">Imágenes</button>
+          </div>
+          <div class="pagina" data-grupo="arch" id="a-archivos">
+            <div class="fila" style="margin-top:0">
+              <button class="b on" data-h="TODOS|Todos tus archivos.">Todos</button><button class="b" data-h="DIBUJOS|Solo dibujos.">Dibujos</button><button class="b" data-h="VIDEOS|Solo videos.">Videos</button><button class="b" data-h="FOTOS|Solo fotos.">Fotos</button><button class="b" data-h="SVG|Solo SVG.">Ver SVG</button>
+            </div>
+            <div class="grilla">
+              <div class="ficha"><div class="mini" style="background:linear-gradient(135deg,#ffd9b3,#ffb27a)"></div>Dibujo · Gato<br>10/10 09:12</div>
+              <div class="ficha"><div class="mini" style="background:linear-gradient(135deg,#cfe0ff,#8fb1ff)"></div>Video · Palito camina<br>09/10 18:40</div>
+              <div class="ficha"><div class="mini" style="background:linear-gradient(135deg,#e2f5d8,#a8d98f)"></div>Foto · Árbol<br>09/10 17:02</div>
+              <div class="ficha"><div class="mini" style="background:#eceef3;display:grid;place-items:center;font-weight:700">SVG</div>SVG · Cara (líneas)<br>08/10 21:15</div>
+            </div>
+            <div class="fila">
+              <button class="b chico" data-h="&lt;|Página anterior.">&lt;</button><span class="desc" style="margin:0">1 / 2</span><button class="b chico" data-h="&gt;|Página siguiente.">&gt;</button>
+              <span style="margin-left:auto"></span>
+              <button class="b" data-h="ABRIR|Abre el dibujo, o ve la foto o el video en grande.">Abrir</button><button class="b" data-h="BORRAR|Pide tocar otra vez para confirmar.">Borrar</button>
+            </div>
+          </div>
+          <div class="pagina" data-grupo="arch" id="a-crear" hidden>
+            <div class="fila" style="margin-top:0">
+              <button class="b grande llega" data-h="FOTO|Antes estaba arriba. Guarda una imagen PNG del dibujo desde donde estás. Se guarda en Descargas → JCartoons.">Foto (PNG)</button>
+              <button class="b grande llega" data-h="CREAR SVG|Antes estaba arriba. Crea DOS archivos a la vez: nombre_lineas.svg (curvas editables, mismo grosor) y nombre_como_se_ve.svg (grosor variable, hebras, colores y rellenos). En Descargas → JCartoons.">Crear SVG (2 archivos)</button>
+            </div>
+            <p class="desc">Todo lo que creas se guarda en <b>Descargas → JCartoons</b> (app Archivos del Quest).</p>
+          </div>
+          <div class="pagina" data-grupo="arch" id="a-proceso" hidden>
+            <div class="fila" style="margin-top:0">
+              <button class="b llega" data-h="GRABAR|Antes estaba arriba. Graba cómo dibujas (tus manos y las líneas). Toca otra vez para parar.">Grabar</button>
+              <button class="b llega" data-h="PAUSA|Antes estaba arriba. Solo aparece mientras grabas.">Pausa</button>
+              <button class="b llega" data-h="VIDEO PROCESO|Antes estaba arriba. Convierte tu grabación en MP4. En Descargas → JCartoons.">Video proceso</button>
+              <button class="b llega" data-h="VELOCIDAD|Antes estaba arriba. x1, x2, x4 u x8.">Vel x1</button>
+            </div>
+            <p class="desc">El video de cómo dibujas no es animación: por eso viene aquí.</p>
+          </div>
+          <div class="pagina" data-grupo="arch" id="a-imagenes" hidden>
+            <div class="fila" style="margin-top:0">
+              <button class="b grande llega" data-h="TRAER IMAGEN|Antes era Imagen + (arriba). Abre las imágenes del Quest (Descargas, Cámara, WhatsApp…). Tócala para verla en grande, o pellízcala y sácala del panel.">Traer imagen</button>
+              <button class="b grande llega" data-h="IMÁGENES: VER / OCULTAR|Antes estaba arriba. Esconde o muestra todas las imágenes de referencia.">Imágenes: ver</button>
+            </div>
+            <p class="desc">“Imagen −” desaparece: cada imagen ya tiene su <b>X</b> en la esquina para quitarla.</p>
+          </div>
+          <div class="ayuda" id="ay-archivos" aria-live="polite"><strong>Toca un botón</strong><p>Prueba las pestañas Crear, Grabar proceso e Imágenes.</p></div>
+        </div>
+        <div class="leyenda"><span><span class="punto"></span>viene del menú de arriba</span></div>
+      </div>
+      <aside class="nota">
+        <span class="etq">Propuesta</span>
+        <h3 style="margin-top:8px">Mis archivos con 4 pestañas</h3>
+        <ul>
+          <li><b>Archivos</b>: lo de siempre (abrir, ver, borrar).</li>
+          <li><b>Crear</b>: Foto y SVG (dos archivos a la vez).</li>
+          <li><b>Grabar proceso</b>: los 4 botones del video de cómo dibujas.</li>
+          <li><b>Imágenes</b>: Traer imagen y ver/ocultar.</li>
+          <li>Se abre igual que hoy: botón <b>Archivos</b> del menú de la mano.</li>
+        </ul>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ================= 3. QUÉ SE MUEVE ================= -->
+  <section class="vista" id="cambios" role="tabpanel" aria-labelledby="t-cambios" hidden>
+    <div class="tabla">
+      <table>
+        <thead><tr><th>Botón</th><th>Hoy</th><th>Propuesta</th><th>Por qué</th></tr></thead>
+        <tbody>
+          <tr><td><b>Grabar · Pausa · Video proceso · Vel</b></td><td class="donde">Arriba → Animar</td><td class="donde">Archivos → Grabar proceso</td><td>Es el video de cómo dibujas, no animación.</td></tr>
+          <tr><td><b>Foto</b></td><td class="donde">Arriba → Animar</td><td class="donde">Archivos → Crear</td><td>Exporta el dibujo.</td></tr>
+          <tr><td><b>Crear SVG</b></td><td class="donde">Arriba → Animar</td><td class="donde">Archivos → Crear</td><td>Exporta el dibujo (ahora en dos archivos).</td></tr>
+          <tr><td><b>Imagen +</b></td><td class="donde">Arriba → Animar</td><td class="donde">Archivos → Imágenes (“Traer imagen”)</td><td>Lo pediste: importar desde Archivos.</td></tr>
+          <tr><td><b>Imagen −</b></td><td class="donde">Arriba → Animar</td><td class="donde">Se quita</td><td>Cada imagen ya tiene su X.</td></tr>
+          <tr><td><b>Imágenes: ver</b></td><td class="donde">Arriba → Animar</td><td class="donde">Archivos → Imágenes</td><td>Junto a Traer imagen.</td></tr>
+          <tr><td><b>Boceto</b> y <b>Plano</b></td><td class="donde">Arriba → Animar</td><td class="donde">Arriba → cada fila de Capas</td><td>Son el estilo de cada capa.</td></tr>
+          <tr><td><b>Zoom</b></td><td class="donde">Arriba → pestañas</td><td class="donde">Arriba → reproductor</td><td>Es de la línea de tiempo, no una página.</td></tr>
+          <tr><td><b>Video anim</b></td><td class="donde">Arriba → Animar</td><td class="donde">Arriba → Animar</td><td>Exporta la animación (ver pregunta 1).</td></tr>
+          <tr><td><b>Bocas</b> y <b>Títere</b></td><td class="donde">Arriba</td><td class="donde">Arriba (igual)</td><td>Son animación.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h2 style="font-family:var(--display);font-weight:400;letter-spacing:.03em;font-size:28px;margin:26px 0 10px">Para que decidas</h2>
+    <ol class="decidir">
+      <li><b>Video anim:</b> ¿se queda arriba (es la animación) o se va a Archivos → Crear junto a Foto y SVG (todo lo que exporta en un solo lugar)?</li>
+      <li><b>Boceto y Plano:</b> ¿en cada fila de Capas (propuesta) o en la paleta de colores, junto al temblor y las hebras?</li>
+      <li><b>Página Animar:</b> casi queda vacía. ¿Se queda como lugar para las herramientas de animación que vienen (papel cebolla, cámara de cine, dar vida) o se quita y Video anim pasa al reproductor?</li>
+      <li><b>Mis archivos:</b> ¿te gustan las 4 pestañas, o prefieres todo visible en una sola página aunque sea más grande?</li>
+    </ol>
+  </section>
+
+  <!-- ================= 4. CÓMO ES HOY ================= -->
+  <section class="vista" id="antes" role="tabpanel" aria-labelledby="t-antes" hidden>
+    <div class="dos">
+      <div>
+        <div class="panel">
+          <div class="asa"><span>pellizca aquí para mover · + otra mano = tamaño</span></div>
+          <div class="fila">
+            <button class="b" data-h="+ CAPA 1|Abre la lista de capas (Capa, Ver y sus claves).">+ Capa 1</button>
+            <span class="marco">Fotograma 12 / 2000</span>
+            <button class="b chico pregunta" data-h="?|Ayuda de cada botón.">?</button>
+          </div>
+          <div class="linea-tiempo"><i style="left:6%"></i><i style="left:12%"></i><i style="left:40%"></i><i style="left:55%"></i><i style="left:80%"></i><b style="left:11%"></b></div>
+          <div class="fila">
+            <button class="b" data-h="INICIO|Va al fotograma 1.">Inicio</button><button class="b chico" data-h="&lt;|Fotograma anterior.">&lt;</button><button class="b" data-h="PLAY|Reproduce.">Play</button><button class="b chico" data-h="&gt;|Fotograma siguiente.">&gt;</button><button class="b" data-h="+ CLAVE|Guarda una clave.">+ Clave</button><button class="b" data-h="- CLAVE|Quita la clave.">− Clave</button><button class="b" data-h="FPS|Velocidad.">12 fps</button>
+          </div>
+          <div class="pestanas" role="tablist" aria-label="Páginas de hoy">
+            <button class="pest" role="tab" data-grupo="hoy" data-pag="h-animar" aria-selected="true">Animar</button>
+            <button class="pest" role="tab" data-grupo="hoy" data-pag="h-bocas" aria-selected="false">Bocas</button>
+            <button class="pest" role="tab" data-grupo="hoy" data-pag="h-titere" aria-selected="false">Títere</button>
+            <button class="pest mueve" data-h="ZOOM|En la propuesta pasa al reproductor.">Zoom: 100</button>
+            <button class="pest" data-h="FIJAR AQUÍ|Igual en la propuesta.">Fijar aquí</button>
+          </div>
+          <div class="pagina" data-grupo="hoy" id="h-animar">
+            <div class="fila" style="margin-top:0">
+              <button class="b mueve" data-h="GRABAR|Se va a Archivos → Grabar proceso.">Grabar</button><button class="b mueve" data-h="PAUSA|Se va a Archivos → Grabar proceso.">Pausa</button><button class="b mueve" data-h="VIDEO PROCESO|Se va a Archivos → Grabar proceso.">Video proceso</button><button class="b mueve" data-h="VEL x1|Se va a Archivos → Grabar proceso.">Vel x1</button><button class="b" data-h="VIDEO ANIM|Se queda (pregunta 1).">Video anim</button><button class="b mueve" data-h="FOTO|Se va a Archivos → Crear.">Foto</button><button class="b mueve" data-h="CREAR SVG|Se va a Archivos → Crear.">Crear SVG</button>
+            </div>
+            <div class="fila">
+              <button class="b mueve" data-h="IMAGEN +|Se va a Archivos → Imágenes (Traer imagen).">Imagen +</button><button class="b mueve" data-h="IMAGEN -|Se quita (cada imagen tiene su X).">Imagen -</button><button class="b mueve" data-h="IMÁGENES: VER|Se va a Archivos → Imágenes.">Imágenes: ver</button><button class="b mueve" data-h="BOCETO|Pasa a cada fila de Capas.">Boceto: No</button><button class="b mueve" data-h="PLANO|Pasa a cada fila de Capas.">Plano: propio</button>
+            </div>
+          </div>
+          <div class="pagina" data-grupo="hoy" id="h-bocas" hidden><p class="pista" style="margin:0">Reposo, A, E, I, O, U, M · Modo, Voz, Audio, Lipsync, Quitar audio (se queda igual).</p></div>
+          <div class="pagina" data-grupo="hoy" id="h-titere" hidden><p class="pista" style="margin:0">Tipo, Crear, Grabar · Posar dedos, Ciclo, Guardar ciclo, Voltear, Piso · Piernas, Brazos, Cuerpo (se queda igual).</p></div>
+          <div class="ayuda" id="ay-antes" aria-live="polite"><strong>Así es hoy</strong><p>Los botones con borde naranja son los que se mueven en la propuesta.</p></div>
+        </div>
+        <div class="leyenda"><span><span class="anillo"></span>se mueve a otro lugar</span></div>
+      </div>
+      <aside class="nota">
+        <span class="etq">Hoy</span>
+        <h3 style="margin-top:8px">12 botones en Animar</h3>
+        <p>De los 12 botones de la página Animar, solo <b>Video anim</b> es de animación. Por eso el menú se siente lleno.</p>
+      </aside>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  // ----- Vistas (pestañas grandes) -----
+  var botonesVista = document.querySelectorAll("nav.vistas button");
+  function mostrarVista(id) {
+    botonesVista.forEach(function (b) {
+      var si = b.getAttribute("data-vista") === id;
+      b.setAttribute("aria-selected", si ? "true" : "false");
+      document.getElementById(b.getAttribute("data-vista")).hidden = !si;
+    });
+    try { localStorage.setItem("menu-arriba-vista", id); } catch (e) {}
+  }
+  botonesVista.forEach(function (b) {
+    b.addEventListener("click", function () {
+      mostrarVista(b.getAttribute("data-vista"));
+      try { history.replaceState(null, "", "#" + b.getAttribute("data-vista")); } catch (e) {}
+    });
+  });
+  var inicial = (location.hash || "").replace("#", "");
+  if (!document.getElementById(inicial) || !document.querySelector('[data-vista="' + inicial + '"]')) {
+    try { inicial = localStorage.getItem("menu-arriba-vista") || "arriba"; } catch (e) { inicial = "arriba"; }
+  }
+  if (document.querySelector('[data-vista="' + inicial + '"]')) mostrarVista(inicial);
+
+  // ----- Páginas dentro de cada panel -----
+  document.querySelectorAll(".pest[data-pag]").forEach(function (p) {
+    p.addEventListener("click", function () {
+      var grupo = p.getAttribute("data-grupo");
+      document.querySelectorAll('.pest[data-grupo="' + grupo + '"]').forEach(function (o) {
+        o.setAttribute("aria-selected", o === p ? "true" : "false");
+      });
+      document.querySelectorAll('.pagina[data-grupo="' + grupo + '"]').forEach(function (pg) {
+        pg.hidden = pg.id !== p.getAttribute("data-pag");
+      });
+    });
+  });
+
+  // ----- Ayuda azul: cada panel muestra la de sus botones -----
+  function ayudaDe(el) {
+    var vista = el.closest(".vista");
+    return vista ? vista.querySelector(".ayuda") : null;
+  }
+  document.querySelectorAll("[data-h]").forEach(function (el) {
+    function mostrar() {
+      var partes = el.getAttribute("data-h").split("|");
+      var caja = ayudaDe(el);
+      if (!caja) return;
+      caja.innerHTML = "";
+      var t = document.createElement("strong"); t.textContent = partes[0];
+      var p = document.createElement("p"); p.textContent = partes[1] || "";
+      caja.appendChild(t); caja.appendChild(p);
+    }
+    el.addEventListener("click", mostrar);
+    el.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); mostrar(); } });
+  });
+
+  // ----- Capas plegables -----
+  document.querySelectorAll("[data-plegar]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var c = document.getElementById(b.getAttribute("data-plegar"));
+      c.hidden = !c.hidden;
+      b.textContent = c.hidden ? "Capas ▾" : "Capas ▴";
+    });
+  });
+
+  // ----- Play / Pausa -----
+  var play = document.getElementById("play-nuevo");
+  if (play) play.addEventListener("click", function () {
+    var on = play.classList.toggle("on");
+    play.textContent = on ? "Pausa" : "Play";
+  });
+})();
+</script>
