@@ -41,7 +41,7 @@ Shader "TrazoVR/Halo"
             {
                 float4 positionOS : POSITION;
                 float3 normalOS   : NORMAL;
-                float2 uv         : TEXCOORD0;
+                float3 uv         : TEXCOORD0; // como la línea (z: nivel frente/fondo)
                 float2 uv2        : TEXCOORD1;
                 float4 vivoA      : TEXCOORD2;
                 float4 vivoB      : TEXCOORD3;
@@ -99,6 +99,7 @@ Shader "TrazoVR/Halo"
                     posWS += normalize(nWS) * _Ancho;
                 }
 
+                posWS = TrazoAdelante(posWS, v.uv.z); // el mismo frente/fondo que su línea
                 o.positionCS = TransformWorldToHClip(posWS);
                 o.normalWS = nWS;
                 o.posWS = posWS;

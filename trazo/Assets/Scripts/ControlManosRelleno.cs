@@ -9,6 +9,9 @@ using UnityEngine;
 //    nodos, borrador) esas líneas se ven gris clarito.
 //  - TOCAR DENTRO de una forma (abierta o cerrada) con la paleta abierta = rellenarla del color elegido
 //    (con tinta invisible elegida = quitarle el relleno). Se puede deshacer.
+//  - RELLENO VIVO (botón arriba a la izquierda, con 3 facetas): dentro del color salen manchitas de tonos
+//    cercanos que cambian solas, estilo Quill: Liso → Facetas → Manchas → Pinceladas. Al lado, su velocidad
+//    (Quieto, Lento, Medio, Rápido). Con líneas elegidas se les pone a ellas; si no, a los próximos rellenos.
 public partial class ControlManos
 {
     const string ClaveCubeta = "jcartoons_cubeta";
@@ -48,6 +51,125 @@ public partial class ControlManos
         t.relleno = true;
         Color c = ColorDeRelleno;
         t.colorFondo = new Color(c.r, c.g, c.b, 1f);
+        t.texturaRelleno = TexturaElegida;
+        t.velocidadTextura = VelocidadTexturaElegida;
+    }
+
+    // ---------- Relleno vivo (texturas que se mueven, estilo Quill) ----------
+    const string ClaveTextura = "jcartoons_textura", ClaveVelocidadTextura = "jcartoons_vel_textura";
+    int texturaElegida = -1, velocidadTexturaElegida = -1; // -1 = aún no leído
+    Transform botonTextura, botonVelocidadTextura;
+    Material fondoTextura;
+    bool dedoEnTextura;
+
+    public int TexturaElegida
+    {
+        get
+        {
+            if (texturaElegida < 0)
+                texturaElegida = Mathf.Clamp(PlayerPrefs.GetInt(ClaveTextura, 0), 0, Trazo.NombresTextura.Length - 1);
+            return texturaElegida;
+        }
+    }
+
+    public int VelocidadTexturaElegida
+    {
+        get
+        {
+            if (velocidadTexturaElegida < 0)
+                velocidadTexturaElegida = Mathf.Clamp(PlayerPrefs.GetInt(ClaveVelocidadTextura, 2), 0, Trazo.VelocidadesTextura.Length - 1);
+            return velocidadTexturaElegida;
+        }
+    }
+
+    void ElegirTextura(int textura, int velocidad)
+    {
+        texturaElegida = Mathf.Clamp(textura, 0, Trazo.NombresTextura.Length - 1);
+        velocidadTexturaElegida = Mathf.Clamp(velocidad, 0, Trazo.VelocidadesTextura.Length - 1);
+        PlayerPrefs.SetInt(ClaveTextura, texturaElegida);
+        PlayerPrefs.SetInt(ClaveVelocidadTextura, velocidadTexturaElegida);
+        PlayerPrefs.Save();
+        string nombre = Trazo.NombresTextura[texturaElegida] + (texturaElegida > 0 ? " · " + Trazo.NombresVelocidadTextura[velocidadTexturaElegida] : "");
+        int n = dibujo.TexturaEnElegidas(texturaElegida, velocidadTexturaElegida);
+        if (n > 0)
+            dibujo.Mensaje("Relleno vivo: " + nombre + (n > 1 ? " (" + n + " figuras)" : ""));
+        else
+            dibujo.Mensaje("Relleno vivo: " + nombre + ". Toca dentro de una figura (o usa la cubeta)");
+    }
+
+    // Arriba a la izquierda de la paleta: el relleno vivo (3 facetas de tonos distintos) y, a su lado, la velocidad.
+    void ArmarTexturaPaleta(Material negro)
+    {
+        botonTextura = new GameObject("RellenoVivo").transform;
+        botonTextura.SetParent(paleta, false);
+        botonTextura.localPosition = new Vector3(-0.056f, 0.047f, -0.001f);
+        botonTextura.localScale = Vector3.one * 0.021f;
+        fondoTextura = ColorMaterial(Color.white);
+        DiscoPaleta(botonTextura, negro, 1.12f, new Vector3(0f, 0f, 0.05f));
+        DiscoPaleta(botonTextura, fondoTextura, 1f, new Vector3(0f, 0f, 0.025f));
+        IconoPaleta(botonTextura, new System.Collections.Generic.List<Vector2[]>
+        {
+            new[] { new Vector2(-0.3f, -0.3f), new Vector2(0.05f, -0.3f), new Vector2(-0.1f, 0.1f), new Vector2(-0.3f, 0.15f) },
+        }, ColorMaterial(new Color(0.3f, 0.5f, 0.32f)));
+        IconoPaleta(botonTextura, new System.Collections.Generic.List<Vector2[]>
+        {
+            new[] { new Vector2(0.05f, -0.3f), new Vector2(0.3f, -0.3f), new Vector2(0.3f, 0.05f), new Vector2(-0.1f, 0.1f) },
+        }, ColorMaterial(new Color(0.45f, 0.68f, 0.42f)));
+        IconoPaleta(botonTextura, new System.Collections.Generic.List<Vector2[]>
+        {
+            new[] { new Vector2(-0.3f, 0.15f), new Vector2(-0.1f, 0.1f), new Vector2(0.3f, 0.05f), new Vector2(0.3f, 0.3f), new Vector2(-0.3f, 0.3f) },
+        }, ColorMaterial(new Color(0.62f, 0.82f, 0.55f)));
+
+        botonVelocidadTextura = new GameObject("VelocidadRellenoVivo").transform;
+        botonVelocidadTextura.SetParent(paleta, false);
+        botonVelocidadTextura.localPosition = new Vector3(-0.0719f, 0.0127f, -0.001f);
+        botonVelocidadTextura.localScale = Vector3.one * 0.018f;
+        DiscoPaleta(botonVelocidadTextura, negro, 1.12f, new Vector3(0f, 0f, 0.05f));
+        DiscoPaleta(botonVelocidadTextura, ColorMaterial(Color.white), 1f, new Vector3(0f, 0f, 0.025f));
+        var flechas = new System.Collections.Generic.List<Vector2[]>();
+        LineaIcono(flechas, new[] { new Vector2(-0.25f, 0.17f), new Vector2(-0.06f, 0f), new Vector2(-0.25f, -0.17f) }, 0.07f);
+        LineaIcono(flechas, new[] { new Vector2(0.04f, 0.17f), new Vector2(0.23f, 0f), new Vector2(0.04f, -0.17f) }, 0.07f);
+        IconoPaleta(botonVelocidadTextura, flechas, negro);
+    }
+
+    // Cada cuadro con la paleta abierta. Devuelve true si el dedo está en uno de los dos botones.
+    bool ActualizarTexturaPaleta(Vector3 punta, bool dedoValido)
+    {
+        if (botonTextura == null || botonVelocidadTextura == null)
+            return false;
+        PonerColorMaterial(fondoTextura, TexturaElegida > 0 ? AmarilloOpcion : Color.white);
+        bool verVelocidad = TexturaElegida > 0;
+        if (botonVelocidadTextura.gameObject.activeSelf != verVelocidad)
+            botonVelocidadTextura.gameObject.SetActive(verVelocidad);
+        if (!dedoValido)
+        {
+            dedoEnTextura = false;
+            return false;
+        }
+        bool enTextura = Vector3.Distance(punta, botonTextura.position) < 0.012f;
+        bool enVelocidad = verVelocidad && Vector3.Distance(punta, botonVelocidadTextura.position) < 0.011f;
+        if (!enTextura && !enVelocidad)
+        {
+            dedoEnTextura = false;
+            return false;
+        }
+        if (!dedoEnTextura)
+        {
+            if (enTextura)
+            {
+                ElegirTextura((TexturaElegida + 1) % Trazo.NombresTextura.Length, VelocidadTexturaElegida);
+                Burbuja(botonTextura.position, 1.15f);
+            }
+            else
+            {
+                ElegirTextura(TexturaElegida, (VelocidadTexturaElegida + 1) % Trazo.VelocidadesTextura.Length);
+                Burbuja(botonVelocidadTextura.position, 1.3f);
+            }
+            if (paletaFija)
+                paletaFijaHasta = Mathf.Max(paletaFijaHasta, Time.time + 12f);
+        }
+        dedoEnTextura = true;
+        return true;
     }
 
     // Los dos botones de arriba de la paleta: tinta invisible (izquierda) y cubeta (derecha).
@@ -187,7 +309,7 @@ public partial class ControlManos
         if (!dedoEnRelleno)
         {
             bool quitar = dibujo.ColorNuevo.a < 0.01f;
-            dibujo.RellenarConColor(dentro, dibujo.ColorNuevo);
+            dibujo.RellenarConColor(dentro, dibujo.ColorNuevo, TexturaElegida, VelocidadTexturaElegida);
             Burbuja(punta, 1.2f);
             MostrarEtiqueta(quitar ? "Relleno quitado" : "Relleno");
         }

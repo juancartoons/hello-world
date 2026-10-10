@@ -38,6 +38,8 @@ public class PanelArriba : MonoBehaviour
 
     [Header("Pestañas")]
     public GameObject paginaAnimar, paginaMedios, paginaBocas, paginaTitere;
+    [Tooltip("Las páginas con su fondo y el asa de abajo: se repliegan (como un archivador) y solo se asoman las pestañas")]
+    public GameObject paginas;
     public BotonTocable btnPaginaAnimar, btnPaginaMedios, btnPaginaBocas, btnPaginaTitere, btnZoom, btnSeguir;
     [Tooltip("Botón \"?\" de la esquina: abre abajo una copia azul del panel que explica cada botón")]
     public BotonTocable btnAyuda;
@@ -50,6 +52,8 @@ public class PanelArriba : MonoBehaviour
     // El estilo de cada capa, en su fila de la lista de Capas: Boceto (No/Gris/Azul) y Plano (propio/unido).
     public BotonTocable[] btnBocetoCapa = new BotonTocable[0];
     public BotonTocable[] btnPlanoCapa = new BotonTocable[0];
+    // Liberar: quita el encantamiento 2D de las líneas de esa capa (solo se ve si tiene líneas encantadas).
+    public BotonTocable[] btnLiberarCapa = new BotonTocable[0];
     [Header("Capas (plegable, encima de la línea de tiempo)")]
     [Tooltip("Botón \"+ Capa 1\": abre o cierra la lista de capas")]
     public BotonTocable btnCapasPlegar;
@@ -101,6 +105,8 @@ public class PanelArriba : MonoBehaviour
     int zoom = 2;          // índice en Ventanas
     int inicioVentana;
     int pagina;
+    bool plegado = true;   // las páginas guardadas: solo se asoman las pestañas
+    const string ClavePlegado = "jcartoons_panel_plegado", ClavePagina = "jcartoons_panel_pagina";
 
     int Ventana => Ventanas[zoom] <= 0 ? Animacion.TotalFotogramas : Mathf.Min(Ventanas[zoom], Animacion.TotalFotogramas);
 
@@ -138,10 +144,10 @@ public class PanelArriba : MonoBehaviour
         if (exportador == null) exportador = FindFirstObjectByType<ExportadorVideo>();
         if (titere == null) titere = FindFirstObjectByType<Titere>();
 
-        Conectar(btnPaginaAnimar, () => PonerPagina(0));
-        Conectar(btnPaginaMedios, () => PonerPagina(1));
-        Conectar(btnPaginaBocas, () => PonerPagina(2));
-        Conectar(btnPaginaTitere, () => PonerPagina(3));
+        Conectar(btnPaginaAnimar, () => TocarPestana(0));
+        Conectar(btnPaginaMedios, () => TocarPestana(1));
+        Conectar(btnPaginaBocas, () => TocarPestana(2));
+        Conectar(btnPaginaTitere, () => TocarPestana(3));
         Conectar(btnZoom, CambiarZoom);
         Conectar(btnSeguir, AlternarFijo);
         CrearX();
@@ -198,6 +204,16 @@ public class PanelArriba : MonoBehaviour
                 {
                     dibujo.SeleccionarCapa(capa);
                     dibujo.AlternarUnirPlano();
+                });
+            }
+            for (int i = 0; i < btnLiberarCapa.Length; i++)
+            {
+                int capa = i;
+                Conectar(btnLiberarCapa[i], () =>
+                {
+                    dibujo.LiberarCapa(capa);
+                    if (control != null && control.Der.valida)
+                        control.SonidoBurbuja(control.Der.indice);
                 });
             }
         }
@@ -261,9 +277,46 @@ public class PanelArriba : MonoBehaviour
             Conectar(btnPiso, titere.AlternarPiso);
         }
 
-        PonerPagina(0);
+        // Como lo dejaste la última vez (la primera vez: replegado, en Animar).
+        PonerPagina(Mathf.Clamp(PlayerPrefs.GetInt(ClavePagina, 0), 0, 3), false);
+        Plegar(PlayerPrefs.GetInt(ClavePlegado, 1) == 1, false);
         if (contenido != null)
             contenido.SetActive(false);
+    }
+
+    // Pestaña tocada: si su página ya está abierta, se repliega; si no, se despliega esa página.
+    void TocarPestana(int p)
+    {
+        if (!plegado && p == pagina)
+        {
+            Plegar(true, true);
+            return;
+        }
+        PonerPagina(p);
+        Plegar(false, true);
+        if (!esAyuda)
+            PlayerPrefs.SetInt(ClavePagina, p);
+    }
+
+    void Plegar(bool si, bool guardar)
+    {
+        plegado = si;
+        if (paginas != null && paginas.activeSelf == si)
+            paginas.SetActive(!si);
+        MarcarPestanas();
+        if (guardar && !esAyuda)
+        {
+            PlayerPrefs.SetInt(ClavePlegado, si ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+    }
+
+    void MarcarPestanas()
+    {
+        if (btnPaginaAnimar != null) btnPaginaAnimar.Marcar(!plegado && pagina == 0);
+        if (btnPaginaMedios != null) btnPaginaMedios.Marcar(!plegado && pagina == 1);
+        if (btnPaginaBocas != null) btnPaginaBocas.Marcar(!plegado && pagina == 2);
+        if (btnPaginaTitere != null) btnPaginaTitere.Marcar(!plegado && pagina == 3);
     }
 
     // ---------- Capas plegables ----------
@@ -335,6 +388,20 @@ public class PanelArriba : MonoBehaviour
             btnPlanoCapa[i].PonerTexto(dibujo.capas[i].unido ? "Plano: unido" : "Plano: propio");
             btnPlanoCapa[i].Marcar(dibujo.capas[i].unido);
         }
+        for (int i = 0; i < btnLiberarCapa.Length && i < dibujo.capas.Count; i++)
+        {
+            var b = btnLiberarCapa[i];
+            if (b == null)
+                continue;
+            var c = dibujo.capas[i];
+            bool ver = esAyuda || dibujo.EncantadasEnCapa(i) > 0 || (!c.unido && c.hayPlano);
+            if (b.gameObject.activeSelf != ver)
+            {
+                b.gameObject.SetActive(ver);
+                if (b.etiqueta != null)
+                    b.etiqueta.gameObject.SetActive(ver);
+            }
+        }
         for (int i = 0; i < Dibujo.NumeroDeCapas; i++)
         {
             var lista = marcasCapa[i];
@@ -373,10 +440,10 @@ public class PanelArriba : MonoBehaviour
 
     bool muestraBocasHecha;
 
-    void PonerPagina(int p)
+    void PonerPagina(int p, bool conMuestra = true)
     {
         // Bocas sin ninguna boca guardada: aparece una muestra lista para probar (una vez por sesión).
-        if (p == 2 && !esAyuda && !muestraBocasHecha && lipsync != null && !lipsync.HayBocas && control != null && control.Cabeza != null)
+        if (p == 2 && conMuestra && !esAyuda && !muestraBocasHecha && lipsync != null && !lipsync.HayBocas && control != null && control.Cabeza != null)
         {
             muestraBocasHecha = true;
             lipsync.CrearMuestra(control.Cabeza);
@@ -386,10 +453,7 @@ public class PanelArriba : MonoBehaviour
         if (paginaMedios != null) paginaMedios.SetActive(p == 1);
         if (paginaBocas != null) paginaBocas.SetActive(p == 2);
         if (paginaTitere != null) paginaTitere.SetActive(p == 3);
-        if (btnPaginaAnimar != null) btnPaginaAnimar.Marcar(p == 0);
-        if (btnPaginaMedios != null) btnPaginaMedios.Marcar(p == 1);
-        if (btnPaginaBocas != null) btnPaginaBocas.Marcar(p == 2);
-        if (btnPaginaTitere != null) btnPaginaTitere.Marcar(p == 3);
+        MarcarPestanas();
     }
 
     void CambiarZoom()
@@ -503,9 +567,9 @@ public class PanelArriba : MonoBehaviour
         if (contenido == null || !contenido.activeInHierarchy)
             return false;
         Vector3 l = transform.InverseTransformPoint(mundo);
-        float abajo = esAyuda || (listaArchivos != null && listaArchivos.activeSelf) ? -0.33f : -0.175f;
+        float abajo = esAyuda || (listaArchivos != null && listaArchivos.activeSelf) ? -0.33f : plegado ? 0.062f : -0.175f;
         float arriba = capasAbiertas ? filaCapasY + Dibujo.NumeroDeCapas * pasoCapasY : 0.225f;
-        float lado = capasAbiertas ? 0.375f : 0.27f; // con Capas abiertas: Boceto y Plano llegan hasta x = 0.37
+        float lado = capasAbiertas ? 0.43f : 0.27f; // con Capas abiertas: Boceto, Plano y Liberar llegan hasta x = 0.42
         return Mathf.Abs(l.x) < lado && l.y > abajo && l.y < arriba && Mathf.Abs(l.z) < 0.06f;
     }
 
@@ -617,7 +681,7 @@ public class PanelArriba : MonoBehaviour
 
     static bool EnAsa(Transform barra, Vector3 l)
     {
-        if (barra == null)
+        if (barra == null || !barra.gameObject.activeInHierarchy)
             return false;
         Vector3 a = barra.localPosition;
         return Mathf.Abs(l.x - a.x) < barra.localScale.x * 0.5f + 0.02f
@@ -801,8 +865,7 @@ public class PanelArriba : MonoBehaviour
             btnAyuda.Marcar(ayuda != null && ayudaAbierta);
         if (btnSeguir != null)
         {
-            btnSeguir.PonerTexto(anclado ? "Seguirme" : "Fijar aquí");
-            btnSeguir.Marcar(anclado);
+            btnSeguir.Marcar(anclado); // el alfiler: oscuro = fijo aquí
         }
         MostrarX(anclado);
 
@@ -1224,6 +1287,7 @@ public class PanelArriba : MonoBehaviour
         }
         Conectar(btnAyuda, () => { if (original != null) original.CerrarAyuda(); });
         PonerPagina(original != null ? original.pagina : 0);
+        Plegar(false, false); // en la copia azul las páginas se ven siempre (para explicar sus botones)
         if (contenido != null)
             contenido.SetActive(true);
     }
@@ -1256,13 +1320,14 @@ public class PanelArriba : MonoBehaviour
     static readonly Dictionary<string, string> AyudaIngles = new Dictionary<string, string>
     {
         { "AYUDA", "HELP\nThis blue panel is a copy of the one above. Tap any button here and I'll explain what it does and how to use it. Here the buttons don't change your drawing.\nTap \"?\" to close help." },
-        { "ANIMAR (página)", "ANIMATE (page)\nAnim video: exports your animation as an MP4. Photo, SVG, Record process and images are in My files (left hand menu → Files). Sketch and Plane of each layer: in the Layers list." },
+        { "ANIMAR (página)", "ANIMATE (page)\nThe tabs peek out under the player, like in a filing cabinet: tap one to open its page and tap it again to put it away.\nAnim video: your animation as an MP4 (also in My files → Share). Onion skin and frame by frame will come here." },
+        { "LIBERAR (de esta capa)", "RELEASE (this layer)\nWhat you draw in Plane 2D stays enchanted on its layer's sheet: nodes, handles, lasso and moving it stay inside that sheet.\nRelease removes the spell: if you have selected (blue) lines of this layer, only those; otherwise the whole layer. Then they move freely in 3D. Can be undone." },
         { "BOCETO (de esta capa)", "SKETCH (this layer)\nNo = normal ink. Gray or Blue = sketch pencil: it does not appear in photos or videos (to draw on top in another layer)." },
         { "PLANO (de esta capa)", "PLANE (this layer)\nOwn: the layer has its own sheet in Plane 2D. Joined: it uses the same sheet as the other joined layers (sketch behind, ink in front)." },
         { "BOCAS (página)", "MOUTHS (page)\nLipsync: save mouth shapes (A, E, I, O, U, M...) and the app makes the keys from your voice or an audio." },
         { "TÍTERE (página)", "PUPPET (page)\nCharacters that walk, run and jump with your hand. Create, record, walk cycles and build your own characters." },
         { "ZOOM", "ZOOM\nHow many frames fit on the timeline: All, 400, 100 or 25. With fewer frames the keys (orange marks) are farther apart and easier to touch." },
-        { "FIJAR AQUÍ / SEGUIRME", "PIN HERE / FOLLOW ME\nPin here: the panel stays in place and always visible. Follow me: it appears again only when you look up.\nAlso: pinch the blue handle to move it; pinching with your left hand too, spread your hands = bigger." },
+        { "FIJAR AQUÍ / SEGUIRME", "PIN HERE / FOLLOW ME\nThe pin: tap it and the panel stays in place and always visible (dark pin). Tap it again: it appears only when you look up.\nAlso: pinch the blue handle to move it; pinching with your left hand too, spread your hands = bigger." },
         { "INICIO", "START\nGoes to frame 1." },
         { "< (ANTERIOR)", "< (PREVIOUS)\nGoes back one frame. You can also touch the timeline with your right index finger." },
         { "> (SIGUIENTE)", "> (NEXT)\nGoes forward one frame." },
@@ -1344,7 +1409,10 @@ public class PanelArriba : MonoBehaviour
     {
         var d = new Dictionary<BotonTocable, string>();
         // Pestañas y barra de arriba
-        Poner(d, btnPaginaAnimar, "ANIMAR (página)\nVideo anim: exporta tu animación en MP4. Foto, SVG, Grabar proceso e imágenes están en Mis archivos (menú de la mano izquierda → Archivos). Boceto y Plano de cada capa: en la lista de Capas.");
+        Poner(d, btnPaginaAnimar, "ANIMAR (página)\nLas pestañas se asoman bajo el reproductor, como en un archivador: toca una para abrir su página y tócala otra vez para guardarla.\nVideo anim: tu animación en MP4 (también en Mis archivos → Compartir). Aquí vendrán papel cebolla y cuadro a cuadro.");
+        if (btnLiberarCapa != null)
+            foreach (var b in btnLiberarCapa)
+                Poner(d, b, "LIBERAR (de esta capa)\nLo que dibujas en Plano 2D queda encantado en la hoja de su capa: nodos, tiradores, lazo y moverlo se quedan dentro de esa hoja.\nLiberar quita el encantamiento: si tienes líneas elegidas (azules) de esta capa, solo esas; si no, toda la capa. Después se mueven libres en 3D. Se puede deshacer.");
         Poner(d, btnPaginaMedios, "MEDIOS (página)\nVideos, grabar tu proceso, imágenes de referencia y el estilo de la capa activa: líneas vivas, boceto, plano e imán.");
         Poner(d, btnPaginaBocas, "BOCAS (página)\nLipsync: guarda formas de boca (A, E, I, O, U, M...) y la app crea las claves según tu voz o un audio.");
         Poner(d, btnPaginaTitere, "TÍTERE (página)\nPersonajes que caminan, corren y saltan con tu mano. Crear, grabar, ciclos de caminado y armar tus propios personajes.");
@@ -1355,7 +1423,7 @@ public class PanelArriba : MonoBehaviour
             foreach (var b in btnPlanoCapa)
                 Poner(d, b, "PLANO (de esta capa)\nPropio: la capa tiene su propia hoja en Plano 2D. Unido: usa la misma hoja que las otras capas unidas (boceto atrás, tinta adelante).");
         Poner(d, btnZoom, "ZOOM\nCuántos fotogramas caben en la barra de tiempo: Todo, 400, 100 o 25. Con menos fotogramas ves las claves (marcas naranjas) más separadas y es más fácil tocarlas.");
-        Poner(d, btnSeguir, "FIJAR AQUÍ / SEGUIRME\nFijar aquí: el panel se queda en ese lugar y siempre visible. Seguirme: vuelve a aparecer solo cuando miras hacia arriba.\nTambién: pellizca el asa azul para moverlo; pellizcando además con la izquierda, separa las manos = más grande.");
+        Poner(d, btnSeguir, "FIJAR AQUÍ / SEGUIRME\nEl alfiler: tócalo y el panel se queda en ese lugar y siempre visible (alfiler oscuro). Tócalo otra vez: vuelve a aparecer solo cuando miras hacia arriba.\nTambién: pellizca el asa azul para moverlo; pellizcando además con la izquierda, separa las manos = más grande.");
 
         // Animar
         Poner(d, btnInicio, "INICIO\nVa al fotograma 1.");

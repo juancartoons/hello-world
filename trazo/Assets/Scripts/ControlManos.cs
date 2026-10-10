@@ -1121,7 +1121,8 @@ public partial class ControlManos : MonoBehaviour
             arrastre = Objetivo.Nada;
             return;
         }
-        Vector3 local = dibujo.ProyectarEnPlano(dibujo.transform.InverseTransformPoint(pinza + desfase));
+        // Encantada en su hoja 2D: el nodo y sus tiradores se quedan en esa hoja. Libre: se mueve en 3D.
+        Vector3 local = arrTrazo.ProyectarEnHoja(dibujo.transform.InverseTransformPoint(pinza + desfase));
 
         if (deshacerPendiente)
         {
@@ -1150,7 +1151,7 @@ public partial class ControlManos : MonoBehaviour
                 dibujo.Mensaje(asaSola ? "Tirador en cero: ese lado sale recto" : "Tiradores en cero: esquina recta");
             asaEnCero = enCero;
             // Palanca: la bolita está "factor" veces más lejos que la punta real del tirador.
-            Vector3 asa = enCero ? Vector3.zero : (local - arrTrazo.nodos[arrIndice]) / factorAsaArrastre;
+            Vector3 asa = enCero ? Vector3.zero : arrTrazo.ProyectarVectorEnHoja((local - arrTrazo.nodos[arrIndice]) / factorAsaArrastre);
             if (asaSola)
                 arrTrazo.MoverAsaSola(arrIndice, arrSalida, asa);
             else
@@ -1183,7 +1184,7 @@ public partial class ControlManos : MonoBehaviour
                 }
             }
         }
-        dibujo.MoverNodo(arrTrazo, arrIndice, local);
+        dibujo.MoverNodo(arrTrazo, arrIndice, arrTrazo.ProyectarEnHoja(local));
     }
 
     void TerminarArrastre()
@@ -2180,8 +2181,10 @@ public partial class ControlManos : MonoBehaviour
             }
             Transform raiz = dibujo.transform;
             Vector3 delta = raiz.InverseTransformPoint(Der.PuntoPellizco) - raiz.InverseTransformPoint(inicioLinea);
-            delta = dibujo.ProyectarVectorEnPlano(delta);
-            Quaternion giro = GiroManoLocal();
+            // Encantada en su hoja 2D: se mueve y gira solo dentro de esa hoja. Libre: en 3D.
+            delta = lineaMovida.ProyectarVectorEnHoja(delta);
+            Quaternion giro = GiroManoLocal(lineaMovida);
+            OrdenarConEmpujon(grupoMovido, lineaMovida, ref deshacerLineaPendiente);
             if (delta.magnitude * dibujo.EscalaMundo > 0.006f || anguloGiro > 2f)
                 toqueMovio = true;
             if (deshacerLineaPendiente)
@@ -2192,7 +2195,7 @@ public partial class ControlManos : MonoBehaviour
                 deshacerLineaPendiente = false;
             }
             // Mover y girar alrededor de la pinza.
-            Vector3 pivote = dibujo.ProyectarEnPlano(raiz.InverseTransformPoint(inicioLinea));
+            Vector3 pivote = lineaMovida.ProyectarEnHoja(raiz.InverseTransformPoint(inicioLinea));
             Matrix4x4 m = Matrix4x4.Translate(pivote + delta) * Matrix4x4.Rotate(giro) * Matrix4x4.Translate(-pivote);
             for (int k = 0; k < grupoMovido.Count; k++)
                 if (Dibujo.Editable(grupoMovido[k]))
@@ -2294,12 +2297,15 @@ public partial class ControlManos : MonoBehaviour
         anguloGiro = 0f;
         inicioLinea = Der.PuntoPellizco;
         deshacerLineaPendiente = true;
+        EmpezarEmpujon(t);
         toqueLineaDesde = Time.time;
         toqueMovio = false;
     }
 
     // Cuánto giró la muñeca derecha desde que pellizcaste la línea (en coordenadas del dibujo).
-    Quaternion GiroManoLocal()
+    // El giro de tu muñeca desde que agarraste (en coordenadas del dibujo). Si "hoja" es una línea encantada
+    // en su hoja 2D, solo cuenta el giro alrededor de la normal de esa hoja (gira dentro de la hoja).
+    Quaternion GiroManoLocal(Trazo hoja)
     {
         anguloGiro = 0f;
         if (!tieneRotMano)
@@ -2310,11 +2316,10 @@ public partial class ControlManos : MonoBehaviour
         rotManoSuave = Quaternion.Slerp(rotManoSuave, muneca.rotation, 1f - Mathf.Exp(-15f * Time.deltaTime));
         Quaternion raiz = dibujo.transform.rotation;
         Quaternion dl = Quaternion.Inverse(raiz) * (rotManoSuave * Quaternion.Inverse(rotManoInicio)) * raiz;
-        Vector3 punto, normalMundo;
-        if (dibujo.PlanoMundo(out punto, out normalMundo))
+        if (hoja != null && hoja.EnHoja)
         {
-            // Plano 2D: solo la parte del giro alrededor de la normal del plano ("twist").
-            Vector3 n = dibujo.transform.InverseTransformDirection(normalMundo).normalized;
+            // Hoja 2D: solo la parte del giro alrededor de la normal de la hoja ("twist").
+            Vector3 n = hoja.hojaNormal.normalized;
             Vector3 v = new Vector3(dl.x, dl.y, dl.z);
             Vector3 p = n * Vector3.Dot(v, n);
             float largo = Mathf.Sqrt(p.sqrMagnitude + dl.w * dl.w);

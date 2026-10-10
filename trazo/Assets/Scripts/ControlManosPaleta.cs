@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
 // Paleta de colores (parte de ControlManos):
@@ -10,6 +11,9 @@ using UnityEngine;
 //    (ver ControlManosTemblor.cs).
 //  - Arriba a la derecha (solo con un fondo 360 o la realidad): el botón HALO, un brillo suave detrás de
 //    las líneas para que no se pierdan en el fondo (amarillo = encendido).
+//  - Arriba a la izquierda: el RELLENO VIVO (texturas que se mueven, estilo Quill) y su velocidad.
+//  - Debajo de la paleta: un cartelito con los datos de la línea (grosor, color, temblor, relleno...).
+//    Lo último que cambiaste sale resaltado.
 //  - Cierra la mano (o bájala) y la paleta se va.
 public partial class ControlManos
 {
@@ -126,12 +130,14 @@ public partial class ControlManos
         // La línea del centro lleva el color elegido (con tinta invisible, gris clarito).
         if (materialCentroPaleta != null && materialCentroPaleta.HasProperty("_BaseColor"))
             materialCentroPaleta.SetColor("_BaseColor", dibujo.ColorNuevo.a > 0.01f ? dibujo.ColorNuevo : new Color(0.72f, 0.74f, 0.8f));
+        ActualizarDatosPaleta();
 
         if (!Der.valida)
         {
             ActualizarTemblorPaleta(Vector3.zero, false);
             ActualizarRellenoPaleta(Vector3.zero, false);
             ActualizarHaloPaleta(Vector3.zero, false);
+            ActualizarTexturaPaleta(Vector3.zero, false);
             dedoEnRelleno = false;
             dedoEnColor = false;
             dedoEnLinea = false;
@@ -154,6 +160,13 @@ public partial class ControlManos
         }
         // ¿Tocó el botón del halo?
         if (ActualizarHaloPaleta(punta, true))
+        {
+            dedoEnColor = false;
+            dedoEnLinea = false;
+            return;
+        }
+        // ¿Tocó el relleno vivo o su velocidad?
+        if (ActualizarTexturaPaleta(punta, true))
         {
             dedoEnColor = false;
             dedoEnLinea = false;
@@ -272,6 +285,7 @@ public partial class ControlManos
         dedoEnBotonRelleno = true;
         dedoEnRelleno = true;
         dedoEnHalo = true;
+        dedoEnTextura = true;
         claveMuestra = int.MinValue;
         colorElegido = IndiceColor(dibujo.ColorNuevo);
         if (palmaIzq.valida && Cabeza != null)
@@ -310,6 +324,8 @@ public partial class ControlManos
         ArmarTemblorPaleta(negro);
         ArmarRellenoPaleta(negro);
         ArmarHaloPaleta(negro);
+        ArmarTexturaPaleta(negro);
+        ArmarDatosPaleta();
         for (int i = 0; i < ColoresPaleta.Length; i++)
         {
             float ang = Mathf.PI * 0.5f - i * Mathf.PI * 2f / ColoresPaleta.Length;
@@ -322,6 +338,103 @@ public partial class ControlManos
             botonesColor.Add(b);
         }
         go.SetActive(false);
+    }
+
+    // ---------- Datos de la línea (cartelito debajo de la paleta) ----------
+    // Cómo está la línea ahora (la elegida, o las nuevas): grosor, color, temblor, relleno... Lo último que
+    // cambiaste sale resaltado un momento, así ves qué hace cada botón.
+    static readonly string[] NombresColorPaleta =
+    {
+        "Negro", "Blanco", "Gris", "Amarillo", "Naranja", "Rojo", "Rosado", "Morado", "Azul", "Verde", "Café", "Piel"
+    };
+    TMP_Text textoDatosPaleta;
+    readonly string[] datosAntes = new string[12];
+    readonly float[] resaltarHasta = new float[12];
+    readonly string[] datosAhora = new string[12];
+    float proximosDatos;
+
+    void ArmarDatosPaleta()
+    {
+        var fondo = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        fondo.name = "FondoDatos";
+        Destroy(fondo.GetComponent<Collider>());
+        fondo.transform.SetParent(paleta, false);
+        fondo.transform.localPosition = new Vector3(0f, -0.128f, 0.001f);
+        fondo.transform.localScale = new Vector3(0.2f, 0.064f, 1f);
+        var r = fondo.GetComponent<Renderer>();
+        r.sharedMaterial = ColorMaterial(new Color(0.97f, 0.97f, 0.95f));
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
+        var go = new GameObject("DatosLinea", typeof(RectTransform));
+        go.transform.SetParent(paleta, false);
+        go.transform.localPosition = new Vector3(0f, -0.128f, -0.001f);
+        var t = go.AddComponent<TextMeshPro>();
+        t.enableAutoSizing = true;
+        t.fontSizeMin = 0.01f;
+        t.fontSizeMax = 0.09f;
+        t.alignment = TextAlignmentOptions.Center;
+        t.color = new Color(0.12f, 0.12f, 0.15f);
+        t.rectTransform.sizeDelta = new Vector2(0.19f, 0.058f);
+        textoDatosPaleta = t;
+    }
+
+    void ActualizarDatosPaleta()
+    {
+        if (textoDatosPaleta == null || dibujo == null || Time.time < proximosDatos)
+            return;
+        proximosDatos = Time.time + 0.1f;
+        var elegida = dibujo.Seleccion;
+        var capa = dibujo.CapaActual;
+        var tb = dibujo.temblor;
+        Color color = elegida != null ? elegida.color : dibujo.ColorNuevo;
+        float mm = (elegida != null ? elegida.ancho * dibujo.EscalaMundo : dibujo.AnchoNuevoMundo) * 1000f;
+        int indice = IndiceColor(color);
+        datosAhora[0] = Mathf.RoundToInt(mm) + " mm";
+        datosAhora[1] = indice < 0 ? "Tinta invisible" : NombresColorPaleta[Mathf.Clamp(indice, 0, NombresColorPaleta.Length - 1)];
+        datosAhora[2] = capa != null ? capa.nombre : "";
+        datosAhora[3] = tb != null ? "Temblor: " + tb.NombreNivel : "";
+        datosAhora[4] = tb != null ? "Hebras: " + tb.Hebras + (tb.Hebras > 1 && capa != null ? " (" + Mathf.RoundToInt(capa.grosorHebra * 100f) + " %)" : "") : "";
+        datosAhora[5] = tb != null ? (tb.GrosorVivo ? "Grosor vivo: Sí" : "Grosor vivo: No") : "";
+        datosAhora[6] = tb != null ? (tb.Ciclo3 ? "Ciclo de 3" : "Libre") : "";
+        datosAhora[7] = tb != null ? "Suavidad: " + tb.NombreSuavidad : "";
+        datosAhora[8] = tb != null ? Mathf.RoundToInt(tb.CambiosPorSegundo) + " cambios/s" : "";
+        int tex = elegida != null && elegida.relleno ? elegida.texturaRelleno : TexturaElegida;
+        int vel = elegida != null && elegida.relleno ? elegida.velocidadTextura : VelocidadTexturaElegida;
+        datosAhora[9] = "Relleno: " + Trazo.NombresTextura[Mathf.Clamp(tex, 0, Trazo.NombresTextura.Length - 1)]
+                        + (tex > 0 ? " · " + Trazo.NombresVelocidadTextura[Mathf.Clamp(vel, 0, Trazo.VelocidadesTextura.Length - 1)] : "");
+        datosAhora[10] = CubetaActiva ? "Cubeta: Sí" : "Cubeta: No";
+        datosAhora[11] = dibujo.HaloDisponible ? (dibujo.HaloEncendido ? "Halo: Sí" : "Halo: No") : "";
+        for (int i = 0; i < datosAhora.Length; i++)
+        {
+            if (datosAntes[i] != null && datosAntes[i] != datosAhora[i])
+                resaltarHasta[i] = Time.time + 2.5f;
+            datosAntes[i] = datosAhora[i];
+        }
+        var sb = new System.Text.StringBuilder();
+        sb.Append(elegida != null ? Idioma.T("Línea elegida: ") : Idioma.T("Líneas nuevas: "));
+        Dato(sb, 0, ""); Dato(sb, 1, " · "); Dato(sb, 2, " · ");
+        sb.Append('\n');
+        Dato(sb, 3, ""); Dato(sb, 4, " · "); Dato(sb, 5, " · ");
+        sb.Append('\n');
+        Dato(sb, 6, ""); Dato(sb, 7, " · "); Dato(sb, 8, " · ");
+        sb.Append('\n');
+        Dato(sb, 9, ""); Dato(sb, 10, " · "); Dato(sb, 11, " · ");
+        textoDatosPaleta.text = sb.ToString();
+    }
+
+    // Un dato; si acaba de cambiar, resaltado (negrita y naranja).
+    void Dato(System.Text.StringBuilder sb, int i, string antes)
+    {
+        string d = datosAhora[i];
+        if (string.IsNullOrEmpty(d))
+            return;
+        sb.Append(antes);
+        bool resaltar = Time.time < resaltarHasta[i];
+        if (resaltar)
+            sb.Append("<b><color=#D2560A>");
+        sb.Append(Idioma.T(d));
+        if (resaltar)
+            sb.Append("</color></b>");
     }
 
     // ---------- Botón Halo (solo con un fondo 360 o la realidad) ----------

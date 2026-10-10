@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 10 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v30***
+*Actualizado: 10 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v31***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,7 +16,18 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ---
 
-## 0. Hecho en la v30 (falta probarlo en el visor)
+## 0. Hecho en la v31 (falta probarlo en el visor)
+
+- [x] **Encantamiento 2D**: lo que dibujas en Plano 2D queda en la hoja de su capa. Nodos, tiradores, lazo, plastilina, mover con el pellizco y girar/escalar con las dos manos se quedan dentro de esa hoja, aunque cambies a 3D. La capa **recuerda su hoja** al volver a 2D.
+  - Botón **Liberar** en la fila de cada capa (solo se ve si hay algo que liberar): con líneas elegidas libera solo esas; si no, toda la capa (y si su hoja es "propia", la borra). Se puede deshacer.
+  - Dibujos de antes: las líneas que estaban sobre la hoja de su capa quedan encantadas.
+- [x] **Frente / fondo** dentro de una capa: con líneas 2D agarradas (lazo o pellizco), empuja la mano ~3 cm hacia adentro de la hoja = atrás un paso; tira hacia ti = adelante. Las nuevas salen al frente. Ya no parpadean dos rellenos encimados. Los SVG respetan el orden.
+- [x] **Menú de arriba tipo archivador**: siempre se ven las capas, la línea de tiempo y el reproductor; las páginas (Animar, Bocas, Títere) quedan guardadas y solo se asoman sus pestañas. Tocar = abrir, tocar otra vez = guardar. Recuerda cómo lo dejaste. "Fijar aquí" ahora es un **alfiler** junto al asa.
+- [x] **Mis archivos nuevo** (sin pestañas): tarjeta del dibujo actual (nombre = renombrar, ● = sin guardar), Guardar, **Compartir** (Foto, SVG, Video anim, Video proceso, Vel), **● Grabar** (con Pausa); "Mostrar: Todo", "+ Imagen", "Imágenes: ver"; acciones sobre la miniatura (Abrir, Duplicar, Borrar / Ver, Borrar); deslizar el dedo para cambiar de página; ES/EN. Mientras grabas, en el menú de la mano sale "● tiempo" con Pausa y Parar.
+- [x] **Relleno vivo estilo Quill** (paleta, arriba a la izquierda): Liso, Facetas, Manchas o Pinceladas, con tonos cercanos que cambian solos; al lado su velocidad (Quieto, Lento, Medio, Rápido). Con líneas elegidas se les pone a ellas; si no, a los próximos rellenos (tocar dentro de una figura o la cubeta). Sale en fotos y videos.
+- [x] **Datos de la línea** debajo de la paleta: grosor, color, capa, temblor, hebras, grosor vivo, ciclo, suavidad, velocidad, relleno, cubeta y halo. Lo último que cambiaste sale resaltado en naranja.
+
+## 0+. Hecho en la v30
 
 - [x] **8 fondos 360 nuevos en 3D** (subidos a 4K con IA, Real-ESRGAN, y con profundidad IA): Canal de Venecia, Callejón de Venecia, Atardecer en el mar, Crucero de lujo, Pórtico de columnas, Mirador, Parque y **La Luna**. En total 11 fondos de la app. (Créditos: `Plugins/Fondos/fondos360-creditos.txt`; **ojo:** la licencia de la foto de la Luna no está confirmada, revisarla antes de publicar en la tienda.)
 - [x] **Halo** (opcional): un brillo suave detrás de las líneas para que no se pierdan en el fondo. Blanco detrás de las líneas oscuras, oscuro detrás de las claras. El botón **Halo** sale en la **paleta de colores** (arriba a la derecha) solo con un fondo 360 o con la Realidad. No sale en fotos, videos ni SVG.
@@ -101,6 +112,14 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [ ] Cuando ya no haga falta, quitar el botón **Tutorial** de Mis archivos (por ahora se queda; abre el mismo panel "?").
 
 ## 5. Para probar en el visor (desde la v21 casi nada se ha probado)
+
+**Nuevo en la v31:**
+- [ ] Encantamiento: dibuja en 2D, pasa a 3D y mueve tiradores, nodos y la línea: ¿se quedan en su hoja? ¿Liberar funciona (todas / solo las elegidas)?
+- [ ] Frente/fondo: ¿el empujón de 3 cm se activa sin querer al mover? ¿se ve bien quién tapa a quién (también de lejos)?
+- [ ] Menú archivador: ¿se entiende? ¿el alfiler?
+- [ ] Mis archivos: acciones sobre la miniatura (¿se presiona algo sin querer?), deslizar para cambiar de página, Compartir, Grabar y el "● tiempo" del menú de la mano.
+- [ ] Relleno vivo: ¿se parece a Quill? ¿tamaño de las manchas? ¿baja la fluidez con rellenos grandes?
+- [ ] Datos bajo la paleta: ¿se leen bien? ¿estorban?
 
 **Nuevo en la v30:**
 - [ ] Los 8 fondos nuevos (¿se ven nítidos? ¿la profundidad se siente bien? La Luna: ¿el cielo negro y la Tierra lejos?).

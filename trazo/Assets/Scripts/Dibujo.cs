@@ -23,6 +23,13 @@ public class DatosTrazo
     public Color color = Color.black; // color de la línea (los dibujos de antes no lo tienen: negro)
     public bool rellenoAbierto;       // rellena aunque las puntas no se unan (la cubeta)
     public Color colorFondo;          // color del relleno elegido en la paleta (transparente = el de siempre)
+    // v31: encantada en su hoja 2D, orden frente/fondo en su capa y relleno vivo
+    public bool enHoja;
+    public Vector3 hojaPunto;
+    public Vector3 hojaNormal = Vector3.forward;
+    public int orden;
+    public int texturaRelleno;
+    public int velocidadTextura = 2;
 }
 
 [System.Serializable]
@@ -92,7 +99,7 @@ public class ArchivoIncluido
 [System.Serializable]
 public class DatosDibujo
 {
-    public int version = 6;
+    public int version = 7;   // 7: líneas encantadas en su hoja, orden frente/fondo y relleno vivo
     public bool conReferencias;                                   // true = el proyecto trae sus imágenes
     public List<DatosImagen> referencias = new List<DatosImagen>();
     public List<ArchivoIncluido> incluidos = new List<ArchivoIncluido>();
@@ -270,6 +277,17 @@ public class Dibujo : MonoBehaviour
             proximoAutoguardado = Time.time + 120f;
             if (HayCambios && !string.IsNullOrEmpty(NombreArchivo))
                 GuardarProyecto(true);
+        }
+        // Frente/fondo: el escalón de cada línea (según con quién se encima), cuando cambian las formas.
+        if (Trazo.formaCambio)
+        {
+            Trazo.formaCambio = false;
+            nivelesSucios = true;
+        }
+        if (nivelesSucios && Time.time >= proximosNiveles)
+        {
+            proximosNiveles = Time.time + 0.25f;
+            RecalcularNiveles();
         }
         // Los destellos rojos se encogen y desaparecen.
         for (int i = 0; i < destellos.Count; i++)
@@ -449,9 +467,18 @@ public class Dibujo : MonoBehaviour
     // La cubeta: rellena una forma (aunque esté abierta) con un color. Con tinta invisible = quita el relleno.
     public void RellenarConColor(Trazo t, Color c)
     {
+        if (t != null)
+            RellenarConColor(t, c, t.texturaRelleno, t.velocidadTextura);
+    }
+
+    // Igual, y además con el relleno vivo elegido (textura y velocidad).
+    public void RellenarConColor(Trazo t, Color c, int textura, int velocidad)
+    {
         if (t == null)
             return;
         GuardarParaDeshacer();
+        t.texturaRelleno = Mathf.Clamp(textura, 0, Trazo.NombresTextura.Length - 1);
+        t.velocidadTextura = Mathf.Clamp(velocidad, 0, Trazo.VelocidadesTextura.Length - 1);
         if (c.a < 0.01f)
         {
             t.relleno = false;
@@ -468,6 +495,23 @@ public class Dibujo : MonoBehaviour
         Trazo.huboCambio = false;
         HayCambios = true;
         Avisar();
+    }
+
+    // Relleno vivo para las líneas elegidas que tienen relleno. Devuelve cuántas cambiaron.
+    public int TexturaEnElegidas(int textura, int velocidad)
+    {
+        var lista = new List<Trazo>();
+        foreach (var t in Seleccionadas())
+            if (t != null && t.relleno)
+                lista.Add(t);
+        if (lista.Count == 0)
+            return 0;
+        GuardarParaDeshacer();
+        foreach (var t in lista)
+            t.PonerTexturaRelleno(textura, velocidad);
+        Trazo.huboCambio = false;
+        Avisar();
+        return lista.Count;
     }
 
     readonly Dictionary<int, Material> materialesColor = new Dictionary<int, Material>();
@@ -691,6 +735,11 @@ public class Dibujo : MonoBehaviour
         t.id = siguienteId++;
         t.capa = capaActual;
         t.color = ColorNuevo;
+        // Dibujada en Plano 2D: queda encantada en la hoja de su capa. Las nuevas salen al frente.
+        if (PlanoActivo)
+            t.Encantar(planoPunto, planoNormal);
+        t.orden = SiguienteOrden(capaActual);
+        t.nivel = Trazo.NivelesPorCapa - 1;
         AplicarCapaVisual(t);
         trazos.Add(t);
         return t;
@@ -733,6 +782,8 @@ public class Dibujo : MonoBehaviour
         t.id = siguienteId++;
         t.capa = capaActual;
         t.color = d.color;
+        t.AplicarPropiedades(d);
+        t.orden = SiguienteOrden(capaActual);
         AplicarCapaVisual(t);
         t.AplicarPose(d, null, 0f);
         trazos.Add(t);
@@ -1060,12 +1111,14 @@ public class Dibujo : MonoBehaviour
     public void AlternarPlano()
     {
         plano = !plano;
-        // El plano de esta capa se vuelve a definir con la próxima línea.
-        CapaActual.hayPlano = false;
+        // La capa recuerda su hoja: al volver a 2D sigues en la misma. (Para otra hoja: "Liberar" o en otra capa.)
         RefrescarPlano();
         ActualizarGuia();
         Avisar();
-        Mensaje(plano ? "Plano: tu próxima línea define el plano" : "Dibujo libre en 3D");
+        if (!plano)
+            Mensaje("Dibujo libre en 3D (las líneas 2D siguen encantadas en su hoja)");
+        else
+            Mensaje(HayPlano ? "Plano 2D: sigues en la hoja de " + CapaActual.nombre : "Plano 2D: tu próxima línea define la hoja de " + CapaActual.nombre);
     }
 
     // Crea el plano en el punto donde empieza la línea, mirando hacia ti.
@@ -1142,10 +1195,11 @@ public class Dibujo : MonoBehaviour
                 var d = t.CrearDatos();
                 for (int k = 0; k < d.nodos.Count; k++)
                 {
-                    d.nodos[k] = ProyectarEnPlano(d.nodos[k]);
-                    if (k < d.asaEntrada.Count) d.asaEntrada[k] = ProyectarVectorEnPlano(d.asaEntrada[k]);
-                    if (k < d.asaSalida.Count) d.asaSalida[k] = ProyectarVectorEnPlano(d.asaSalida[k]);
+                    d.nodos[k] -= planoNormal * Vector3.Dot(d.nodos[k] - planoPunto, planoNormal);
+                    if (k < d.asaEntrada.Count) d.asaEntrada[k] -= planoNormal * Vector3.Dot(d.asaEntrada[k], planoNormal);
+                    if (k < d.asaSalida.Count) d.asaSalida[k] -= planoNormal * Vector3.Dot(d.asaSalida[k], planoNormal);
                 }
+                t.Encantar(planoPunto, planoNormal); // y quedan encantadas en esa hoja
                 t.AplicarPose(d, null, 0f);
             }
             Trazo.silenciar = antes;
@@ -1155,6 +1209,221 @@ public class Dibujo : MonoBehaviour
         ActualizarGuia();
         Avisar();
         Mensaje(c.unido ? c.nombre + ": plano unido (pegado a las otras capas)" : c.nombre + ": plano propio");
+    }
+
+    // ---------- Liberar (quitar el encantamiento 2D) ----------
+
+    // ¿Cuántas líneas de esta capa están encantadas en una hoja? (para mostrar el botón Liberar)
+    public int EncantadasEnCapa(int capa)
+    {
+        int n = 0;
+        foreach (var t in trazos)
+            if (t != null && t.capa == capa && t.EnHoja)
+                n++;
+        return n;
+    }
+
+    // Si hay líneas elegidas de esa capa: libera solo esas. Si no, toda la capa (y si su hoja es propia, la borra).
+    public void LiberarCapa(int capa)
+    {
+        AsegurarCapas();
+        capa = Mathf.Clamp(capa, 0, capas.Count - 1);
+        var lista = new List<Trazo>();
+        foreach (var t in Seleccionadas())
+            if (t != null && t.capa == capa && t.EnHoja)
+                lista.Add(t);
+        bool soloElegidas = lista.Count > 0;
+        if (!soloElegidas)
+            foreach (var t in trazos)
+                if (t != null && t.capa == capa && t.EnHoja)
+                    lista.Add(t);
+        var c = capas[capa];
+        bool borrarHoja = !soloElegidas && !c.unido && c.hayPlano;
+        if (lista.Count == 0 && !borrarHoja)
+        {
+            Mensaje(c.nombre + ": no tiene líneas encantadas en una hoja 2D");
+            return;
+        }
+        GuardarParaDeshacer();
+        foreach (var t in lista)
+            t.enHoja = false;
+        if (borrarHoja)
+        {
+            c.hayPlano = false;
+            RefrescarPlano();
+            ActualizarGuia();
+        }
+        Avisar();
+        if (soloElegidas)
+            Mensaje(lista.Count == 1 ? "Línea liberada: ya se mueve en 3D" : lista.Count + " líneas liberadas: ya se mueven en 3D");
+        else
+            Mensaje(c.nombre + " liberada: sus líneas ya se mueven en 3D" + (borrarHoja ? " (su próxima línea 2D crea otra hoja)" : ""));
+    }
+
+    // Dibujos de antes de la v31: las líneas que están sobre la hoja de su capa quedan encantadas,
+    // y el orden frente/fondo es el de creación (las más nuevas adelante).
+    void EncantarDibujoViejo()
+    {
+        float tolerancia = 0.001f / Mathf.Max(1e-4f, EscalaMundo); // 1 mm
+        foreach (var t in trazos)
+        {
+            if (t == null)
+                continue;
+            t.orden = t.id;
+            Vector3 p, n;
+            if (!t.EnHoja && PlanoDeCapa(t.capa, out p, out n) && t.SobrePlano(p, n, tolerancia))
+                t.Encantar(p, n);
+        }
+    }
+
+    // ---------- Frente / fondo dentro de una capa ----------
+    // Las líneas siguen exactamente en su hoja; solo cambia quién tapa a quién (también los rellenos).
+    // Se dibuja con un "escalón" de profundidad que solo cuenta para tapar (el shader acerca la línea a tus
+    // ojos por su mismo rayo de vista: se ve en el mismo lugar).
+    bool nivelesSucios = true;
+    float proximosNiveles;
+
+    public int SiguienteOrden(int capa)
+    {
+        int mayor = -1;
+        foreach (var t in trazos)
+            if (t != null && t.capa == capa)
+                mayor = Mathf.Max(mayor, t.orden);
+        return mayor + 1;
+    }
+
+    static int CompararOrden(Trazo a, Trazo b)
+    {
+        int c = a.capa.CompareTo(b.capa);
+        if (c != 0) return c;
+        c = a.orden.CompareTo(b.orden);
+        return c != 0 ? c : a.id.CompareTo(b.id);
+    }
+
+    // Todas las líneas de atrás hacia adelante (capa y orden): para los SVG.
+    public List<Trazo> TrazosEnOrden()
+    {
+        var lista = new List<Trazo>();
+        foreach (var t in trazos)
+            if (t != null)
+                lista.Add(t);
+        lista.Sort(CompararOrden);
+        return lista;
+    }
+
+    readonly List<Trazo> ordenCapa = new List<Trazo>();
+    readonly List<Bounds> limitesCapa = new List<Bounds>();
+    readonly List<bool> hayLimites = new List<bool>();
+
+    // El escalón de cada línea: una más que la más alta de las de atrás con las que se encima (hasta 5).
+    void RecalcularNiveles()
+    {
+        nivelesSucios = false;
+        for (int capa = 0; capa < capas.Count; capa++)
+        {
+            ordenCapa.Clear();
+            foreach (var t in trazos)
+                if (t != null && t.capa == capa)
+                    ordenCapa.Add(t);
+            if (ordenCapa.Count == 0)
+                continue;
+            ordenCapa.Sort(CompararOrden);
+            limitesCapa.Clear();
+            hayLimites.Clear();
+            foreach (var t in ordenCapa)
+            {
+                Bounds b;
+                hayLimites.Add(t.Limites(out b));
+                limitesCapa.Add(b);
+            }
+            var niveles = new int[ordenCapa.Count];
+            for (int i = 0; i < ordenCapa.Count; i++)
+            {
+                int n = 0;
+                if (hayLimites[i])
+                    for (int j = 0; j < i; j++)
+                        if (hayLimites[j] && niveles[j] + 1 > n && limitesCapa[i].Intersects(limitesCapa[j]))
+                            n = niveles[j] + 1;
+                niveles[i] = Mathf.Min(n, Trazo.NivelesPorCapa - 1);
+                ordenCapa[i].PonerNivel(niveles[i]);
+            }
+        }
+    }
+
+    // Sube (paso > 0) o baja (paso < 0) estas líneas un escalón: pasan delante o detrás de la siguiente línea
+    // de su capa con la que se enciman. Devuelve false si ya estaban al frente (o al fondo).
+    // puesto: 1 = al frente; total: líneas de la capa.
+    public bool CambiarOrden(List<Trazo> lineas, int paso, out int puesto, out int total)
+    {
+        puesto = 0;
+        total = 0;
+        if (lineas == null || lineas.Count == 0 || paso == 0)
+            return false;
+        int capa = lineas[0].capa;
+        var elegidas = new List<Trazo>();
+        foreach (var t in lineas)
+            if (t != null && t.capa == capa && !elegidas.Contains(t))
+                elegidas.Add(t);
+        var lista = new List<Trazo>();
+        foreach (var t in trazos)
+            if (t != null && t.capa == capa)
+                lista.Add(t);
+        lista.Sort(CompararOrden);
+        total = lista.Count;
+        // Los límites de las elegidas juntas.
+        Bounds caja = new Bounds();
+        bool hay = false;
+        int minimo = int.MaxValue, maximo = int.MinValue;
+        foreach (var t in elegidas)
+        {
+            int i = lista.IndexOf(t);
+            minimo = Mathf.Min(minimo, i);
+            maximo = Mathf.Max(maximo, i);
+            Bounds b;
+            if (!t.Limites(out b))
+                continue;
+            if (hay) caja.Encapsulate(b); else caja = b;
+            hay = true;
+        }
+        // La siguiente línea (que no es de las elegidas) con la que se enciman, hacia atrás o hacia adelante.
+        int destino = -1;
+        if (paso < 0)
+        {
+            for (int i = minimo - 1; i >= 0 && destino < 0; i--)
+            {
+                Bounds b;
+                if (!elegidas.Contains(lista[i]) && (!hay || (lista[i].Limites(out b) && b.Intersects(caja))))
+                    destino = i;
+            }
+        }
+        else
+        {
+            for (int i = maximo + 1; i < lista.Count && destino < 0; i++)
+            {
+                Bounds b;
+                if (!elegidas.Contains(lista[i]) && (!hay || (lista[i].Limites(out b) && b.Intersects(caja))))
+                    destino = i;
+            }
+        }
+        if (destino < 0)
+        {
+            puesto = paso > 0 ? 1 : total;
+            return false;
+        }
+        Trazo vecino = lista[destino];
+        foreach (var t in elegidas)
+            lista.Remove(t);
+        int donde = lista.IndexOf(vecino) + (paso > 0 ? 1 : 0);
+        lista.InsertRange(donde, elegidas);
+        for (int i = 0; i < lista.Count; i++)
+            lista[i].orden = i;
+        int arriba = 0;
+        foreach (var t in elegidas)
+            arriba = Mathf.Max(arriba, lista.IndexOf(t));
+        puesto = lista.Count - arriba;
+        HayCambios = true;
+        RecalcularNiveles();
+        return true;
     }
 
     // El plano 2D en el mundo (punto y normal, la normal apunta lejos de ti). false si no hay plano.
@@ -1892,6 +2161,7 @@ public class Dibujo : MonoBehaviour
                 t.id = dt.id > 0 ? dt.id : siguienteId++;
                 t.capa = Mathf.Clamp(dt.capa, 0, capas.Count - 1);
                 t.color = dt.color;
+                t.AplicarPropiedades(dt);
                 AplicarCapaVisual(t);
                 siguienteId = Mathf.Max(siguienteId, t.id + 1);
                 t.AplicarPose(dt, null, 0f);
@@ -1901,6 +2171,9 @@ public class Dibujo : MonoBehaviour
         foreach (var t in viejos.Values)
             if (t != null)
                 Destroy(t.gameObject);
+        if (d.version < 7)
+            EncantarDibujoViejo();
+        nivelesSucios = true;
         seleccion = null;
         grupo.Clear();
         if (animacion != null)

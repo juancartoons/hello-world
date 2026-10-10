@@ -37,6 +37,13 @@ public class PanelMuneca : MonoBehaviour
     float ocultarAvisoEn;
     float avisoDesde;
 
+    // Grabando el proceso: abajo del menú sale "● 01:23" con Pausa y Parar (como mirar la hora).
+    GrabadorProceso grabador;
+    GameObject filaRec;
+    TMP_Text textoRec;
+    BotonTocable btnPausaRec, btnPararRec;
+    float proximoRec;
+
     void Start()
     {
         if (control == null) control = FindFirstObjectByType<ControlManos>();
@@ -77,6 +84,8 @@ public class PanelMuneca : MonoBehaviour
         }
 
         CrearIconoIman();
+        grabador = FindFirstObjectByType<GrabadorProceso>();
+        CrearFilaRec();
         if (textoEstado != null)
             textoEstado.text = Idioma.T(textoAyuda);
         if (textoAviso != null)
@@ -153,6 +162,88 @@ public class PanelMuneca : MonoBehaviour
                 textoEstado.text = Idioma.T(textoAyuda);
         }
         ActualizarAviso();
+        ActualizarRec();
+    }
+
+    void CrearFilaRec()
+    {
+        if (contenido == null || btnColores == null)
+            return;
+        filaRec = new GameObject("Grabando");
+        filaRec.transform.SetParent(contenido.transform, false);
+        var fondo = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        fondo.name = "FondoGrabando";
+        Destroy(fondo.GetComponent<Collider>());
+        fondo.transform.SetParent(filaRec.transform, false);
+        fondo.transform.localPosition = new Vector3(0f, -0.172f, 0.004f);
+        fondo.transform.localScale = new Vector3(0.105f, 0.028f, 1f);
+        var rf = fondo.GetComponent<Renderer>();
+        var fondoMenu = contenido.transform.Find("Fondo");
+        if (fondoMenu != null && fondoMenu.GetComponent<Renderer>() != null)
+            rf.sharedMaterial = fondoMenu.GetComponent<Renderer>().sharedMaterial;
+        rf.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        rf.receiveShadows = false;
+        textoRec = TextoRec(filaRec.transform, "● 00:00", new Vector3(-0.027f, -0.172f, -0.001f), new Vector2(0.046f, 0.016f));
+        textoRec.color = new Color(0.85f, 0.1f, 0.1f);
+        btnPausaRec = BotonRec(filaRec.transform, "Pausa", new Vector3(0.017f, -0.172f, 0f), 0.03f);
+        btnPausaRec.alTocar.AddListener(() => { if (grabador != null) grabador.AlternarPausa(); });
+        btnPararRec = BotonRec(filaRec.transform, "Parar", new Vector3(0.042f, -0.172f, 0f), 0.022f);
+        btnPararRec.alTocar.AddListener(() =>
+        {
+            if (grabador != null && grabador.Grabando)
+                grabador.Alternar();
+        });
+        filaRec.SetActive(false);
+    }
+
+    BotonTocable BotonRec(Transform padre, string texto, Vector3 pos, float ancho)
+    {
+        var cubo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        cubo.name = "Boton_" + texto;
+        cubo.transform.SetParent(padre, false);
+        cubo.transform.localPosition = pos;
+        cubo.transform.localScale = new Vector3(ancho, 0.02f, 0.008f);
+        var r = cubo.GetComponent<Renderer>();
+        r.sharedMaterial = btnColores.materialNormal;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
+        var b = cubo.AddComponent<BotonTocable>();
+        b.materialNormal = btnColores.materialNormal;
+        b.materialMarcado = btnColores.materialMarcado;
+        b.etiqueta = TextoRec(padre, texto, pos + new Vector3(0f, 0f, -0.0046f), new Vector2(ancho * 0.9f, 0.014f));
+        b.etiqueta.fontStyle = FontStyles.Bold;
+        return b;
+    }
+
+    static TMP_Text TextoRec(Transform padre, string texto, Vector3 pos, Vector2 tam)
+    {
+        var go = new GameObject("Texto", typeof(RectTransform));
+        go.transform.SetParent(padre, false);
+        go.transform.localPosition = pos;
+        var t = go.AddComponent<TextMeshPro>();
+        Idioma.Poner(t, texto);
+        t.enableAutoSizing = true;
+        t.fontSizeMin = 0.01f;
+        t.fontSizeMax = 0.12f;
+        t.alignment = TextAlignmentOptions.Center;
+        t.color = Color.black;
+        t.rectTransform.sizeDelta = tam;
+        return t;
+    }
+
+    void ActualizarRec()
+    {
+        if (filaRec == null || Time.time < proximoRec)
+            return;
+        proximoRec = Time.time + 0.25f;
+        bool grabando = grabador != null && grabador.Grabando;
+        if (filaRec.activeSelf != grabando)
+            filaRec.SetActive(grabando);
+        if (!grabando)
+            return;
+        textoRec.text = (grabador.Pausado ? "II " : "● ") + GrabadorProceso.Formato(grabador.TiempoGrabado);
+        btnPausaRec.PonerTexto(grabador.Pausado ? "Seguir" : "Pausa");
+        btnPausaRec.Marcar(grabador.Pausado);
     }
 
     // El aviso sale en el cartel de cómic de arriba al centro de tu vista (el mismo del nombre del gesto:

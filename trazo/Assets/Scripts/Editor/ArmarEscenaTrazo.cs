@@ -601,9 +601,21 @@ public static class ArmarEscenaTrazo
         fondo.name = "Fondo";
         Object.DestroyImmediate(fondo.GetComponent<Collider>());
         fondo.transform.SetParent(c, false);
-        fondo.transform.localPosition = new Vector3(0f, 0.035f, 0.006f);
-        fondo.transform.localScale = new Vector3(0.5f, 0.34f, 1f);
+        // Arriba (siempre): asa, capas, línea de tiempo y reproductor. Las páginas van replegadas, como en un
+        // archivador: solo se asoman sus pestañas (ver "Paginas" más abajo).
+        fondo.transform.localPosition = new Vector3(0f, 0.152f, 0.006f);
+        fondo.transform.localScale = new Vector3(0.5f, 0.116f, 1f);
         SinSombras(fondo.GetComponent<Renderer>(), matPanel);
+        // Las páginas (Animar, Bocas, Títere) con su fondo y el asa de abajo: se despliegan al tocar su pestaña.
+        var paginas = Pagina(c, "Paginas");
+        panel.paginas = paginas.gameObject;
+        var fondoPaginas = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        fondoPaginas.name = "FondoPaginas";
+        Object.DestroyImmediate(fondoPaginas.GetComponent<Collider>());
+        fondoPaginas.transform.SetParent(paginas, false);
+        fondoPaginas.transform.localPosition = new Vector3(0f, -0.03f, 0.006f);
+        fondoPaginas.transform.localScale = new Vector3(0.5f, 0.245f, 1f);
+        SinSombras(fondoPaginas.GetComponent<Renderer>(), matPanel);
 
         // Asa para mover el panel (y cambiar su tamaño con la otra mano)
         var asa = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -618,7 +630,7 @@ public static class ArmarEscenaTrazo
         var asaAbajo = GameObject.CreatePrimitive(PrimitiveType.Cube);
         asaAbajo.name = "AsaAbajo";
         Object.DestroyImmediate(asaAbajo.GetComponent<Collider>());
-        asaAbajo.transform.SetParent(c, false);
+        asaAbajo.transform.SetParent(paginas, false);
         asaAbajo.transform.localPosition = new Vector3(0f, -0.15f, 0f);
         asaAbajo.transform.localScale = new Vector3(0.14f, 0.016f, 0.01f);
         SinSombras(asaAbajo.GetComponent<Renderer>(), matAsaPanel);
@@ -641,14 +653,16 @@ public static class ArmarEscenaTrazo
         Object.DestroyImmediate(fondoCapas.GetComponent<Collider>());
         fondoCapas.transform.SetParent(capasGo.transform, false);
         float filasAlto = Dibujo.NumeroDeCapas * panel.pasoCapasY;
-        fondoCapas.transform.localPosition = new Vector3(0.0125f, panel.filaCapasY + filasAlto * 0.5f - panel.pasoCapasY * 0.5f, 0.006f);
-        fondoCapas.transform.localScale = new Vector3(0.715f, filasAlto + 0.01f, 1f);
+        fondoCapas.transform.localPosition = new Vector3(0.04f, panel.filaCapasY + filasAlto * 0.5f - panel.pasoCapasY * 0.5f, 0.006f);
+        fondoCapas.transform.localScale = new Vector3(0.77f, filasAlto + 0.01f, 1f);
         SinSombras(fondoCapas.GetComponent<Renderer>(), matPanel);
         panel.btnCapas = new BotonTocable[Dibujo.NumeroDeCapas];
         panel.btnVer = new BotonTocable[Dibujo.NumeroDeCapas];
         // El estilo de cada capa (antes en la página Animar): Boceto y Plano, a la derecha de sus claves.
         panel.btnBocetoCapa = new BotonTocable[Dibujo.NumeroDeCapas];
         panel.btnPlanoCapa = new BotonTocable[Dibujo.NumeroDeCapas];
+        // Liberar: quita el encantamiento 2D de esa capa (solo se ve si tiene líneas encantadas en su hoja).
+        panel.btnLiberarCapa = new BotonTocable[Dibujo.NumeroDeCapas];
         for (int i = 0; i < Dibujo.NumeroDeCapas; i++)
         {
             float y = panel.filaCapasY + i * panel.pasoCapasY;
@@ -663,6 +677,7 @@ public static class ArmarEscenaTrazo
                 if (bc.etiqueta != null)
                     bc.etiqueta.rectTransform.sizeDelta = new Vector2(0.054f, 0.018f);
             }
+            panel.btnLiberarCapa[i] = Boton(capasGo.transform, "Liberar", new Vector3(0.394f, y, 0f), matBoton, matBotonMarcado);
         }
 
         // Línea de tiempo
@@ -684,16 +699,39 @@ public static class ArmarEscenaTrazo
         SinSombras(cabezal.GetComponent<Renderer>(), matCabezal);
         panel.cabezal = cabezal.transform;
 
-        // Pestañas: Animar, Bocas y Títere (el menú de arriba es solo para animar). Fijar aquí, a la derecha.
+        // Pestañas asomadas bajo el reproductor (como un archivador): Animar, Bocas y Títere.
+        // Tocar una = se despliega su página; tocarla otra vez = se repliega.
         string[] pestanas = { "Animar", "Bocas", "Títere" };
         var p = new BotonTocable[pestanas.Length];
         for (int i = 0; i < pestanas.Length; i++)
-            p[i] = Boton(c, pestanas[i], new Vector3(-0.2f + i * 0.08f, 0.079f, 0f), matBoton, matBotonMarcado);
+        {
+            p[i] = Boton(c, pestanas[i], new Vector3(-0.085f + i * 0.085f, 0.08f, 0f), matBoton, matBotonMarcado);
+            p[i].transform.localScale = new Vector3(0.078f, 0.022f, 0.008f);
+            if (p[i].etiqueta != null)
+                p[i].etiqueta.rectTransform.sizeDelta = new Vector2(0.07f, 0.018f);
+        }
         panel.btnPaginaAnimar = p[0];
         panel.btnPaginaMedios = null;
         panel.btnPaginaBocas = p[1];
         panel.btnPaginaTitere = p[2];
-        panel.btnSeguir = Boton(c, "Fijar aquí", new Vector3(0.2f, 0.079f, 0f), matBoton, matBotonMarcado);
+        // Fijar aquí / Seguirme: un alfiler junto al asa (sin texto).
+        panel.btnSeguir = Boton(c, "", new Vector3(0.18f, 0.195f, 0f), matBoton, matBotonMarcado);
+        panel.btnSeguir.transform.localScale = new Vector3(0.026f, 0.022f, 0.008f);
+        var cabezaAlfiler = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        cabezaAlfiler.name = "AlfilerCabeza";
+        Object.DestroyImmediate(cabezaAlfiler.GetComponent<Collider>());
+        cabezaAlfiler.transform.SetParent(c, false);
+        cabezaAlfiler.transform.localPosition = new Vector3(0.1835f, 0.1985f, -0.0065f);
+        cabezaAlfiler.transform.localScale = Vector3.one * 0.0085f;
+        SinSombras(cabezaAlfiler.GetComponent<Renderer>(), matClave);
+        var agujaAlfiler = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        agujaAlfiler.name = "AlfilerAguja";
+        Object.DestroyImmediate(agujaAlfiler.GetComponent<Collider>());
+        agujaAlfiler.transform.SetParent(c, false);
+        agujaAlfiler.transform.localPosition = new Vector3(0.1785f, 0.1925f, -0.0062f);
+        agujaAlfiler.transform.localRotation = Quaternion.Euler(0f, 0f, 45f);
+        agujaAlfiler.transform.localScale = new Vector3(0.0016f, 0.0045f, 0.0016f);
+        SinSombras(agujaAlfiler.GetComponent<Renderer>(), matCabezal);
         // Ayuda: "?" en la esquina de arriba a la derecha (abre abajo una copia azul que explica cada botón).
         panel.btnAyuda = Boton(c, "?", new Vector3(0.215f, 0.195f, 0f), matBoton, matBotonMarcado);
         panel.btnAyuda.transform.localScale = new Vector3(0.03f, 0.022f, 0.008f);
@@ -715,7 +753,7 @@ public static class ArmarEscenaTrazo
 
         // ----- Página Animar: solo animación. Grabar proceso, Foto, SVG e imágenes están en Mis archivos;
         //       Boceto y Plano, en cada fila de Capas. -----
-        var animar = Pagina(c, "PaginaAnimar");
+        var animar = Pagina(paginas, "PaginaAnimar");
         panel.paginaAnimar = animar.gameObject;
         panel.paginaMedios = null;
         panel.btnVideoAnim = BotonAncho(animar, "Video anim", new Vector3(-0.17f, 0.04f, 0f), matBoton, matBotonMarcado);
@@ -743,10 +781,11 @@ public static class ArmarEscenaTrazo
         panel.btnCargar = null;
         panel.btnBorrarTodo = null;
         panel.textoMedios = Texto(animar, "", new Vector3(0f, -0.048f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.2f, 0.2f, 0.25f));
-        Texto(animar, "Toca la barra = ir a un fotograma · pellizca una clave = moverla · Foto, SVG, Grabar proceso e imágenes: en Mis archivos", new Vector3(0f, -0.085f, -0.001f), new Vector2(0.46f, 0.016f), new Color(0.3f, 0.3f, 0.35f));
+        Texto(animar, "Toca la barra = ir a un fotograma · pellizca una clave = moverla · Foto, SVG y Grabar proceso: Mis archivos → Compartir", new Vector3(0f, -0.085f, -0.001f), new Vector2(0.46f, 0.016f), new Color(0.3f, 0.3f, 0.35f));
+        Texto(animar, "Próximamente aquí: papel cebolla y cuadro a cuadro", new Vector3(0f, -0.115f, -0.001f), new Vector2(0.46f, 0.016f), new Color(0.45f, 0.45f, 0.5f));
 
         // ----- Página Bocas -----
-        var bocas = Pagina(c, "PaginaBocas");
+        var bocas = Pagina(paginas, "PaginaBocas");
         panel.paginaBocas = bocas.gameObject;
         panel.btnBocas = new BotonTocable[Lipsync.Nombres.Length];
         for (int i = 0; i < Lipsync.Nombres.Length; i++)
@@ -764,7 +803,7 @@ public static class ArmarEscenaTrazo
         Texto(bocas, "Dibuja la boca en su propia capa y elígela · audios propios en Dibujos/Audio", new Vector3(0f, -0.09f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.3f, 0.3f, 0.35f));
 
         // ----- Página Títere -----
-        var tit = Pagina(c, "PaginaTitere");
+        var tit = Pagina(paginas, "PaginaTitere");
         panel.paginaTitere = tit.gameObject;
         string[] filaT = { "Tipo: Palito", "Crear Palito", "Grabar" };
         var t1 = new BotonTocable[3];

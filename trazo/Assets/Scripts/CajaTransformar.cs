@@ -126,6 +126,14 @@ public class CajaTransformar : MonoBehaviour
         {
             s = Mathf.Clamp(s, 0.05f, 20f);
             Transform r = dibujo.transform;
+            // Líneas encantadas en su hoja 2D: giran solo dentro de la hoja y se mueven sobre ella.
+            var hoja = solos[0] != null && solos[0].EnHoja ? solos[0] : null;
+            if (hoja != null)
+            {
+                Vector3 n = r.TransformDirection(hoja.hojaNormal).normalized;
+                giroSolo = SoloGiroAlrededor(giroSolo, n);
+                medioSolo = medioInicio + Vector3.ProjectOnPlane(medioSolo - medioInicio, n);
+            }
             Matrix4x4 mundo = Matrix4x4.TRS(medioSolo, giroSolo, Vector3.one * s) * Matrix4x4.Translate(-medioInicio);
             Matrix4x4 m = r.worldToLocalMatrix * mundo * r.localToWorldMatrix;
             for (int k = 0; k < solos.Count; k++)
@@ -142,6 +150,17 @@ public class CajaTransformar : MonoBehaviour
         raiz.position = medio + giro * ((posicionInicio - medioInicio) * s);
         raiz.rotation = giro * rotacionInicio;
         raiz.localScale = Vector3.one * nueva;
+    }
+
+    // Solo la parte del giro alrededor de "eje" (lo demás se descarta).
+    static Quaternion SoloGiroAlrededor(Quaternion q, Vector3 eje)
+    {
+        Vector3 v = new Vector3(q.x, q.y, q.z);
+        Vector3 p = eje * Vector3.Dot(v, eje);
+        float largo = Mathf.Sqrt(p.sqrMagnitude + q.w * q.w);
+        if (largo < 1e-6f)
+            return Quaternion.identity;
+        return new Quaternion(p.x / largo, p.y / largo, p.z / largo, q.w / largo);
     }
 
     public void Terminar()

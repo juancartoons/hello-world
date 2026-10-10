@@ -23,7 +23,7 @@ public static class Exportar
         // Primero medimos todo para saber el tamaño de la hoja.
         float minX = float.MaxValue, minY = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
         bool hay = false;
-        foreach (var t in dibujo.trazos)
+        foreach (var t in dibujo.TrazosEnOrden())
         {
             if (!Dibujo.Editable(t) || t.nodos.Count < 2)
                 continue;
@@ -52,7 +52,7 @@ public static class Exportar
 
         // Rellenos primero (debajo), luego las líneas (encima), como en la app.
         sb.AppendLine("<g id=\"rellenos\" stroke=\"none\">");
-        foreach (var t in dibujo.trazos)
+        foreach (var t in dibujo.TrazosEnOrden())
         {
             if (!Dibujo.Editable(t) || t.nodos.Count < 3 || (!t.cerrado && !t.rellenoAbierto) || !t.relleno)
                 continue;
@@ -65,7 +65,7 @@ public static class Exportar
 
         sb.AppendLine("<g id=\"lineas\" fill=\"none\" stroke=\"#000000\" stroke-linecap=\"round\" stroke-linejoin=\"round\">");
         float escala = dibujo.EscalaMundo;
-        foreach (var t in dibujo.trazos)
+        foreach (var t in dibujo.TrazosEnOrden())
         {
             if (!Dibujo.Editable(t) || t.nodos.Count < 2 || t.Invisible)
                 continue;
@@ -95,7 +95,7 @@ public static class Exportar
         var puntos = new System.Collections.Generic.List<Vector3>();
         var medios = new System.Collections.Generic.List<float>();
         float minX = float.MaxValue, minY = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
-        foreach (var t in dibujo.trazos)
+        foreach (var t in dibujo.TrazosEnOrden())
         {
             if (!Dibujo.Editable(t) || t.nodos.Count < 2)
                 continue;
@@ -158,7 +158,7 @@ public static class Exportar
         sb.Append("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"").Append(N(anchoHoja)).Append("mm\" height=\"").Append(N(altoHoja))
           .Append("mm\" viewBox=\"").Append(N(minX)).Append(' ').Append(N(minY)).Append(' ').Append(N(anchoHoja)).Append(' ').Append(N(altoHoja)).AppendLine("\">");
         sb.AppendLine("<g id=\"rellenos\" stroke=\"none\">");
-        foreach (var t in dibujo.trazos)
+        foreach (var t in dibujo.TrazosEnOrden())
         {
             if (!Dibujo.Editable(t) || t.nodos.Count < 3 || (!t.cerrado && !t.rellenoAbierto) || !t.relleno)
                 continue;

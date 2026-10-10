@@ -82,4 +82,19 @@ float TrazoGrosorVivo(float3 posWS, float hebra, float4 a, float4 b, float fase)
     return lerp(1.0, 0.35 + 1.3 * n, a.z);
 }
 
+// Frente / fondo: acerca el punto a la cámara por su mismo rayo de vista. Se ve en el mismo lugar; solo cambia
+// quién tapa a quién (las líneas siguen en su hoja). nivel = capa * 6 + escalón dentro de la capa.
+// Un escalón = 0.12 mm por cada metro de distancia (así alcanza la precisión de profundidad también de lejos).
+float3 TrazoAdelante(float3 posWS, float nivel)
+{
+    if (nivel <= 0.0)
+        return posWS;
+    float3 haciaCamara = GetCameraPositionWS() - posWS;
+    float dist = length(haciaCamara);
+    if (dist < 1e-4)
+        return posWS;
+    float acercar = min(nivel * 0.00012 * dist, dist * 0.25);
+    return posWS + haciaCamara * (acercar / dist);
+}
+
 #endif

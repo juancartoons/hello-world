@@ -49,6 +49,28 @@ public class Trazo : MonoBehaviour
     public Color ColorDelRelleno => colorFondo.a > 0.01f ? colorFondo : Paleta[Mathf.Abs(colorRelleno) % Paleta.Length];
     public EstiloLinea estilo = EstiloLinea.Cinta;
 
+    // ---------- Encantamiento 2D: la línea vive en su hoja ----------
+    // Una línea dibujada en Plano 2D queda "encantada" en su hoja: sus nodos, tiradores, lazo, plastilina,
+    // moverla y girarla se quedan siempre dentro de esa hoja (nunca hacia el fondo ni hacia ti), aunque
+    // cambies a 3D. "Liberar" (en la fila de su capa) le quita el encantamiento: vuelve a ser una línea 3D.
+    public bool enHoja;
+    public Vector3 hojaPunto;                    // la hoja (en coordenadas locales del Dibujo)
+    public Vector3 hojaNormal = Vector3.forward;
+    public bool EnHoja => enHoja && hojaNormal.sqrMagnitude > 0.25f;
+
+    // ---------- Frente / fondo dentro de su capa ----------
+    public int orden;                            // más grande = más adelante (tapa a las otras de su capa)
+    [System.NonSerialized] public int nivel;     // escalón visual (lo calcula el Dibujo según con quién se encima)
+    public const int NivelesPorCapa = 6;
+    float NivelVisual => Mathf.Max(0, capa) * NivelesPorCapa + Mathf.Clamp(nivel, 0, NivelesPorCapa - 1);
+
+    // ---------- Relleno vivo (texturas que se mueven, estilo Quill) ----------
+    public int texturaRelleno;                   // 0 liso, 1 facetas, 2 manchas, 3 pinceladas
+    public int velocidadTextura = 2;             // índice en VelocidadesTextura
+    public static readonly float[] VelocidadesTextura = { 0f, 2f, 4f, 8f }; // cambios por segundo (0 = quieto)
+    public static readonly string[] NombresTextura = { "Liso", "Facetas", "Manchas", "Pinceladas" };
+    public static readonly string[] NombresVelocidadTextura = { "Quieto", "Lento", "Medio", "Rápido" };
+
     // La curva ya calculada (local), para tocarla y medirla.
     public readonly List<Vector3> curva = new List<Vector3>();
     readonly List<int> curvaSegmento = new List<int>();   // en qué tramo (entre dos nodos) cae cada punto
@@ -58,6 +80,8 @@ public class Trazo : MonoBehaviour
     // La animación aplica poses sin que cuenten como "cambios del usuario".
     public static bool silenciar;
     public static bool huboCambio;
+    // Alguna línea cambió de forma (para recalcular frente/fondo), también al animar.
+    public static bool formaCambio;
 
     // Líneas vivas (temblor, hebras, grosor vivo): cada capa tiene las suyas. Las da el Dibujo.
     public struct EstiloVivo
@@ -145,7 +169,9 @@ public class Trazo : MonoBehaviour
     static readonly List<float> multiplicadores = new List<float>();
     static readonly List<Vector3> vertices = new List<Vector3>();
     static readonly List<Vector3> normales = new List<Vector3>();
-    static readonly List<Vector2> uvs = new List<Vector2>();
+    static readonly List<Vector3> uvs = new List<Vector3>();   // x: medio grosor (cinta), y: 0 cinta / 1 tubo, z: nivel (frente/fondo)
+    static readonly List<Vector4> uvsRelleno = new List<Vector4>();  // relleno: x, y en su plano; z textura; w cambios por segundo
+    static readonly List<Vector2> uvsRelleno2 = new List<Vector2>(); // relleno: x semilla, y nivel (frente/fondo)
     static readonly List<Vector2> uvs2 = new List<Vector2>(); // x: número de hebra, y: lugar a lo largo (0 a 1)
     static readonly List<Vector4> uvs3 = new List<Vector4>(); // estilo vivo (a)
     static readonly List<Vector4> uvs4 = new List<Vector4>(); // estilo vivo (b)
@@ -172,6 +198,109 @@ public class Trazo : MonoBehaviour
     public Mesh Malla => malla;
     MeshRenderer rendererLinea;
     public MeshRenderer RendererLinea => rendererLinea != null ? rendererLinea : (rendererLinea = GetComponent<MeshRenderer>());
+
+    public void Encantar(Vector3 punto, Vector3 normal)
+    {
+        if (normal.sqrMagnitude < 1e-8f)
+            return;
+        enHoja = true;
+        hojaPunto = punto;
+        hojaNormal = normal.normalized;
+    }
+
+    public Vector3 ProyectarEnHoja(Vector3 local)
+    {
+        return EnHoja ? local - hojaNormal * Vector3.Dot(local - hojaPunto, hojaNormal) : local;
+    }
+
+    public Vector3 ProyectarVectorEnHoja(Vector3 v)
+    {
+        return EnHoja ? v - hojaNormal * Vector3.Dot(v, hojaNormal) : v;
+    }
+
+    // ¿Todos sus nodos están sobre este plano? (tolerancia en unidades locales)
+    public bool SobrePlano(Vector3 punto, Vector3 normal, float tolerancia)
+    {
+        if (nodos.Count < 2 || normal.sqrMagnitude < 1e-8f)
+            return false;
+        Vector3 n = normal.normalized;
+        foreach (var p in nodos)
+            if (Mathf.Abs(Vector3.Dot(p - punto, n)) > tolerancia)
+                return false;
+        return true;
+    }
+
+    // Pone todos sus nodos y tiradores dentro de su hoja (sin reconstruir).
+    void PegarAHoja()
+    {
+        if (!EnHoja)
+            return;
+        for (int i = 0; i < nodos.Count; i++)
+            nodos[i] = ProyectarEnHoja(nodos[i]);
+        for (int i = 0; i < asaEntrada.Count; i++)
+            asaEntrada[i] = ProyectarVectorEnHoja(asaEntrada[i]);
+        for (int i = 0; i < asaSalida.Count; i++)
+            asaSalida[i] = ProyectarVectorEnHoja(asaSalida[i]);
+    }
+
+    // Lo que no es "pose" (no cambia entre claves): la hoja, el orden y la textura del relleno.
+    public void AplicarPropiedades(DatosTrazo d)
+    {
+        if (d == null)
+            return;
+        enHoja = d.enHoja && d.hojaNormal.sqrMagnitude > 0.25f;
+        hojaPunto = d.hojaPunto;
+        hojaNormal = d.hojaNormal.sqrMagnitude > 1e-8f ? d.hojaNormal.normalized : Vector3.forward;
+        orden = d.orden;
+        texturaRelleno = Mathf.Clamp(d.texturaRelleno, 0, NombresTextura.Length - 1);
+        velocidadTextura = Mathf.Clamp(d.velocidadTextura, 0, VelocidadesTextura.Length - 1);
+    }
+
+    // El escalón visual de frente/fondo (lo pone el Dibujo). Rehace la malla solo si cambió.
+    public void PonerNivel(int n)
+    {
+        n = Mathf.Clamp(n, 0, NivelesPorCapa - 1);
+        if (n == nivel)
+            return;
+        nivel = n;
+        bool antes = silenciar;
+        silenciar = true;
+        Reconstruir();
+        silenciar = antes;
+    }
+
+    // La textura del relleno vivo (se ve al instante).
+    public void PonerTexturaRelleno(int textura, int velocidad)
+    {
+        textura = Mathf.Clamp(textura, 0, NombresTextura.Length - 1);
+        velocidad = Mathf.Clamp(velocidad, 0, VelocidadesTextura.Length - 1);
+        if (textura == texturaRelleno && velocidad == velocidadTextura)
+            return;
+        texturaRelleno = textura;
+        velocidadTextura = velocidad;
+        Reconstruir();
+    }
+
+    // Los límites de la línea y su relleno (locales del Dibujo), para saber con quién se encima.
+    public bool Limites(out Bounds b)
+    {
+        b = new Bounds();
+        bool hay = false;
+        if (malla != null && malla.vertexCount > 0)
+        {
+            b = malla.bounds;
+            hay = true;
+        }
+        if (mallaRelleno != null && rellenoRenderer != null && rellenoRenderer.gameObject.activeSelf && mallaRelleno.vertexCount > 0)
+        {
+            if (hay)
+                b.Encapsulate(mallaRelleno.bounds);
+            else
+                b = mallaRelleno.bounds;
+            hay = true;
+        }
+        return hay;
+    }
 
     public void Configurar(Material material, Material rellenoMat, float anchoInicial, EstiloLinea estiloInicial)
     {
@@ -468,6 +597,7 @@ public class Trazo : MonoBehaviour
             }
         }
         ancho = Mathf.Clamp(origen.ancho * escala, 0.0005f, 0.5f);
+        PegarAHoja(); // encantada: se queda en su hoja
         Reconstruir();
     }
 
@@ -516,7 +646,13 @@ public class Trazo : MonoBehaviour
             oculto = oculto,
             color = color,
             rellenoAbierto = rellenoAbierto && !cerrado,
-            colorFondo = colorFondo
+            colorFondo = colorFondo,
+            enHoja = EnHoja,
+            hojaPunto = hojaPunto,
+            hojaNormal = hojaNormal,
+            orden = orden,
+            texturaRelleno = texturaRelleno,
+            velocidadTextura = velocidadTextura
         };
     }
 
@@ -637,6 +773,7 @@ public class Trazo : MonoBehaviour
             mr.forceRenderingOff = sinLinea;
         if (rellenoRenderer != null && rellenoRenderer.forceRenderingOff != oculto)
             rellenoRenderer.forceRenderingOff = oculto;
+        formaCambio = true;
         if (!silenciar)
         {
             huboCambio = true;
@@ -751,6 +888,7 @@ public class Trazo : MonoBehaviour
         var e = Estilo();
         int n = e.hebras;
         float delgada = n > 1 ? e.grosorHebra : 1f;
+        float nv = NivelVisual;
         for (int hebra = 0; hebra < n; hebra++)
         {
             int inicio = vertices.Count;
@@ -760,8 +898,8 @@ public class Trazo : MonoBehaviour
                 Vector3 t = Tangente(i);
                 float h = MedioGrosor(i, total) * delgada;
                 float a = total > 0f ? largos[i] / total : 0f;
-                vertices.Add(p); normales.Add(t); uvs.Add(new Vector2(-h, 0f)); uvs2.Add(new Vector2(hebra, a)); uvs3.Add(e.a); uvs4.Add(e.b);
-                vertices.Add(p); normales.Add(t); uvs.Add(new Vector2(h, 0f)); uvs2.Add(new Vector2(hebra, a)); uvs3.Add(e.a); uvs4.Add(e.b);
+                vertices.Add(p); normales.Add(t); uvs.Add(new Vector3(-h, 0f, nv)); uvs2.Add(new Vector2(hebra, a)); uvs3.Add(e.a); uvs4.Add(e.b);
+                vertices.Add(p); normales.Add(t); uvs.Add(new Vector3(h, 0f, nv)); uvs2.Add(new Vector2(hebra, a)); uvs3.Add(e.a); uvs4.Add(e.b);
                 if (i > 0)
                 {
                     int b = inicio + (i - 1) * 2;
@@ -799,7 +937,7 @@ public class Trazo : MonoBehaviour
                 Vector3 dir = n * Mathf.Cos(ang) + b * Mathf.Sin(ang);
                 vertices.Add(p + dir * h);
                 normales.Add(dir);
-                uvs.Add(new Vector2(0f, 1f));
+                uvs.Add(new Vector3(0f, 1f, NivelVisual));
             }
             if (i > 0)
             {
@@ -857,16 +995,28 @@ public class Trazo : MonoBehaviour
         var estiloVivo = Estilo();
         uvs3.Clear();
         uvs4.Clear();
+        uvsRelleno.Clear();
+        uvsRelleno2.Clear();
+        // Relleno vivo: cada punto sabe dónde está en el plano de la figura (para las texturas).
+        float textura = Mathf.Clamp(texturaRelleno, 0, NombresTextura.Length - 1);
+        float cambios = VelocidadesTextura[Mathf.Clamp(velocidadTextura, 0, VelocidadesTextura.Length - 1)];
+        float semilla = (id % 97) * 0.731f;
+        float nv = NivelVisual;
         for (int i = 0; i < vertices.Count; i++)
         {
             colores.Add(c);
             uvs3.Add(estiloVivo.a);
             uvs4.Add(estiloVivo.b);
+            Vector3 d = vertices[i] - poliCentro;
+            uvsRelleno.Add(new Vector4(Vector3.Dot(d, poliU), Vector3.Dot(d, poliV), textura, cambios));
+            uvsRelleno2.Add(new Vector2(semilla, nv));
         }
 
         mallaRelleno.Clear();
         mallaRelleno.SetVertices(vertices);
         mallaRelleno.SetColors(colores);
+        mallaRelleno.SetUVs(0, uvsRelleno);
+        mallaRelleno.SetUVs(1, uvsRelleno2);
         mallaRelleno.SetUVs(2, uvs3);
         mallaRelleno.SetUVs(3, uvs4);
         mallaRelleno.SetTriangles(indices, 0);

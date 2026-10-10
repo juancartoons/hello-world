@@ -321,6 +321,7 @@ public partial class ControlManos
         grupoInicioLocal = t.nodos[tocado];
         grupoDesfase = dibujo.transform.TransformPoint(grupoInicioLocal) - punta;
         moviendoGrupo = true;
+        EmpezarEmpujon(t);
         deshacerGrupoPendiente = true;
         selTrazo = t;
         selIndice = tocado;
@@ -329,9 +330,17 @@ public partial class ControlManos
 
     void MoverGrupo(Vector3 punta)
     {
-        Vector3 objetivo = dibujo.ProyectarEnPlano(dibujo.transform.InverseTransformPoint(punta + grupoDesfase));
+        // Encantadas en su hoja 2D: cada nodo (y sus tiradores) se queda en la hoja de su línea.
+        Trazo baseHoja = selTrazo;
+        Vector3 objetivo = dibujo.transform.InverseTransformPoint(punta + grupoDesfase);
+        if (baseHoja != null)
+            objetivo = baseHoja.ProyectarEnHoja(objetivo);
         Vector3 delta = objetivo - grupoInicioLocal;
-        Quaternion giro = grupoGira ? GiroManoLocal() : Quaternion.identity;
+        if (baseHoja != null)
+            delta = baseHoja.ProyectarVectorEnHoja(delta);
+        Quaternion giro = grupoGira ? GiroManoLocal(baseHoja) : Quaternion.identity;
+        if (!grupoPlastilina)
+            OrdenarConEmpujonGrupo(punta);
         float angulo = grupoGira ? anguloGiro : 0f;
         if (deshacerGrupoPendiente)
         {
@@ -347,12 +356,12 @@ public partial class ControlManos
             if (g.t == null || g.i >= g.t.nodos.Count)
                 continue;
             Vector3 p = grupoGira ? grupoCentro + delta + giro * (g.inicio - grupoCentro) : g.inicio + delta * g.peso;
-            g.t.MoverNodoSinReconstruir(g.i, dibujo.ProyectarEnPlano(p));
+            g.t.MoverNodoSinReconstruir(g.i, g.t.ProyectarEnHoja(p));
             // Los tiradores hechos a mano giran con su nodo (los automáticos se recalculan solos).
             if (grupoGira && g.i < g.t.asaManual.Count && g.t.asaManual[g.i])
             {
-                g.t.asaEntrada[g.i] = giro * g.entrada;
-                g.t.asaSalida[g.i] = giro * g.salida;
+                g.t.asaEntrada[g.i] = g.t.ProyectarVectorEnHoja(giro * g.entrada);
+                g.t.asaSalida[g.i] = g.t.ProyectarVectorEnHoja(giro * g.salida);
             }
             trazosGrupo.Add(g.t);
         }

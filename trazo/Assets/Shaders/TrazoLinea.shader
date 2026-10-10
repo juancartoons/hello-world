@@ -37,7 +37,7 @@ Shader "TrazoVR/Linea"
             {
                 float4 positionOS : POSITION;
                 float3 normalOS   : NORMAL;    // cinta: dirección de la línea / tubo: normal
-                float2 uv         : TEXCOORD0; // x: medio grosor con signo (cinta), y: 0 cinta / 1 tubo
+                float3 uv         : TEXCOORD0; // x: medio grosor con signo (cinta), y: 0 cinta / 1 tubo, z: nivel (frente/fondo)
                 float2 uv2        : TEXCOORD1; // x: número de hebra, y: lugar a lo largo de la línea (0 a 1)
                 float4 vivoA      : TEXCOORD2; // estilo vivo de la capa (ver TrazoTemblor.hlsl)
                 float4 vivoB      : TEXCOORD3;
@@ -83,6 +83,8 @@ Shader "TrazoVR/Linea"
                     nWS = TransformObjectToWorldNormal(v.normalOS);
                 }
 
+                // Frente / fondo (solo cambia quién tapa a quién; se ve en el mismo lugar).
+                posWS = TrazoAdelante(posWS, v.uv.z);
                 o.positionCS = TransformWorldToHClip(posWS);
                 o.normalWS = nWS;
                 o.esTubo = v.uv.y;
