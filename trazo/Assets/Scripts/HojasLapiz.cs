@@ -15,6 +15,9 @@ public class TrazoLapiz
 // Lápiz de boceto: en una capa de Boceto con Plano (2D), dibujar pinta sobre una HOJA (imagen),
 // como grafito sobre papel: con grano, más oscuro al repasar y "presión" según qué tan cerca está el dedo.
 // La goma (puño) aclara la hoja. La hoja no sale en fotos ni videos (como todo el boceto).
+// Detrás del lápiz hay un PAPEL blanco (de 1.2 x 0.8, en el centro de la hoja) para que el fondo (un paisaje
+// 360 o tu cuarto) no distraiga. El botón de su esquina de arriba a la derecha lo cambia: Blanco → 50 % →
+// Transparente (cada capa recuerda el suyo).
 public class HojasLapiz : MonoBehaviour
 {
     public Dibujo dibujo;
@@ -32,6 +35,13 @@ public class HojasLapiz : MonoBehaviour
     public float radioGoma = 0.012f;
     [Tooltip("A qué distancia del plano (metros) el dedo deja de pintar")]
     public float alcance = 0.02f;
+
+    const float AnchoPapel = 1.2f, AltoPapel = 0.8f; // el papel blanco (unidades del dibujo)
+    static readonly float[] AlfaPapel = { 1f, 0.5f, 0f };
+    static readonly string[] NombresPapel = { "Papel: blanco", "Papel: 50 %", "Papel: transparente" };
+    BotonTocable btnPapel;
+    Transform botonPapel;
+    int papelMostrado = -1;
 
     static readonly Color Gris = new Color(0.32f, 0.32f, 0.36f, 1f);
     static readonly Color Azul = new Color(0.25f, 0.42f, 0.9f, 1f);
@@ -237,7 +247,12 @@ public class HojasLapiz : MonoBehaviour
     bool Colocar(Hoja h, int capa, Vector3 punto, Vector3 normal)
     {
         if (h.material != null)
-            h.material.SetColor("_BaseColor", dibujo.DatosDeCapa(capa).boceto == 2 ? Azul : Gris);
+        {
+            var datos = dibujo.DatosDeCapa(capa);
+            h.material.SetColor("_BaseColor", datos.boceto == 2 ? Azul : Gris);
+            h.material.SetFloat("_Papel", AlfaPapel[Mathf.Clamp(datos.papel, 0, 2)]);
+            h.material.SetVector("_PapelMedio", new Vector4(AnchoPapel * 0.5f / tamano, AltoPapel * 0.5f / tamano, 0f, 0f));
+        }
         bool igual = h.colocada && Vector3.Dot(h.normal, normal) > 0.99999f && (h.origen - punto).sqrMagnitude < 1e-10f;
         if (igual)
             return false;
@@ -296,6 +311,69 @@ public class HojasLapiz : MonoBehaviour
             if (h.go.activeSelf != ver)
                 h.go.SetActive(ver);
         }
+        ActualizarBotonPapel();
+    }
+
+    // El botón del papel: en la esquina de arriba a la derecha del papel de la capa activa (solo dibujando en 2D).
+    void ActualizarBotonPapel()
+    {
+        Hoja h;
+        bool ver = dibujo.UsaHoja && hojas.TryGetValue(dibujo.capaActual, out h) && h.go != null && h.go.activeInHierarchy;
+        if (!ver)
+        {
+            if (botonPapel != null && botonPapel.gameObject.activeSelf)
+                botonPapel.gameObject.SetActive(false);
+            return;
+        }
+        if (botonPapel == null && !CrearBotonPapel())
+            return;
+        if (!botonPapel.gameObject.activeSelf)
+            botonPapel.gameObject.SetActive(true);
+        h = hojas[dibujo.capaActual];
+        Transform t = h.go.transform;
+        Vector3 esquina = t.TransformPoint(new Vector3(AnchoPapel * 0.5f / tamano, AltoPapel * 0.5f / tamano, 0f));
+        // Un poquito adentro de la esquina y hacia ti (la hoja mira lejos de ti).
+        botonPapel.SetPositionAndRotation(esquina - t.right * 0.045f - t.up * 0.02f - t.forward * 0.006f, t.rotation);
+        int papel = Mathf.Clamp(dibujo.CapaActual.papel, 0, 2);
+        if (papel != papelMostrado)
+        {
+            papelMostrado = papel;
+            btnPapel.PonerTexto(NombresPapel[papel]);
+        }
+    }
+
+    bool CrearBotonPapel()
+    {
+        var nav = FindFirstObjectByType<NavegadorArchivos>(FindObjectsInactive.Include);
+        if (nav == null || nav.materialBoton == null)
+            return false;
+        botonPapel = new GameObject("BotonPapel").transform;
+        var cubo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        cubo.name = "Boton_Papel";
+        cubo.transform.SetParent(botonPapel, false);
+        cubo.transform.localScale = new Vector3(0.08f, 0.022f, 0.006f);
+        var r = cubo.GetComponent<Renderer>();
+        r.sharedMaterial = nav.materialBoton;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
+        btnPapel = cubo.AddComponent<BotonTocable>();
+        btnPapel.materialNormal = nav.materialBoton;
+        btnPapel.materialMarcado = nav.materialBotonMarcado;
+        var go = new GameObject("Texto", typeof(RectTransform));
+        go.transform.SetParent(botonPapel, false);
+        go.transform.localPosition = new Vector3(0f, 0f, -0.0036f);
+        var tmp = go.AddComponent<TMPro.TextMeshPro>();
+        tmp.enableAutoSizing = true;
+        tmp.fontSizeMin = 0.01f;
+        tmp.fontSizeMax = 0.16f;
+        tmp.alignment = TMPro.TextAlignmentOptions.Center;
+        tmp.fontStyle = TMPro.FontStyles.Bold;
+        tmp.color = Color.black;
+        tmp.rectTransform.sizeDelta = new Vector2(0.074f, 0.016f);
+        btnPapel.etiqueta = tmp;
+        btnPapel.alTocar.AddListener(dibujo.SiguientePapel);
+        papelMostrado = -1;
+        return true;
     }
 
     // ---------- Guardar, cargar, deshacer ----------

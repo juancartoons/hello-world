@@ -1,11 +1,11 @@
 using TMPro;
 using UnityEngine;
 
-// Panel "?" (se abre con el botón ? del menú de la mano izquierda, o con Mis archivos > Tutorial):
-// las secciones del tutorial.
+// Panel "?" (se abre con el botón ? del menú de la mano izquierda): las secciones del tutorial.
 //  1 · Primeros pasos: el tutorial de presentación (el de las manos guía).
 //  2 · Rellenos: la cubeta, tocar dentro para rellenar y la tinta invisible (TutorialRellenos).
 //  3 · Nodos: tocar y soltar, nodo nuevo, lazo y plastilina (TutorialNodos).
+//  4 · Novedades: lo nuevo de las últimas versiones (TutorialNovedades).
 public class PanelTutoriales : MonoBehaviour
 {
     Transform raiz;
@@ -45,7 +45,7 @@ public class PanelTutoriales : MonoBehaviour
         raiz = new GameObject("PanelTutoriales").transform;
         raiz.SetPositionAndRotation(cab.position + adelante * 0.45f - Vector3.up * 0.06f, Quaternion.LookRotation(adelante, Vector3.up));
 
-        Fondo(raiz, new Vector2(0.3f, 0.215f), tutorial.materialNegro, tutorial.materialBlanco);
+        Fondo(raiz, new Vector2(0.3f, 0.26f), tutorial.materialNegro, tutorial.materialBlanco);
         var titulo = Texto(raiz, Tx("? Tutorials", "? Tutoriales"), new Vector3(0f, 0.084f, -0.004f), new Vector2(0.22f, 0.03f), 0.3f, tutorial.fuenteComic);
         titulo.color = Color.black;
         var b1 = Boton(raiz, Tx("1 · First steps", "1 · Primeros pasos"), new Vector3(0f, 0.04f, 0f), new Vector2(0.25f, 0.034f),
@@ -68,6 +68,13 @@ public class PanelTutoriales : MonoBehaviour
         {
             Cerrar();
             tutorial.EmpezarNodos();
+        });
+        var b4 = Boton(raiz, Tx("4 · What's new", "4 · Novedades"), new Vector3(0f, -0.098f, 0f),
+                       new Vector2(0.25f, 0.034f), tutorial.materialBoton, tutorial.materialBotonMarcado);
+        b4.alTocar.AddListener(() =>
+        {
+            Cerrar();
+            tutorial.EmpezarNovedades();
         });
         var x = Boton(raiz, "X", new Vector3(0.13f, 0.087f, 0f), new Vector2(0.024f, 0.024f), tutorial.materialBoton, tutorial.materialBotonMarcado);
         x.alTocar.AddListener(Cerrar);

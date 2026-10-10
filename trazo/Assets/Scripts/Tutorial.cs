@@ -16,7 +16,7 @@ using UnityEngine;
 //    7. Pulgar + medio izquierdos (nodos) y arrastrar un nodo con la derecha.
 //    8. Deshacer: puño izquierdo con el pulgar a la izquierda y tocar la diana roja.
 //  - Cada OK (cerrar o abrir) toca una nota del arpa del título. Si pasan 8 segundos sin que hagas nada,
-//    las manos guía lo repiten. "Skip" lo termina. Mis archivos > Tutorial lo repite.
+//    las manos guía lo repiten. "Skip" lo termina. El botón ? del menú de la mano lo repite.
 //  - Tu dibujo se aparta antes y vuelve igual al terminar.
 public class Tutorial : MonoBehaviour
 {
@@ -551,7 +551,7 @@ public class Tutorial : MonoBehaviour
 
     // ==================== Empezar y terminar el tutorial ====================
 
-    // El panel "?" con las secciones del tutorial (botón ? del menú de la mano o Mis archivos > Tutorial).
+    // El panel "?" con las secciones del tutorial (botón ? del menú de la mano).
     public void AbrirSecciones()
     {
         TarjetaTutorial.CerrarTodas(this);
@@ -570,6 +570,13 @@ public class Tutorial : MonoBehaviour
     {
         PanelTutoriales.CerrarSiAbierto(this);
         TarjetaTutorial.Abrir<TutorialNodos>(this);
+    }
+
+    // Sección 4: lo nuevo de las últimas versiones.
+    public void EmpezarNovedades()
+    {
+        PanelTutoriales.CerrarSiAbierto(this);
+        TarjetaTutorial.Abrir<TutorialNovedades>(this);
     }
 
     public void Empezar()
@@ -2009,7 +2016,7 @@ public class Tutorial : MonoBehaviour
             Confeti(encabezado.transform.position, 90, 0.9f);
             Chispas(encabezado.transform.position, 20, 0.35f);
         }
-        PonerVineta(Tx("Now draw whatever you want! See it again: My files > Tutorial", "¡Ahora dibuja lo que quieras! Para verlo otra vez: Mis archivos > Tutorial"), VinetaLinea, -1);
+        PonerVineta(Tx("Now draw whatever you want! See it again: the ? button of the hand menu", "¡Ahora dibuja lo que quieras! Para verlo otra vez: botón ? del menú de la mano"), VinetaLinea, -1);
         figuraTamObjetivo = 0f;
         PlayerPrefs.SetInt(ClaveVisto, 1);
         PlayerPrefs.Save();

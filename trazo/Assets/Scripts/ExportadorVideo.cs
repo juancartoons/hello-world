@@ -191,6 +191,7 @@ public class ExportadorVideo : MonoBehaviour
         }
         Galeria.UltimoGuardado = "Video " + nombre + ": " + Galeria.Donde(codificador.RutaPublica, codificador.Ruta);
         Mensaje("Video listo. Búscalo en la " + Galeria.Donde(codificador.RutaPublica, codificador.Ruta));
+        Galeria.BorrarPrivadaSiPublicada(codificador.Ruta, codificador.RutaPublica);
     }
 
     // ---------- Video del proceso ----------

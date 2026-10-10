@@ -67,6 +67,9 @@ public class Trazo : MonoBehaviour
     // ---------- Relleno vivo (texturas que se mueven, estilo Quill) ----------
     public int texturaRelleno;                   // 0 liso, 1 facetas, 2 manchas, 3 pinceladas
     public int velocidadTextura = 2;             // índice en VelocidadesTextura
+    public int tamanoTextura = 1;                // índice en TamanosTextura (más grande = manchas más grandes)
+    public static readonly float[] TamanosTextura = { 0.5f, 1f, 2f, 4f };
+    public static readonly string[] NombresTamanoTextura = { "Chico", "Normal", "Grande", "Enorme" };
     public static readonly float[] VelocidadesTextura = { 0f, 2f, 4f, 8f }; // cambios por segundo (0 = quieto)
     public static readonly string[] NombresTextura = { "Liso", "Facetas", "Manchas", "Pinceladas" };
     public static readonly string[] NombresVelocidadTextura = { "Quieto", "Lento", "Medio", "Rápido" };
@@ -254,6 +257,7 @@ public class Trazo : MonoBehaviour
         orden = d.orden;
         texturaRelleno = Mathf.Clamp(d.texturaRelleno, 0, NombresTextura.Length - 1);
         velocidadTextura = Mathf.Clamp(d.velocidadTextura, 0, VelocidadesTextura.Length - 1);
+        tamanoTextura = Mathf.Clamp(d.tamanoTextura, 0, TamanosTextura.Length - 1);
     }
 
     // El escalón visual de frente/fondo (lo pone el Dibujo). Rehace la malla solo si cambió.
@@ -270,14 +274,16 @@ public class Trazo : MonoBehaviour
     }
 
     // La textura del relleno vivo (se ve al instante).
-    public void PonerTexturaRelleno(int textura, int velocidad)
+    public void PonerTexturaRelleno(int textura, int velocidad, int tamano)
     {
         textura = Mathf.Clamp(textura, 0, NombresTextura.Length - 1);
         velocidad = Mathf.Clamp(velocidad, 0, VelocidadesTextura.Length - 1);
-        if (textura == texturaRelleno && velocidad == velocidadTextura)
+        tamano = Mathf.Clamp(tamano, 0, TamanosTextura.Length - 1);
+        if (textura == texturaRelleno && velocidad == velocidadTextura && tamano == tamanoTextura)
             return;
         texturaRelleno = textura;
         velocidadTextura = velocidad;
+        tamanoTextura = tamano;
         Reconstruir();
     }
 
@@ -652,7 +658,8 @@ public class Trazo : MonoBehaviour
             hojaNormal = hojaNormal,
             orden = orden,
             texturaRelleno = texturaRelleno,
-            velocidadTextura = velocidadTextura
+            velocidadTextura = velocidadTextura,
+            tamanoTextura = tamanoTextura
         };
     }
 
@@ -1001,6 +1008,7 @@ public class Trazo : MonoBehaviour
         float textura = Mathf.Clamp(texturaRelleno, 0, NombresTextura.Length - 1);
         float cambios = VelocidadesTextura[Mathf.Clamp(velocidadTextura, 0, VelocidadesTextura.Length - 1)];
         float semilla = (id % 97) * 0.731f;
+        float escalaTextura = 1f / TamanosTextura[Mathf.Clamp(tamanoTextura, 0, TamanosTextura.Length - 1)];
         float nv = NivelVisual;
         for (int i = 0; i < vertices.Count; i++)
         {
@@ -1008,7 +1016,7 @@ public class Trazo : MonoBehaviour
             uvs3.Add(estiloVivo.a);
             uvs4.Add(estiloVivo.b);
             Vector3 d = vertices[i] - poliCentro;
-            uvsRelleno.Add(new Vector4(Vector3.Dot(d, poliU), Vector3.Dot(d, poliV), textura, cambios));
+            uvsRelleno.Add(new Vector4(Vector3.Dot(d, poliU) * escalaTextura, Vector3.Dot(d, poliV) * escalaTextura, textura, cambios));
             uvsRelleno2.Add(new Vector2(semilla, nv));
         }
 

@@ -1,22 +1,24 @@
 Fondos 360 de JCartoons (fotos reales) y sus mapas de profundidad.
 
 De Poly Haven (polyhaven.com, licencia CC0 = dominio público):
- 1. cuarto360.jpg         — "Small Empty Room 2"        https://polyhaven.com/a/small_empty_room_2
- 2. roma360.jpg           — "St. Peter's Square Night"  https://polyhaven.com/a/st_peters_square_night
- 3. amanecer360.jpg       — "Spruit Sunrise"            https://polyhaven.com/a/spruit_sunrise
- 4. venecia_canal360.jpg  — "San Giuseppe Bridge"       https://polyhaven.com/a/san_giuseppe_bridge
- 5. venecia_calle360.jpg  — "Venetian Crossroads"       https://polyhaven.com/a/venetian_crossroads
- 6. atardecer_mar360.jpg  — "The Sky is On Fire"        https://polyhaven.com/a/the_sky_is_on_fire
- 7. crucero360.jpg        — "Royal Esplanade"           https://polyhaven.com/a/royal_esplanade
- 8. columnas360.jpg       — "Pillars"                   https://polyhaven.com/a/pillars
- 9. mirador360.jpg        — "Harties Cliff View"        https://polyhaven.com/a/harties_cliff_view
-10. parque360.jpg         — "Noon Grass"                https://polyhaven.com/a/noon_grass
-Las copias venían en los ejemplos de PlayCanvas, three.js, Filament y Babylon.js (algunos las marcan
-CC BY 4.0): por eso damos el crédito igual.
+ 1. roma360.jpg             — "St. Peter's Square Night"  https://polyhaven.com/a/st_peters_square_night
+ 2. shanghai_noche360.jpg   — "Shanghai Bund"             https://polyhaven.com/a/shanghai_bund
+ 3. venecia_canal360.jpg    — "San Giuseppe Bridge"       https://polyhaven.com/a/san_giuseppe_bridge
+ 4. venecia_calle360.jpg    — "Venetian Crossroads"       https://polyhaven.com/a/venetian_crossroads
+ 5. amanecer360.jpg         — "Spruit Sunrise"            https://polyhaven.com/a/spruit_sunrise
+ 6. atardecer_mar360.jpg    — "The Sky is On Fire"        https://polyhaven.com/a/the_sky_is_on_fire
+ 7. mirador360.jpg          — "Harties Cliff View"        https://polyhaven.com/a/harties_cliff_view
+ 8. parque360.jpg           — "Noon Grass"                https://polyhaven.com/a/noon_grass
+ 9. camino_flores360.jpg    — "Flower Road"               https://polyhaven.com/a/flower_road
+10. campo_seco360.jpg       — "Syferfontein 18d Clear"    https://polyhaven.com/a/syferfontein_18d_clear
+11. golf_noche360.jpg       — "Moonless Golf"             https://polyhaven.com/a/moonless_golf
+12. avenida360.jpg          — "Wide Street" (de los ejemplos de PlayCanvas, originalmente de Poly Haven)
+13. shanghai_dia360.jpg     — "Shanghai Riverside" (de los ejemplos de PlayCanvas, originalmente de Poly Haven)
+14. grafitis360.jpg         — "Graffiti Shelter"          https://polyhaven.com/a/graffiti_shelter
+Algunas copias venían en los ejemplos de PlayCanvas, three.js, Filament y Babylon.js (algunos las marcan
+CC BY 4.0): por eso damos el crédito igual. "Shanghai Bund" lo bajó Juan Carlos directo de Poly Haven.
 
-11. luna360.jpg — "moon_4k" de los ejemplos de Google model-viewer (github.com/google/model-viewer).
-    No trae una licencia propia; parece armada con imágenes de la NASA (dominio público). Revisar antes
-    de publicar la app en la tienda. Le pusimos estrellas y completamos el suelo cercano.
+Quitados en la v32 (★ Armar escena los borra solos de tu proyecto): cuarto360, crucero360, columnas360, luna360.
 
 Cambios: convertidas de HDR a JPG 4096 x 2048 con ajuste de tonos (ACES). Las que venían en 2048 x 1024
 se subieron a 4096 x 2048 con la IA Real-ESRGAN (realesr-general-x4v3, licencia BSD-3):

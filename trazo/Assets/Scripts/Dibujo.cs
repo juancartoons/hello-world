@@ -30,6 +30,7 @@ public class DatosTrazo
     public int orden;
     public int texturaRelleno;
     public int velocidadTextura = 2;
+    public int tamanoTextura = 1;
 }
 
 [System.Serializable]
@@ -52,6 +53,7 @@ public class DatosCapa
     public Vector3 planoPunto;
     public Vector3 planoNormal = Vector3.forward;
     public bool unido = true;        // unido con los planos de las otras capas (como acetato sobre papel)
+    public int papel;                // boceto en 2D: el papel detrás del lápiz. 0 blanco, 1 a la mitad, 2 transparente
 
     public DatosCapa Copia()
     {
@@ -209,8 +211,15 @@ public class Dibujo : MonoBehaviour
     string Carpeta => Path.Combine(Application.persistentDataPath, "Dibujos");
     string RutaAuto => Path.Combine(Carpeta, "autoguardado.json");
     string RutaGuardado => Path.Combine(Carpeta, "guardado.json");
-    // Cada dibujo guardado con su propio nombre (Dibujo 1, Dibujo 2...).
-    string CarpetaArchivos => Path.Combine(Carpeta, "Archivos");
+    // Cada dibujo guardado con su propio nombre (Dibujo 1, Dibujo 2...): en Descargas → JCartoons → Proyectos
+    // (así no se pierden aunque reinstales la app, y se copian fácil al PC). Una sola copia: ya no se guarda
+    // otra dentro de la app. En el editor de Unity (o si Descargas no se puede usar): en la carpeta de la app.
+    string carpetaProyectos;
+    string CarpetaArchivos => carpetaProyectos ?? (carpetaProyectos = BuscarCarpetaProyectos());
+    string CarpetaPrivadaArchivos => Path.Combine(Carpeta, "Archivos");
+    public bool ProyectosEnDescargas { get; private set; }
+    const int MaxVersiones = 5;
+    public string CarpetaVersiones => Path.Combine(CarpetaArchivos, "Versiones");
     public string NombreArchivo { get; private set; } = "";
 
     public float EscalaMundo => Mathf.Max(0.0001f, transform.lossyScale.x);
@@ -247,6 +256,7 @@ public class Dibujo : MonoBehaviour
 
     void Start()
     {
+        MoverProyectosViejos();
         if (cargarAlIniciar)
         {
             var d = Leer(RutaAuto);
@@ -468,17 +478,18 @@ public class Dibujo : MonoBehaviour
     public void RellenarConColor(Trazo t, Color c)
     {
         if (t != null)
-            RellenarConColor(t, c, t.texturaRelleno, t.velocidadTextura);
+            RellenarConColor(t, c, t.texturaRelleno, t.velocidadTextura, t.tamanoTextura);
     }
 
     // Igual, y además con el relleno vivo elegido (textura y velocidad).
-    public void RellenarConColor(Trazo t, Color c, int textura, int velocidad)
+    public void RellenarConColor(Trazo t, Color c, int textura, int velocidad, int tamano)
     {
         if (t == null)
             return;
         GuardarParaDeshacer();
         t.texturaRelleno = Mathf.Clamp(textura, 0, Trazo.NombresTextura.Length - 1);
         t.velocidadTextura = Mathf.Clamp(velocidad, 0, Trazo.VelocidadesTextura.Length - 1);
+        t.tamanoTextura = Mathf.Clamp(tamano, 0, Trazo.TamanosTextura.Length - 1);
         if (c.a < 0.01f)
         {
             t.relleno = false;
@@ -498,7 +509,7 @@ public class Dibujo : MonoBehaviour
     }
 
     // Relleno vivo para las líneas elegidas que tienen relleno. Devuelve cuántas cambiaron.
-    public int TexturaEnElegidas(int textura, int velocidad)
+    public int TexturaEnElegidas(int textura, int velocidad, int tamano)
     {
         var lista = new List<Trazo>();
         foreach (var t in Seleccionadas())
@@ -508,7 +519,7 @@ public class Dibujo : MonoBehaviour
             return 0;
         GuardarParaDeshacer();
         foreach (var t in lista)
-            t.PonerTexturaRelleno(textura, velocidad);
+            t.PonerTexturaRelleno(textura, velocidad, tamano);
         Trazo.huboCambio = false;
         Avisar();
         return lista.Count;
@@ -1176,6 +1187,16 @@ public class Dibujo : MonoBehaviour
         Mensaje(c.nombre + (c.iman ? ": imán encendido (las puntas se unen)" : ": imán apagado (las líneas quedan como las dibujas)"));
     }
 
+    // Boceto en 2D: el papel detrás del lápiz (Blanco → 50 % → Transparente). Cada capa recuerda el suyo.
+    public void SiguientePapel()
+    {
+        var c = CapaActual;
+        c.papel = (Mathf.Clamp(c.papel, 0, 2) + 1) % 3;
+        HayCambios = true;
+        Avisar();
+        Mensaje(c.papel == 0 ? "Papel blanco (el fondo no distrae)" : c.papel == 1 ? "Papel a la mitad" : "Papel transparente");
+    }
+
     // Une (o separa) el plano de la capa actual con los de las otras capas unidas.
     public void AlternarUnirPlano()
     {
@@ -1769,6 +1790,114 @@ public class Dibujo : MonoBehaviour
         return Path.Combine(CarpetaArchivos, nombre + Extension);
     }
 
+    string BuscarCarpetaProyectos()
+    {
+        string descargas = Galeria.Descargas();
+        if (!string.IsNullOrEmpty(descargas))
+        {
+            try
+            {
+                string ruta = Path.Combine(descargas, "JCartoons", "Proyectos");
+                Directory.CreateDirectory(ruta);
+                // ¿Se puede escribir ahí? (con un archivito de prueba)
+                string prueba = Path.Combine(ruta, "jcartoons_prueba.txt");
+                File.WriteAllText(prueba, "ok");
+                File.Delete(prueba);
+                ProyectosEnDescargas = true;
+                return ruta;
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("TrazoVR: no se pudo usar Descargas para los proyectos: " + e.Message);
+            }
+        }
+        return CarpetaPrivadaArchivos;
+    }
+
+    // La primera vez: los dibujos que estaban dentro de la app pasan a Descargas (y se borran de la app).
+    void MoverProyectosViejos()
+    {
+        string destino = CarpetaArchivos;
+        if (!ProyectosEnDescargas)
+            return;
+        int movidos = 0;
+        try
+        {
+            string privada = CarpetaPrivadaArchivos;
+            if (Directory.Exists(privada))
+                foreach (var f in Directory.GetFiles(privada))
+                {
+                    string ext = Path.GetExtension(f).ToLowerInvariant();
+                    if (ext != Extension && ext != ".json")
+                        continue;
+                    string nuevo = Path.Combine(destino, Path.GetFileName(f));
+                    if (File.Exists(nuevo))
+                        nuevo = Path.Combine(destino, Path.GetFileNameWithoutExtension(f) + " (de la app)" + ext);
+                    File.Copy(f, nuevo, true);
+                    string mini = RutaMiniatura(f);
+                    if (File.Exists(mini) && RutaMiniatura(nuevo) != mini)
+                        File.Copy(mini, RutaMiniatura(nuevo), true);
+                    File.Delete(f);
+                    movidos++;
+                }
+            // Fotos, videos y SVG que ya tienen su copia en Descargas/JCartoons: se borra la de la app (espacio).
+            string publica = Galeria.CarpetaPublica;
+            if (!string.IsNullOrEmpty(publica) && Directory.Exists(publica) && Directory.Exists(Carpeta))
+                foreach (var patron in new[] { "*.png", "*.mp4", "*.svg" })
+                    foreach (var f in Directory.GetFiles(Carpeta, patron))
+                        if (File.Exists(Path.Combine(publica, Path.GetFileName(f))))
+                            File.Delete(f);
+            // El "guardado" de antes era una copia del último dibujo: ya no hace falta (si es lo único, se mueve).
+            if (File.Exists(RutaGuardado))
+            {
+                bool hayOtros = Directory.GetFiles(destino, "*" + Extension).Length > 0 || Directory.GetFiles(destino, "*.json").Length > 0;
+                if (!hayOtros)
+                {
+                    File.Copy(RutaGuardado, Path.Combine(destino, "Guardado anterior.json"), true);
+                    movidos++;
+                }
+                File.Delete(RutaGuardado);
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("TrazoVR: no se pudieron mover los dibujos a Descargas: " + e.Message);
+        }
+        if (movidos > 0)
+            Mensaje("Tus dibujos ahora están en Descargas → JCartoons → Proyectos (" + movidos + ")");
+    }
+
+    // Antes de guardar encima: la versión anterior se guarda aparte (se guardan las 5 más nuevas de cada dibujo).
+    void GuardarVersion(string ruta)
+    {
+        try
+        {
+            if (!File.Exists(ruta))
+                return;
+            string nombre = Path.GetFileNameWithoutExtension(ruta);
+            string carpeta = Path.Combine(CarpetaVersiones, nombre);
+            Directory.CreateDirectory(carpeta);
+            string destino = Path.Combine(carpeta, nombre + " (versión " + File.GetLastWriteTime(ruta).ToString("yyyy-MM-dd HH.mm.ss") + ")" + Path.GetExtension(ruta));
+            File.Copy(ruta, destino, true);
+            string mini = RutaMiniatura(ruta);
+            if (File.Exists(mini))
+                File.Copy(mini, RutaMiniatura(destino), true);
+            var versiones = new List<string>(Directory.GetFiles(carpeta));
+            versiones.Sort(System.StringComparer.Ordinal); // el nombre lleva la fecha: de la más vieja a la más nueva
+            for (int i = 0; i < versiones.Count - MaxVersiones; i++)
+            {
+                File.Delete(versiones[i]);
+                string miniVieja = RutaMiniatura(versiones[i]);
+                if (File.Exists(miniVieja))
+                    File.Delete(miniVieja);
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("TrazoVR: no se pudo guardar la versión anterior: " + e.Message);
+        }
+    }
+
     // Guarda el dibujo con SU nombre. Un dibujo nuevo recibe el siguiente nombre libre (Dibujo 1, 2, 3...).
     public void Guardar()
     {
@@ -1786,6 +1915,9 @@ public class Dibujo : MonoBehaviour
         try
         {
             Directory.CreateDirectory(CarpetaArchivos);
+            // Al guardar tú (no el autoguardado), la versión anterior queda aparte.
+            if (!silencioso)
+                GuardarVersion(RutaProyecto(NombreArchivo));
             File.WriteAllText(RutaProyecto(NombreArchivo), json);
             ok = true;
             // Si venía de un .json de antes con el mismo nombre, ya quedó convertido a .jc.
@@ -1804,7 +1936,6 @@ public class Dibujo : MonoBehaviour
         }
         if (ok)
         {
-            Escribir(RutaGuardado, json); // el último guardado (para el menú de la mano)
             GuardarMiniatura(RutaProyecto(NombreArchivo));
             HayCambios = false;
         }
@@ -2278,10 +2409,11 @@ public class Dibujo : MonoBehaviour
         string comoSeVe = Exportar.SvgComoSeVe(this, adelante);
         bool dos = comoSeVe != null && Escribir(rutaComoSeVe, comoSeVe);
         string publico = Galeria.Publicar(rutaLineas, "image/svg+xml", Galeria.Carpeta);
-        if (dos)
-            Galeria.Publicar(rutaComoSeVe, "image/svg+xml", Galeria.Carpeta);
+        string publico2 = dos ? Galeria.Publicar(rutaComoSeVe, "image/svg+xml", Galeria.Carpeta) : "";
         Galeria.UltimoGuardado = "SVG " + baseNombre + ": " + Galeria.Donde(publico, rutaLineas);
         Mensaje((dos ? "2 SVG guardados (líneas y como se ve). " : "SVG guardado. ") + "Búscalos en la " + Galeria.Donde(publico, rutaLineas));
+        Galeria.BorrarPrivadaSiPublicada(rutaLineas, publico);
+        Galeria.BorrarPrivadaSiPublicada(rutaComoSeVe, publico2);
     }
 
     // Capas que ven las fotos y los videos: solo la del dibujo (sin paneles, nodos ni imágenes de referencia).
@@ -2333,6 +2465,7 @@ public class Dibujo : MonoBehaviour
             string publico = Galeria.Publicar(ruta, "image/png", Galeria.Carpeta);
             Galeria.UltimoGuardado = "Foto " + nombre + ": " + Galeria.Donde(publico, ruta);
             Mensaje("Foto guardada. Búscala en la " + Galeria.Donde(publico, ruta));
+            Galeria.BorrarPrivadaSiPublicada(ruta, publico);
         }
         catch (System.Exception e)
         {

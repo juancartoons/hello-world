@@ -43,6 +43,7 @@ public class PanelMuneca : MonoBehaviour
     TMP_Text textoRec;
     BotonTocable btnPausaRec, btnPararRec;
     float proximoRec;
+    TMP_Text textoFps; // los cuadros por segundo (modo rendimiento), pequeñito arriba
 
     void Start()
     {
@@ -86,6 +87,11 @@ public class PanelMuneca : MonoBehaviour
         CrearIconoIman();
         grabador = FindFirstObjectByType<GrabadorProceso>();
         CrearFilaRec();
+        if (contenido != null)
+        {
+            textoFps = TextoRec(contenido.transform, "", new Vector3(0f, 0.0795f, -0.001f), new Vector2(0.06f, 0.006f));
+            textoFps.color = new Color(0.45f, 0.45f, 0.5f);
+        }
         if (textoEstado != null)
             textoEstado.text = Idioma.T(textoAyuda);
         if (textoAviso != null)
@@ -127,7 +133,17 @@ public class PanelMuneca : MonoBehaviour
             return;
         escenario.SiguienteModo();
         Refrescar();
-        Mensaje(escenario.MensajeFondo);
+        // Al llegar a 360 se abre la ventanita con las miniaturas (al lado de este menú).
+        if (escenario.modo >= 3)
+        {
+            SelectorFondos.Abrir(escenario, transform, control != null ? control.Cabeza : null);
+            Mensaje(Idioma.T("Fondos 360: elige uno en la ventanita de al lado"));
+        }
+        else
+        {
+            SelectorFondos.Cerrar();
+            Mensaje(escenario.MensajeFondo);
+        }
     }
 
     void Update()
@@ -233,6 +249,11 @@ public class PanelMuneca : MonoBehaviour
 
     void ActualizarRec()
     {
+        if (textoFps != null && Rendimiento.Instancia != null && Time.time >= proximoRec)
+        {
+            var r = Rendimiento.Instancia;
+            textoFps.text = Mathf.RoundToInt(r.Fps) + " fps" + (r.Nivel > 0 ? " · " + Idioma.T("modo rendimiento") : "");
+        }
         if (filaRec == null || Time.time < proximoRec)
             return;
         proximoRec = Time.time + 0.25f;

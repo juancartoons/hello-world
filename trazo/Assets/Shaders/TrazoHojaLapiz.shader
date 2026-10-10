@@ -1,11 +1,14 @@
 Shader "TrazoVR/HojaLapiz"
 {
-    // La hoja del lápiz de boceto: el papel es transparente y el grafito se ve gris (o azul).
+    // La hoja del lápiz de boceto: el grafito se ve gris (o azul) sobre un PAPEL blanco (opaco, a la mitad o
+    // transparente: lo eliges con el botón de su esquina). El papel es un rectángulo en el centro de la hoja.
     Properties
     {
         _MainTex ("Hoja", 2D) = "black" {}
         _BaseColor ("Color del lápiz", Color) = (0.32, 0.32, 0.36, 1)
         _Borde ("Grosor del borde (fracción de la hoja)", Float) = 0.0012
+        _Papel ("Papel blanco (0 transparente, 1 opaco)", Float) = 1
+        _PapelMedio ("Medio tamaño del papel (fracción de la hoja, x y)", Vector) = (0.2, 0.1333, 0, 0)
     }
 
     SubShader
@@ -33,6 +36,8 @@ Shader "TrazoVR/HojaLapiz"
                 float4 _MainTex_ST;
                 float4 _BaseColor;
                 float _Borde;
+                float _Papel;
+                float4 _PapelMedio;
             CBUFFER_END
 
             struct Attributes
@@ -66,7 +71,13 @@ Shader "TrazoVR/HojaLapiz"
                 // Borde delgado y semitransparente (siempre visible): así sabes hasta dónde llega la hoja.
                 float2 d = min(i.uv, 1.0 - i.uv);
                 float borde = step(min(d.x, d.y), _Borde) * 0.35;
-                return half4(_BaseColor.rgb, max(saturate(grafito) * _BaseColor.a, borde));
+                float g = max(saturate(grafito) * _BaseColor.a, borde);
+                // El papel blanco (solo en su rectángulo del centro), debajo del grafito.
+                float2 c = abs(i.uv - 0.5);
+                float p = (c.x <= _PapelMedio.x && c.y <= _PapelMedio.y) ? saturate(_Papel) : 0.0;
+                float a = 1.0 - (1.0 - g) * (1.0 - p);
+                float3 color = (g * _BaseColor.rgb + (1.0 - g) * p * float3(1.0, 1.0, 1.0)) / max(a, 1e-4);
+                return half4(color, a);
             }
             ENDHLSL
         }

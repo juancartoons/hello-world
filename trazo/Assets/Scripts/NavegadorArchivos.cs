@@ -8,7 +8,8 @@ using UnityEngine.Video;
 //  - Arriba, TU DIBUJO ACTUAL: su miniatura y su nombre (● = tiene cambios sin guardar; toca el nombre para
 //    cambiarlo), Guardar, Compartir (abre: Foto, SVG, Video anim, Video proceso y su velocidad) y Grabar
 //    (graba cómo dibujas; mientras graba muestra el tiempo y aparece Pausa). ES/EN = idioma. X = cerrar.
-//  - Debajo: "Mostrar: Todo" (cambia entre Todo, Dibujos, Videos, Fotos y SVG), "+ Imagen" (trae imágenes del
+//  - Debajo: "Mostrar: Todo" (cambia entre Todo, Dibujos, Videos, Fotos, SVG y Versiones: las 5 anteriores de
+//    cada dibujo, guardadas solas al tocar Guardar), "+ Imagen" (trae imágenes del
 //    Quest) e "Imágenes: ver / ocultas" (tus imágenes de referencia).
 //  - La galería: toca una miniatura y sobre ella salen sus acciones (dibujo: Abrir, Duplicar, Borrar;
 //    foto o video: Ver, Borrar). Borrar pide tocar otra vez. Desliza el dedo de lado sobre la galería (o < >)
@@ -24,7 +25,7 @@ public class NavegadorArchivos : MonoBehaviour
     [Tooltip("Material sin luz para mostrar imágenes (las miniaturas)")]
     public Material materialImagen;
 
-    static readonly string[] Filtros = { "Todo", "Dibujos", "Videos", "Fotos", "SVG" };
+    static readonly string[] Filtros = { "Todo", "Dibujos", "Videos", "Fotos", "SVG", "Versiones" };
     const int Columnas = 4, Filas = 3, PorPagina = Columnas * Filas;
     const float ArribaGrilla = 0.048f, PasoX = 0.15f, PasoY = 0.104f;
     const string ClaveVisto = "jcartoons_archivos_visto";
@@ -267,6 +268,7 @@ public class NavegadorArchivos : MonoBehaviour
     {
         archivos.Clear();
         string carpeta = dibujo.CarpetaDibujos;
+        string publica = Galeria.CarpetaPublica; // Descargas/JCartoons (fotos, videos y SVG)
         try
         {
             if (filtro == 0 || filtro == 1)
@@ -286,24 +288,38 @@ public class NavegadorArchivos : MonoBehaviour
                     foreach (var f in Directory.GetFiles(carpeta, "dibujo_*.json"))
                         Agregar(f, "Dibujo");
             }
-            if (Directory.Exists(carpeta))
-            {
-                if (filtro == 0 || filtro == 2)
-                    foreach (var f in Directory.GetFiles(carpeta, "*.mp4"))
-                        Agregar(f, "Video");
-                if (filtro == 0 || filtro == 3)
-                    foreach (var f in Directory.GetFiles(carpeta, "*.png"))
-                        Agregar(f, "Foto");
-                if (filtro == 0 || filtro == 4)
-                    foreach (var f in Directory.GetFiles(carpeta, "*.svg"))
-                        Agregar(f, "SVG");
-            }
+            if (filtro == 5 && Directory.Exists(dibujo.CarpetaVersiones))
+                foreach (var d in Directory.GetDirectories(dibujo.CarpetaVersiones))
+                    foreach (var f in Directory.GetFiles(d))
+                        Agregar(f, "Dibujo");
+            if (filtro == 0 || filtro == 2)
+                AgregarExportados(publica, carpeta, "*.mp4", "Video");
+            if (filtro == 0 || filtro == 3)
+                AgregarExportados(publica, carpeta, "*.png", "Foto");
+            if (filtro == 0 || filtro == 4)
+                AgregarExportados(publica, carpeta, "*.svg", "SVG");
         }
         catch (System.Exception e)
         {
             Debug.LogWarning("TrazoVR: no se pudo leer la carpeta: " + e.Message);
         }
         archivos.Sort((a, b) => b.fecha.CompareTo(a.fecha));
+    }
+
+    // Fotos, videos y SVG: los de Descargas/JCartoons y los que quedaron dentro de la app (de antes), sin repetir.
+    void AgregarExportados(string publica, string privada, string patron, string tipo)
+    {
+        var vistos = new HashSet<string>();
+        if (!string.IsNullOrEmpty(publica) && Directory.Exists(publica))
+            foreach (var f in Directory.GetFiles(publica, patron))
+            {
+                vistos.Add(Path.GetFileName(f));
+                Agregar(f, tipo);
+            }
+        if (Directory.Exists(privada))
+            foreach (var f in Directory.GetFiles(privada, patron))
+                if (!vistos.Contains(Path.GetFileName(f)))
+                    Agregar(f, tipo);
     }
 
     void Agregar(string ruta, string tipo)

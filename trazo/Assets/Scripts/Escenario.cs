@@ -2,10 +2,11 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
-// Fondo de TrazoVR (botón Fondo):
+// Fondo de TrazoVR (botón Fondo): Cuadrícula → Blanco → Realidad → 360 (y vuelve a Cuadrícula).
 //  0 = blanco con piso de cuadrícula, 1 = todo blanco, 2 = realidad (passthrough: ves tu cuarto),
-//  3, 4, 5... = FONDOS 360 EN 3D: primero los que trae la app (Plugins/Fondos: un cuarto, Roma de noche y
-//  un amanecer) y después tus fotos 360 (las que elegiste en "Imagen +" con el botón "Fondo 360").
+//  3, 4, 5... = FONDOS 360 EN 3D: primero los que trae la app (Plugins/Fondos: Roma, Shanghai, Venecia...)
+//  y después tus fotos 360 (las que elegiste en "+ Imagen" con el botón "Fondo 360").
+//  Al llegar a 360 se abre una ventanita con las miniaturas de todos (SelectorFondos): eliges ahí.
 // Un fondo 360 es una "cáscara" a tu alrededor con PROFUNDIDAD: cada cosa de la foto queda a su distancia,
 // así se ve en 3D con los dos ojos y cambia un poquito al mover la cabeza (como una foto espacial).
 //  - Los de la app traen sus distancias calculadas con IA (archivos *_profundidad.bytes).
@@ -24,6 +25,7 @@ public class Escenario : MonoBehaviour
     }
 
     const string ClaveFondo = "jcartoons_fondo";
+    const string ClaveUltimo360 = "jcartoons_ultimo360";
     const int MaxFotosPropias = 8;
     const float AlturaCamara = 1.6f;   // a esta altura (más o menos) se toman las fotos 360
     const float RadioPisoReal = 5f;    // tus fotos: a qué distancia queda todo lo que no es piso (metros)
@@ -106,7 +108,7 @@ public class Escenario : MonoBehaviour
     }
 
     // ¿Se puede usar ese fondo?
-    bool Disponible(int m)
+    public bool Disponible(int m)
     {
         if (m < 3)
             return m >= 0;
@@ -118,21 +120,108 @@ public class Escenario : MonoBehaviour
         return k - CantidadFijos < fotosPropias.Count;
     }
 
+    // Cuadrícula → Blanco → Realidad → 360 (el último que elegiste) → Cuadrícula...
     public void SiguienteModo()
     {
-        int n = modo;
-        int total = CantidadModos;
-        for (int i = 0; i < total; i++)
+        aviso = null;
+        int n;
+        if (modo < 2)
         {
-            n = (n + 1) % total;
-            if (Disponible(n))
-                break;
+            n = modo + 1;
         }
-        // Si al pasar de Realidad vuelve a empezar sin ningún fondo 360, falta prepararlos en Unity.
-        aviso = n < modo && (materialFondo360 == null || CantidadFijos == 0)
-            ? "No hay fondos 360: en Unity toca TrazoVR > ★ Armar escena (y luego Ctrl+S y Build)" : null;
+        else if (modo == 2)
+        {
+            n = Primer360();
+            if (n < 0)
+            {
+                // Sin ningún fondo 360: falta prepararlos en Unity.
+                aviso = "No hay fondos 360: en Unity toca TrazoVR > ★ Armar escena (y luego Ctrl+S y Build)";
+                n = 0;
+            }
+        }
+        else
+        {
+            n = 0;
+        }
         PonerModo(n);
     }
+
+    // El fondo 360 que elegiste la última vez (o el primero que haya). -1 si no hay ninguno.
+    public int Primer360()
+    {
+        int u = PlayerPrefs.GetInt(ClaveUltimo360, 3);
+        if (u >= 3 && u < CantidadModos && Disponible(u))
+            return u;
+        for (int m = 3; m < CantidadModos; m++)
+            if (Disponible(m))
+                return m;
+        return -1;
+    }
+
+    // ---------- Miniaturas (para la ventanita de fondos 360) ----------
+
+    readonly Dictionary<string, RenderTexture> miniaturas = new Dictionary<string, RenderTexture>();
+
+    // Una imagen pequeña del fondo 360 "m" (se hace una vez y se guarda).
+    public Texture Miniatura(int m)
+    {
+        if (m < 3 || !Disponible(m))
+            return null;
+        int k = m - 3;
+        string clave;
+        Texture fuente = null;
+        if (k < CantidadFijos)
+        {
+            clave = "app:" + k + ":" + fondos360[k].nombre;
+            fuente = fondos360[k].foto;
+        }
+        else
+        {
+            clave = fotosPropias[k - CantidadFijos];
+        }
+        RenderTexture rt;
+        if (miniaturas.TryGetValue(clave, out rt) && rt != null && rt.IsCreated())
+            return rt;
+        Texture2D temporal = null;
+        if (fuente == null)
+        {
+            temporal = Leer360(clave);
+            fuente = temporal;
+        }
+        if (fuente == null)
+            return null;
+        rt = Reducir(fuente, 256);
+        if (temporal != null)
+            Destroy(temporal);
+        miniaturas[clave] = rt;
+        return rt;
+    }
+
+    // Se achica a la mitad varias veces (así no se ve granulado: las fotos 360 no tienen mipmaps).
+    static RenderTexture Reducir(Texture fuente, int ancho)
+    {
+        int w = fuente.width, h = fuente.height;
+        RenderTexture actual = null;
+        Texture desde = fuente;
+        while (w / 2 >= ancho)
+        {
+            w /= 2;
+            h = Mathf.Max(1, h / 2);
+            var siguiente = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGB32);
+            Graphics.Blit(desde, siguiente);
+            if (actual != null)
+                RenderTexture.ReleaseTemporary(actual);
+            actual = siguiente;
+            desde = siguiente;
+        }
+        var final = new RenderTexture(Mathf.Max(1, w), Mathf.Max(1, h), 0, RenderTextureFormat.ARGB32);
+        final.Create();
+        Graphics.Blit(desde, final);
+        if (actual != null)
+            RenderTexture.ReleaseTemporary(actual);
+        return final;
+    }
+
 
     // Lo que se muestra al tocar el botón Fondo.
     string aviso;
@@ -146,6 +235,8 @@ public class Escenario : MonoBehaviour
         if (modo < 3 + CantidadFijos)
             LiberarPropia();
         PlayerPrefs.SetInt(ClaveFondo, modo);
+        if (modo >= 3)
+            PlayerPrefs.SetInt(ClaveUltimo360, modo);
         bool realidad = modo == 2;
         if (cuadricula != null)
             cuadricula.SetActive(modo == 0);
@@ -435,6 +526,10 @@ public class Escenario : MonoBehaviour
 
     void OnDestroy()
     {
+        foreach (var rt in miniaturas.Values)
+            if (rt != null)
+                rt.Release();
+        miniaturas.Clear();
         LiberarPropia();
         if (cascara != null)
             Destroy(cascara);

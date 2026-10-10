@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 10 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v31***
+*Actualizado: 10 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v32***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,7 +16,19 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ---
 
-## 0. Hecho en la v31 (falta probarlo en el visor)
+## 0. Hecho en la v32 (falta probarlo en el visor)
+
+- [x] **Fondos 360**: se quitaron Cuarto, Crucero (el "centro comercial"), Columnas y La Luna (★ Armar escena los borra solo de Unity). Nuevos: **Shanghai de noche** (subido por Juan Carlos) y 6 libres: Orilla de Shanghai, Avenida ancha, Camino entre flores, Refugio con grafitis, Golf de noche y Campo seco (4K + profundidad IA). Total: 14.
+- [x] **Botón Fondo**: Cuadrícula → Blanco → Realidad → **360**. Al llegar a 360 se abre una **ventanita con miniaturas** de todos los fondos 360 (y tus fotos); toca uno para probarlo. Arriba tiene Cuadrícula, Blanco, Realidad y X.
+- [x] **Papel blanco** detrás del lápiz en capas de boceto en 2D (1.2 x 0.8, centrado donde empezaste a dibujar). Botón en su esquina de arriba a la derecha: Blanco → 50 % → Transparente (cada capa recuerda el suyo).
+- [x] **Imán** pasó a la paleta (a la derecha). La paleta queda **1 cm más lejos** de la mano.
+- [x] **Relleno vivo**: botón de **tamaño** (Chico, Normal, Grande, Enorme) junto a la velocidad.
+- [x] **Proyectos en Descargas → JCartoons → Proyectos** (una sola copia; los de antes se mueven solos). Cada **Guardar** conserva las **5 versiones anteriores** (Mis archivos → Mostrar: Versiones). Fotos, videos y SVG ya no quedan repetidos dentro de la app.
+  - Ojo: si algún día desinstalas la app, los archivos siguen en Descargas, pero Android no deja que la app nueva los vea sola: haría falta un botón "Recuperar" (pendiente, solo si pasa).
+- [x] **Modo rendimiento** automático: si los cuadros bajan de ~68 por segundo, pide más potencia al Quest y luego foveación dinámica (solo el borde de la vista). Nunca baja la resolución ni apaga efectos. Los fps se ven pequeñitos en el menú de la mano.
+- [x] **Tutoriales**: nueva sección **4 · Novedades** en el "?" (6 temas con animación). Textos que mencionaban "Mis archivos > Tutorial" corregidos.
+
+## 0+. Hecho en la v31
 
 - [x] **Encantamiento 2D**: lo que dibujas en Plano 2D queda en la hoja de su capa. Nodos, tiradores, lazo, plastilina, mover con el pellizco y girar/escalar con las dos manos se quedan dentro de esa hoja, aunque cambies a 3D. La capa **recuerda su hoja** al volver a 2D.
   - Botón **Liberar** en la fila de cada capa (solo se ve si hay algo que liberar): con líneas elegidas libera solo esas; si no, toda la capa (y si su hoja es "propia", la borra). Se puede deshacer.
@@ -112,6 +124,15 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [ ] Cuando ya no haga falta, quitar el botón **Tutorial** de Mis archivos (por ahora se queda; abre el mismo panel "?").
 
 ## 5. Para probar en el visor (desde la v21 casi nada se ha probado)
+
+**Nuevo en la v32:**
+- [ ] Ventanita de fondos 360: ¿se ven bien las miniaturas? ¿cómoda al lado del menú?
+- [ ] Shanghai de noche y los 6 nuevos: ¿nítidos? ¿profundidad bien?
+- [ ] Papel blanco del boceto: ¿tamaño adecuado? ¿el botón de la esquina se alcanza?
+- [ ] Imán en la paleta y el botón de tamaño del relleno vivo.
+- [ ] Proyectos en Descargas: ¿se movieron los de antes? ¿se ven en la app Archivos del Quest? Versiones.
+- [ ] Modo rendimiento: ¿aparece el aviso? ¿cuántos fps marca con dibujos grandes?
+- [ ] Tutorial 4 · Novedades.
 
 **Nuevo en la v31:**
 - [ ] Encantamiento: dibuja en 2D, pasa a 3D y mueve tiradores, nodos y la línea: ¿se quedan en su hoja? ¿Liberar funciona (todas / solo las elegidas)?

@@ -531,7 +531,8 @@ public static class ArmarEscenaTrazo
         panel.textoEstado = Texto(contenido.transform, "", new Vector3(0f, -0.105f, -0.001f), new Vector2(0.098f, 0.02f), new Color(0.2f, 0.2f, 0.25f));
 
         // Dos columnas: Plano / Fondo · Guardar / Cargar · Borrar todo / Imán · Esfera / Cubo · Cilindro / A líneas · Quitar figura
-        string[] nombres = { "Libre (3D)", "Fondo: Cuadrícula", "Guardar", "Archivos", "Borrar todo", "Esfera", "Cubo", "Cilindro", "A líneas", "Imán: Sí" };
+        // El imán ahora está en la paleta (palma izquierda).
+        string[] nombres = { "Libre (3D)", "Fondo: Cuadrícula", "Guardar", "Archivos", "Borrar todo", "Esfera", "Cubo", "Cilindro", "A líneas" };
         Vector2[] lugares =
         {
             new Vector2(-0.025f, 0.064f), new Vector2(0.025f, 0.064f),
@@ -539,7 +540,6 @@ public static class ArmarEscenaTrazo
             new Vector2(-0.025f, 0.012f),
             new Vector2(-0.025f, -0.022f), new Vector2(0.025f, -0.022f),
             new Vector2(-0.025f, -0.048f), new Vector2(0.025f, -0.048f),
-            new Vector2(0.025f, 0.012f),
         };
         var botones = new BotonTocable[nombres.Length];
         for (int i = 0; i < nombres.Length; i++)
@@ -556,7 +556,7 @@ public static class ArmarEscenaTrazo
         // "Quitar figura" ya no hace falta (la figura elegida tiene su X). La música se elige en el carrusel
         // de íconos que está sobre el parlante (arriba a la derecha).
         panel.btnQuitarFigura = null;
-        panel.btnIman = botones[9];
+        panel.btnIman = null;
         // ? arriba a la izquierda: las secciones del tutorial.
         panel.btnAyuda = Boton(contenido.transform, "?", new Vector3(-0.04f, 0.09f, 0f), matBoton, matBotonMarcado);
         panel.btnAyuda.transform.localScale = new Vector3(0.016f, 0.016f, 0.008f);
@@ -905,21 +905,40 @@ public static class ArmarEscenaTrazo
     // Fondos 360 en 3D: las fotos de Plugins/Fondos (con sus distancias calculadas con IA).
     static readonly string[,] Fondos360 =
     {
-        { "cuarto360", "Cuarto 360" },
         { "roma360", "Roma de noche" },
-        { "amanecer360", "Amanecer" },
+        { "shanghai_noche360", "Shanghai de noche" },
         { "venecia_canal360", "Canal de Venecia" },
         { "venecia_calle360", "Callejón de Venecia" },
+        { "amanecer360", "Amanecer" },
         { "atardecer_mar360", "Atardecer en el mar" },
-        { "crucero360", "Crucero de lujo" },
-        { "columnas360", "Pórtico de columnas" },
         { "mirador360", "Mirador" },
         { "parque360", "Parque" },
-        { "luna360", "La Luna" },
+        { "camino_flores360", "Camino entre flores" },
+        { "campo_seco360", "Campo seco" },
+        { "golf_noche360", "Golf de noche" },
+        { "avenida360", "Avenida ancha" },
+        { "shanghai_dia360", "Orilla de Shanghai" },
+        { "grafitis360", "Refugio con grafitis" },
     };
+
+    // Fondos que ya no vienen con la app: si siguen en tu proyecto de Unity, se borran solos.
+    static readonly string[] FondosQuitados = { "cuarto360", "crucero360", "columnas360", "luna360" };
+
+    static void QuitarFondosViejos()
+    {
+        const string carpeta = "Assets/Plugins/Fondos/";
+        bool borro = false;
+        foreach (var n in FondosQuitados)
+            foreach (var ruta in new[] { carpeta + n + ".jpg", carpeta + n + "_profundidad.bytes" })
+                if (AssetDatabase.LoadAssetAtPath<Object>(ruta) != null && AssetDatabase.DeleteAsset(ruta))
+                    borro = true;
+        if (borro)
+            AssetDatabase.Refresh();
+    }
 
     static void PrepararFondos360(Escenario escenario, Shader unlit)
     {
+        QuitarFondosViejos();
         var lista = new List<Escenario.Foto360>();
         var usadas = new HashSet<string>();
         for (int k = 0; k < Fondos360.GetLength(0); k++)

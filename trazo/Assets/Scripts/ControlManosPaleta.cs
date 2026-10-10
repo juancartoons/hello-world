@@ -11,7 +11,8 @@ using UnityEngine;
 //    (ver ControlManosTemblor.cs).
 //  - Arriba a la derecha (solo con un fondo 360 o la realidad): el botón HALO, un brillo suave detrás de
 //    las líneas para que no se pierdan en el fondo (amarillo = encendido).
-//  - Arriba a la izquierda: el RELLENO VIVO (texturas que se mueven, estilo Quill) y su velocidad.
+//  - Arriba a la izquierda: el RELLENO VIVO (texturas que se mueven, estilo Quill), su velocidad y su tamaño.
+//  - A la derecha: el IMÁN de la capa activa (amarillo = encendido: las puntas se pegan a otras líneas).
 //  - Debajo de la paleta: un cartelito con los datos de la línea (grosor, color, temblor, relleno...).
 //    Lo último que cambiaste sale resaltado.
 //  - Cierra la mano (o bájala) y la paleta se va.
@@ -119,7 +120,7 @@ public partial class ControlManos
         // La paleta flota sobre tu palma, mirando hacia ti.
         if (!paletaFija && palmaIzq.valida && poseValida)
         {
-            Vector3 pos = palmaIzq.centro + palmaIzq.normal * 0.04f + Vector3.up * 0.01f;
+            Vector3 pos = palmaIzq.centro + palmaIzq.normal * 0.05f + Vector3.up * 0.01f;
             Quaternion rot = Quaternion.LookRotation(pos - Cabeza.position, Vector3.up);
             float a = 1f - Mathf.Exp(-18f * Time.deltaTime);
             paleta.position = Vector3.Lerp(paleta.position, pos, a);
@@ -138,6 +139,7 @@ public partial class ControlManos
             ActualizarRellenoPaleta(Vector3.zero, false);
             ActualizarHaloPaleta(Vector3.zero, false);
             ActualizarTexturaPaleta(Vector3.zero, false);
+            ActualizarImanPaleta(Vector3.zero, false);
             dedoEnRelleno = false;
             dedoEnColor = false;
             dedoEnLinea = false;
@@ -160,6 +162,13 @@ public partial class ControlManos
         }
         // ¿Tocó el botón del halo?
         if (ActualizarHaloPaleta(punta, true))
+        {
+            dedoEnColor = false;
+            dedoEnLinea = false;
+            return;
+        }
+        // ¿Tocó el imán?
+        if (ActualizarImanPaleta(punta, true))
         {
             dedoEnColor = false;
             dedoEnLinea = false;
@@ -286,11 +295,12 @@ public partial class ControlManos
         dedoEnRelleno = true;
         dedoEnHalo = true;
         dedoEnTextura = true;
+        dedoEnIman = true;
         claveMuestra = int.MinValue;
         colorElegido = IndiceColor(dibujo.ColorNuevo);
         if (palmaIzq.valida && Cabeza != null)
         {
-            Vector3 pos = palmaIzq.centro + palmaIzq.normal * 0.04f + Vector3.up * 0.01f;
+            Vector3 pos = palmaIzq.centro + palmaIzq.normal * 0.05f + Vector3.up * 0.01f;
             paleta.SetPositionAndRotation(pos, Quaternion.LookRotation(pos - Cabeza.position, Vector3.up));
         }
         paleta.gameObject.SetActive(true);
@@ -325,6 +335,7 @@ public partial class ControlManos
         ArmarRellenoPaleta(negro);
         ArmarHaloPaleta(negro);
         ArmarTexturaPaleta(negro);
+        ArmarImanPaleta(negro);
         ArmarDatosPaleta();
         for (int i = 0; i < ColoresPaleta.Length; i++)
         {
@@ -400,9 +411,11 @@ public partial class ControlManos
         datosAhora[8] = tb != null ? Mathf.RoundToInt(tb.CambiosPorSegundo) + " cambios/s" : "";
         int tex = elegida != null && elegida.relleno ? elegida.texturaRelleno : TexturaElegida;
         int vel = elegida != null && elegida.relleno ? elegida.velocidadTextura : VelocidadTexturaElegida;
+        int tam = elegida != null && elegida.relleno ? elegida.tamanoTextura : TamanoTexturaElegido;
         datosAhora[9] = "Relleno: " + Trazo.NombresTextura[Mathf.Clamp(tex, 0, Trazo.NombresTextura.Length - 1)]
-                        + (tex > 0 ? " · " + Trazo.NombresVelocidadTextura[Mathf.Clamp(vel, 0, Trazo.VelocidadesTextura.Length - 1)] : "");
-        datosAhora[10] = CubetaActiva ? "Cubeta: Sí" : "Cubeta: No";
+                        + (tex > 0 ? " · " + Trazo.NombresVelocidadTextura[Mathf.Clamp(vel, 0, Trazo.VelocidadesTextura.Length - 1)]
+                                   + " · " + Trazo.NombresTamanoTextura[Mathf.Clamp(tam, 0, Trazo.TamanosTextura.Length - 1)] : "");
+        datosAhora[10] = (CubetaActiva ? "Cubeta: Sí" : "Cubeta: No") + (capa != null ? (capa.iman ? " · Imán: Sí" : " · Imán: No") : "");
         datosAhora[11] = dibujo.HaloDisponible ? (dibujo.HaloEncendido ? "Halo: Sí" : "Halo: No") : "";
         for (int i = 0; i < datosAhora.Length; i++)
         {
@@ -435,6 +448,53 @@ public partial class ControlManos
         sb.Append(Idioma.T(d));
         if (resaltar)
             sb.Append("</color></b>");
+    }
+
+    // ---------- Imán (de la capa activa): las puntas de las líneas se pegan a otras ----------
+    Transform botonIman;
+    Material fondoIman;
+    bool dedoEnIman;
+
+    void ArmarImanPaleta(Material negro)
+    {
+        botonIman = new GameObject("Iman").transform;
+        botonIman.SetParent(paleta, false);
+        botonIman.localPosition = new Vector3(0.0719f, 0.0127f, -0.001f);
+        botonIman.localScale = Vector3.one * 0.02f;
+        fondoIman = ColorMaterial(Color.white);
+        DiscoPaleta(botonIman, negro, 1.12f, new Vector3(0f, 0f, 0.05f));
+        DiscoPaleta(botonIman, fondoIman, 1f, new Vector3(0f, 0f, 0.025f));
+        // Una herradura roja (una U) con las puntas grises.
+        var u = new List<Vector2[]>();
+        LineaIcono(u, new[] { new Vector2(-0.17f, 0.12f), new Vector2(-0.17f, -0.06f), new Vector2(-0.1f, -0.2f),
+                              new Vector2(0f, -0.24f), new Vector2(0.1f, -0.2f), new Vector2(0.17f, -0.06f), new Vector2(0.17f, 0.12f) }, 0.11f);
+        IconoPaleta(botonIman, u, ColorMaterial(new Color(0.88f, 0.15f, 0.15f)));
+        var puntas = new List<Vector2[]>();
+        BarraIcono(puntas, new Vector2(-0.17f, 0.13f), new Vector2(-0.17f, 0.25f), 0.11f);
+        BarraIcono(puntas, new Vector2(0.17f, 0.13f), new Vector2(0.17f, 0.25f), 0.11f);
+        IconoPaleta(botonIman, puntas, ColorMaterial(new Color(0.75f, 0.76f, 0.8f)));
+    }
+
+    // Cada cuadro con la paleta abierta. Devuelve true si el dedo está en el botón.
+    bool ActualizarImanPaleta(Vector3 punta, bool dedoValido)
+    {
+        if (botonIman == null || dibujo == null)
+            return false;
+        PonerColorMaterial(fondoIman, dibujo.CapaActual.iman ? AmarilloOpcion : Color.white);
+        if (!dedoValido || Vector3.Distance(punta, botonIman.position) > 0.012f)
+        {
+            dedoEnIman = false;
+            return false;
+        }
+        if (!dedoEnIman)
+        {
+            dibujo.AlternarIman();
+            Burbuja(botonIman.position, 1.2f);
+            if (paletaFija)
+                paletaFijaHasta = Mathf.Max(paletaFijaHasta, Time.time + 12f);
+        }
+        dedoEnIman = true;
+        return true;
     }
 
     // ---------- Botón Halo (solo con un fondo 360 o la realidad) ----------
