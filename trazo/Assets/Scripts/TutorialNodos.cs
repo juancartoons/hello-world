@@ -41,8 +41,8 @@ public class TutorialNodos : TarjetaTutorial
         {
             case 0:
                 return Tx(
-                    "LEFT hand: thumb + MIDDLE finger = the nodes appear. TOUCH a node with your RIGHT index: it sticks to your finger and follows it. To let it go, OPEN your left hand.\nCurves: bring your finger CLOSE to a node (without touching it) and its handles appear; touch the tip of one to bend the line. What you are about to grab lights up first.",
-                    "Mano IZQUIERDA: pulgar + dedo MEDIO = aparecen los nodos. TOCA un nodo con el índice DERECHO: se pega a tu dedo y lo sigue. Para soltarlo, ABRE la mano izquierda.\nCurvas: ACERCA el dedo a un nodo (sin tocarlo) y aparecen sus tiradores; toca la punta de uno para curvar la línea. Lo que vas a agarrar se ilumina antes.");
+                    "LEFT hand: thumb + MIDDLE finger = the nodes appear. TOUCH a node with your RIGHT index: it sticks to your finger and follows it. To let it go, OPEN your left hand.\nCurves: bring your finger CLOSE to a node (without touching it) and its handles appear; touch the tip of one to bend the line (with a V: only that side). Take the tip into its node = straight corner. What you are about to grab lights up first.",
+                    "Mano IZQUIERDA: pulgar + dedo MEDIO = aparecen los nodos. TOCA un nodo con el índice DERECHO: se pega a tu dedo y lo sigue. Para soltarlo, ABRE la mano izquierda.\nCurvas: ACERCA el dedo a un nodo (sin tocarlo) y aparecen sus tiradores; toca la punta de uno para curvar la línea (con la V: solo ese lado). Lleva la punta hasta su nodo = esquina recta. Lo que vas a agarrar se ilumina antes.");
             case 1:
                 return Tx(
                     "Touch the line (away from its nodes) and stay STILL for half a second: a new node is born right there, stuck to your finger. Touching another line selects it.",

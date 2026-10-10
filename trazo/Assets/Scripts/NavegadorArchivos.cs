@@ -4,14 +4,16 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Video;
 
-// "Mis archivos": todo lo que has hecho (dibujos, videos, fotos y SVG), con una miniatura de cada uno.
-//  - Arriba: filtros (Todos, Dibujos, Videos, Fotos, Ver SVG) y la X para cerrar.
+// "Mis archivos": todo lo que has hecho y lo que se crea fuera del dibujo, en 4 pestañas.
+//  - Arriba: las pestañas (Archivos, Crear, Grabar proceso, Imágenes) y la X para cerrar.
 //  - Debajo: el ARCHIVO ACTUAL (su nombre y si tiene cambios sin guardar) con Guardar, Copia y Renombrar,
 //    y el botón de idioma (Español / English) para toda la app.
-//  - Toca un archivo para elegirlo; abajo: Abrir y Borrar (Borrar pide tocar otra vez para confirmar).
-//  - Abrir: un dibujo se abre para seguir editándolo; una foto o un video se ven en grande (Volver = regresar).
-//  - < y > cambian de página.
-// Se abre con el botón "Archivos" del panel de arriba o del menú de la mano.
+//  - Archivos: dibujos, videos, fotos y SVG con miniatura. Filtros arriba. Toca uno para elegirlo; abajo:
+//    Abrir y Borrar (Borrar pide tocar otra vez). Una foto o un video se ven en grande (Volver = regresar).
+//  - Crear: Foto (PNG) y SVG (2 archivos). Todo va a Descargas → JCartoons.
+//  - Grabar proceso: grabar cómo dibujas y convertirlo en video.
+//  - Imágenes: traer imágenes de referencia del Quest y verlas u ocultarlas.
+// Se abre con el botón "Archivos" del menú de la mano.
 public class NavegadorArchivos : MonoBehaviour
 {
     public Dibujo dibujo;
@@ -23,6 +25,7 @@ public class NavegadorArchivos : MonoBehaviour
     public Material materialImagen;
 
     static readonly string[] Filtros = { "Todos", "Dibujos", "Videos", "Fotos", "Ver SVG" };
+    static readonly string[] Secciones = { "Archivos", "Crear", "Grabar proceso", "Imágenes" };
     const int Columnas = 4, Filas = 3, PorPagina = Columnas * Filas;
 
     class Archivo
@@ -50,6 +53,15 @@ public class NavegadorArchivos : MonoBehaviour
     BotonTocable btnGuardar, btnCopia, btnRenombrar, btnIdioma;
     TMP_Text textoPagina, textoEstado, textoActual;
     TouchScreenKeyboard teclado;
+    // Las 4 pestañas
+    readonly BotonTocable[] botonesSeccion = new BotonTocable[Secciones.Length];
+    readonly GameObject[] secciones = new GameObject[Secciones.Length];
+    int seccion;
+    BotonTocable btnGrabarProc, btnPausaProc, btnVideoProc, btnVelProc, btnImagenesVer;
+    TMP_Text textoCrear, textoGrabar;
+    GrabadorProceso grabador;
+    ExportadorVideo exportador;
+    Referencias referencias;
     GameObject grilla;
     Renderer visor;
     Material materialVisor;
@@ -65,6 +77,9 @@ public class NavegadorArchivos : MonoBehaviour
         Idioma.alCambiar += () => { if (Abierto) Mostrar(); };
         if (dibujo == null) dibujo = FindFirstObjectByType<Dibujo>();
         if (control == null) control = FindFirstObjectByType<ControlManos>();
+        grabador = FindFirstObjectByType<GrabadorProceso>();
+        exportador = FindFirstObjectByType<ExportadorVideo>();
+        referencias = FindFirstObjectByType<Referencias>();
     }
 
     // ---------- Abrir y cerrar ----------
@@ -89,7 +104,108 @@ public class NavegadorArchivos : MonoBehaviour
         elegido = -1;
         Listar();
         Mostrar();
-        dibujo.Mensaje("Mis archivos: toca uno para elegirlo");
+        // Se abre en la última pestaña que usaste (así, si estás grabando el proceso, Detener queda a mano).
+        MostrarSeccion(seccion);
+        dibujo.Mensaje(seccion == 0 ? "Mis archivos: toca uno para elegirlo" : "Mis archivos");
+    }
+
+    // Las pestañas: Archivos, Crear, Grabar proceso, Imágenes.
+    void MostrarSeccion(int s)
+    {
+        seccion = Mathf.Clamp(s, 0, Secciones.Length - 1);
+        if (seccion != 0)
+            CerrarVisor();
+        for (int i = 0; i < secciones.Length; i++)
+        {
+            if (secciones[i] != null && secciones[i].activeSelf != (i == seccion))
+                secciones[i].SetActive(i == seccion);
+            if (botonesSeccion[i] != null)
+                botonesSeccion[i].Marcar(i == seccion);
+        }
+        RefrescarSeccion();
+    }
+
+    void RefrescarSeccion()
+    {
+        if (seccion == 1 && textoCrear != null)
+        {
+            Idioma.Poner(textoCrear, string.IsNullOrEmpty(Galeria.UltimoGuardado) ? "" : "Lo último: " + Galeria.UltimoGuardado);
+        }
+        else if (seccion == 2)
+        {
+            RefrescarGrabar();
+        }
+        else if (seccion == 3 && btnImagenesVer != null && referencias != null)
+        {
+            btnImagenesVer.PonerTexto(referencias.Ocultas ? "Imágenes: ocultas" : "Imágenes: ver");
+            btnImagenesVer.Marcar(referencias.Ocultas);
+        }
+    }
+
+    void RefrescarGrabar()
+    {
+        bool grabando = grabador != null && grabador.Grabando;
+        if (btnGrabarProc != null)
+        {
+            btnGrabarProc.PonerTexto(grabando ? "Detener" : "Grabar");
+            btnGrabarProc.Marcar(grabando);
+        }
+        if (btnPausaProc != null)
+        {
+            // Solo mientras grabas: Pausa / Reanudar.
+            if (btnPausaProc.gameObject.activeSelf != grabando)
+            {
+                btnPausaProc.gameObject.SetActive(grabando);
+                if (btnPausaProc.etiqueta != null)
+                    btnPausaProc.etiqueta.gameObject.SetActive(grabando);
+            }
+            if (grabando)
+            {
+                btnPausaProc.PonerTexto(grabador.Pausado ? "Reanudar" : "Pausa");
+                btnPausaProc.Marcar(grabador.Pausado);
+            }
+        }
+        if (btnVelProc != null && exportador != null)
+            btnVelProc.PonerTexto("Vel x" + exportador.velocidad);
+        if (textoGrabar == null)
+            return;
+        string texto;
+        if (ExportadorVideo.Exportando)
+            texto = "Haciendo el video... (mira los avisos)";
+        else if (grabando)
+            texto = (grabador.Pausado ? "En pausa: " : "Grabando el proceso: ") + GrabadorProceso.Formato(grabador.TiempoGrabado);
+        else if (grabador != null && grabador.muestras.Count > 1)
+            texto = "Grabación lista: " + GrabadorProceso.Formato(grabador.Duracion) + " · toca Video proceso";
+        else if (grabador == null)
+            texto = "No encuentro el grabador (vuelve a tocar ★ Armar escena en Unity)";
+        else
+            texto = "Aún no hay grabación";
+        Idioma.Poner(textoGrabar, texto);
+    }
+
+    // Foto del dibujo: este panel se esconde un momento para no salir en ella.
+    void TomarFoto()
+    {
+        bool estaba = raiz != null && raiz.gameObject.activeSelf;
+        if (estaba)
+            raiz.gameObject.SetActive(false);
+        dibujo.TomarFoto();
+        if (estaba)
+            raiz.gameObject.SetActive(true);
+    }
+
+    // Traer imagen: se cierra este panel y se abre el de las imágenes del Quest.
+    void TraerImagen()
+    {
+        if (referencias == null)
+            referencias = FindFirstObjectByType<Referencias>();
+        if (referencias == null)
+        {
+            dibujo.Mensaje("No encuentro las imágenes de referencia (vuelve a tocar ★ Armar escena en Unity)");
+            return;
+        }
+        Cerrar();
+        BuscadorImagenes.Abrir(referencias, control != null ? control.Cabeza : null);
     }
 
     public void Cerrar()
@@ -112,6 +228,7 @@ public class NavegadorArchivos : MonoBehaviour
         }
         if (btnIdioma != null)
             btnIdioma.PonerTexto(Idioma.Ingles ? "Language: ENG" : "Idioma: ESP");
+        RefrescarSeccion();
         // Teclado del visor (Renombrar).
         if (teclado != null)
         {
@@ -353,7 +470,7 @@ public class NavegadorArchivos : MonoBehaviour
                 VerVideo(a.ruta);
                 break;
             default:
-                dibujo.Mensaje("Los SVG se abren en el PC (Inkscape, Illustrator): Android/data/<la app>/files/Dibujos/" + Path.GetFileName(a.ruta));
+                dibujo.Mensaje("Los SVG se abren en el PC (Inkscape, Illustrator). Están en la app Archivos del Quest → Descargas → JCartoons → " + Path.GetFileName(a.ruta));
                 break;
         }
     }
@@ -451,7 +568,7 @@ public class NavegadorArchivos : MonoBehaviour
     {
         grilla.SetActive(false);
         visor.gameObject.SetActive(true);
-        float ancho = 0.56f, alto = 0.315f;
+        float ancho = 0.56f, alto = 0.3f;
         if (aspecto > ancho / alto)
             alto = ancho / aspecto;
         else
@@ -493,46 +610,67 @@ public class NavegadorArchivos : MonoBehaviour
         Destroy(fondo.GetComponent<Collider>());
         fondo.transform.SetParent(raiz, false);
         fondo.transform.localPosition = new Vector3(0f, 0f, 0.006f);
-        fondo.transform.localScale = new Vector3(0.64f, 0.48f, 1f);
+        fondo.transform.localScale = new Vector3(0.64f, 0.52f, 1f);
         Pintar(fondo.GetComponent<Renderer>(), materialPanel);
 
-        Texto(raiz, "Mis archivos", new Vector3(-0.235f, 0.205f, -0.002f), new Vector2(0.15f, 0.02f), 0.2f);
-        for (int i = 0; i < Filtros.Length; i++)
+        // Fila de arriba: el título, las 4 pestañas y la X.
+        Texto(raiz, "Mis archivos", new Vector3(-0.26f, 0.225f, -0.002f), new Vector2(0.1f, 0.02f), 0.2f);
+        float[] xSeccion = { -0.155f, -0.072f, 0.025f, 0.125f };
+        float[] anchoSeccion = { 0.075f, 0.07f, 0.105f, 0.075f };
+        for (int i = 0; i < Secciones.Length; i++)
         {
-            int f = i;
-            botonesFiltro[i] = Boton(raiz, Filtros[i], new Vector3(-0.1f + i * 0.072f, 0.205f, 0f), new Vector2(0.066f, 0.022f));
-            botonesFiltro[i].alTocar.AddListener(() => CambiarFiltro(f));
+            int s = i;
+            botonesSeccion[i] = Boton(raiz, Secciones[i], new Vector3(xSeccion[i], 0.225f, 0f), new Vector2(anchoSeccion[i], 0.024f));
+            botonesSeccion[i].alTocar.AddListener(() => MostrarSeccion(s));
+            secciones[i] = new GameObject("Seccion" + Secciones[i]);
+            secciones[i].transform.SetParent(raiz, false);
         }
-        btnCerrar = Boton(raiz, "X", new Vector3(0.295f, 0.205f, 0f), new Vector2(0.024f, 0.022f));
+        btnCerrar = Boton(raiz, "X", new Vector3(0.295f, 0.225f, 0f), new Vector2(0.024f, 0.022f));
         btnCerrar.alTocar.AddListener(Cerrar);
 
         // El archivo actual (el que estás haciendo) y el idioma de la app.
-        textoActual = Texto(raiz, "", new Vector3(-0.2f, 0.172f, -0.002f), new Vector2(0.205f, 0.018f), 0.12f);
+        textoActual = Texto(raiz, "", new Vector3(-0.2f, 0.19f, -0.002f), new Vector2(0.205f, 0.018f), 0.12f);
         textoActual.alignment = TextAlignmentOptions.Left;
         // Las secciones del tutorial (igual que el botón ? del menú de la mano).
-        var btnTutorial = Boton(raiz, "Tutorial", new Vector3(-0.055f, 0.172f, 0f), new Vector2(0.065f, 0.02f));
+        var btnTutorial = Boton(raiz, "Tutorial", new Vector3(-0.055f, 0.19f, 0f), new Vector2(0.065f, 0.02f));
         btnTutorial.alTocar.AddListener(() =>
         {
             Cerrar();
             if (Tutorial.Instancia != null)
                 Tutorial.Instancia.AbrirSecciones();
         });
-        btnGuardar = Boton(raiz, "Guardar", new Vector3(0.035f, 0.172f, 0f), new Vector2(0.06f, 0.02f));
+        btnGuardar = Boton(raiz, "Guardar", new Vector3(0.035f, 0.19f, 0f), new Vector2(0.06f, 0.02f));
         btnGuardar.alTocar.AddListener(() => { dibujo.Guardar(); Listar(); Mostrar(); });
-        btnCopia = Boton(raiz, "Guardar copia", new Vector3(0.11f, 0.172f, 0f), new Vector2(0.08f, 0.02f));
+        btnCopia = Boton(raiz, "Guardar copia", new Vector3(0.11f, 0.19f, 0f), new Vector2(0.08f, 0.02f));
         btnCopia.alTocar.AddListener(() => { dibujo.GuardarCopia(); Listar(); Mostrar(); });
-        btnRenombrar = Boton(raiz, "Renombrar", new Vector3(0.195f, 0.172f, 0f), new Vector2(0.08f, 0.02f));
+        btnRenombrar = Boton(raiz, "Renombrar", new Vector3(0.195f, 0.19f, 0f), new Vector2(0.08f, 0.02f));
         btnRenombrar.alTocar.AddListener(AbrirTeclado);
-        btnIdioma = Boton(raiz, "Idioma: ESP", new Vector3(0.28f, 0.172f, 0f), new Vector2(0.075f, 0.02f));
+        btnIdioma = Boton(raiz, "Idioma: ESP", new Vector3(0.28f, 0.19f, 0f), new Vector2(0.075f, 0.02f));
         btnIdioma.alTocar.AddListener(Idioma.Alternar);
 
+        ArmarArchivos(secciones[0].transform);
+        ArmarCrear(secciones[1].transform);
+        ArmarGrabar(secciones[2].transform);
+        ArmarImagenes(secciones[3].transform);
+    }
+
+    // ----- Pestaña Archivos: filtros, la grilla de miniaturas y abajo Abrir / Borrar -----
+    void ArmarArchivos(Transform sec)
+    {
+        for (int i = 0; i < Filtros.Length; i++)
+        {
+            int f = i;
+            botonesFiltro[i] = Boton(sec, Filtros[i], new Vector3(-0.26f + i * 0.072f, 0.155f, 0f), new Vector2(0.066f, 0.022f));
+            botonesFiltro[i].alTocar.AddListener(() => CambiarFiltro(f));
+        }
+
         grilla = new GameObject("Grilla");
-        grilla.transform.SetParent(raiz, false);
+        grilla.transform.SetParent(sec, false);
         for (int i = 0; i < PorPagina; i++)
         {
             int col = i % Columnas, fila = i / Columnas;
             float x = -0.225f + col * 0.15f;
-            float y = 0.1f - fila * 0.112f;
+            float y = 0.085f - fila * 0.112f;
             var f = new Ficha();
             f.boton = Boton(grilla.transform, "", new Vector3(x, y, 0f), new Vector2(0.138f, 0.105f));
             int indice = i;
@@ -553,27 +691,81 @@ public class NavegadorArchivos : MonoBehaviour
         var goVisor = GameObject.CreatePrimitive(PrimitiveType.Quad);
         goVisor.name = "Visor";
         Destroy(goVisor.GetComponent<Collider>());
-        goVisor.transform.SetParent(raiz, false);
-        goVisor.transform.localPosition = new Vector3(0f, 0.01f, -0.006f);
+        goVisor.transform.SetParent(sec, false);
+        goVisor.transform.localPosition = new Vector3(0f, -0.03f, -0.006f);
         visor = goVisor.GetComponent<Renderer>();
         materialVisor = materialImagen != null ? new Material(materialImagen) : null;
         Pintar(visor, materialVisor);
         goVisor.SetActive(false);
 
-        btnAnterior = Boton(raiz, "<", new Vector3(-0.28f, -0.205f, 0f), new Vector2(0.03f, 0.022f));
+        btnAnterior = Boton(sec, "<", new Vector3(-0.28f, -0.225f, 0f), new Vector2(0.03f, 0.022f));
         btnAnterior.alTocar.AddListener(() => CambiarPagina(-1));
-        textoPagina = Texto(raiz, "1 / 1", new Vector3(-0.235f, -0.205f, -0.002f), new Vector2(0.05f, 0.018f), 0.15f);
-        btnSiguiente = Boton(raiz, ">", new Vector3(-0.19f, -0.205f, 0f), new Vector2(0.03f, 0.022f));
+        textoPagina = Texto(sec, "1 / 1", new Vector3(-0.235f, -0.225f, -0.002f), new Vector2(0.05f, 0.018f), 0.15f);
+        btnSiguiente = Boton(sec, ">", new Vector3(-0.19f, -0.225f, 0f), new Vector2(0.03f, 0.022f));
         btnSiguiente.alTocar.AddListener(() => CambiarPagina(1));
-        textoEstado = Texto(raiz, "", new Vector3(-0.06f, -0.205f, -0.002f), new Vector2(0.18f, 0.018f), 0.12f);
-        btnAbrir = Boton(raiz, "Abrir", new Vector3(0.1f, -0.205f, 0f), new Vector2(0.1f, 0.024f));
+        textoEstado = Texto(sec, "", new Vector3(-0.06f, -0.225f, -0.002f), new Vector2(0.18f, 0.018f), 0.12f);
+        btnAbrir = Boton(sec, "Abrir", new Vector3(0.1f, -0.225f, 0f), new Vector2(0.1f, 0.024f));
         btnAbrir.alTocar.AddListener(AbrirElegido);
-        btnBorrar = Boton(raiz, "Borrar", new Vector3(0.235f, -0.205f, 0f), new Vector2(0.13f, 0.024f));
+        btnBorrar = Boton(sec, "Borrar", new Vector3(0.235f, -0.225f, 0f), new Vector2(0.13f, 0.024f));
         btnBorrar.alTocar.AddListener(Borrar);
-        btnVolver = Boton(raiz, "Volver", new Vector3(0.235f, 0.205f - 0.04f, 0f), new Vector2(0.08f, 0.022f));
+        btnVolver = Boton(sec, "Volver", new Vector3(0.235f, 0.155f, 0f), new Vector2(0.08f, 0.022f));
         btnVolver.alTocar.AddListener(CerrarVisor);
         btnVolver.gameObject.SetActive(false);
         btnVolver.etiqueta.gameObject.SetActive(false);
+    }
+
+    // ----- Pestaña Crear: Foto y SVG -----
+    void ArmarCrear(Transform sec)
+    {
+        var btnFoto = Boton(sec, "Foto (PNG)", new Vector3(-0.15f, 0.1f, 0f), new Vector2(0.2f, 0.05f));
+        btnFoto.alTocar.AddListener(TomarFoto);
+        TextoIzq(sec, "Una imagen del dibujo desde donde estás.\nSin paneles, nodos ni capas de boceto.", new Vector3(-0.15f, 0.04f, -0.002f), new Vector2(0.26f, 0.045f));
+        var btnSvg = Boton(sec, "Crear SVG (2 archivos)", new Vector3(0.15f, 0.1f, 0f), new Vector2(0.2f, 0.05f));
+        btnSvg.alTocar.AddListener(dibujo.ExportarSVG);
+        TextoIzq(sec, "Las líneas como curvas (Illustrator, Inkscape):\n_lineas = el trazo limpio · _como_se_ve = con temblor y hebras, como en la app.", new Vector3(0.15f, 0.04f, -0.002f), new Vector2(0.26f, 0.045f));
+        Texto(sec, "Video anim (tu animación en MP4): en la página Animar del menú de arriba.", new Vector3(0f, -0.04f, -0.002f), new Vector2(0.56f, 0.02f), 0.12f);
+        Texto(sec, "Todo se guarda en: app Archivos del Quest → Descargas → JCartoons", new Vector3(0f, -0.09f, -0.002f), new Vector2(0.56f, 0.024f), 0.15f);
+        textoCrear = Texto(sec, "", new Vector3(0f, -0.16f, -0.002f), new Vector2(0.56f, 0.05f), 0.11f);
+    }
+
+    // ----- Pestaña Grabar proceso: grabar cómo dibujas y hacer el video -----
+    void ArmarGrabar(Transform sec)
+    {
+        btnGrabarProc = Boton(sec, "Grabar", new Vector3(-0.2f, 0.1f, 0f), new Vector2(0.12f, 0.05f));
+        btnPausaProc = Boton(sec, "Pausa", new Vector3(-0.07f, 0.1f, 0f), new Vector2(0.1f, 0.05f));
+        btnVideoProc = Boton(sec, "Video proceso", new Vector3(0.07f, 0.1f, 0f), new Vector2(0.14f, 0.05f));
+        btnVelProc = Boton(sec, "Vel x1", new Vector3(0.2f, 0.1f, 0f), new Vector2(0.08f, 0.05f));
+        btnGrabarProc.alTocar.AddListener(() => { if (grabador != null) grabador.Alternar(); });
+        btnPausaProc.alTocar.AddListener(() => { if (grabador != null) grabador.AlternarPausa(); });
+        btnVideoProc.alTocar.AddListener(() => { if (exportador != null) exportador.ExportarProceso(); });
+        btnVelProc.alTocar.AddListener(() => { if (exportador != null) exportador.CambiarVelocidad(); });
+        btnPausaProc.gameObject.SetActive(false);
+        btnPausaProc.etiqueta.gameObject.SetActive(false);
+        TextoIzq(sec, "1) Grabar: graba cómo dibujas (tus manos y las líneas que aparecen). Puedes cerrar este panel y dibujar.\n"
+                      + "2) Vuelve aquí y toca Detener (Pausa = un descanso que no sale en el video).\n"
+                      + "3) Elige la velocidad (Vel) y toca Video proceso: un MP4 en Descargas → JCartoons.",
+                 new Vector3(0f, -0.01f, -0.002f), new Vector2(0.56f, 0.1f));
+        textoGrabar = Texto(sec, "", new Vector3(0f, -0.12f, -0.002f), new Vector2(0.56f, 0.03f), 0.16f);
+    }
+
+    // ----- Pestaña Imágenes: imágenes de referencia -----
+    void ArmarImagenes(Transform sec)
+    {
+        var btnTraer = Boton(sec, "Traer imagen", new Vector3(-0.13f, 0.1f, 0f), new Vector2(0.2f, 0.05f));
+        btnTraer.alTocar.AddListener(TraerImagen);
+        btnImagenesVer = Boton(sec, "Imágenes: ver", new Vector3(0.13f, 0.1f, 0f), new Vector2(0.2f, 0.05f));
+        btnImagenesVer.alTocar.AddListener(() => { if (referencias != null) referencias.AlternarTodas(); });
+        TextoIzq(sec, "Traer imagen: las imágenes de tu Quest (Descargas, Cámara, capturas, WhatsApp...). Toca una para verla en grande: Importar o, si es una foto 360, Fondo 360. O pellízcala y sácala del panel: queda donde la sueltes.\n"
+                      + "Para calcar: en Plano 2D, suelta la imagen cerca del plano y se pega detrás.\n"
+                      + "Para quitar una imagen: toca la X de su esquina.",
+                 new Vector3(0f, -0.04f, -0.002f), new Vector2(0.56f, 0.13f));
+    }
+
+    static TMP_Text TextoIzq(Transform padre, string texto, Vector3 pos, Vector2 tam)
+    {
+        var t = Texto(padre, texto, pos, tam, 0.13f);
+        t.alignment = TextAlignmentOptions.Left;
+        return t;
     }
 
     BotonTocable Boton(Transform padre, string texto, Vector3 pos, Vector2 tam)

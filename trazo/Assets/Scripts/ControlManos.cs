@@ -69,7 +69,7 @@ public partial class ControlManos : MonoBehaviour
     public Gesto GestoIzq { get; private set; }
 
     [Header("Ayudas")]
-    [Tooltip("Texto que flota sobre la mano con el nombre del gesto")]
+    [Tooltip("Texto con el nombre del gesto (sale en el cartel de cómic de arriba al centro de la vista)")]
     public TMP_Text textoGesto;
     public bool mostrarAyudas = true;
 
@@ -249,7 +249,7 @@ public partial class ControlManos : MonoBehaviour
     float alturaHebra;
     float suavizadoInicio;
 
-    // Etiqueta sobre la mano
+    // Nombre del gesto (en el cartel de arriba)
     string etiquetaTemporal;
     float etiquetaHasta;
 
@@ -1024,6 +1024,10 @@ public partial class ControlManos : MonoBehaviour
     // Si el tirador es más corto, la bolita se ve más lejos sobre la misma línea y lo mueve en proporción.
     const float LargoMinimoAsa = 0.045f;
     float factorAsaArrastre = 1f;
+    // Con la V (índice y medio estirados) se mueve SOLO el tirador que tocaste (el nodo queda como esquina).
+    bool asaSola, asaEnCero;
+    // Llevar la bolita de un tirador hasta su nodo (más cerca que esto, en metros) = tirador en cero (recto).
+    const float RadioAsaEnCero = 0.012f;
 
     // Dónde se VE (y se toca) la punta de un tirador. factor = largo que se ve ÷ largo real.
     Vector3 PuntaAsaVisible(Trazo t, int i, bool salida, out float factor)
@@ -1094,6 +1098,10 @@ public partial class ControlManos : MonoBehaviour
         float factor = 1f;
         Vector3 puntaAsa = tipo == Objetivo.Asa ? PuntaAsaVisible(t, i, salida, out factor) : Vector3.zero;
         factorAsaArrastre = Mathf.Max(1f, factor);
+        asaSola = tipo == Objetivo.Asa && Der.DosDedos;
+        asaEnCero = false;
+        if (asaSola)
+            dibujo.Mensaje("V: solo este tirador (esquina)");
         arrastre = tipo;
         arrTrazo = t;
         arrIndice = i;
@@ -1129,8 +1137,24 @@ public partial class ControlManos : MonoBehaviour
 
         if (arrastre == Objetivo.Asa)
         {
+            // Si pasas a la V mientras lo mueves, desde ahí se mueve solo este tirador (como apretar Alt).
+            if (!asaSola && Der.DosDedos)
+            {
+                asaSola = true;
+                dibujo.Mensaje("V: solo este tirador (esquina)");
+            }
+            // La bolita hasta su nodo = tirador en cero: la línea sale recta de ese nodo (esquina recta).
+            Vector3 nodoMundo = dibujo.transform.TransformPoint(arrTrazo.nodos[arrIndice]);
+            bool enCero = Vector3.Distance(dibujo.transform.TransformPoint(local), nodoMundo) < RadioAsaEnCero;
+            if (enCero && !asaEnCero)
+                dibujo.Mensaje(asaSola ? "Tirador en cero: ese lado sale recto" : "Tiradores en cero: esquina recta");
+            asaEnCero = enCero;
             // Palanca: la bolita está "factor" veces más lejos que la punta real del tirador.
-            arrTrazo.MoverAsa(arrIndice, arrSalida, (local - arrTrazo.nodos[arrIndice]) / factorAsaArrastre);
+            Vector3 asa = enCero ? Vector3.zero : (local - arrTrazo.nodos[arrIndice]) / factorAsaArrastre;
+            if (asaSola)
+                arrTrazo.MoverAsaSola(arrIndice, arrSalida, asa);
+            else
+                arrTrazo.MoverAsa(arrIndice, arrSalida, asa); // un dedo: el otro tirador gira en espejo (suave)
             return;
         }
 
@@ -2544,7 +2568,7 @@ public partial class ControlManos : MonoBehaviour
         return menuAbierto;
     }
 
-    // ---------- Etiqueta sobre la mano (para aprender los gestos) ----------
+    // ---------- Nombre del gesto (para aprender), en el cartel de arriba al centro de la vista ----------
 
     string etiquetaMostrada;
     float etiquetaDesde;
@@ -2617,7 +2641,8 @@ public partial class ControlManos : MonoBehaviour
         }
         float desvanecer = Tutorial.EnCurso ? 1f : 1f - Mathf.Clamp01((Time.time - etiquetaDesde - 1.5f) / 0.25f);
         bool ver = mostrarAyudas && texto != null && Cabeza != null && desvanecer > 0.01f
-                   && (entreManos ? Izq.valida && Der.valida : sobre.valida);
+                   && (entreManos ? Izq.valida && Der.valida : sobre.valida)
+                   && CartelArriba.PuedeVerGesto(etiquetaDesde);
         if (textoGesto.gameObject.activeSelf != ver)
             textoGesto.gameObject.SetActive(ver);
         if (!ver)
@@ -2626,15 +2651,10 @@ public partial class ControlManos : MonoBehaviour
             textoGesto.text = Idioma.T(texto);
         textoGesto.transform.localScale = Vector3.one * Mathf.Lerp(0.6f, 1f, desvanecer);
         textoGesto.alpha = desvanecer;
-        Vector3 pos = entreManos
-            ? (Izq.PuntoPellizco + Der.PuntoPellizco) * 0.5f
-            : (sobre.indice + sobre.pulgar + sobre.medio) / 3f;
-        // Más arriba y un poquito DETRÁS de la mano: así no tapa lo que dibujas o borras.
-        Vector3 atras = pos - Cabeza.position;
-        atras.y = 0f;
-        pos += Vector3.up * 0.14f + (atras.sqrMagnitude > 1e-6f ? atras.normalized * 0.05f : Vector3.zero);
-        Vector3 mirar = pos - Cabeza.position;
-        if (mirar.sqrMagnitude > 1e-6f)
-            textoGesto.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(mirar, Vector3.up));
+        // En el cartel de cómic de arriba al centro de tu vista (no tapa lo que dibujas).
+        Vector3 pos;
+        Quaternion rot;
+        CartelArriba.Pose(Cabeza, out pos, out rot);
+        textoGesto.transform.SetPositionAndRotation(pos, rot);
     }
 }

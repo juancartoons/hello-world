@@ -85,6 +85,38 @@ public class Trazo : MonoBehaviour
         return e;
     }
 
+    // Para el SVG "como se ve": el estilo vivo de su capa (hebras, grosor vivo...).
+    public EstiloVivo EstiloActual => Estilo();
+
+    // Para el SVG "como se ve": los puntos de la curva (locales) y el medio grosor en cada uno (local),
+    // igual que los usa la malla de la línea (con las puntas finitas y el grosor de cada nodo).
+    public void PuntosConGrosor(List<Vector3> puntos, List<float> medios)
+    {
+        puntos.Clear();
+        medios.Clear();
+        if (nodos.Count < 2 || crudos.Count > 0)
+            return;
+        muestras.Clear();
+        multiplicadores.Clear();
+        AsegurarAsas();
+        MuestrearBezier(muestras);
+        largos.Clear();
+        float total = 0f;
+        largos.Add(0f);
+        for (int i = 1; i < muestras.Count; i++)
+        {
+            total += Vector3.Distance(muestras[i - 1], muestras[i]);
+            largos.Add(total);
+        }
+        if (total < 1e-5f)
+            return;
+        for (int i = 0; i < muestras.Count; i++)
+        {
+            puntos.Add(muestras[i]);
+            medios.Add(MedioGrosor(i, total));
+        }
+    }
+
     // Para grabar el proceso: qué líneas cambiaron desde la última muestra.
     public static bool registrarCambios;
     public static readonly HashSet<Trazo> modificados = new HashSet<Trazo>();
@@ -135,6 +167,11 @@ public class Trazo : MonoBehaviour
             return total;
         }
     }
+
+    // Para el halo (Dibujo lo dibuja con la misma malla de la línea).
+    public Mesh Malla => malla;
+    MeshRenderer rendererLinea;
+    public MeshRenderer RendererLinea => rendererLinea != null ? rendererLinea : (rendererLinea = GetComponent<MeshRenderer>());
 
     public void Configurar(Material material, Material rellenoMat, float anchoInicial, EstiloLinea estiloInicial)
     {
@@ -325,6 +362,21 @@ public class Trazo : MonoBehaviour
             asaEntrada[i] = desplazamiento;
             asaSalida[i] = espejo;
         }
+        Reconstruir();
+    }
+
+    // Mueve SOLO un asa (la otra se queda como estaba): el nodo queda como esquina (como Alt en Illustrator).
+    // Un asa en cero = ese lado sale recto del nodo.
+    public void MoverAsaSola(int i, bool salida, Vector3 desplazamiento)
+    {
+        AsegurarAsas();
+        if (i < 0 || i >= nodos.Count)
+            return;
+        asaManual[i] = true;
+        if (salida)
+            asaSalida[i] = desplazamiento;
+        else
+            asaEntrada[i] = desplazamiento;
         Reconstruir();
     }
 

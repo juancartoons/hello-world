@@ -47,6 +47,9 @@ public class PanelArriba : MonoBehaviour
     public BotonTocable btnPlano, btnFondo, btnGuardar, btnCargar, btnBorrarTodo, btnSvg, btnFoto;
     public BotonTocable[] btnCapas = new BotonTocable[0];
     public BotonTocable[] btnVer = new BotonTocable[0];
+    // El estilo de cada capa, en su fila de la lista de Capas: Boceto (No/Gris/Azul) y Plano (propio/unido).
+    public BotonTocable[] btnBocetoCapa = new BotonTocable[0];
+    public BotonTocable[] btnPlanoCapa = new BotonTocable[0];
     [Header("Capas (plegable, encima de la línea de tiempo)")]
     [Tooltip("Botón \"+ Capa 1\": abre o cierra la lista de capas")]
     public BotonTocable btnCapasPlegar;
@@ -177,6 +180,26 @@ public class PanelArriba : MonoBehaviour
                 int capa = i;
                 Conectar(btnVer[i], () => dibujo.AlternarVerCapa(capa));
             }
+            // Boceto y Plano de una capa: esa capa queda elegida y se cambia su estilo.
+            for (int i = 0; i < btnBocetoCapa.Length; i++)
+            {
+                int capa = i;
+                Conectar(btnBocetoCapa[i], () =>
+                {
+                    dibujo.SeleccionarCapa(capa);
+                    if (dibujo.temblor != null)
+                        dibujo.temblor.SiguienteBoceto();
+                });
+            }
+            for (int i = 0; i < btnPlanoCapa.Length; i++)
+            {
+                int capa = i;
+                Conectar(btnPlanoCapa[i], () =>
+                {
+                    dibujo.SeleccionarCapa(capa);
+                    dibujo.AlternarUnirPlano();
+                });
+            }
         }
 
         if (grabador != null)
@@ -296,6 +319,21 @@ public class PanelArriba : MonoBehaviour
             bool capaVisible = dibujo.capas[i].visible;
             btnVer[i].PonerTexto(capaVisible ? "Ver" : "Oculta");
             btnVer[i].Marcar(!capaVisible);
+        }
+        for (int i = 0; i < btnBocetoCapa.Length && i < dibujo.capas.Count; i++)
+        {
+            if (btnBocetoCapa[i] == null)
+                continue;
+            int boceto = Mathf.Clamp(dibujo.capas[i].boceto, 0, 2);
+            btnBocetoCapa[i].PonerTexto("Boceto: " + NombresBoceto[boceto]);
+            btnBocetoCapa[i].Marcar(boceto > 0);
+        }
+        for (int i = 0; i < btnPlanoCapa.Length && i < dibujo.capas.Count; i++)
+        {
+            if (btnPlanoCapa[i] == null)
+                continue;
+            btnPlanoCapa[i].PonerTexto(dibujo.capas[i].unido ? "Plano: unido" : "Plano: propio");
+            btnPlanoCapa[i].Marcar(dibujo.capas[i].unido);
         }
         for (int i = 0; i < Dibujo.NumeroDeCapas; i++)
         {
@@ -467,7 +505,7 @@ public class PanelArriba : MonoBehaviour
         Vector3 l = transform.InverseTransformPoint(mundo);
         float abajo = esAyuda || (listaArchivos != null && listaArchivos.activeSelf) ? -0.33f : -0.175f;
         float arriba = capasAbiertas ? filaCapasY + Dibujo.NumeroDeCapas * pasoCapasY : 0.225f;
-        float lado = capasAbiertas ? 0.34f : 0.27f;
+        float lado = capasAbiertas ? 0.375f : 0.27f; // con Capas abiertas: Boceto y Plano llegan hasta x = 0.37
         return Mathf.Abs(l.x) < lado && l.y > abajo && l.y < arriba && Mathf.Abs(l.z) < 0.06f;
     }
 
@@ -851,6 +889,8 @@ public class PanelArriba : MonoBehaviour
         }
     }
 
+    static readonly string[] NombresBoceto = { "No", "Gris", "Azul" };
+
     void RefrescarMedios()
     {
         bool grabando = grabador != null && grabador.Grabando;
@@ -933,7 +973,7 @@ public class PanelArriba : MonoBehaviour
         else if (!string.IsNullOrEmpty(Galeria.UltimoGuardado))
             texto = Galeria.UltimoGuardado;
         else
-            texto = dibujo != null ? "Las líneas vivas y el boceto son de la capa activa: " + dibujo.CapaActual.nombre : "";
+            texto = "Video anim: la animación en MP4, en Descargas → JCartoons";
         textoMedios.text = Idioma.T(texto);
     }
 
@@ -1216,7 +1256,9 @@ public class PanelArriba : MonoBehaviour
     static readonly Dictionary<string, string> AyudaIngles = new Dictionary<string, string>
     {
         { "AYUDA", "HELP\nThis blue panel is a copy of the one above. Tap any button here and I'll explain what it does and how to use it. Here the buttons don't change your drawing.\nTap \"?\" to close help." },
-        { "ANIMAR (página)", "ANIMATE (page)\nVideos, photo, SVG, reference images and the style of the active layer (wobble, strands, sketch, plane). Plane 2D/3D, Background, Save, Files and Clear all are in the left hand menu." },
+        { "ANIMAR (página)", "ANIMATE (page)\nAnim video: exports your animation as an MP4. Photo, SVG, Record process and images are in My files (left hand menu → Files). Sketch and Plane of each layer: in the Layers list." },
+        { "BOCETO (de esta capa)", "SKETCH (this layer)\nNo = normal ink. Gray or Blue = sketch pencil: it does not appear in photos or videos (to draw on top in another layer)." },
+        { "PLANO (de esta capa)", "PLANE (this layer)\nOwn: the layer has its own sheet in Plane 2D. Joined: it uses the same sheet as the other joined layers (sketch behind, ink in front)." },
         { "BOCAS (página)", "MOUTHS (page)\nLipsync: save mouth shapes (A, E, I, O, U, M...) and the app makes the keys from your voice or an audio." },
         { "TÍTERE (página)", "PUPPET (page)\nCharacters that walk, run and jump with your hand. Create, record, walk cycles and build your own characters." },
         { "ZOOM", "ZOOM\nHow many frames fit on the timeline: All, 400, 100 or 25. With fewer frames the keys (orange marks) are farther apart and easier to touch." },
@@ -1229,18 +1271,18 @@ public class PanelArriba : MonoBehaviour
         { "- CLAVE", "- KEY\nRemoves the active layer's key at this frame.\nTo MOVE a key: pinch it on the bar and drag it." },
         { "FPS", "FPS\nAnimation speed: 12, 24, 30 or 60 frames per second." },
         { "CAPAS (lista plegable)", "LAYERS (folding list)\nOpens or closes the list of layers above the timeline. Each row: pick the layer, Show/Hidden and ITS keys (each layer has its own keys).\nThe big bar shows the active layer's keys." },
-        { "CAPA 1-4", "LAYER 1-4\nChoose the layer you draw on. Each layer has its own style (wobble, strands, sketch, plane, magnet) and its own keys.\nTip: sketch on layer 1 (Sketch: Gray) and ink on layer 2." },
+        { "CAPA 1-4", "LAYER 1-4\nChoose the layer you draw on. Each layer has its own style: wobble and strands in the palette (left palm); Sketch and Plane here, in its row.\nTip: sketch on layer 1 (Sketch: Gray) and ink on layer 2." },
         { "VER / OCULTA", "SHOW / HIDDEN\nShows or hides that layer. A hidden layer can't be edited." },
         { "LIBRE (3D) / PLANO (2D)", "FREE (3D) / PLANE (2D)\nPlane: you draw on an invisible sheet in front of you (if you move your finger more than ~2.5 cm toward you, the line ends, like lifting the pencil; if you push it BEHIND the sheet, the line goes on and you see a copy of your hand on the sheet). Free: you draw in the air, in 3D.\nWith a Sketch layer in Plane mode, you draw with a pencil on paper." },
-        { "FONDO", "BACKGROUND\nChanges the background: grid, white, your real room (passthrough), 3D 360 backgrounds (a room, Rome at night and a sunrise, with depth) or your own 360 photos (pick them in Image + > 360 background)." },
+        { "FONDO", "BACKGROUND\nChanges the background: grid, white, your real room (passthrough), 3D 360 backgrounds with depth (a room, Rome, Venice, the sea, a cruise ship, a park, the Moon...) or your own 360 photos (My files → Images → Bring image → 360 background)." },
         { "ARCHIVOS", "FILES\nOpens \"My files\": your drawings, videos, photos and SVG with a thumbnail. Filters on top. Tap one to select it, then Open (or View) or Delete (tap again to confirm).\nAt the top: the current file with Save, Save copy and Rename, and the language button." },
         { "CREAR SVG", "CREATE SVG\nExports the lines as vector curves (for Illustrator, Inkscape...). In Plane mode it's seen straight on; in 3D, from where you are." },
-        { "FOTO", "PHOTO\nSaves a PNG image of the drawing from where you are. Panels, nodes, images and sketch layers don't appear.\nWHERE: Quest Files app → Pictures → JCartoons." },
+        { "FOTO", "PHOTO\nSaves a PNG image of the drawing from where you are. Panels, nodes, images and sketch layers don't appear.\nWHERE: Quest Files app → Downloads → JCartoons." },
         { "GRABAR (proceso)", "RECORD (process)\nRecords how you draw: your hands and the lines appearing. Tap again (Stop) to finish.\nThen: Process video turns it into an MP4." },
         { "PAUSA / REANUDAR", "PAUSE / RESUME\nOnly shows while recording the process. Pause stops recording for a moment (that time isn't in the video); Resume keeps recording. What you do while paused appears all at once when you resume." },
-        { "VIDEO PROCESO", "PROCESS VIDEO\nTurns your recording into an MP4: lines + your hands (gloves and sleeves). Choose the speed first with Speed.\nWHERE: Quest Files app → Movies → JCartoons." },
+        { "VIDEO PROCESO", "PROCESS VIDEO\nTurns your recording into an MP4: lines + your hands (gloves and sleeves). Choose the speed first with Speed.\nWHERE: Quest Files app → Downloads → JCartoons." },
         { "VEL x1 / x2 / x4 / x8", "SPEED x1 / x2 / x4 / x8\nHow fast the process video plays." },
-        { "VIDEO ANIM", "ANIM VIDEO\nExports the animation as an MP4 (1280x720), with the mouths' audio if there is one. You need at least 2 keys.\nWHERE: Quest Files app → Movies → JCartoons." },
+        { "VIDEO ANIM", "ANIM VIDEO\nExports the animation as an MP4 (1280x720), with the mouths' audio if there is one. You need at least 2 keys.\nWHERE: Quest Files app → Downloads → JCartoons." },
         { "IMAGEN +", "IMAGE +\nOpens your Quest images (Downloads, Camera, screenshots, WhatsApp, Facebook...). Tap one to see it big and choose: Import (it appears in front of you) or, if it's a 360 photo, 360 background. Or pinch it and pull it out of the panel: it stays where you drop it.\nTo trace: in Plane mode, drop the image near the plane and it sticks behind it." },
         { "IMAGEN -", "IMAGE -\nRemoves the selected image (bluish one). Pinch an image to select it, or tap the X on its corner." },
         { "IMÁGENES: VER / OCULTAS", "IMAGES: SHOW / HIDDEN\nHides or shows all reference images at once." },
@@ -1302,10 +1344,16 @@ public class PanelArriba : MonoBehaviour
     {
         var d = new Dictionary<BotonTocable, string>();
         // Pestañas y barra de arriba
-        Poner(d, btnPaginaAnimar, "ANIMAR (página)\nVideos, foto, SVG, imágenes de referencia y el estilo de la capa activa (temblor, hebras, boceto, plano). Plano 2D/3D, Fondo, Guardar, Archivos y Borrar todo están en el menú de la mano izquierda.");
+        Poner(d, btnPaginaAnimar, "ANIMAR (página)\nVideo anim: exporta tu animación en MP4. Foto, SVG, Grabar proceso e imágenes están en Mis archivos (menú de la mano izquierda → Archivos). Boceto y Plano de cada capa: en la lista de Capas.");
         Poner(d, btnPaginaMedios, "MEDIOS (página)\nVideos, grabar tu proceso, imágenes de referencia y el estilo de la capa activa: líneas vivas, boceto, plano e imán.");
         Poner(d, btnPaginaBocas, "BOCAS (página)\nLipsync: guarda formas de boca (A, E, I, O, U, M...) y la app crea las claves según tu voz o un audio.");
         Poner(d, btnPaginaTitere, "TÍTERE (página)\nPersonajes que caminan, corren y saltan con tu mano. Crear, grabar, ciclos de caminado y armar tus propios personajes.");
+        if (btnBocetoCapa != null)
+            foreach (var b in btnBocetoCapa)
+                Poner(d, b, "BOCETO (de esta capa)\nNo = tinta normal. Gris o Azul = lápiz de boceto: no sale en fotos ni videos (para dibujar encima en otra capa).");
+        if (btnPlanoCapa != null)
+            foreach (var b in btnPlanoCapa)
+                Poner(d, b, "PLANO (de esta capa)\nPropio: la capa tiene su propia hoja en Plano 2D. Unido: usa la misma hoja que las otras capas unidas (boceto atrás, tinta adelante).");
         Poner(d, btnZoom, "ZOOM\nCuántos fotogramas caben en la barra de tiempo: Todo, 400, 100 o 25. Con menos fotogramas ves las claves (marcas naranjas) más separadas y es más fácil tocarlas.");
         Poner(d, btnSeguir, "FIJAR AQUÍ / SEGUIRME\nFijar aquí: el panel se queda en ese lugar y siempre visible. Seguirme: vuelve a aparecer solo cuando miras hacia arriba.\nTambién: pellizca el asa azul para moverlo; pellizcando además con la izquierda, separa las manos = más grande.");
 
@@ -1320,24 +1368,24 @@ public class PanelArriba : MonoBehaviour
         Poner(d, btnCapasPlegar, "CAPAS (lista plegable)\nAbre o cierra la lista de capas, encima de la línea de tiempo. Cada fila: elegir la capa, Ver/Oculta y SUS claves (cada capa tiene sus propias claves).\nLa barra grande muestra las claves de la capa activa.");
         if (btnCapas != null)
             foreach (var b in btnCapas)
-                Poner(d, b, "CAPA 1-4\nElige en qué capa dibujas. Cada capa tiene su estilo (temblor, hebras, boceto, plano, imán) en la página Medios.\nIdea: boceto en la capa 1 (Medios → Boceto: Gris) y tinta encima en la capa 2.");
+                Poner(d, b, "CAPA 1-4\nElige en qué capa dibujas. Cada capa tiene su estilo: temblor y hebras en la paleta (palma izquierda); Boceto y Plano aquí, en su fila.\nIdea: boceto en la capa 1 (Boceto: Gris) y tinta encima en la capa 2.");
         if (btnVer != null)
             foreach (var b in btnVer)
                 Poner(d, b, "VER / OCULTA\nMuestra o esconde esa capa. Una capa oculta no se puede editar.");
         Poner(d, btnPlano, "LIBRE (3D) / PLANO (2D)\nPlano: dibujas sobre una hoja invisible frente a ti (si alejas el dedo hacia ti más de ~2.5 cm, la línea se corta, como levantar el lápiz; si lo pasas DETRÁS de la hoja, la línea sigue y ves una copia de tu mano sobre la hoja). Libre: dibujas en el aire, en 3D.\nCon una capa de Boceto en Plano, dibujas con lápiz sobre papel.");
-        Poner(d, btnFondo, "FONDO\nCambia el fondo: cuadrícula, blanco, tu cuarto real (passthrough), fondos 360 en 3D (un cuarto, Roma de noche y un amanecer, con profundidad) o tus fotos 360 (elígelas en Imagen + > Fondo 360).");
+        Poner(d, btnFondo, "FONDO\nCambia el fondo: cuadrícula, blanco, tu cuarto real (passthrough), fondos 360 en 3D con profundidad (un cuarto, Roma, Venecia, el mar, un crucero, un parque, la Luna...) o tus fotos 360 (Mis archivos → Imágenes → Traer imagen → Fondo 360).");
         Poner(d, btnGuardar, "GUARDAR\nGuarda el dibujo con su propio nombre (Dibujo 1, Dibujo 2...). Si ya tiene nombre, lo actualiza.\nPara empezar uno NUEVO: Borrar todo y luego Guardar (recibe otro nombre).");
         Poner(d, btnCargar, "ARCHIVOS\nAbre \"Mis archivos\": tus dibujos, videos, fotos y SVG con una miniatura. Filtros arriba. Toca uno para elegirlo y luego Abrir (o Ver) o Borrar (pide tocar otra vez).\nGuarda antes lo que tienes (Guardar). Si te arrepientes de abrir otro: deshacer.");
         Poner(d, btnBorrarTodo, "BORRAR TODO\nBorra todo el dibujo y empieza uno nuevo (al guardar recibe otro nombre). Se puede deshacer.");
         Poner(d, btnSvg, "CREAR SVG\nExporta las líneas como curvas vectoriales (para Illustrator, Inkscape...). En Plano se ve de frente al plano; en 3D, desde donde estás.");
-        Poner(d, btnFoto, "FOTO\nGuarda una imagen PNG del dibujo desde donde estás. Los paneles, nodos, imágenes y capas de boceto no salen.\nDÓNDE QUEDA: app Archivos del Quest → Pictures → JCartoons.");
+        Poner(d, btnFoto, "FOTO\nGuarda una imagen PNG del dibujo desde donde estás. Los paneles, nodos, imágenes y capas de boceto no salen.\nDÓNDE QUEDA: app Archivos del Quest → Descargas → JCartoons.");
 
         // Medios
         Poner(d, btnGrabar, "GRABAR (proceso)\nGraba cómo dibujas: tus manos y cómo aparecen las líneas. Toca otra vez (Detener) para parar.\nDespués: Video proceso lo convierte en MP4.");
         Poner(d, btnPausaGrabar, "PAUSA / REANUDAR\nSolo aparece mientras grabas el proceso. Pausa deja de grabar un momento (ese tiempo no sale en el video); Reanudar sigue grabando. Lo que hagas en pausa aparece de una vez al reanudar.");
-        Poner(d, btnVideoProceso, "VIDEO PROCESO\nConvierte tu grabación (botón Grabar) en un video MP4: líneas + manos en gris. Elige antes la velocidad con Vel.\nDÓNDE QUEDA: app Archivos del Quest → Movies → JCartoons (también lo dice abajo en esta página).");
+        Poner(d, btnVideoProceso, "VIDEO PROCESO\nConvierte tu grabación (botón Grabar) en un video MP4: líneas + manos en gris. Elige antes la velocidad con Vel.\nDÓNDE QUEDA: app Archivos del Quest → Descargas → JCartoons (también lo dice abajo en esta página).");
         Poner(d, btnVelocidad, "VEL x1 / x2 / x4 / x8\nQué tan rápido se ve el video del proceso.");
-        Poner(d, btnVideoAnim, "VIDEO ANIM\nExporta la animación como MP4 (1280x720), con el audio de las bocas si hay. Necesitas al menos 2 claves.\nDÓNDE QUEDA: app Archivos del Quest → Movies → JCartoons.");
+        Poner(d, btnVideoAnim, "VIDEO ANIM\nExporta la animación como MP4 (1280x720), con el audio de las bocas si hay. Necesitas al menos 2 claves.\nDÓNDE QUEDA: app Archivos del Quest → Descargas → JCartoons.");
         Poner(d, btnImagenMas, "IMAGEN +\nAbre las imágenes de tu Quest (Descargas, Cámara, capturas, WhatsApp, Facebook...). Toca una para verla en grande y elige: Importar (aparece frente a ti) o, si es una foto 360, Fondo 360. O pellízcala y sácala del panel: queda donde la sueltes.\nPara calcar: en Plano, suelta la imagen cerca del plano y se pega detrás.");
         Poner(d, btnImagenMenos, "IMAGEN -\nQuita la imagen seleccionada (la que tiene tono azul). Pellizca una imagen para elegirla.");
         Poner(d, btnImagenesVer, "IMÁGENES: VER / OCULTAS\nEsconde o muestra todas las imágenes de referencia a la vez.");
@@ -1364,7 +1412,7 @@ public class PanelArriba : MonoBehaviour
         // Títere
         Poner(d, btnTitere, "TIPO\nElige qué personaje crea el botón Crear: Palito, Musculoso, Gordito, Flaco o Niño.");
         Poner(d, btnMuneco, "CREAR / PARAR\nCrear: aparece el personaje (en la Capa 4) y se enciende con tu mano DERECHA (ponla frente a ti un segundo). Lados = caminar/correr · mano abajo = agacharse · golpe arriba = saltar.\nApagar: Parar, palma arriba o choca los cinco con la otra mano. Esconderlos: Ver/Oculta de la Capa 4. Borrar uno: acerca la mano y toca la X de su marco.");
-        Poner(d, btnGrabarTitere, "GRABAR (títere)\nCuenta 3 segundos y guarda una clave por fotograma de los personajes encendidos. Parar = terminar. Después: Play, corrige claves y exporta con Video anim (Medios).");
+        Poner(d, btnGrabarTitere, "GRABAR (títere)\nCuenta 3 segundos y guarda una clave por fotograma de los personajes encendidos. Parar = terminar. Después: Play, corrige claves y exporta con Video anim (página Animar).");
         Poner(d, btnPosar, "POSAR DEDOS\nEl índice y el medio derechos acomodan las piernas del personaje; pellizco IZQUIERDO = guardar una clave. Toca otra vez para terminar.");
         Poner(d, btnCiclo, "CICLO\nEl caminado: Normal, Con estilo (Richard Williams: paso alto, brazos grandes), Sigiloso (Ken Harris: agachado, el pie pasa rápido por el medio y se apoya con cuidado) o tus ciclos guardados.");
         Poner(d, btnGuardarCiclo, "GUARDAR CICLO\nGuarda tu propio caminado: 1) anima al menos 3 claves de un paso con las piernas del personaje (la última igual a la primera), 2) toca Guardar ciclo, 3) elígelo con Ciclo.");

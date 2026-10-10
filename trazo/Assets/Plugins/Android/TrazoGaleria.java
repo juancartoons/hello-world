@@ -12,8 +12,8 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-// Copia un video o una foto de TrazoVR a las carpetas públicas del Quest (Movies/TrazoVR, Pictures/TrazoVR),
-// para que se vean en la app "Archivos" del visor y se puedan pasar fácil al teléfono o al PC.
+// Copia un archivo de JCartoons (video, foto o SVG) a una carpeta pública del Quest (Download/JCartoons),
+// para que se vea en la app "Archivos" del visor y se pueda pasar fácil al teléfono o al PC.
 public class TrazoGaleria {
     public static String publicar(Context ctx, String ruta, String mime, String carpeta) {
         if (ctx == null || Build.VERSION.SDK_INT < 29)
@@ -30,7 +30,10 @@ public class TrazoGaleria {
             v.put(MediaStore.MediaColumns.MIME_TYPE, mime);
             v.put(MediaStore.MediaColumns.RELATIVE_PATH, carpeta);
             v.put(MediaStore.MediaColumns.IS_PENDING, 1);
-            Uri coleccion = mime.startsWith("video")
+            // Descargas acepta cualquier archivo (SVG, MP4, PNG...): ahí se encuentra todo junto.
+            Uri coleccion = carpeta.startsWith("Download")
+                    ? MediaStore.Downloads.EXTERNAL_CONTENT_URI
+                    : mime.startsWith("video")
                     ? MediaStore.Video.Media.EXTERNAL_CONTENT_URI
                     : MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
             uri = cr.insert(coleccion, v);

@@ -1,10 +1,12 @@
 using UnityEngine;
 
-// Copia videos y fotos a las carpetas públicas del Quest (plugin TrazoGaleria.java):
-//   videos → Movies/JCartoons   ·   fotos → Pictures/JCartoons
-// Así aparecen en la app "Archivos" del visor. Devuelve la carpeta pública, o "" si no se pudo.
+// Copia videos, fotos y SVG a una carpeta pública del Quest (plugin TrazoGaleria.java):
+//   todo → Download/JCartoons (en la app "Archivos" del visor: Descargas → JCartoons).
+// Devuelve la ruta pública, o "" si no se pudo.
 public static class Galeria
 {
+    public const string Carpeta = "Download/JCartoons";
+
     // Lo último que se guardó (se muestra en la página Medios para que no se pierda el aviso).
     public static string UltimoGuardado = "";
 
@@ -33,7 +35,7 @@ public static class Galeria
     public static string Donde(string publico, string privado)
     {
         if (!string.IsNullOrEmpty(publico))
-            return "app Archivos del Quest → " + publico;
+            return "app Archivos del Quest → " + (publico.StartsWith("Download/") ? "Descargas/" + publico.Substring(9) : publico).Replace("/", " → ");
         return "carpeta Dibujos de la app (con el cable: Android/data/<la app>/files/Dibujos/" + System.IO.Path.GetFileName(privado) + ")";
     }
 }

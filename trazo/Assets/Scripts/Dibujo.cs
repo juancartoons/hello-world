@@ -152,6 +152,8 @@ public class Dibujo : MonoBehaviour
     public Material materialBocetoGris;
     [Tooltip("Líneas de una capa de boceto: azul")]
     public Material materialBocetoAzul;
+    [Tooltip("Halo suave detrás de las líneas (shader TrazoVR/Halo), con un fondo 360 o la realidad")]
+    public Material materialHalo;
     public Figuras figuras;
     public HojasLapiz hojas;
     public Animacion animacion;
@@ -219,6 +221,7 @@ public class Dibujo : MonoBehaviour
 
     void Awake()
     {
+        HaloEncendido = PlayerPrefs.GetInt(ClaveHalo, 1) == 1;
         AsegurarCapas();
         if (animacion == null)
             animacion = GetComponent<Animacion>();
@@ -249,12 +252,23 @@ public class Dibujo : MonoBehaviour
 
     void Update()
     {
-        // Autoguardado del proyecto actual cada 3 minutos (si tiene nombre y hubo cambios).
-        if (Time.time > proximoAutoguardado)
+        // Respaldo rápido (autoguardado.json: lo que se abre solo al volver a la app, aunque la app se cierre de
+        // golpe, por ejemplo con un Build): unos 30 s después de un cambio, cuando la mano izquierda descansa 2 s.
+        if (!ManosQuietas)
+            manosOcupadas = Time.time;
+        bool tranquilo = Time.time - Mathf.Max(ultimoCambio, manosOcupadas) > CalmaAutoguardado && !Titere.Activo
+                         && !ExportadorVideo.Exportando && (animacion == null || !animacion.Reproduciendo);
+        if (cambiosSinRespaldo && tranquilo && Time.time - ultimoRespaldo > CadaRespaldo)
         {
-            proximoAutoguardado = Time.time + 180f;
-            if (HayCambios && !string.IsNullOrEmpty(NombreArchivo) && !Titere.Activo && !ExportadorVideo.Exportando
-                && (animacion == null || !animacion.Reproduciendo))
+            ultimoRespaldo = Time.time;
+            cambiosSinRespaldo = false;
+            Escribir(RutaAuto, JsonUtility.ToJson(DatosParaGuardar()));
+        }
+        // Autoguardado del proyecto con su nombre (con sus imágenes y audio adentro) cada 2 minutos, si hubo cambios.
+        if (Time.time > proximoAutoguardado && tranquilo)
+        {
+            proximoAutoguardado = Time.time + 120f;
+            if (HayCambios && !string.IsNullOrEmpty(NombreArchivo))
                 GuardarProyecto(true);
         }
         // Los destellos rojos se encogen y desaparecen.
@@ -273,10 +287,66 @@ public class Dibujo : MonoBehaviour
         }
     }
 
+    // ---------- Halo (con un fondo 360 o la realidad) ----------
+    // Un halo suave detrás de cada línea (blanco detrás de las oscuras, oscuro detrás de las claras), para que
+    // no se pierdan en el fondo. Solo lo ve la cámara de tus ojos: no sale en fotos, videos ni SVG.
+    const string ClaveHalo = "jcartoons_halo";
+    Material haloClaro, haloOscuro;
+    Camera camaraHalo;
+    public bool HaloEncendido { get; private set; }
+    // El botón Halo de la paleta solo aparece con un fondo 360 o la realidad.
+    public bool HaloDisponible => escenario != null && escenario.modo >= 2 && materialHalo != null;
+
+    public void AlternarHalo()
+    {
+        HaloEncendido = !HaloEncendido;
+        PlayerPrefs.SetInt(ClaveHalo, HaloEncendido ? 1 : 0);
+        PlayerPrefs.Save();
+        Mensaje(HaloEncendido ? "Halo: sí (las líneas se separan del fondo)" : "Halo: no");
+    }
+
+    void LateUpdate()
+    {
+        if (!HaloEncendido || !HaloDisponible)
+            return;
+        if (haloClaro == null)
+        {
+            haloClaro = new Material(materialHalo) { name = "HaloClaro" };
+            haloClaro.SetColor("_BaseColor", new Color(1f, 1f, 1f, 0.85f));
+            haloOscuro = new Material(materialHalo) { name = "HaloOscuro" };
+            haloOscuro.SetColor("_BaseColor", new Color(0.06f, 0.06f, 0.08f, 0.7f));
+        }
+        if (camaraHalo == null || !camaraHalo.isActiveAndEnabled)
+        {
+            camaraHalo = Camera.main;
+            if (camaraHalo == null && ControlManos.Instancia != null && ControlManos.Instancia.Cabeza != null)
+                camaraHalo = ControlManos.Instancia.Cabeza.GetComponent<Camera>();
+            if (camaraHalo == null)
+                return;
+        }
+        foreach (var t in trazos)
+        {
+            if (t == null || t.oculto || t.Invisible || !t.gameObject.activeInHierarchy || EsBoceto(t.capa))
+                continue;
+            var mr = t.RendererLinea;
+            var malla = t.Malla;
+            if (mr == null || !mr.enabled || mr.forceRenderingOff || malla == null || malla.vertexCount == 0)
+                continue;
+            Color c = t.color;
+            float luz = c.r * 0.299f + c.g * 0.587f + c.b * 0.114f;
+            Graphics.DrawMesh(malla, t.transform.localToWorldMatrix, luz < 0.45f ? haloClaro : haloOscuro,
+                              t.gameObject.layer, camaraHalo, 0, null, false, false);
+        }
+    }
+
     void OnApplicationPause(bool pausa)
     {
         if (pausa)
+        {
             Escribir(RutaAuto, JsonUtility.ToJson(DatosParaGuardar()));
+            cambiosSinRespaldo = false;
+            ultimoRespaldo = Time.time;
+        }
     }
 
     void OnApplicationQuit()
@@ -1403,8 +1473,25 @@ public class Dibujo : MonoBehaviour
     // Un archivo .jc es TODO el proyecto: capas, líneas, animación, lápiz, figuras, personajes, bocas
     // y además, adentro, las imágenes de referencia y el audio (así se puede copiar a otro visor o al PC).
     public const string Extension = ".jc";
-    public bool HayCambios { get; private set; }
-    float proximoAutoguardado = 180f;
+    public bool HayCambios
+    {
+        get { return hayCambios; }
+        private set
+        {
+            hayCambios = value;
+            if (value)
+            {
+                cambiosSinRespaldo = true;
+                ultimoCambio = Time.time;
+            }
+        }
+    }
+    bool hayCambios, cambiosSinRespaldo;
+    float ultimoCambio, ultimoRespaldo, manosOcupadas;
+    const float CadaRespaldo = 30f, CalmaAutoguardado = 2f;
+    float proximoAutoguardado = 120f;
+    // La mano izquierda no está haciendo un gesto (no estás dibujando ni editando).
+    static bool ManosQuietas => ControlManos.Instancia == null || ControlManos.Instancia.GestoIzq == ControlManos.Gesto.Ninguno;
     Referencias refs;
     Referencias Refs => refs != null ? refs : (refs = FindFirstObjectByType<Referencias>());
 
@@ -1906,8 +1993,22 @@ public class Dibujo : MonoBehaviour
             Mensaje("No hay líneas para exportar");
             return;
         }
-        string nombre = "dibujo_" + System.DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".svg";
-        Mensaje(Escribir(Path.Combine(Carpeta, nombre), svg) ? "SVG guardado: " + nombre : "No se pudo guardar el SVG");
+        // Dos archivos a la vez: las líneas (curvas editables) y "como se ve" (grosor, hebras y colores).
+        string baseNombre = "dibujo_" + System.DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        string rutaLineas = Path.Combine(Carpeta, baseNombre + "_lineas.svg");
+        string rutaComoSeVe = Path.Combine(Carpeta, baseNombre + "_como_se_ve.svg");
+        if (!Escribir(rutaLineas, svg))
+        {
+            Mensaje("No se pudo guardar el SVG");
+            return;
+        }
+        string comoSeVe = Exportar.SvgComoSeVe(this, adelante);
+        bool dos = comoSeVe != null && Escribir(rutaComoSeVe, comoSeVe);
+        string publico = Galeria.Publicar(rutaLineas, "image/svg+xml", Galeria.Carpeta);
+        if (dos)
+            Galeria.Publicar(rutaComoSeVe, "image/svg+xml", Galeria.Carpeta);
+        Galeria.UltimoGuardado = "SVG " + baseNombre + ": " + Galeria.Donde(publico, rutaLineas);
+        Mensaje((dos ? "2 SVG guardados (líneas y como se ve). " : "SVG guardado. ") + "Búscalos en la " + Galeria.Donde(publico, rutaLineas));
     }
 
     // Capas que ven las fotos y los videos: solo la del dibujo (sin paneles, nodos ni imágenes de referencia).
@@ -1956,7 +2057,7 @@ public class Dibujo : MonoBehaviour
             string ruta = Path.Combine(Carpeta, nombre);
             File.WriteAllBytes(ruta, png);
             GuardarMiniatura(ruta);
-            string publico = Galeria.Publicar(ruta, "image/png", "Pictures/JCartoons");
+            string publico = Galeria.Publicar(ruta, "image/png", Galeria.Carpeta);
             Galeria.UltimoGuardado = "Foto " + nombre + ": " + Galeria.Donde(publico, ruta);
             Mensaje("Foto guardada. Búscala en la " + Galeria.Donde(publico, ruta));
         }

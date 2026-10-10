@@ -75,6 +75,9 @@ public static class ArmarEscenaTrazo
         var shaderEncima = Shader.Find("TrazoVR/Encima");
         var matAsa = Mat("Asa", shaderEncima != null ? shaderEncima : unlit, new Color(0.2f, 0.8f, 0.3f));
         var matIman = Mat("Iman", unlit, new Color(0.1f, 0.95f, 0.35f));
+        // Halo suave detrás de las líneas (con un fondo 360 o la realidad). Sin el shader, no hay halo.
+        var shaderHalo = Shader.Find("TrazoVR/Halo");
+        var matHalo = shaderHalo != null ? Mat("Halo", shaderHalo, new Color(1f, 1f, 1f, 0.85f)) : null;
         var matCaja = Mat("Caja", unlit, new Color(0.65f, 0.78f, 1f));
         var matGuia = Mat("Guia", unlit, new Color(0.7f, 0.8f, 0.95f));
         var matPanel = Mat("Panel", unlit, new Color(0.97f, 0.97f, 0.98f));
@@ -209,6 +212,7 @@ public static class ArmarEscenaTrazo
         dibujo.materialBorrado = matBorrado;
         dibujo.materialSeleccion = matSeleccion;
         dibujo.materialLinea = matLinea;
+        dibujo.materialHalo = matHalo;
         dibujo.materialRelleno = matRelleno;
         dibujo.materialGuia = matGuia;
         dibujo.escenario = escenario;
@@ -331,7 +335,8 @@ public static class ArmarEscenaTrazo
         arriba.exportador = exportador;
         arriba.titere = titere;
         control.panelArriba = arriba;
-        var aviso = Texto(raiz.transform, "", new Vector3(0f, 1.4f, 0.6f), new Vector2(0.4f, 0.05f), new Color(0.1f, 0.1f, 0.12f));
+        // Avisos y nombre del gesto: el mismo cartel de cómic, arriba al centro de tu vista (CartelArriba).
+        var aviso = Texto(raiz.transform, "", new Vector3(0f, 1.4f, 0.6f), new Vector2(0.36f, 0.05f), new Color(0.1f, 0.1f, 0.12f));
         aviso.gameObject.name = "Aviso";
         aviso.fontSizeMax = 0.3f;
         panel.textoAviso = aviso;
@@ -344,17 +349,17 @@ public static class ArmarEscenaTrazo
         vinetaAviso.fuente = fuenteComic;
         vinetaAviso.profundidadSombra = 0.02f;
 
-        // Etiqueta que flota sobre la mano con el nombre del gesto (para aprender).
-        var ayuda = Texto(raiz.transform, "", new Vector3(0f, 1.3f, 0.5f), new Vector2(0.22f, 0.05f), new Color(0.1f, 0.25f, 0.6f));
+        // El nombre del gesto (para aprender).
+        var ayuda = Texto(raiz.transform, "", new Vector3(0f, 1.3f, 0.5f), new Vector2(0.26f, 0.06f), new Color(0.1f, 0.25f, 0.6f));
         ayuda.gameObject.name = "AyudaGesto";
         ayuda.fontSizeMax = 0.25f;
         control.textoGesto = ayuda;
-        // El nombre del gesto, en una viñeta pequeña, arriba y detrás de tu mano.
+        // El nombre del gesto, en una viñeta pequeña.
         var vinetaGesto = ayuda.gameObject.AddComponent<VinetaComic>();
         vinetaGesto.texto = ayuda;
         vinetaGesto.ajustarAlTexto = true;
-        vinetaGesto.cola = 0; // sin colita (va detrás de la mano)
-        ayuda.fontSizeMax = 0.17f;
+        vinetaGesto.cola = 0; // sin colita
+        ayuda.fontSizeMax = 0.2f;
         vinetaGesto.materialTrama = matTrama;
         vinetaGesto.materialNegro = matTutNegro;
         vinetaGesto.fuente = fuenteComic;
@@ -636,17 +641,28 @@ public static class ArmarEscenaTrazo
         Object.DestroyImmediate(fondoCapas.GetComponent<Collider>());
         fondoCapas.transform.SetParent(capasGo.transform, false);
         float filasAlto = Dibujo.NumeroDeCapas * panel.pasoCapasY;
-        fondoCapas.transform.localPosition = new Vector3(-0.045f, panel.filaCapasY + filasAlto * 0.5f - panel.pasoCapasY * 0.5f, 0.006f);
-        fondoCapas.transform.localScale = new Vector3(0.6f, filasAlto + 0.01f, 1f);
+        fondoCapas.transform.localPosition = new Vector3(0.0125f, panel.filaCapasY + filasAlto * 0.5f - panel.pasoCapasY * 0.5f, 0.006f);
+        fondoCapas.transform.localScale = new Vector3(0.715f, filasAlto + 0.01f, 1f);
         SinSombras(fondoCapas.GetComponent<Renderer>(), matPanel);
         panel.btnCapas = new BotonTocable[Dibujo.NumeroDeCapas];
         panel.btnVer = new BotonTocable[Dibujo.NumeroDeCapas];
+        // El estilo de cada capa (antes en la página Animar): Boceto y Plano, a la derecha de sus claves.
+        panel.btnBocetoCapa = new BotonTocable[Dibujo.NumeroDeCapas];
+        panel.btnPlanoCapa = new BotonTocable[Dibujo.NumeroDeCapas];
         for (int i = 0; i < Dibujo.NumeroDeCapas; i++)
         {
             float y = panel.filaCapasY + i * panel.pasoCapasY;
             panel.btnCapas[i] = Boton(capasGo.transform, "Capa " + (i + 1), new Vector3(-0.3f, y, 0f), matBoton, matBotonMarcado);
             panel.btnVer[i] = Boton(capasGo.transform, "Ver", new Vector3(-0.25f, y, 0f), matBoton, matBotonMarcado);
             panel.btnVer[i].transform.localScale = new Vector3(0.042f, 0.022f, 0.008f);
+            panel.btnBocetoCapa[i] = Boton(capasGo.transform, "Boceto: No", new Vector3(0.275f, y, 0f), matBoton, matBotonMarcado);
+            panel.btnPlanoCapa[i] = Boton(capasGo.transform, "Plano: propio", new Vector3(0.337f, y, 0f), matBoton, matBotonMarcado);
+            foreach (var bc in new[] { panel.btnBocetoCapa[i], panel.btnPlanoCapa[i] })
+            {
+                bc.transform.localScale = new Vector3(0.058f, 0.022f, 0.008f);
+                if (bc.etiqueta != null)
+                    bc.etiqueta.rectTransform.sizeDelta = new Vector2(0.054f, 0.018f);
+            }
         }
 
         // Línea de tiempo
@@ -668,8 +684,8 @@ public static class ArmarEscenaTrazo
         SinSombras(cabezal.GetComponent<Renderer>(), matCabezal);
         panel.cabezal = cabezal.transform;
 
-        // Pestañas (Animar y Medios ahora son una sola página: "Animar")
-        string[] pestanas = { "Animar", "Bocas", "Títere", "Zoom: 100", "Fijar aquí" };
+        // Pestañas: Animar, Bocas y Títere (el menú de arriba es solo para animar). Fijar aquí, a la derecha.
+        string[] pestanas = { "Animar", "Bocas", "Títere" };
         var p = new BotonTocable[pestanas.Length];
         for (int i = 0; i < pestanas.Length; i++)
             p[i] = Boton(c, pestanas[i], new Vector3(-0.2f + i * 0.08f, 0.079f, 0f), matBoton, matBotonMarcado);
@@ -677,17 +693,18 @@ public static class ArmarEscenaTrazo
         panel.btnPaginaMedios = null;
         panel.btnPaginaBocas = p[1];
         panel.btnPaginaTitere = p[2];
-        panel.btnZoom = p[3];
-        panel.btnSeguir = p[4];
+        panel.btnSeguir = Boton(c, "Fijar aquí", new Vector3(0.2f, 0.079f, 0f), matBoton, matBotonMarcado);
         // Ayuda: "?" en la esquina de arriba a la derecha (abre abajo una copia azul que explica cada botón).
         panel.btnAyuda = Boton(c, "?", new Vector3(0.215f, 0.195f, 0f), matBoton, matBotonMarcado);
         panel.btnAyuda.transform.localScale = new Vector3(0.03f, 0.022f, 0.008f);
 
         // Reproductor: siempre visible justo debajo de la línea de tiempo (no está dentro de ninguna página).
-        string[] controles = { "Inicio", "<", "Play", ">", "+ Clave", "- Clave", "12 fps" };
+        // (Zoom va aquí: es de la línea de tiempo.)
+        string[] controles = { "Inicio", "<", "Play", ">", "+ Clave", "- Clave", "12 fps", "Zoom: 100" };
         var b = new BotonTocable[controles.Length];
         for (int i = 0; i < controles.Length; i++)
-            b[i] = Boton(c, controles[i], new Vector3(-0.192f + i * 0.064f, 0.11f, 0f), matBoton, matBotonMarcado);
+            b[i] = Boton(c, controles[i], new Vector3(-0.21f + i * 0.06f, 0.11f, 0f), matBoton, matBotonMarcado);
+        panel.btnZoom = b[7];
         panel.btnInicio = b[0];
         panel.btnAnterior = b[1];
         panel.btnPlay = b[2];
@@ -696,36 +713,23 @@ public static class ArmarEscenaTrazo
         panel.btnQuitarClave = b[5];
         panel.btnFps = b[6];
 
-        // ----- Página Animar (con lo que antes era Medios). Plano, Fondo, Guardar, Archivos y Borrar todo
-        //       están en el menú de la mano (no se repiten aquí). -----
+        // ----- Página Animar: solo animación. Grabar proceso, Foto, SVG e imágenes están en Mis archivos;
+        //       Boceto y Plano, en cada fila de Capas. -----
         var animar = Pagina(c, "PaginaAnimar");
         panel.paginaAnimar = animar.gameObject;
         panel.paginaMedios = null;
-        string[] fila1 = { "Grabar", "Pausa", "Video proceso", "Vel x1", "Video anim", "Foto", "Crear SVG" };
-        var f1 = new BotonTocable[fila1.Length];
-        for (int i = 0; i < fila1.Length; i++)
-        {
-            f1[i] = Boton(animar, fila1[i], new Vector3(-0.204f + i * 0.068f, 0.048f, 0f), matBoton, matBotonMarcado);
-            f1[i].transform.localScale = new Vector3(0.062f, 0.022f, 0.008f);
-            if (f1[i].etiqueta != null)
-                f1[i].etiqueta.rectTransform.sizeDelta = new Vector2(0.058f, 0.018f);
-        }
-        panel.btnGrabar = f1[0];
-        panel.btnPausaGrabar = f1[1];
-        panel.btnVideoProceso = f1[2];
-        panel.btnVelocidad = f1[3];
-        panel.btnVideoAnim = f1[4];
-        panel.btnFoto = f1[5];
-        panel.btnSvg = f1[6];
-        string[] fila2 = { "Imagen +", "Imagen -", "Imágenes: ver", "Boceto: No", "Plano: propio" };
-        var f2 = new BotonTocable[fila2.Length];
-        for (int i = 0; i < fila2.Length; i++)
-            f2[i] = Boton(animar, fila2[i], new Vector3(-0.2f + i * 0.1f, 0.018f, 0f), matBoton, matBotonMarcado);
-        panel.btnImagenMas = f2[0];
-        panel.btnImagenMenos = f2[1];
-        panel.btnImagenesVer = f2[2];
-        panel.btnBoceto = f2[3];
-        panel.btnUnirPlano = f2[4];
+        panel.btnVideoAnim = BotonAncho(animar, "Video anim", new Vector3(-0.17f, 0.04f, 0f), matBoton, matBotonMarcado);
+        panel.btnGrabar = null;
+        panel.btnPausaGrabar = null;
+        panel.btnVideoProceso = null;
+        panel.btnVelocidad = null;
+        panel.btnFoto = null;
+        panel.btnSvg = null;
+        panel.btnImagenMas = null;
+        panel.btnImagenMenos = null;
+        panel.btnImagenesVer = null;
+        panel.btnBoceto = null;
+        panel.btnUnirPlano = null;
         // El temblor y sus opciones ahora están en la paleta de colores (palma izquierda).
         panel.btnTemblor = null;
         panel.btnHebras = null;
@@ -739,7 +743,7 @@ public static class ArmarEscenaTrazo
         panel.btnCargar = null;
         panel.btnBorrarTodo = null;
         panel.textoMedios = Texto(animar, "", new Vector3(0f, -0.048f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.2f, 0.2f, 0.25f));
-        Texto(animar, "Toca la barra = ir a un fotograma · pellizca una clave = moverla · las imágenes y el boceto no salen en videos ni fotos", new Vector3(0f, -0.085f, -0.001f), new Vector2(0.46f, 0.016f), new Color(0.3f, 0.3f, 0.35f));
+        Texto(animar, "Toca la barra = ir a un fotograma · pellizca una clave = moverla · Foto, SVG, Grabar proceso e imágenes: en Mis archivos", new Vector3(0f, -0.085f, -0.001f), new Vector2(0.46f, 0.016f), new Color(0.3f, 0.3f, 0.35f));
 
         // ----- Página Bocas -----
         var bocas = Pagina(c, "PaginaBocas");
@@ -865,6 +869,14 @@ public static class ArmarEscenaTrazo
         { "cuarto360", "Cuarto 360" },
         { "roma360", "Roma de noche" },
         { "amanecer360", "Amanecer" },
+        { "venecia_canal360", "Canal de Venecia" },
+        { "venecia_calle360", "Callejón de Venecia" },
+        { "atardecer_mar360", "Atardecer en el mar" },
+        { "crucero360", "Crucero de lujo" },
+        { "columnas360", "Pórtico de columnas" },
+        { "mirador360", "Mirador" },
+        { "parque360", "Parque" },
+        { "luna360", "La Luna" },
     };
 
     static void PrepararFondos360(Escenario escenario, Shader unlit)

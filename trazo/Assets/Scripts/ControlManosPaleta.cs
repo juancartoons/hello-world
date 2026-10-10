@@ -8,6 +8,8 @@ using UnityEngine;
 //  - Cuentagotas: con la paleta abierta, toca una línea con el índice derecho = tomas su color.
 //  - En el centro, una línea que tiembla: tócala para cambiar el temblor; debajo, sus opciones
 //    (ver ControlManosTemblor.cs).
+//  - Arriba a la derecha (solo con un fondo 360 o la realidad): el botón HALO, un brillo suave detrás de
+//    las líneas para que no se pierdan en el fondo (amarillo = encendido).
 //  - Cierra la mano (o bájala) y la paleta se va.
 public partial class ControlManos
 {
@@ -129,6 +131,7 @@ public partial class ControlManos
         {
             ActualizarTemblorPaleta(Vector3.zero, false);
             ActualizarRellenoPaleta(Vector3.zero, false);
+            ActualizarHaloPaleta(Vector3.zero, false);
             dedoEnRelleno = false;
             dedoEnColor = false;
             dedoEnLinea = false;
@@ -144,6 +147,13 @@ public partial class ControlManos
         }
         // ¿Tocó la tinta invisible o la cubeta?
         if (ActualizarRellenoPaleta(punta, true))
+        {
+            dedoEnColor = false;
+            dedoEnLinea = false;
+            return;
+        }
+        // ¿Tocó el botón del halo?
+        if (ActualizarHaloPaleta(punta, true))
         {
             dedoEnColor = false;
             dedoEnLinea = false;
@@ -261,6 +271,7 @@ public partial class ControlManos
         dedoEnTemblor = true;
         dedoEnBotonRelleno = true;
         dedoEnRelleno = true;
+        dedoEnHalo = true;
         claveMuestra = int.MinValue;
         colorElegido = IndiceColor(dibujo.ColorNuevo);
         if (palmaIzq.valida && Cabeza != null)
@@ -298,6 +309,7 @@ public partial class ControlManos
         materialCentroPaleta = ColorMaterial(dibujo != null ? dibujo.ColorNuevo : Color.black);
         ArmarTemblorPaleta(negro);
         ArmarRellenoPaleta(negro);
+        ArmarHaloPaleta(negro);
         for (int i = 0; i < ColoresPaleta.Length; i++)
         {
             float ang = Mathf.PI * 0.5f - i * Mathf.PI * 2f / ColoresPaleta.Length;
@@ -310,6 +322,61 @@ public partial class ControlManos
             botonesColor.Add(b);
         }
         go.SetActive(false);
+    }
+
+    // ---------- Botón Halo (solo con un fondo 360 o la realidad) ----------
+    Transform botonHalo;
+    Material fondoHalo;
+    bool dedoEnHalo;
+
+    // Un botoncito con una raya negra y su brillo gris alrededor.
+    void ArmarHaloPaleta(Material negro)
+    {
+        botonHalo = new GameObject("Halo").transform;
+        botonHalo.SetParent(paleta, false);
+        botonHalo.localPosition = new Vector3(0.056f, 0.047f, -0.001f);
+        botonHalo.localScale = Vector3.one * 0.021f;
+        fondoHalo = ColorMaterial(Color.white);
+        DiscoPaleta(botonHalo, negro, 1.12f, new Vector3(0f, 0f, 0.05f));
+        DiscoPaleta(botonHalo, fondoHalo, 1f, new Vector3(0f, 0f, 0.025f));
+        var brillo = new List<Vector2[]>();
+        BarraIcono(brillo, new Vector2(-0.2f, -0.2f), new Vector2(0.2f, 0.2f), 0.3f);
+        IconoPaleta(botonHalo, brillo, ColorMaterial(new Color(0.68f, 0.7f, 0.75f)));
+        // El brillo queda detrás de la raya.
+        botonHalo.GetChild(botonHalo.childCount - 1).localPosition = new Vector3(0f, 0f, 0.012f);
+        var raya = new List<Vector2[]>();
+        BarraIcono(raya, new Vector2(-0.2f, -0.2f), new Vector2(0.2f, 0.2f), 0.08f);
+        IconoPaleta(botonHalo, raya, negro);
+    }
+
+    // Cada cuadro con la paleta abierta. Devuelve true si el dedo está en el botón.
+    bool ActualizarHaloPaleta(Vector3 punta, bool dedoValido)
+    {
+        if (botonHalo == null)
+            return false;
+        bool ver = dibujo.HaloDisponible;
+        if (botonHalo.gameObject.activeSelf != ver)
+            botonHalo.gameObject.SetActive(ver);
+        if (!ver)
+        {
+            dedoEnHalo = false;
+            return false;
+        }
+        PonerColorMaterial(fondoHalo, dibujo.HaloEncendido ? AmarilloOpcion : Color.white);
+        if (!dedoValido || Vector3.Distance(punta, botonHalo.position) > 0.012f)
+        {
+            dedoEnHalo = false;
+            return false;
+        }
+        if (!dedoEnHalo)
+        {
+            dibujo.AlternarHalo();
+            Burbuja(botonHalo.position, 1.1f);
+            if (paletaFija)
+                paletaFijaHasta = Mathf.Max(paletaFijaHasta, Time.time + 12f);
+        }
+        dedoEnHalo = true;
+        return true;
     }
 
     Material ColorMaterial(Color c)

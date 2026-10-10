@@ -35,6 +35,7 @@ public class PanelMuneca : MonoBehaviour
     float ultimaVezVisto;
     float ocultarMensajeEn;
     float ocultarAvisoEn;
+    float avisoDesde;
 
     void Start()
     {
@@ -154,21 +155,22 @@ public class PanelMuneca : MonoBehaviour
         ActualizarAviso();
     }
 
-    // El aviso flota un poco abajo y al frente de tu vista.
+    // El aviso sale en el cartel de cómic de arriba al centro de tu vista (el mismo del nombre del gesto:
+    // si los dos quieren verse, gana el más nuevo).
     void ActualizarAviso()
     {
-        if (textoAviso == null || !textoAviso.gameObject.activeSelf)
+        if (textoAviso == null)
             return;
-        if (Time.time > ocultarAvisoEn)
-        {
-            textoAviso.gameObject.SetActive(false);
-            return;
-        }
         var cabeza = control != null ? control.Cabeza : null;
-        if (cabeza == null)
+        bool ver = Time.time <= ocultarAvisoEn && cabeza != null && CartelArriba.PuedeVerAviso(avisoDesde);
+        if (textoAviso.gameObject.activeSelf != ver)
+            textoAviso.gameObject.SetActive(ver);
+        if (!ver)
             return;
-        Vector3 pos = cabeza.position + cabeza.forward * 0.6f - cabeza.up * 0.15f;
-        textoAviso.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(pos - cabeza.position, cabeza.up));
+        Vector3 pos;
+        Quaternion rot;
+        CartelArriba.Pose(cabeza, out pos, out rot);
+        textoAviso.transform.SetPositionAndRotation(pos, rot);
     }
 
     void Refrescar()
@@ -244,7 +246,7 @@ public class PanelMuneca : MonoBehaviour
         if (textoAviso != null)
         {
             textoAviso.text = texto;
-            textoAviso.gameObject.SetActive(true);
+            avisoDesde = Time.time;
             ocultarAvisoEn = Time.time + 1.6f;
             ActualizarAviso();
         }

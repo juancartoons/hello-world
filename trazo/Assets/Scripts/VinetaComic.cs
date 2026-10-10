@@ -225,3 +225,61 @@ public class VinetaComic : MonoBehaviour
                 Destroy(m);
     }
 }
+
+// El cartel de cómic de arriba al centro de tu vista: ahí salen el nombre del gesto y los avisos cortos
+// (uno solo a la vez: el más nuevo gana). Sigue tu mirada con calma, como el parlante.
+public static class CartelArriba
+{
+    // Dónde queda respecto a tu cabeza: al centro, arriba y adelante (metros).
+    static readonly Vector3 Lugar = new Vector3(0f, 0.165f, 0.6f);
+
+    static Quaternion giroSuave;
+    static bool colocado;
+    static int cuadroHecho = -1;
+    static Vector3 posHecha;
+    static Quaternion rotHecha;
+
+    // Desde cuándo se ve cada uno (para saber cuál es el más nuevo) y si sigue visible.
+    static float desdeAviso = -1f, desdeGesto = -1f;
+    static int cuadroAviso = -10, cuadroGesto = -10;
+
+    public static void Pose(Transform cabeza, out Vector3 pos, out Quaternion rot)
+    {
+        if (cuadroHecho != Time.frameCount)
+        {
+            cuadroHecho = Time.frameCount;
+            Vector3 adelante = cabeza.forward;
+            if (Mathf.Abs(Vector3.Dot(adelante, Vector3.up)) > 0.97f)
+                adelante = Vector3.ProjectOnPlane(cabeza.up, Vector3.up);
+            Quaternion giro = Quaternion.LookRotation(adelante, Vector3.up);
+            if (!colocado || Time.deltaTime > 0.5f)
+            {
+                giroSuave = giro;
+                colocado = true;
+            }
+            giroSuave = Quaternion.Slerp(giroSuave, giro, 1f - Mathf.Exp(-4f * Time.deltaTime));
+            posHecha = cabeza.position + giroSuave * Lugar;
+            rotHecha = Quaternion.LookRotation(posHecha - cabeza.position, Vector3.up);
+        }
+        pos = posHecha;
+        rot = rotHecha;
+    }
+
+    // Se llaman cada cuadro mientras cada uno quiere verse. Devuelven si le toca verse (el más nuevo).
+    public static bool PuedeVerAviso(float desde)
+    {
+        desdeAviso = desde;
+        cuadroAviso = Time.frameCount;
+        return !(Vivo(cuadroGesto) && desdeGesto > desde);
+    }
+
+    public static bool PuedeVerGesto(float desde)
+    {
+        desdeGesto = desde;
+        cuadroGesto = Time.frameCount;
+        return !(Vivo(cuadroAviso) && desdeAviso >= desde);
+    }
+
+    // "Vivo": quiso verse en este cuadro o en el anterior.
+    static bool Vivo(int cuadro) => Time.frameCount - cuadro <= 1;
+}

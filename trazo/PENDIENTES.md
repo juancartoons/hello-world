@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 9 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v29***
+*Actualizado: 10 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v30***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,7 +16,19 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ---
 
-## 0. Hecho en la v29 (falta probarlo en el visor)
+## 0. Hecho en la v30 (falta probarlo en el visor)
+
+- [x] **8 fondos 360 nuevos en 3D** (subidos a 4K con IA, Real-ESRGAN, y con profundidad IA): Canal de Venecia, Callejón de Venecia, Atardecer en el mar, Crucero de lujo, Pórtico de columnas, Mirador, Parque y **La Luna**. En total 11 fondos de la app. (Créditos: `Plugins/Fondos/fondos360-creditos.txt`; **ojo:** la licencia de la foto de la Luna no está confirmada, revisarla antes de publicar en la tienda.)
+- [x] **Halo** (opcional): un brillo suave detrás de las líneas para que no se pierdan en el fondo. Blanco detrás de las líneas oscuras, oscuro detrás de las claras. El botón **Halo** sale en la **paleta de colores** (arriba a la derecha) solo con un fondo 360 o con la Realidad. No sale en fotos, videos ni SVG.
+- [x] **Todo se exporta a Descargas → JCartoons** (fotos, videos y SVG), en la app Archivos del Quest.
+- [x] **SVG doble**: `_lineas.svg` (las curvas limpias) y `_como_se_ve.svg` (con grosor, hebras y colores, como en la app).
+- [x] **Menú de arriba solo para animar**: pestañas Animar, Bocas y Títere; **Zoom** en la fila del reproductor; **Boceto** y **Plano** en la fila de cada capa (lista de Capas); en la página Animar queda **Video anim**. Se quitó "Imagen −" (las imágenes se quitan con la X de su esquina).
+- [x] **Mis archivos con 4 pestañas**: Archivos, **Crear** (Foto y SVG), **Grabar proceso** (Grabar, Pausa, Video proceso, Vel) e **Imágenes** (Traer imagen, ver/ocultar).
+- [x] **Tiradores Bézier**: un dedo = los dos lados (curva suave, en espejo); con la **V** (índice + medio) = solo ese lado (esquina, como Alt); llevar la bolita hasta su nodo = **esquina recta** (tirador en cero).
+- [x] **Cartel de cómic arriba al centro de la vista**: ahí salen el nombre del gesto y los avisos cortos (uno a la vez, el más nuevo).
+- [x] **Autoguardado más seguido**: un respaldo rápido unos 30 s después de cada cambio (cuando la mano izquierda descansa 2 s) y el proyecto con su nombre cada 2 minutos. Si la app se cierra de golpe (por ejemplo con un Build), al volver se abre lo último.
+
+## 0-. Hecho en la v29
 
 - [x] **Tiradores "palanca"**: la bolita de un tirador nunca queda a menos de 4.5 cm de su nodo (si el tirador es más corto, la bolita se ve más lejos y lo mueve en proporción). Así no se enciman nodo y tirador.
 - [x] **Lo que vas a agarrar se ilumina antes de tocarlo** (nodo naranja o bolita del tirador más grande).
@@ -54,7 +66,7 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 ## 1. Próxima tanda
 
 - [ ] **Profundidad con IA para tus propias fotos 360** (dentro del Quest, con Unity Inference Engine, gratis). Por ahora usan "piso real".
-- [ ] Más fondos 360 temáticos (café de París, mesita en el andén, terraza al atardecer, sala de lujo): bájalos gratis de polyhaven.com (JPG 4K) y ponlos en **Plugins/Fondos** o elígelos con **Imagen + → Fondo 360**.
+- [ ] Más fondos 360 temáticos (café de París, mesita en el andén, terraza al atardecer, sala de lujo): bájalos gratis de polyhaven.com (JPG 4K) y ponlos en **Plugins/Fondos** o elígelos con **Mis archivos → Imágenes → Traer imagen → Fondo 360**. Para la profundidad IA y la nitidez 4K: `trazo/Herramientas/profundidad360.py` y `nitidez360.py`.
 
 - [ ] **Fondo verde (croma)** para grabar videos (pospuesto: "todavía no es urgente"). Se graba en el Quest con fondo verde y luego, en un editor gratis (CapCut o DaVinci Resolve), se pone encima de un video real de tu cuarto.
 
@@ -90,6 +102,15 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ## 5. Para probar en el visor (desde la v21 casi nada se ha probado)
 
+**Nuevo en la v30:**
+- [ ] Los 8 fondos nuevos (¿se ven nítidos? ¿la profundidad se siente bien? La Luna: ¿el cielo negro y la Tierra lejos?).
+- [ ] Halo: ¿se separan las líneas del fondo? ¿molesta el borde? ¿se ve bien en la Realidad (passthrough)? ¿baja la fluidez con muchas líneas?
+- [ ] Mis archivos: las 4 pestañas; Foto y SVG desde Crear; Grabar proceso (Detener y Video proceso); Traer imagen.
+- [ ] Menú de arriba: Boceto y Plano en cada fila de Capas; Zoom en el reproductor.
+- [ ] Tiradores: V = un solo lado; bolita hasta el nodo = esquina recta.
+- [ ] Cartel de cómic arriba al centro: ¿tapa algo? ¿se lee bien? ¿choca con el parlante?
+- [ ] Autoguardado: dibuja algo, espera ~35 s, haz Build y revisa que el dibujo vuelva. ¿Se nota algún tirón al guardar?
+
 **Nuevo en la v28:**
 - [ ] Fondos 360 en 3D: ¿se siente la profundidad? ¿el piso de la foto coincide con tu piso? ¿se estiran mucho los bordes al moverte?
 - [ ] Mano copia en el plano 2D (tu misma mano) y la mano atrapada en la bandera del tutorial.
@@ -101,7 +122,7 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [ ] Lazo (que no se active al mover un nodo) y plastilina (índice + medio).
 - [ ] Plano 2D: pasar el dedo detrás de la hoja (copia de la mano + anillito).
 - [ ] Fondo: los 360 (¿se ve nítido? ¿hay una rayita en la unión de la foto?).
-- [ ] Imagen +: la ventana de permiso, las carpetas, las miniaturas, Importar y Fondo 360.
+- [ ] Traer imagen (Mis archivos → Imágenes): la ventana de permiso, las carpetas, las miniaturas, Importar y Fondo 360.
 - [ ] Manos del tutorial: ¿se ven bien la palma, el dorso y el pulgar?
 
 **De antes:**
@@ -126,7 +147,7 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [ ] Enviar la app.
 
 **Cómo grabar con el Quest 2** (las grabaciones del Quest no capturan el passthrough):
-1. **Foto 360 de tu cuarto** como fondo (ya está en la v27): toma una foto 360 de tu cuarto (con una app gratis de fotos 360 en el celular; tiene que ser el doble de ancha que de alta), pásala al Quest y elígela en **Imagen + → Fondo 360**.
+1. **Foto 360 de tu cuarto** como fondo (ya está en la v27): toma una foto 360 de tu cuarto (con una app gratis de fotos 360 en el celular; tiene que ser el doble de ancha que de alta), pásala al Quest y elígela en **Mis archivos → Imágenes → Traer imagen → Fondo 360**.
 2. **Fondo verde + video real de tu cuarto**: lo más realista, para tomas en primera persona.
 3. **Mixed Reality Capture** (gratis, con PC + OBS + cámara o celular): te filma a ti dibujando en tu cuarto, en tercera persona. Ideal para el tráiler.
 

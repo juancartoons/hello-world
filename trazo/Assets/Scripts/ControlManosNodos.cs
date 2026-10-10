@@ -6,6 +6,8 @@ using UnityEngine;
 //    Para SOLTARLO: abre los dedos de la mano izquierda.
 //  - TIRADORES (Bézier): al ACERCAR el dedo a un nodo (sin tocarlo) aparecen sus tiradores; toca la punta
 //    de uno y se pega al dedo (para curvar la línea). Se suelta igual: abriendo la mano izquierda.
+//    Un dedo = los dos lados (el otro gira en espejo, curva suave). Con la V (índice y medio estirados) =
+//    solo ese lado (esquina, como Alt en Illustrator). Llevar la bolita hasta su nodo = tirador en cero (recto).
 //  - ÍNDICE + MEDIO estirados (juntos o en V) y los otros dedos doblados, al tocar un nodo = PLASTILINA:
 //    los vecinos de la misma línea lo siguen suave (más cerca, más se mueven) y brillan en naranja clarito.
 //  - LAZO: empieza en un espacio vacío y dibuja un círculo alrededor de varios nodos: quedan naranjas.
