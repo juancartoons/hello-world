@@ -329,6 +329,7 @@ public static class Idioma
         "Nodos elegidos: ", "Nodes selected: ",
         "Cuarto 360", "360 room",
         "Roma de noche", "Rome at night",
+        "No hay fondos 360: en Unity toca TrazoVR > ★ Armar escena (y luego Ctrl+S y Build)", "No 360 backgrounds: in Unity run TrazoVR > ★ Armar escena (then Ctrl+S and Build)",
         "Amanecer", "Sunrise",
         "Toca una imagen para verla en grande, o pellízcala y sácala del panel", "Tap an image to see it big, or pinch it and pull it out of the panel",
         "Mi foto 360", "My 360 photo",

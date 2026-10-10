@@ -435,7 +435,7 @@ public class PanelArriba : MonoBehaviour
             return;
         escenario.SiguienteModo();
         if (dibujo != null)
-            dibujo.Mensaje("Fondo: " + escenario.NombreModo);
+            dibujo.Mensaje(escenario.MensajeFondo);
     }
 
     // La foto se toma sin este panel en medio.

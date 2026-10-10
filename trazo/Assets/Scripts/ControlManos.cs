@@ -1020,19 +1020,63 @@ public partial class ControlManos : MonoBehaviour
         return dibujo.transform.TransformPoint(local);
     }
 
-    bool BuscarAsaCercana(Vector3 a, Vector3 b, out bool salida)
+    // Tiradores "palanca": la bolita de un tirador nunca queda más cerca de su nodo que esto (metros).
+    // Si el tirador es más corto, la bolita se ve más lejos sobre la misma línea y lo mueve en proporción.
+    const float LargoMinimoAsa = 0.045f;
+    float factorAsaArrastre = 1f;
+
+    // Dónde se VE (y se toca) la punta de un tirador. factor = largo que se ve ÷ largo real.
+    Vector3 PuntaAsaVisible(Trazo t, int i, bool salida, out float factor)
+    {
+        factor = 1f;
+        Vector3 nodo = dibujo.transform.TransformPoint(t.nodos[i]);
+        Vector3 v = PuntaAsaMundo(t, i, salida) - nodo;
+        // Mientras lo mueves, la misma palanca del principio (así la bolita sigue bajo el dedo).
+        if (arrastre == Objetivo.Asa && t == arrTrazo && i == arrIndice && salida == arrSalida)
+        {
+            factor = factorAsaArrastre;
+            return nodo + v * factor;
+        }
+        float largo = v.magnitude;
+        if (largo < 1e-6f)
+            return nodo + DireccionAsa(t, i, salida) * LargoMinimoAsa;
+        if (largo < LargoMinimoAsa)
+            factor = LargoMinimoAsa / largo;
+        return nodo + v * factor;
+    }
+
+    Vector3 PuntaAsaVisible(Trazo t, int i, bool salida)
+    {
+        float factor;
+        return PuntaAsaVisible(t, i, salida, out factor);
+    }
+
+    // Un tirador sin largo: hacia dónde va la línea en ese nodo.
+    Vector3 DireccionAsa(Trazo t, int i, bool salida)
+    {
+        int n = t.nodos.Count;
+        Vector3 a = dibujo.transform.TransformPoint(t.nodos[Mathf.Max(0, i - 1)]);
+        Vector3 b = dibujo.transform.TransformPoint(t.nodos[Mathf.Min(n - 1, i + 1)]);
+        Vector3 d = b - a;
+        if (d.sqrMagnitude < 1e-10f)
+            d = Vector3.right;
+        d.Normalize();
+        return salida ? d : -d;
+    }
+
+    bool BuscarAsaCercana(Vector3 a, Vector3 b, float radio, out bool salida)
     {
         salida = false;
         if (!SeleccionValida)
             return false;
-        float mejor = radioAgarreNodo * 0.8f;
+        float mejor = radio;
         bool hay = false;
         for (int k = 0; k < 2; k++)
         {
             bool esSalida = k == 1;
             if (!selTrazo.AsaUsada(selIndice, esSalida))
                 continue;
-            Vector3 p = PuntaAsaMundo(selTrazo, selIndice, esSalida);
+            Vector3 p = PuntaAsaVisible(selTrazo, selIndice, esSalida);
             float d = Mathf.Min(Vector3.Distance(p, a), Vector3.Distance(p, b));
             if (d < mejor)
             {
@@ -1046,6 +1090,10 @@ public partial class ControlManos : MonoBehaviour
 
     void EmpezarArrastre(Objetivo tipo, Trazo t, int i, bool salida, Vector3 pinza)
     {
+        // La punta del tirador (palanca) se calcula antes de empezar a moverlo.
+        float factor = 1f;
+        Vector3 puntaAsa = tipo == Objetivo.Asa ? PuntaAsaVisible(t, i, salida, out factor) : Vector3.zero;
+        factorAsaArrastre = Mathf.Max(1f, factor);
         arrastre = tipo;
         arrTrazo = t;
         arrIndice = i;
@@ -1054,9 +1102,7 @@ public partial class ControlManos : MonoBehaviour
         imanTrazo = null;
         selTrazo = t;
         selIndice = i;
-        Vector3 objetivo = tipo == Objetivo.Nodo
-            ? dibujo.transform.TransformPoint(t.nodos[i])
-            : PuntaAsaMundo(t, i, salida);
+        Vector3 objetivo = tipo == Objetivo.Nodo ? dibujo.transform.TransformPoint(t.nodos[i]) : puntaAsa;
         desfase = objetivo - pinza;
     }
 
@@ -1074,7 +1120,7 @@ public partial class ControlManos : MonoBehaviour
             // Guardamos para "deshacer" solo cuando de verdad se mueve algo.
             Vector3 actual = arrastre == Objetivo.Nodo
                 ? arrTrazo.nodos[arrIndice]
-                : arrTrazo.nodos[arrIndice] + (arrSalida ? arrTrazo.asaSalida[arrIndice] : arrTrazo.asaEntrada[arrIndice]);
+                : arrTrazo.nodos[arrIndice] + (arrSalida ? arrTrazo.asaSalida[arrIndice] : arrTrazo.asaEntrada[arrIndice]) * factorAsaArrastre;
             if (Vector3.Distance(local, actual) * dibujo.EscalaMundo < 0.003f)
                 return;
             dibujo.GuardarParaDeshacer();
@@ -1083,7 +1129,8 @@ public partial class ControlManos : MonoBehaviour
 
         if (arrastre == Objetivo.Asa)
         {
-            arrTrazo.MoverAsa(arrIndice, arrSalida, local - arrTrazo.nodos[arrIndice]);
+            // Palanca: la bolita está "factor" veces más lejos que la punta real del tirador.
+            arrTrazo.MoverAsa(arrIndice, arrSalida, (local - arrTrazo.nodos[arrIndice]) / factorAsaArrastre);
             return;
         }
 
@@ -1561,10 +1608,10 @@ public partial class ControlManos : MonoBehaviour
                 if (mirar.sqrMagnitude > 1e-8f)
                     nodo.rotation = Quaternion.LookRotation(mirar);
 
+                // Naranja: el que estás moviendo, o el que vas a agarrar si tocas (se ilumina antes de tocarlo).
                 bool activo = (t == arrTrazo && i == arrIndice)
                               || (t == grosorTrazo && i == grosorIndice)
-                              || (hoverTipo == Objetivo.Nodo && t == hoverTrazo && i == hoverIndice)
-                              || (conAsas && t == selTrazo && i == selIndice);
+                              || (hoverTipo == Objetivo.Nodo && t == hoverTrazo && i == hoverIndice);
                 // Elegidos con el lazo: naranjas. Los vecinos de la plastilina: naranja clarito (más grandes
                 // los que más se mueven).
                 float peso = PesoEnGrupo(t, i);
@@ -1605,14 +1652,15 @@ public partial class ControlManos : MonoBehaviour
                 asa.gameObject.SetActive(ver);
             if (!ver)
                 continue;
-            Vector3 punta = PuntaAsaMundo(selTrazo, selIndice, esSalida);
+            Vector3 punta = PuntaAsaVisible(selTrazo, selIndice, esSalida);
             asa.position = punta;
             Vector3 mirar = punta - cabeza;
             if (mirar.sqrMagnitude > 1e-8f)
                 asa.rotation = Quaternion.LookRotation(mirar);
             bool activa = (arrastre == Objetivo.Asa && arrSalida == esSalida)
                           || (arrastre == Objetivo.Nada && hoverTipo == Objetivo.Asa && hoverSalida == esSalida);
-            asa.localScale = Vector3.one * tamanoNodo * (activa ? 1.2f : 0.8f);
+            // La que vas a agarrar (o estás moviendo) se ve más grande.
+            asa.localScale = Vector3.one * tamanoNodo * (activa ? 1.5f : 0.8f);
             indicesAsas.Add(puntosAsas.Count);
             puntosAsas.Add(dibujo.transform.TransformPoint(selTrazo.nodos[selIndice]));
             indicesAsas.Add(puntosAsas.Count);

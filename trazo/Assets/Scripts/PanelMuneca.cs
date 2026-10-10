@@ -117,7 +117,7 @@ public class PanelMuneca : MonoBehaviour
             return;
         escenario.SiguienteModo();
         Refrescar();
-        Mensaje("Fondo: " + escenario.NombreModo);
+        Mensaje(escenario.MensajeFondo);
     }
 
     void Update()

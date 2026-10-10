@@ -128,8 +128,15 @@ public class Escenario : MonoBehaviour
             if (Disponible(n))
                 break;
         }
+        // Si al pasar de Realidad vuelve a empezar sin ningún fondo 360, falta prepararlos en Unity.
+        aviso = n < modo && (materialFondo360 == null || CantidadFijos == 0)
+            ? "No hay fondos 360: en Unity toca TrazoVR > ★ Armar escena (y luego Ctrl+S y Build)" : null;
         PonerModo(n);
     }
+
+    // Lo que se muestra al tocar el botón Fondo.
+    string aviso;
+    public string MensajeFondo => string.IsNullOrEmpty(aviso) ? "Fondo: " + NombreModo : aviso;
 
     public void PonerModo(int nuevo)
     {

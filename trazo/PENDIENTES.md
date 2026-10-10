@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 9 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v28***
+*Actualizado: 9 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v29***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,7 +16,15 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ---
 
-## 0. Hecho en la v28 (falta probarlo en el visor)
+## 0. Hecho en la v29 (falta probarlo en el visor)
+
+- [x] **Tiradores "palanca"**: la bolita de un tirador nunca queda a menos de 4.5 cm de su nodo (si el tirador es más corto, la bolita se ve más lejos y lo mueve en proporción). Así no se enciman nodo y tirador.
+- [x] **Lo que vas a agarrar se ilumina antes de tocarlo** (nodo naranja o bolita del tirador más grande).
+- [x] **Girar los nodos del lazo con la V**: toca uno de los nodos elegidos con el índice y el medio estirados y gira la muñeca; giran alrededor del centro del grupo (en Plano 2D, solo dentro del plano). Los tiradores hechos a mano giran con ellos.
+- [x] **Aviso** si no hay fondos 360 (falta "★ Armar escena").
+- Forma de trabajo: desde ahora también los arreglos esperan el **HY**.
+
+## 0a. Hecho en la v28
 
 - [x] **Fondos 360 en 3D**: "Cuarto 360", "Roma de noche" y "Amanecer" (fotos reales de Poly Haven) con **profundidad calculada con IA** (Depth Anything V2 Small): cada cosa queda a su distancia, se ve en 3D con los dos ojos y cambia al mover la cabeza. El piso de la foto coincide con tu piso.
   - Herramienta para calcular la profundidad de otras fotos: `trazo/Herramientas/profundidad360.py`.
@@ -161,7 +169,7 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 ## 9. Forma de trabajo (para cualquier sesión futura)
 
 - Responder **siempre en español**, claro y con pasos numerados (Juan Carlos está empezando en VR).
-- **"HY"** = *Hazlo Ya*: no cambiar código hasta recibirlo, salvo arreglos directos.
+- **"HY"** = *Hazlo Ya*: no cambiar código hasta recibirlo (tampoco los arreglos).
 - **"rcpt"** = responder corto (solo en el mensaje que lo trae).
 - **Todo gratis.** **Manos primero** (sin controles). Menos botones "de app 2D".
 - Todos los cambios juntos en una sola tanda (cada compilación tarda).

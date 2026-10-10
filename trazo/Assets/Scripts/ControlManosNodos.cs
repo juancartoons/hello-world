@@ -9,7 +9,9 @@ using UnityEngine;
 //  - ÍNDICE + MEDIO estirados (juntos o en V) y los otros dedos doblados, al tocar un nodo = PLASTILINA:
 //    los vecinos de la misma línea lo siguen suave (más cerca, más se mueven) y brillan en naranja clarito.
 //  - LAZO: empieza en un espacio vacío y dibuja un círculo alrededor de varios nodos: quedan naranjas.
-//    Toca uno de ellos y se mueven todos juntos (exactos, sin plastilina).
+//    Toca uno de ellos y se mueven todos juntos (exactos, sin plastilina). Si lo tocas con la V (índice y
+//    medio estirados), además GIRAN con tu muñeca, alrededor del centro del grupo.
+//  - Lo que vas a agarrar (nodo o tirador) se ilumina un poquito antes de tocarlo.
 //  - Tocar la línea elegida (lejos de sus nodos) y quedarte quieto medio segundo = nodo nuevo, pegado al dedo.
 //  - Tocar otra línea = elegirla (y ver solo sus nodos).
 //  - Al entrar al modo, si el dedo ya estaba sobre algo, no agarra nada hasta que salga y vuelva a tocar.
@@ -23,6 +25,7 @@ public partial class ControlManos
     const float LargoMinimoLazo = 0.12f;     // metros que hay que recorrer antes de poder cerrar el lazo
     const float CierreLazo = 0.03f;          // metros del inicio para que el lazo se cierre
     const float RadioVerAsas = 0.06f;        // metros: al acercar el dedo a un nodo se ven sus tiradores
+    const float RadioPrevio = 0.035f;        // metros: lo que vas a agarrar se ilumina desde esta distancia
 
     // Un nodo de un grupo (lazo o plastilina): su línea, cuál es, dónde estaba y cuánto se mueve (0..1).
     struct NodoGrupo
@@ -31,13 +34,14 @@ public partial class ControlManos
         public int i;
         public Vector3 inicio;
         public float peso;
+        public Vector3 entrada, salida;  // sus tiradores al empezar (para girarlos junto con el grupo)
     }
 
     readonly List<NodoGrupo> grupo = new List<NodoGrupo>();          // los que se están moviendo juntos
     readonly List<NodoGrupo> elegidosLazo = new List<NodoGrupo>();   // los elegidos con el lazo
     readonly HashSet<Trazo> trazosGrupo = new HashSet<Trazo>();
-    bool moviendoGrupo, deshacerGrupoPendiente, grupoPlastilina, dedoListoNodos, esperarSalirLinea;
-    Vector3 grupoInicioLocal, grupoDesfase;
+    bool moviendoGrupo, deshacerGrupoPendiente, grupoPlastilina, grupoGira, dedoListoNodos, esperarSalirLinea;
+    Vector3 grupoInicioLocal, grupoDesfase, grupoCentro;
     readonly List<Vector3> lazo = new List<Vector3>();
     readonly List<Vector2> lazo2D = new List<Vector2>();
     float largoLazo, lazoDesde;
@@ -65,6 +69,7 @@ public partial class ControlManos
     {
         moviendoGrupo = false;
         grupoPlastilina = false;
+        grupoGira = false;
         grupo.Clear();
         elegidosLazo.Clear();
         CancelarLazo();
@@ -99,24 +104,32 @@ public partial class ControlManos
         // 2. Los tiradores (Bézier) del nodo al que acercas el dedo, aunque no lo toques.
         ActualizarNodoConAsas(punta, solo);
 
-        // 3. ¿Qué toca el dedo? Si tocas un nodo y la punta de su tirador a la vez, gana el más cercano.
+        // 3. ¿Qué vas a agarrar? Lo más cercano (un nodo o la bolita de un tirador) se ilumina desde un poco
+        //    antes de tocarlo, y se agarra al tocarlo: así siempre sabes cuál vas a tomar.
         Trazo t;
         int i;
         bool salida = false;
         Objetivo tipo = Objetivo.Nada;
-        bool hayNodo = BuscarNodoCercano(punta, punta, RadioToqueNodo, solo, out t, out i);
-        bool hayAsa = BuscarAsaCercana(punta, punta, out salida);
-        if (hayAsa && (!hayNodo || Vector3.Distance(punta, PuntaAsaMundo(selTrazo, selIndice, salida))
-                                   < Vector3.Distance(punta, dibujo.transform.TransformPoint(t.nodos[i]))))
+        Objetivo candidato = Objetivo.Nada;
+        float distancia = float.MaxValue;
+        if (BuscarNodoCercano(punta, punta, RadioPrevio, solo, out t, out i))
         {
-            tipo = Objetivo.Asa;
-            t = selTrazo;
-            i = selIndice;
+            candidato = Objetivo.Nodo;
+            distancia = Vector3.Distance(punta, dibujo.transform.TransformPoint(t.nodos[i]));
         }
-        else if (hayNodo)
+        if (BuscarAsaCercana(punta, punta, RadioPrevio, out salida))
         {
-            tipo = Objetivo.Nodo;
+            float dAsa = Vector3.Distance(punta, PuntaAsaVisible(selTrazo, selIndice, salida));
+            if (dAsa < distancia)
+            {
+                candidato = Objetivo.Asa;
+                distancia = dAsa;
+                t = selTrazo;
+                i = selIndice;
+            }
         }
+        if (candidato != Objetivo.Nada && distancia < RadioToqueNodo)
+            tipo = candidato;
         Trazo linea = tipo == Objetivo.Nada ? LineaBajo(punta, punta) : null;
         if (linea != lineaBajoDedo)
         {
@@ -125,7 +138,7 @@ public partial class ControlManos
         }
         // Durante un lazo, pasar rápido por encima de una línea no la elige: hay que detenerse un momento en ella.
         bool lineaFirme = linea != null && (largoLazo < 0.03f || Time.time - lineaBajoDesde > 0.25f);
-        hoverTipo = tipo;
+        hoverTipo = candidato;
         hoverTrazo = t;
         hoverIndice = i;
         hoverSalida = salida;
@@ -146,12 +159,13 @@ public partial class ControlManos
             esperaDesde = -1f;
             if (EnLazo(t, i))
             {
-                EmpezarGrupo(t, i, punta, false);
+                // Con la V (índice y medio estirados) el grupo además gira con tu muñeca.
+                EmpezarGrupo(t, i, punta, false, Der.DosDedos);
             }
             else if (Der.DosDedos)
             {
                 ArmarPlastilina(t, i);
-                EmpezarGrupo(t, i, punta, true);
+                EmpezarGrupo(t, i, punta, true, false);
             }
             else
             {
@@ -214,7 +228,7 @@ public partial class ControlManos
             float cerca = Vector3.Distance(punta, dibujo.transform.TransformPoint(selTrazo.nodos[selIndice]));
             for (int k = 0; k < 2; k++)
                 if (selTrazo.AsaUsada(selIndice, k == 1))
-                    cerca = Mathf.Min(cerca, Vector3.Distance(punta, PuntaAsaMundo(selTrazo, selIndice, k == 1)));
+                    cerca = Mathf.Min(cerca, Vector3.Distance(punta, PuntaAsaVisible(selTrazo, selIndice, k == 1)));
             if (cerca < RadioVerAsas)
                 return;
         }
@@ -269,18 +283,39 @@ public partial class ControlManos
         }
     }
 
-    void EmpezarGrupo(Trazo t, int tocado, Vector3 punta, bool plastilina)
+    void EmpezarGrupo(Trazo t, int tocado, Vector3 punta, bool plastilina, bool girar)
     {
         if (!plastilina)
         {
             grupo.Clear();
             foreach (var g in elegidosLazo)
                 if (Dibujo.Editable(g.t) && g.i < g.t.nodos.Count)
-                    grupo.Add(new NodoGrupo { t = g.t, i = g.i, inicio = g.t.nodos[g.i], peso = 1f });
+                {
+                    g.t.AsegurarAsas();
+                    grupo.Add(new NodoGrupo
+                    {
+                        t = g.t, i = g.i, inicio = g.t.nodos[g.i], peso = 1f,
+                        entrada = g.t.asaEntrada[g.i], salida = g.t.asaSalida[g.i]
+                    });
+                }
         }
         if (grupo.Count == 0)
             return;
         grupoPlastilina = plastilina;
+        // Girar: alrededor del centro del grupo, con el giro de tu muñeca derecha (en Plano 2D, solo dentro del plano).
+        grupoGira = girar && !plastilina;
+        if (grupoGira)
+        {
+            Vector3 c = Vector3.zero;
+            foreach (var g in grupo)
+                c += g.inicio;
+            grupoCentro = c / grupo.Count;
+            var muneca = ManosUtil.Hueso(Der.esqueleto, Titere.Muneca);
+            tieneRotMano = muneca != null;
+            if (tieneRotMano)
+                rotManoInicio = rotManoSuave = muneca.rotation;
+            anguloGiro = 0f;
+        }
         grupoInicioLocal = t.nodos[tocado];
         grupoDesfase = dibujo.transform.TransformPoint(grupoInicioLocal) - punta;
         moviendoGrupo = true;
@@ -294,10 +329,12 @@ public partial class ControlManos
     {
         Vector3 objetivo = dibujo.ProyectarEnPlano(dibujo.transform.InverseTransformPoint(punta + grupoDesfase));
         Vector3 delta = objetivo - grupoInicioLocal;
+        Quaternion giro = grupoGira ? GiroManoLocal() : Quaternion.identity;
+        float angulo = grupoGira ? anguloGiro : 0f;
         if (deshacerGrupoPendiente)
         {
-            // Se guarda "deshacer" solo cuando de verdad se mueve algo.
-            if (delta.magnitude * dibujo.EscalaMundo < 0.003f)
+            // Se guarda "deshacer" solo cuando de verdad se mueve (o gira) algo.
+            if (delta.magnitude * dibujo.EscalaMundo < 0.003f && angulo < 0.5f)
                 return;
             dibujo.GuardarParaDeshacer();
             deshacerGrupoPendiente = false;
@@ -307,7 +344,14 @@ public partial class ControlManos
         {
             if (g.t == null || g.i >= g.t.nodos.Count)
                 continue;
-            g.t.MoverNodoSinReconstruir(g.i, dibujo.ProyectarEnPlano(g.inicio + delta * g.peso));
+            Vector3 p = grupoGira ? grupoCentro + delta + giro * (g.inicio - grupoCentro) : g.inicio + delta * g.peso;
+            g.t.MoverNodoSinReconstruir(g.i, dibujo.ProyectarEnPlano(p));
+            // Los tiradores hechos a mano giran con su nodo (los automáticos se recalculan solos).
+            if (grupoGira && g.i < g.t.asaManual.Count && g.t.asaManual[g.i])
+            {
+                g.t.asaEntrada[g.i] = giro * g.entrada;
+                g.t.asaSalida[g.i] = giro * g.salida;
+            }
             trazosGrupo.Add(g.t);
         }
         foreach (var tr in trazosGrupo)
