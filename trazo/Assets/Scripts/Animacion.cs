@@ -146,7 +146,8 @@ public class Animacion : MonoBehaviour
         Pausar();
         if (Fotograma == 0)
             return;
-        for (int capa = 0; capa < Dibujo.NumeroDeCapas; capa++)
+        int cuantas = dibujo != null ? dibujo.capas.Count : Dibujo.NumeroDeCapas;
+        for (int capa = 0; capa < cuantas; capa++)
             if (!CapaAnimada(capa) && CapaTieneLineas(capa))
                 GuardarClave(0, capa);
     }

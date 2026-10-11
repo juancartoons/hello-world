@@ -684,11 +684,14 @@ public static class Idioma
         "Este relleno es liso: elige una textura en RELLENO (las 2 de la paleta)", "This fill is plain: pick a texture in FILL (2 o'clock on the palette)",
         "Línea recta de lápiz", "Pencil straight line",
         // v34: capas en profundidad, puntos de tela, giro con el pulgar, modos del lápiz
-        "Empuja: capa de adelante · Atrae hacia ti: capa de atrás", "Push: layer in front · Pull toward you: layer behind",
-        "Esta ya es la capa de más adelante", "This is already the front layer",
+        "Empuja: capa de adelante · Atrae hacia ti: capa de atrás · +: capa nueva", "Push: layer in front · Pull toward you: layer behind · +: new layer",
+        "Esta ya es la capa de más adelante (+ Capa: una nueva)", "This is already the front layer (+ Layer: a new one)",
         "Esta ya es la capa del fondo", "This is already the back layer",
         "Capas: ", "Layers: ",
-        "Punto de tela: llévalo hacia ti o hacia el fondo", "Cloth point: move it toward you or away",
+        "Tela: jálala hacia ti o empújala al fondo, y abre el pellizco", "Cloth: pull it toward you or push it away, then open the pinch",
+        "Tela: pellizca un poco más adentro del relleno", "Cloth: pinch a little further inside the fill",
+        "Tela: pellizca el relleno y jálalo", "Cloth: pinch the fill and pull it",
+        "Tela plana: punto quitado", "Flat cloth: point removed",
         "Lápiz: ", "Pencil: ",
         "Pegado", "Stuck",
         "Cuerda", "String",
@@ -699,5 +702,8 @@ public static class Idioma
         "Girar →", "Turn →",
         "← Girar", "← Turn",
         "Toca la barra = ir a un fotograma · pellizca una clave = moverla · Foto, SVG, Grabar proceso e imágenes: en Mis archivos", "Touch the bar = go to a frame · pinch a key = move it · Photo, SVG, Record process and images: in My files",
+        // v35: capas más cerca con "+ Capa", tela con pellizco
+        "+ Capa", "+ Layer",
+        "Ya no caben más capas (máximo 12)", "No room for more layers (12 max)",
     };
 }

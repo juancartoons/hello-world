@@ -133,6 +133,7 @@ public class DatosDibujo
     public List<TrazoLapiz> lapiz = new List<TrazoLapiz>();
     public int temblor;
     public bool pincelElegido;
+    public float anchoPincelLocal;   // el grosor del dial medido en el dibujo (0 = proyecto viejo: se calcula)
     public int titerePierna1;
     public int titerePierna2;
     public List<int> titereCuerpo = new List<int>();
@@ -153,7 +154,8 @@ public class DatosDibujo
 // Las líneas son hijas de este objeto, así se puede mover, girar y escalar todo junto.
 public class Dibujo : MonoBehaviour
 {
-    public const int NumeroDeCapas = 4;
+    public const int NumeroDeCapas = 4;    // las capas con que empieza todo dibujo
+    public const int MaximoDeCapas = 12;   // con el botón "+" de las capas se agregan hasta aquí
 
     public Material materialLinea;
     public Material materialRelleno;
@@ -178,6 +180,8 @@ public class Dibujo : MonoBehaviour
     public float anchoPincel = 0.008f;
     [Tooltip("true = las líneas nuevas usan el grosor elegido con el dial; false = el promedio de las que hay")]
     public bool pincelElegido;
+    [Tooltip("El grosor elegido con el dial, medido en el dibujo: se agranda y se achica junto con todo")]
+    public float anchoPincelLocal;
     [Tooltip("Dibujar sobre un plano (2D) en vez de libre en 3D")]
     public bool plano;
     [Tooltip("Distancia (metros) a la que las puntas se pegan como imán")]
@@ -206,7 +210,7 @@ public class Dibujo : MonoBehaviour
     readonly List<FotoDeshacer> rehacer = new List<FotoDeshacer>();
     readonly List<FotoDeshacer> rehacerRespaldo = new List<FotoDeshacer>();
     readonly List<float> anchosInicio = new List<float>();
-    float pincelInicio;
+    float pincelInicio, pincelLocalInicio;
 
     // Destellos rojos del borrador
     readonly List<Transform> destellos = new List<Transform>();
@@ -412,6 +416,23 @@ public class Dibujo : MonoBehaviour
         while (capas.Count < NumeroDeCapas)
             capas.Add(new DatosCapa { nombre = "Capa " + (capas.Count + 1), visible = true });
         capaActual = Mathf.Clamp(capaActual, 0, capas.Count - 1);
+    }
+
+    // Botón "+" de las capas: una capa nueva adelante de todas (la más cercana a ti), y se dibuja en ella.
+    // Devuelve su número, o -1 si ya hay el máximo.
+    public int AgregarCapa()
+    {
+        AsegurarCapas();
+        if (capas.Count >= MaximoDeCapas)
+        {
+            Mensaje("Ya no caben más capas (máximo 12)");
+            return -1;
+        }
+        GuardarParaDeshacer();
+        capas.Add(new DatosCapa { nombre = "Capa " + (capas.Count + 1), visible = true });
+        HayCambios = true;
+        SeleccionarCapa(capas.Count - 1);
+        return capas.Count - 1;
     }
 
     public DatosCapa DatosDeCapa(int capa)
@@ -802,10 +823,12 @@ public class Dibujo : MonoBehaviour
 
     // Grosor de las líneas nuevas: el promedio de las líneas que se ven (así siempre combinan,
     // aunque hayas agrandado o achicado todo). Si no hay líneas, el del pincel.
+    // Con el dial: el grosor elegido, pero medido en el dibujo (si agrandas o achicas todo, cambia igual que las
+    // demás líneas y siguen combinando).
     public float AnchoNuevoLocal()
     {
         if (pincelElegido)
-            return anchoPincel / EscalaMundo;
+            return anchoPincelLocal > 0f ? anchoPincelLocal : anchoPincel / EscalaMundo;
         float suma = 0f;
         int cuenta = 0;
         foreach (var t in trazos)
@@ -824,6 +847,7 @@ public class Dibujo : MonoBehaviour
     public void ElegirAnchoPincel(float mundo)
     {
         anchoPincel = Mathf.Clamp(mundo, 0.001f, 0.06f);
+        anchoPincelLocal = anchoPincel / EscalaMundo;
         pincelElegido = true;
     }
 
@@ -1594,6 +1618,7 @@ public class Dibujo : MonoBehaviour
         foreach (var t in trazos)
             anchosInicio.Add(t != null ? t.ancho : 0f);
         pincelInicio = anchoPincel;
+        pincelLocalInicio = anchoPincelLocal;
     }
 
     public void AplicarFactorGrosor(float factor)
@@ -1610,6 +1635,8 @@ public class Dibujo : MonoBehaviour
             return;
         }
         anchoPincel = Mathf.Clamp(pincelInicio * factor, 0.001f, 0.06f);
+        if (pincelLocalInicio > 0f)
+            anchoPincelLocal = Mathf.Clamp(pincelLocalInicio * factor, 0.0005f, 0.5f);
         for (int i = 0; i < trazos.Count && i < anchosInicio.Count; i++)
         {
             if (trazos[i] == null)
@@ -2235,6 +2262,7 @@ public class Dibujo : MonoBehaviour
             fotograma = animacion != null ? animacion.Fotograma : 0,
             fps = animacion != null ? animacion.fotogramasPorSegundo : 12f,
             pincelElegido = pincelElegido,
+            anchoPincelLocal = anchoPincelLocal,
             nombre = NombreArchivo ?? ""
         };
         if (titere != null)
@@ -2369,6 +2397,8 @@ public class Dibujo : MonoBehaviour
         if (hojas != null)
             hojas.Restaurar(d);
         pincelElegido = d.pincelElegido;
+        // Proyectos de antes: el grosor del dial estaba fijo en metros; desde aquí se mide en el dibujo.
+        anchoPincelLocal = d.anchoPincelLocal > 0f ? d.anchoPincelLocal : anchoPincel / EscalaMundo;
         if (titere != null)
             titere.Restaurar(d);
         if (incluirFondo && escenario != null)

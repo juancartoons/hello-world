@@ -2,19 +2,25 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Puntos de TELA (parte de ControlManos): relieve suave dentro de un relleno.
-//  - Modo nodos (izquierda pulgar + medio): toca DENTRO del relleno de la figura elegida (lejos de su línea) y
-//    quédate quieto medio segundo = punto de tela nuevo (un rombito morado), pegado al dedo.
-//  - Toca un punto de tela = se pega al dedo. Llévalo hacia ti o hacia el fondo (o de lado): la tela de alrededor
-//    lo sigue en forma de campana suave (nunca en punta) y el borde se queda pegado a la línea.
-//    Se suelta abriendo la mano izquierda, igual que los nodos.
-//  - Borrador (puño izquierdo) sobre un punto de tela = se quita (la tela vuelve a su lugar).
-// La forma de la tela la calcula Trazo (ArmarMallaTela).
+//  - Modo nodos (izquierda pulgar + medio) y PELLIZCA el relleno con la derecha (pulgar + índice), en cualquier
+//    figura (no hace falta elegirla antes): la tela se agarra justo ahí. Jálala hacia ti o empújala al fondo y
+//    abre el pellizco: se queda así. Cada pellizco en otro lugar = otro punto (un rombito morado).
+//    Pellizcar cerca de un rombito (a menos de 2 cm) agarra ese mismo.
+//  - Para cambiarlo de lugar después: tócalo con el índice, igual que un nodo (se pega al dedo y se suelta
+//    abriendo la mano izquierda).
+//  - Si lo sueltas casi plano (sin relieve), el punto se quita solo. El borrador (puño izquierdo) también lo quita.
+// La tela de alrededor sigue al punto en forma de campana suave (nunca en punta) y el borde se queda pegado a la
+// línea. La forma de la tela la calcula Trazo (ArmarMallaTela).
 public partial class ControlManos
 {
+    const float RadioPellizcoTela = 0.02f;   // metros: pellizcar a esta distancia de un rombito agarra ese mismo
+    const float TelaPlana = 0.004f;          // metros: soltado con menos relieve que esto, el punto se quita
+
     Trazo telaTrazo;
     int telaIndice = -1;
     Vector3 telaDesfase;
-    float proximaTela;
+    float proximaTela, avisoTela = -10f;
+    bool telaConPellizco, telaNueva;
     readonly List<Transform> telasVisibles = new List<Transform>();
     readonly List<Renderer> telasRender = new List<Renderer>();
     Material materialTela;
@@ -60,11 +66,13 @@ public partial class ControlManos
         dibujo.Seleccionar(t);
         telaTrazo = t;
         telaIndice = i;
+        telaConPellizco = false;
+        telaNueva = false;
         telaDesfase = t.PosicionTela(i) - dibujo.transform.InverseTransformPoint(punta);
         Burbuja(punta, 1.2f);
     }
 
-    // Un punto de tela nuevo en la figura "t" donde toca el dedo; queda pegado al dedo.
+    // Un punto de tela nuevo en la figura "t" donde está la pinza; queda agarrado.
     bool AgregarTelaEn(Trazo t, Vector3 punta)
     {
         if (t == null || !t.relleno)
@@ -76,12 +84,65 @@ public partial class ControlManos
             dibujo.DescartarUltimoDeshacer();
             return false;
         }
+        dibujo.Seleccionar(t);
         telaTrazo = t;
         telaIndice = k;
+        telaConPellizco = false;
+        telaNueva = true;
         telaDesfase = t.PosicionTela(k) - dibujo.transform.InverseTransformPoint(punta);
         Burbuja(punta, 1.3f);
-        dibujo.Mensaje("Punto de tela: llévalo hacia ti o hacia el fondo");
+        dibujo.Mensaje("Tela: jálala hacia ti o empújala al fondo, y abre el pellizco");
         return true;
+    }
+
+    // Modo nodos: el pellizco derecho (pulgar + índice) acaba de cerrarse. Dentro de un relleno = agarrar la tela
+    // ahí (un punto nuevo, o el rombito que ya estaba a menos de 2 cm). Devuelve true si agarró algo.
+    bool EmpezarTelaConPellizco()
+    {
+        Vector3 pinza = Der.PuntoPellizco;
+        Trazo t;
+        int i;
+        if (BuscarTelaCercana(pinza, RadioPellizcoTela, null, out t, out i))
+        {
+            EmpezarArrastreTela(t, i, pinza);
+            telaConPellizco = true;
+            return true;
+        }
+        t = FiguraBajo(dibujo.transform.InverseTransformPoint(pinza), 0.06f, true);
+        if (t == null)
+            return false;
+        // Pegado a la línea la campana sería diminuta: un poquito más adentro.
+        float escala = dibujo.EscalaMundo;
+        float d = t.DistanciaACurva(dibujo.transform.InverseTransformPoint(pinza)) * escala;
+        if (d < Mathf.Max(0.008f, t.ancho * escala * 0.5f + 0.004f))
+        {
+            if (Time.time - avisoTela > 3f)
+            {
+                avisoTela = Time.time;
+                dibujo.Mensaje("Tela: pellizca un poco más adentro del relleno");
+            }
+            return false;
+        }
+        if (!AgregarTelaEn(t, pinza))
+            return false;
+        telaConPellizco = true;
+        return true;
+    }
+
+    // Cada cuadro mientras hay un punto de tela agarrado (paso 1 del modo nodos).
+    void SeguirTela(Vector3 punta)
+    {
+        if (telaConPellizco)
+        {
+            // Agarrado con el pellizco: abrirlo = soltarlo.
+            if (!Der.pellizco)
+            {
+                SoltarTela();
+                return;
+            }
+            punta = Der.PuntoPellizco;
+        }
+        MoverTelaConDedo(punta);
     }
 
     // Cada cuadro mientras está agarrado: la tela sigue al dedo (unas 45 veces por segundo).
@@ -98,10 +159,25 @@ public partial class ControlManos
         telaTrazo.MoverTela(telaIndice, dibujo.transform.InverseTransformPoint(punta) + telaDesfase);
     }
 
+    // Se suelta (al abrir el pellizco, o la mano izquierda). Si quedó casi plano, el punto se quita solo.
     void SoltarTela()
     {
+        if (telaTrazo != null && dibujo != null && Dibujo.Editable(telaTrazo) && telaIndice >= 0
+            && telaIndice < telaTrazo.telaMovida.Count)
+        {
+            if (telaTrazo.telaMovida[telaIndice].magnitude * dibujo.EscalaMundo < TelaPlana)
+            {
+                telaTrazo.QuitarTela(telaIndice);
+                if (telaNueva)
+                    dibujo.DescartarUltimoDeshacer(); // no cambió nada: sin paso de deshacer
+                else
+                    dibujo.Mensaje("Tela plana: punto quitado");
+            }
+        }
         telaTrazo = null;
         telaIndice = -1;
+        telaConPellizco = false;
+        telaNueva = false;
     }
 
     // Los rombitos morados de los puntos de tela (en el modo nodos y con el borrador).

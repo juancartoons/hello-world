@@ -1289,15 +1289,27 @@ public class Trazo : MonoBehaviour
         for (int i = 0; i < n; i++)
             telaTemp.Add(Vector3.zero);
         Triangular(borde, telaTris, telaTemp);
-        if (telaTemp.Count != n || telaTris.Count < 3)
+        if (telaTris.Count < 3)
         {
-            // La figura se cruza a sí misma: sin malla fina.
             telaTris.Clear();
             return false;
         }
         AltosDelBorde();
         telaPlano.AddRange(borde);
         telaAlto.AddRange(altosBorde);
+        if (telaTemp.Count > n && restantes.Count > 0)
+        {
+            // Se trabó (la figura se cruza a sí misma): el centro del abanico también va en la malla fina.
+            Vector2 centro = Vector2.zero;
+            float alto = 0f;
+            foreach (int r in restantes)
+            {
+                centro += borde[r];
+                alto += r < altosBorde.Count ? altosBorde[r] : 0f;
+            }
+            telaPlano.Add(centro / restantes.Count);
+            telaAlto.Add(alto / restantes.Count);
+        }
         Vector2 min = borde[0], max = borde[0];
         foreach (var q in borde)
         {
@@ -1380,9 +1392,9 @@ public class Trazo : MonoBehaviour
         telaBase.Add(b);
         telaMovida.Add(Vector3.zero);
         int k = telaBase.Count - 1;
+        // Si ya hay relieve de otros puntos en ese lugar, el nuevo empieza justo ahí (sin saltos): su propio
+        // movimiento empieza en cero y se suma al de los otros.
         PrepararCampanas(borde);
-        // Ya hay relieve de los otros puntos en ese lugar: el nuevo empieza justo ahí (sin saltos).
-        telaMovida[k] = Desplazamiento(q, k);
         Reconstruir();
         return k;
     }
@@ -1454,7 +1466,9 @@ public class Trazo : MonoBehaviour
         PoligonoValido = true;
     }
 
-    // Triangulación por "orejas". Si la figura se cruza a sí misma, termina en abanico desde el centro.
+    // Triangulación por "orejas". Los puntos sobre un lado recto (o repetidos) se saltan sin triángulo: ahí no hay
+    // oreja que cortar y antes trababan todo (figuras hechas con rectas). Si aun así se traba (la figura se cruza a
+    // sí misma), termina en abanico desde el centro.
     static void Triangular(List<Vector2> p, List<int> tris, List<Vector3> verts3D)
     {
         int m = p.Count;
@@ -1483,7 +1497,15 @@ public class Trazo : MonoBehaviour
                 int i1 = restantes[k];
                 int i2 = restantes[(k + 1) % cuenta];
                 Vector2 a = p[i0], b = p[i1], c = p[i2];
-                if (Cruz(b - a, c - b) <= 1e-12f)
+                Vector2 ab = b - a, bc = c - b;
+                float cruz = Cruz(ab, bc);
+                if (Mathf.Abs(cruz) <= 1e-4f * Mathf.Sqrt(ab.sqrMagnitude * bc.sqrMagnitude))
+                {
+                    restantes.RemoveAt(k);
+                    corte = true;
+                    break;
+                }
+                if (cruz <= 0f)
                     continue;
                 bool contiene = false;
                 for (int j = 0; j < cuenta; j++)

@@ -49,12 +49,12 @@ public class TutorialNovedades : TarjetaTutorial
         {
             case 0:
                 return Tx(
-                    "Hand menu > LAYERS: the layers hang like sheets of paper at the top center of your view. The current one is solid; the ones in front and behind are see-through. PUSH the current one (about 3 cm) = the layer in front; PULL it toward you = the one behind. They close by themselves after 8 seconds.",
-                    "Menú de la mano > CAPAS: las capas cuelgan como papeles arriba al centro de tu vista. La actual se ve sólida; las de adelante y atrás, transparentes. EMPUJA la actual (unos 3 cm) = la capa de adelante; ATRÁELA hacia ti = la de atrás. Se cierran solas a los 8 segundos.");
+                    "Hand menu > LAYERS: the layers hang like sheets of paper close to you (about 35 cm), at the top center of your view, 7 cm apart. The current one is solid; the ones in front fade away as they get near your eyes. PUSH the current one (about 3 cm) = the whole stack moves back and the layer in front arrives; PULL it toward you = the one behind arrives. \"+ Layer\" = a new layer in front (up to 12). They close by themselves after 20 seconds.",
+                    "Menú de la mano > CAPAS: las capas cuelgan como papeles cerca de ti (a unos 35 cm), arriba al centro de tu vista, a 7 cm una de otra. La actual se ve sólida; las de adelante se desvanecen al acercarse a tus ojos. EMPUJA la actual (unos 3 cm) = todo el montón se va al fondo y llega la de adelante; ATRÁELA hacia ti = llega la de atrás. \"+ Capa\" = una capa nueva adelante (hasta 12). Se cierran solas a los 20 segundos.");
             case 1:
                 return Tx(
-                    "In node mode, touch INSIDE the fill of the selected shape and hold still for half a second: a purple diamond appears. Move it toward you or away: the cloth bends smoothly, like a bell, and the edge stays on the line. Eraser on the diamond = it's removed.",
-                    "En el modo nodos, toca DENTRO del relleno de la figura elegida y quédate quieto medio segundo: sale un rombito morado. Llévalo hacia ti o hacia el fondo: la tela se dobla suave, como una campana, y el borde se queda en la línea. Borrador sobre el rombito = se quita.");
+                    "In node mode (left thumb + middle), PINCH a fill with your right hand (thumb + index) and pull it toward you or push it away; open the pinch and it stays. The cloth bends smoothly, like a bell, and the edge stays on the line. A purple diamond marks it: touch it with your index, like a node, to move it again. Leave it flat (or use the eraser) = it's removed.",
+                    "En el modo nodos (izquierda pulgar + medio), PELLIZCA un relleno con la derecha (pulgar + índice) y jálalo hacia ti o empújalo al fondo; abre el pellizco y se queda así. La tela se dobla suave, como una campana, y el borde se queda en la línea. Un rombito morado lo marca: tócalo con el índice, como un nodo, para moverlo otra vez. Si lo dejas plano (o con el borrador), se quita.");
             case 2:
                 return Tx(
                     "With either hand in a loose fist, slide your thumb along the side of your index finger to the left or right: you turn 30° to see the back of the 360 background. Your drawings stay in front of you.",

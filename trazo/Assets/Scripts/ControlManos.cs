@@ -1728,7 +1728,7 @@ public partial class ControlManos : MonoBehaviour
         }
         OcultarNodosDesde(n);
         MostrarAsas(conAsas);
-        MostrarTelas(solo);
+        MostrarTelas(null); // los rombitos de tela de todas las figuras (se pellizcan sin elegir la figura)
     }
 
     // Las asas (como en Illustrator) se ven solo en el nodo seleccionado.

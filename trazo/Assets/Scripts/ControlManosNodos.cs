@@ -16,8 +16,9 @@ using UnityEngine;
 //  - Lo que vas a agarrar (nodo o tirador) se ilumina un poquito antes de tocarlo.
 //  - Tocar la línea elegida (lejos de sus nodos) y quedarte quieto medio segundo = nodo nuevo, pegado al dedo.
 //  - Tocar otra línea = elegirla (y ver solo sus nodos).
-//  - PUNTOS DE TELA: tocar DENTRO del relleno de la figura elegida (lejos de su línea) y quedarte quieto medio
-//    segundo = punto de tela nuevo (rombito morado), pegado al dedo: dale relieve a la tela (ver ControlManosTela.cs).
+//  - PUNTOS DE TELA: PELLIZCA un relleno con la derecha (pulgar + índice) y jálalo hacia ti o empújalo al fondo;
+//    al abrir el pellizco se queda así (rombito morado). Los rombitos se mueven con el índice, como los nodos.
+//    (Ver ControlManosTela.cs.)
 //  - Al entrar al modo, si el dedo ya estaba sobre algo, no agarra nada hasta que salga y vuelva a tocar.
 // Al abrir la mano izquierda todo se suelta y se deseleccionan los del lazo.
 // (Respaldo de la versión con pellizco: trazo/Respaldos/nodos-con-pellizco-v26.)
@@ -92,10 +93,10 @@ public partial class ControlManos
         }
         Vector3 punta = Der.indice;
 
-        // 1. Algo agarrado: sigue al dedo (se suelta al abrir la mano izquierda).
+        // 1. Algo agarrado: sigue al dedo (se suelta al abrir la mano izquierda; la tela pellizcada, al abrir el pellizco).
         if (telaTrazo != null)
         {
-            MoverTelaConDedo(punta);
+            SeguirTela(punta);
             MostrarModoNodos(true, dibujo.Seleccion);
             return;
         }
@@ -108,6 +109,15 @@ public partial class ControlManos
         if (arrastre != Objetivo.Nada)
         {
             ContinuarArrastre(punta);
+            MostrarModoNodos(true, dibujo.Seleccion);
+            return;
+        }
+
+        // 1b. El pellizco derecho dentro de un relleno: agarrar la tela ahí (ver ControlManosTela.cs).
+        if (Der.empezoPellizco && EmpezarTelaConPellizco())
+        {
+            CancelarLazo();
+            esperaDesde = -1f;
             MostrarModoNodos(true, dibujo.Seleccion);
             return;
         }
@@ -141,7 +151,7 @@ public partial class ControlManos
         }
         Trazo tTela;
         int iTela;
-        if (BuscarTelaCercana(punta, RadioPrevio, solo, out tTela, out iTela))
+        if (BuscarTelaCercana(punta, RadioPrevio, null, out tTela, out iTela))
         {
             float dTela = Vector3.Distance(punta, dibujo.transform.TransformPoint(tTela.PosicionTela(iTela)));
             if (dTela < distancia)
@@ -237,11 +247,14 @@ public partial class ControlManos
                 else if (Time.time - esperaDesde > EsperaNodoNuevo)
                 {
                     esperaDesde = -1f;
-                    // Dentro del relleno (lejos de la línea) = punto de tela; sobre la línea = nodo nuevo.
-                    if (TocaSoloRelleno(linea, punta))
-                        AgregarTelaEn(linea, punta);
-                    else
+                    // Sobre la línea = nodo nuevo. Dentro del relleno (lejos de la línea): la tela es con el pellizco.
+                    if (!TocaSoloRelleno(linea, punta))
                         AgregarNodoEn(linea, punta);
+                    else if (Time.time - avisoTela > 4f)
+                    {
+                        avisoTela = Time.time;
+                        dibujo.Mensaje("Tela: pellizca el relleno y jálalo");
+                    }
                 }
             }
             MostrarModoNodos(true, dibujo.Seleccion);

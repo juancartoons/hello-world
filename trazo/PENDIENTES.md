@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 11 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v34***
+*Actualizado: 11 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v35***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -17,7 +17,17 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ---
 
-## 0. Hecho en la v34 (falta probarlo en el visor)
+## 0. Hecho en la v35 (falta probarlo en el visor)
+
+- [x] **Capas más cerca y todo el montón se mueve**: la capa actual queda a unos **35 cm** de tus ojos (al alcance del dedo), en la dirección del cartel de cómic; entre capas siguen **7 cm**. Al empujar o atraer, **todas** las capas se mueven juntas y la tarjeta sólida viaja con su capa hasta el lugar fijo. Las de adelante suben más mientras más cerca están de tus ojos y se desvanecen: la que queda casi en tus ojos no se ve, la siguiente al 10 %, la otra al 20 %... Las de atrás bajan un poco. La tarjeta es un poco más angosta (26 cm).
+- [x] **Botón "+ Capa"** en la tarjeta: una capa nueva adelante de todas (hasta **12**), y el montón se mueve hasta ella. Se puede deshacer. Los personajes del títere siguen yendo a la Capa 4.
+- [x] Las capas se cierran solas a los **20 s** (antes 8).
+- [x] **Tela con pellizco**: en el modo nodos, **pellizca** un relleno con la derecha (pulgar + índice) en cualquier figura (sin elegirla antes), jálalo hacia ti o empújalo al fondo y abre el pellizco. Pellizcar a menos de 2 cm de un rombito agarra ese mismo. Los rombitos se mueven con el **índice**, como los nodos. Si se sueltan planos, se quitan solos. Ya no hay que quedarse quieto medio segundo.
+- [x] **Arreglo de la tela**: en figuras con lados rectos (hechas con la recta o con esquinas en cero) la tela no se armaba y el rombito se movía solo. Ahora los puntos en línea recta se saltan y, si algo se traba, hay un plan B. Además, un punto nuevo sobre un relieve que ya existía ya no lo duplica.
+- [x] **Grosor de las líneas nuevas**: el grosor elegido con el dial (índice derecho en círculos) ahora se mide en el dibujo: si agrandas o achicas todo, las líneas nuevas cambian igual que las demás y combinan. Los proyectos de antes se convierten solos.
+- [x] Tutorial Novedades y ayuda del menú de arriba al día.
+
+## 0+. Hecho en la v34
 
 - [x] **Capas en profundidad** (experimento de computación espacial): botón **Capas** en el menú de la mano (y el botón de la capa del menú de arriba). Las capas cuelgan como papeles arriba al centro de tu vista, donde sale el cartel de cómic (que se esconde mientras tanto). La actual se ve sólida con su nombre y sus botones (Ver, Boceto, Plano, Liberar, X); las de adelante y atrás son fantasmas transparentes con bordes iluminados. Capa 1 al fondo, Capa 4 más cerca. **Empujar** la actual (3 cm, en la parte del nombre) = la de adelante; **atraerla** = la de atrás. Se cierran solas a los 8 s. Cerca de ellas el dedo queda libre (sin bolita, no dibuja). Ya no se abre la lista vertical de capas.
 - [x] **Puntos de tela**: en el modo nodos, tocar dentro del relleno de la figura elegida y quedarse quieto medio segundo = rombito morado; al moverlo, la tela se dobla en campana suave y el borde queda pegado a la línea. Borrador sobre el rombito = se quita. Se guarda en el proyecto y en las claves de animación.
@@ -151,6 +161,11 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [ ] Cuando ya no haga falta, quitar el botón **Tutorial** de Mis archivos (por ahora se queda; abre el mismo panel "?").
 
 ## 5. Para probar en el visor (desde la v21 casi nada se ha probado)
+
+**Nuevo en la v35:**
+- [ ] Capas: ¿la distancia de 35 cm está bien? ¿se nota que todo el montón se mueve? ¿las de adelante ya no molestan cerca de los ojos? ¿el botón "+ Capa" se toca fácil?
+- [ ] Tela con pellizco: ¿se agarra bien la tela al pellizcar? ¿se queda al abrir el pellizco? ¿funciona en figuras de lados rectos?
+- [ ] Grosor: con un grosor elegido en el dial, agranda o achica todo y dibuja una línea nueva: ¿combina con las demás?
 
 **Nuevo en la v34:**
 - [ ] Capas en profundidad: ¿se entiende empujar y atraer? ¿la distancia entre capas (7 cm) y el tamaño están bien? ¿molesta que tapen la vista arriba?
