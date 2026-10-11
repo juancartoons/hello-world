@@ -1545,8 +1545,11 @@ public partial class ControlManos : MonoBehaviour
                 dibujo.GuardarParaDeshacer();
                 if (tipo == Objetivo.Nodo)
                 {
-                    dibujo.Destello(dibujo.transform.TransformPoint(t.nodos[i]), 0.02f);
-                    Burbuja(dibujo.transform.TransformPoint(t.nodos[i]), 1f);
+                    Vector3 dondeNodo = dibujo.transform.TransformPoint(t.nodos[i]);
+                    // v37: los tramos que sostenían el nodo se deshacen en polvo (si no se puede, el destello de antes).
+                    if (!EfectosLinea.DisolverNodo(t, i))
+                        dibujo.Destello(dondeNodo, 0.02f);
+                    Burbuja(dondeNodo, 1f);
                     dibujo.QuitarNodo(t, i);
                 }
                 else if (tipo == Objetivo.Tela)
@@ -1811,7 +1814,7 @@ public partial class ControlManos : MonoBehaviour
     {
         if (mallaDisco != null)
             return mallaDisco;
-        const int lados = 20;
+        const int lados = 40; // v37: más redondo (sin aro negro, la orilla se nota)
         var v = new Vector3[lados + 1];
         var tri = new int[lados * 3];
         v[0] = Vector3.zero;

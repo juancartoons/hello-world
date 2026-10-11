@@ -85,6 +85,15 @@ public static class ArmarEscenaTrazo
         var matPanel = Mat("Panel", shaderVidrio != null ? shaderVidrio : unlit, new Color(0.97f, 0.97f, 0.98f));
         if (shaderVidrio == null)
             Debug.LogWarning("TrazoVR: no encontré el shader del vidrio (copia otra vez la carpeta Shaders).");
+        else
+        {
+            // v37: un poquito más transparente (Mis archivos, la mesa de trabajo, el menú de la muñeca...).
+            matPanel.SetFloat("_Opacidad", 0.8f);
+            matPanel.SetFloat("_Esmerilado", 0.55f);
+        }
+        // v37: los colores de la paleta son perlas (sin aro negro).
+        var shaderPerla = Shader.Find("TrazoVR/Perla");
+        Material matPerla = shaderPerla != null ? Mat("Perla", shaderPerla, Color.white) : null;
         // v36: el polvo brillante al borrar, la lucecita de los índices y las manos de vidrio.
         var shaderPolvo = Shader.Find("TrazoVR/Polvo");
         var shaderManoVidrio = Shader.Find("TrazoVR/ManoVidrio");
@@ -236,6 +245,7 @@ public static class ArmarEscenaTrazo
         control.materialPolvo = matPolvo;
         control.materialManoVidrio = matManoVidrio;
         control.materialVidrio = shaderVidrio != null ? matPanel : null;
+        control.materialPerla = matPerla;
         control.materialIconos = matIconos;
         control.materialNodoActivo = matNodoActivo;
         control.materialCursor = matCursor;
@@ -623,6 +633,8 @@ public static class ArmarEscenaTrazo
         SinSombras(fondo.GetComponent<Renderer>(), matPanel);
         // Las páginas (Animar, Bocas, Títere) con su fondo y el asa de abajo: se despliegan al tocar su pestaña.
         var paginas = Pagina(c, "Paginas");
+        // v37: las páginas se despliegan ARRIBA del reproductor (la mesa ahora va más abajo en tu vista).
+        paginas.localPosition = new Vector3(0f, PanelArriba.SubirPaginas, 0f);
         panel.paginas = paginas.gameObject;
         var fondoPaginas = GameObject.CreatePrimitive(PrimitiveType.Quad);
         fondoPaginas.name = "FondoPaginas";
@@ -641,12 +653,12 @@ public static class ArmarEscenaTrazo
         asa.transform.localScale = new Vector3(0.14f, 0.016f, 0.01f);
         SinSombras(asa.GetComponent<Renderer>(), matAsaPanel);
         panel.asa = asa.transform;
-        // Otra asa abajo del panel (también lo mueve).
+        // Otra asa en la orilla de las páginas abiertas (arriba de todo; también lo mueve).
         var asaAbajo = GameObject.CreatePrimitive(PrimitiveType.Cube);
         asaAbajo.name = "AsaAbajo";
         Object.DestroyImmediate(asaAbajo.GetComponent<Collider>());
         asaAbajo.transform.SetParent(paginas, false);
-        asaAbajo.transform.localPosition = new Vector3(0f, -0.15f, 0f);
+        asaAbajo.transform.localPosition = new Vector3(0f, 0.08f, 0f);
         asaAbajo.transform.localScale = new Vector3(0.14f, 0.016f, 0.01f);
         SinSombras(asaAbajo.GetComponent<Renderer>(), matAsaPanel);
         panel.asaAbajo = asaAbajo.transform;
@@ -714,13 +726,13 @@ public static class ArmarEscenaTrazo
         SinSombras(cabezal.GetComponent<Renderer>(), matCabezal);
         panel.cabezal = cabezal.transform;
 
-        // Pestañas asomadas bajo el reproductor (como un archivador): Animar, Bocas y Títere.
-        // Tocar una = se despliega su página; tocarla otra vez = se repliega.
+        // Pestañas asomadas ARRIBA del panel (como un archivador): Animar, Bocas y Títere.
+        // Tocar una = se despliega su página hacia arriba; tocarla otra vez = se repliega.
         string[] pestanas = { "Animar", "Bocas", "Títere" };
         var p = new BotonTocable[pestanas.Length];
         for (int i = 0; i < pestanas.Length; i++)
         {
-            p[i] = Boton(c, pestanas[i], new Vector3(-0.085f + i * 0.085f, 0.08f, 0f), matBoton, matBotonMarcado);
+            p[i] = Boton(c, pestanas[i], new Vector3(-0.085f + i * 0.085f, 0.232f, 0f), matBoton, matBotonMarcado);
             p[i].transform.localScale = new Vector3(0.078f, 0.022f, 0.008f);
             if (p[i].etiqueta != null)
                 p[i].etiqueta.rectTransform.sizeDelta = new Vector2(0.07f, 0.018f);

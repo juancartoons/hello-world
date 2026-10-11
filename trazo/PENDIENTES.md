@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 11 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v36***
+*Actualizado: 11 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v37***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,6 +16,23 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 4. **Build And Run**.
 
 ---
+
+## 0+. Hecho en la v37 (falta probarlo en el visor)
+
+**Paleta "de lujo"**
+- [x] Sin aros negros: el disco grande y el centro son de **vidrio** (se ve tu fondo borroso a través, con un brillo fino en la orilla). El centro es más esmerilado, para distinguirlo del disco grande.
+- [x] Los colores son **perlas**: sin aro, un poco más oscuras en la orilla (así hasta el blanco se distingue) y con un brillito arriba a la izquierda. Círculos más redondos.
+
+**Mesa de trabajo**
+- [x] **Más abajo**, como un espejo de las capas: unos 20° debajo de hacia donde miras. Te sigue con calma (de lado y de arriba a abajo); mover un poco la cabeza no la mueve, así puedes mirarla; con el dedo encima se queda quieta.
+- [x] Las pestañas **Animar, Bocas y Títere** pasaron **arriba** del reproductor y sus páginas se abren **hacia arriba**.
+- [x] Las **X** de la mesa (arriba a la derecha) y de las capas (arriba a la derecha de la tarjeta, junto a "+ Capa") ya existían; ahora son un poco más grandes.
+
+**Otros**
+- [x] Al **borrar un nodo**, los tramos de línea que lo sostenían se deshacen en **polvo**, como una línea borrada (y suena la burbuja o el cristal).
+- [x] La **luz del dedo ya no ilumina las líneas** (ni la punta de la que dibujas). Sigue en los rellenos, el vidrio y las manos.
+- [x] **Vidrio un poquito más transparente** en Mis archivos, la mesa de trabajo y el menú de la muñeca.
+- [x] **Canal de Venecia**: el agua ahora está unos 4 m debajo de tus ojos (antes, al nivel del puente). Herramienta: `trazo/Herramientas/Retoques/venecia_canal/agua_mas_abajo.py`.
 
 ## 0+. Hecho en la v36 "como de 2030" (falta probarlo en el visor)
 
@@ -155,7 +172,9 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 ## 2. Propuestas esperando tu decisión (escribe HY para hacerlas)
 
 - [ ] **Persiana** (plan B de la mesa de trabajo): si la mesa al mirar abajo no te convence, el menú de arriba baja como una persiana desde arriba de tu vista.
-- [ ] **Burbujas o cristal**: después de probar las dos con la burbujita secreta, decide cuál queda por defecto (o si se quedan las dos).
+- [ ] **Burbujas o cristal**: por ahora se quedan las dos (burbujita secreta de la paleta).
+- [ ] **Botones redondos de la paleta** (Línea, Relleno, sus hijos y la tinta invisible): ¿también sin aro negro, como los colores?
+- [ ] **Venecia, el puente curvo**: que el piso del puente baje un poco hacia las escaleras (ahora es plano). Hay que dibujar a mano dónde está cada parte del puente.
 - [ ] **Dar vida (con un soplo)**: se pasó a la **sección 8 → C. Movimiento automático** (con todos sus detalles).
 - [ ] **Tutorial: tu primer personaje cobra vida**: al final del tutorial el usuario dibuja un círculo, dos puntos y una sonrisa, y la app le da vida. Como el tutorial pide el orden (cara, ojos, boca), nunca falla.
 - [ ] **Tutorial: el logo se dibuja en tu cuarto**: al empezar, en passthrough, una línea mágica dibuja el logo JCartoons en el aire, al ritmo de la música, y el muñequito sale caminando.
@@ -182,6 +201,12 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [ ] Cuando ya no haga falta, quitar el botón **Tutorial** de Mis archivos (por ahora se queda; abre el mismo panel "?").
 
 ## 5. Para probar en el visor (desde la v21 casi nada se ha probado)
+
+**Nuevo en la v37:**
+- [ ] Paleta: ¿se ve "de lujo" sin los aros negros? ¿se distingue el centro del disco grande? ¿se ven bien las perlas (sobre todo el blanco y el gris claro)?
+- [ ] Mesa de trabajo: ¿la altura está bien ahora (espejo de las capas)? ¿se puede mirar y tocar sin que se escape? ¿las páginas hacia arriba se entienden?
+- [ ] Borrar nodos: ¿se ve bonito el polvo de los tramos?
+- [ ] Venecia: ¿ya se siente que estás sobre el puente?
 
 **Nuevo en la v36:**
 - [ ] Vidrio vivo: ¿se ve el fondo borroso a través de los menús y la paleta? ¿se leen bien las letras? ¿algo se ve raro detrás del vidrio (líneas que desaparecen detrás del panel)?

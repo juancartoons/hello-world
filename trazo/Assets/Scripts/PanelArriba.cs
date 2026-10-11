@@ -3,11 +3,15 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 
-// Panel de arriba, que desde la v36 es la MESA DE TRABAJO: aparece al MIRAR HACIA ABAJO (medio segundo), inclinada
-// frente a tu cintura, como una mesa de edición. (Mirar arriba ahora es para las capas.)
+// Panel de arriba, que desde la v36 es la MESA DE TRABAJO: aparece al MIRAR HACIA ABAJO (medio segundo).
+// (Mirar arriba es para las capas.)
+//  - v37: va ABAJO en tu vista, como un espejo de las capas (que van arriba): unos 20° debajo de hacia donde miras.
+//    Te sigue con calma de lado y de arriba a abajo; mover un poco la cabeza no la mueve (así puedes mirarla), y
+//    con tu dedo encima se queda quieta. Las pestañas (Animar, Bocas, Títere) están ARRIBA del reproductor y sus
+//    páginas se despliegan hacia arriba.
 //  - No sale mientras dibujas ni justo después, ni mientras miras el menú de la muñeca o la paleta.
 //  - El reproductor y la línea de tiempo (página Animar, o las páginas guardadas) se QUEDAN a la vista y te
-//    siguen despacio; las otras páginas (Medios, Bocas, Títere) solo mientras miras abajo. Su X la guarda.
+//    siguen; las otras páginas (Bocas, Títere) solo mientras miras abajo. Su X (arriba a la derecha) la guarda.
 //  - Si no la miras, se vuelve discreta (Respira); al mirarla despierta.
 //  - ASA (barra de arriba): pellízcala con la derecha y arrastra el panel a donde quieras.
 //    Mientras lo arrastras, pellizca también con la izquierda y separa/junta las manos = tamaño.
@@ -100,8 +104,21 @@ public class PanelArriba : MonoBehaviour
     const float MirarAbajoEntra = 0.5f;   // cuánto hay que mirar abajo (y de la mirada, unos 30°)
     const float MirarAbajoSale = 0.12f;
     const float EsperaMesa = 0.5f;
-    const float DistanciaMesa = 0.42f, AlturaMesa = -0.36f;  // frente a tu cintura (desde tus ojos)
-    const float SeguirMesa = 1.5f;        // qué tan rápido te sigue cuando giras
+    // v37: la mesa abajo en tu vista (espejo de las capas) y las páginas arriba del reproductor.
+    public const float SubirPaginas = 0.40f;   // cuánto suben las páginas (lo usa también ★ Armar escena)
+    const float AbajoPanel = 0.09f;            // la orilla de abajo (bajo el reproductor)
+    const float ArribaPlegado = 0.25f;         // la orilla de arriba con las páginas guardadas (las pestañas)
+    const float ArribaDesplegado = 0.50f;      // y con una página abierta
+    const float AbajoAyuda = -0.06f;           // (la copia azul) la orilla de abajo del cuadro de explicación
+    const float DistanciaMesa = 0.55f;         // de tus ojos al centro de la mesa (metros)
+    const float BajoLaMirada = 20f;            // grados debajo de hacia donde miras
+    const float CentroMesa = 0.165f;           // el centro de lo que siempre se ve (reproductor, tiempo y pestañas)
+    const float ZonaQuietaArriba = 22f;        // grados que puedes subir o bajar la cabeza sin que la mesa se mueva
+    const float ZonaQuietaLado = 20f;          // y girarla de lado
+    const float MasAltaMesa = -12f, MasBajaMesa = -75f;  // grados respecto al horizonte
+    const float SeguirMesa = 2f;               // qué tan rápido te alcanza cuando ya te sigue
+    float inclinacion;                         // hacia dónde mira la mesa (grados; + arriba)
+    bool siguiendoLado, siguiendoArriba;
     float abajoDesde = -1f, arribaDesde = -1f;
     Respira respira;
     BotonTocable btnVolverArriba; // la X: guarda la mesa (vuelve a salir al mirar abajo)
@@ -132,7 +149,6 @@ public class PanelArriba : MonoBehaviour
     PanelArriba ayuda;       // (en el de verdad) la copia azul
     bool ayudaAbierta;
     TMP_Text textoAyuda;
-    const float BajarAyuda = 0.42f;
 
     void Awake()
     {
@@ -501,7 +517,7 @@ public class PanelArriba : MonoBehaviour
         cubo.name = "BotonVolverArriba";
         cubo.transform.SetParent(contenido.transform, false);
         cubo.transform.localPosition = new Vector3(0.237f, 0.222f, 0f);
-        cubo.transform.localScale = new Vector3(0.022f, 0.022f, 0.008f);
+        cubo.transform.localScale = new Vector3(0.026f, 0.026f, 0.008f); // v37: un poco más grande
         var r = cubo.GetComponent<Renderer>();
         r.sharedMaterial = btnSeguir.materialNormal;
         r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -520,7 +536,7 @@ public class PanelArriba : MonoBehaviour
         t.alignment = TextAlignmentOptions.Center;
         t.fontStyle = FontStyles.Bold;
         t.color = Color.black;
-        t.rectTransform.sizeDelta = new Vector2(0.018f, 0.018f);
+        t.rectTransform.sizeDelta = new Vector2(0.022f, 0.022f);
         btnVolverArriba.etiqueta = t;
         btnVolverArriba.alTocar.AddListener(Seguirme);
         MostrarX(false);
@@ -582,8 +598,8 @@ public class PanelArriba : MonoBehaviour
         if (contenido == null || !contenido.activeInHierarchy)
             return false;
         Vector3 l = transform.InverseTransformPoint(mundo);
-        float abajo = esAyuda || (listaArchivos != null && listaArchivos.activeSelf) ? -0.33f : plegado ? 0.062f : -0.175f;
-        float arriba = capasAbiertas ? filaCapasY + Dibujo.NumeroDeCapas * pasoCapasY : 0.225f;
+        float abajo = listaArchivos != null && listaArchivos.activeSelf ? -0.33f : esAyuda ? AbajoAyuda : AbajoPanel;
+        float arriba = capasAbiertas ? filaCapasY + Dibujo.NumeroDeCapas * pasoCapasY : plegado ? ArribaPlegado : ArribaDesplegado;
         float lado = capasAbiertas ? 0.43f : 0.27f; // con Capas abiertas: Boceto, Plano y Liberar llegan hasta x = 0.42
         return Mathf.Abs(l.x) < lado && l.y > abajo && l.y < arriba && Mathf.Abs(l.z) < 0.06f;
     }
@@ -604,6 +620,7 @@ public class PanelArriba : MonoBehaviour
             // Una interfaz que respira con tu atención (v36).
             respira = gameObject.AddComponent<Respira>();
             respira.contenido = contenido.transform;
+            respira.centro = new Vector3(0f, CentroMesa, 0f);
         }
 
         float abajo = -cabeza.forward.y;
@@ -654,8 +671,10 @@ public class PanelArriba : MonoBehaviour
             contenido.SetActive(ver);
             if (ver && !anclado)
             {
-                // Aparece frente a ti, hacia donde mirabas (solo el giro de lado: la mesa no se inclina contigo).
+                // Aparece abajo en tu vista, hacia donde mirabas.
                 giro = GiroDeLado(cabeza);
+                inclinacion = Inclinacion(cabeza);
+                siguiendoLado = siguiendoArriba = false;
                 Colocar(cabeza, 1f);
             }
         }
@@ -669,8 +688,10 @@ public class PanelArriba : MonoBehaviour
         RevisarAsa(cabeza);
         if (!anclado)
         {
-            // Te sigue despacio cuando giras (como las capas).
-            giro = Quaternion.Slerp(giro, GiroDeLado(cabeza), 1f - Mathf.Exp(-SeguirMesa * Time.deltaTime));
+            // Te sigue con calma (de lado y de arriba a abajo); con tu dedo encima se queda quieta.
+            bool quieta = arrastrando || (control.Der.valida && Contiene(control.Der.indice));
+            if (!quieta)
+                Seguir(cabeza);
             Colocar(cabeza, 1f - Mathf.Exp(-suavizado * Time.deltaTime));
         }
         if (!arrastrando)
@@ -691,11 +712,44 @@ public class PanelArriba : MonoBehaviour
         return Quaternion.LookRotation(adelante.sqrMagnitude > 1e-6f ? adelante.normalized : Vector3.forward, Vector3.up);
     }
 
-    // La mesa: frente a tu cintura, inclinada mirando hacia tus ojos.
+    // Hacia dónde miras de arriba a abajo (grados; + arriba).
+    static float Inclinacion(Transform cabeza)
+    {
+        return Mathf.Asin(Mathf.Clamp(cabeza.forward.y, -1f, 1f)) * Mathf.Rad2Deg;
+    }
+
+    // Te sigue solo cuando giras o subes/bajas la cabeza bastante; entonces te alcanza con calma y se vuelve a quedar.
+    void Seguir(Transform cabeza)
+    {
+        float k = 1f - Mathf.Exp(-SeguirMesa * Time.deltaTime);
+        Quaternion lado = GiroDeLado(cabeza);
+        if (Quaternion.Angle(giro, lado) > ZonaQuietaLado)
+            siguiendoLado = true;
+        if (siguiendoLado)
+        {
+            giro = Quaternion.Slerp(giro, lado, k);
+            if (Quaternion.Angle(giro, lado) < 3f)
+                siguiendoLado = false;
+        }
+        float p = Inclinacion(cabeza);
+        if (Mathf.Abs(p - inclinacion) > ZonaQuietaArriba)
+            siguiendoArriba = true;
+        if (siguiendoArriba)
+        {
+            inclinacion = Mathf.Lerp(inclinacion, p, k);
+            if (Mathf.Abs(p - inclinacion) < 2f)
+                siguiendoArriba = false;
+        }
+    }
+
+    // La mesa: abajo en tu vista (BajoLaMirada grados debajo de hacia donde mira la mesa), mirando hacia tus ojos.
     void Colocar(Transform cabeza, float a)
     {
-        Vector3 pos = cabeza.position + giro * new Vector3(0f, AlturaMesa, DistanciaMesa);
-        Quaternion rot = Quaternion.LookRotation(pos - cabeza.position, Vector3.up);
+        float elevacion = Mathf.Clamp(inclinacion - BajoLaMirada, MasBajaMesa, MasAltaMesa);
+        Vector3 hacia = giro * (Quaternion.Euler(-elevacion, 0f, 0f) * Vector3.forward);
+        Quaternion rot = Quaternion.LookRotation(hacia, Vector3.up);
+        // Lo que siempre se ve queda centrado en esa dirección (el panel crece desde más abajo).
+        Vector3 pos = cabeza.position + hacia * DistanciaMesa - rot * Vector3.up * (CentroMesa * escala);
         transform.position = Vector3.Lerp(transform.position, pos, a);
         transform.rotation = Quaternion.Slerp(transform.rotation, rot, a);
     }
@@ -1272,8 +1326,9 @@ public class PanelArriba : MonoBehaviour
             return;
         var o = original.transform;
         transform.localScale = o.localScale;
-        // v36: la mesa está abajo, así que la copia azul va ENCIMA de ella.
-        transform.SetPositionAndRotation(o.position + o.up * (BajarAyuda * o.lossyScale.y), o.rotation);
+        // v36: la mesa está abajo, así que la copia azul va ENCIMA de ella (v37: también encima de las páginas abiertas).
+        float sube = (original.plegado ? ArribaPlegado : ArribaDesplegado) - AbajoAyuda + 0.01f;
+        transform.SetPositionAndRotation(o.position + o.up * (sube * o.lossyScale.y), o.rotation);
     }
 
     void PrepararAyuda()
@@ -1321,7 +1376,7 @@ public class PanelArriba : MonoBehaviour
             hoja.name = "FondoAyuda";
             Destroy(hoja.GetComponent<Collider>());
             hoja.transform.SetParent(contenido.transform, false);
-            hoja.transform.localPosition = new Vector3(0f, -0.237f, 0.006f);
+            hoja.transform.localPosition = new Vector3(0f, AbajoAyuda + 0.075f, 0.006f); // v37: justo bajo el reproductor
             hoja.transform.localScale = new Vector3(0.5f, 0.14f, 1f);
             var rh = hoja.GetComponent<Renderer>();
             var fondo = contenido.transform.Find("Fondo");
@@ -1333,7 +1388,7 @@ public class PanelArriba : MonoBehaviour
             var go = Instantiate(textoFotograma.gameObject, contenido.transform);
             go.name = "TextoAyuda";
             textoAyuda = go.GetComponent<TMP_Text>();
-            textoAyuda.rectTransform.localPosition = new Vector3(0f, -0.237f, -0.002f);
+            textoAyuda.rectTransform.localPosition = new Vector3(0f, AbajoAyuda + 0.075f, -0.002f);
             textoAyuda.rectTransform.localRotation = Quaternion.identity;
             textoAyuda.rectTransform.sizeDelta = new Vector2(0.47f, 0.128f);
             textoAyuda.alignment = TextAlignmentOptions.TopLeft;
@@ -1396,7 +1451,7 @@ public class PanelArriba : MonoBehaviour
     static readonly Dictionary<string, string> AyudaIngles = new Dictionary<string, string>
     {
         { "AYUDA", "HELP\nThis blue panel is a copy of the one above. Tap any button here and I'll explain what it does and how to use it. Here the buttons don't change your drawing.\nTap \"?\" to close help." },
-        { "ANIMAR (página)", "ANIMATE (page)\nThe tabs peek out under the player, like in a filing cabinet: tap one to open its page and tap it again to put it away.\nAnim video: your animation as an MP4 (also in My files → Share). Onion skin and frame by frame will come here." },
+        { "ANIMAR (página)", "ANIMATE (page)\nThe tabs peek out at the top of the panel, like in a filing cabinet: tap one to open its page (upward) and tap it again to put it away.\nAnim video: your animation as an MP4 (also in My files → Share). Onion skin and frame by frame will come here." },
         { "LIBERAR (de esta capa)", "RELEASE (this layer)\nWhat you draw in Plane 2D stays enchanted on its layer's sheet: nodes, handles, lasso and moving it stay inside that sheet.\nRelease removes the spell: if you have selected (blue) lines of this layer, only those; otherwise the whole layer. Then they move freely in 3D. Can be undone." },
         { "BOCETO (de esta capa)", "SKETCH (this layer)\nNo = normal ink. Gray or Blue = sketch pencil: it does not appear in photos or videos (to draw on top in another layer)." },
         { "PLANO (de esta capa)", "PLANE (this layer)\nOwn: the layer has its own sheet in Plane 2D. Joined: it uses the same sheet as the other joined layers (sketch behind, ink in front)." },
@@ -1485,7 +1540,7 @@ public class PanelArriba : MonoBehaviour
     {
         var d = new Dictionary<BotonTocable, string>();
         // Pestañas y barra de arriba
-        Poner(d, btnPaginaAnimar, "ANIMAR (página)\nLas pestañas se asoman bajo el reproductor, como en un archivador: toca una para abrir su página y tócala otra vez para guardarla.\nVideo anim: tu animación en MP4 (también en Mis archivos → Compartir). Aquí vendrán papel cebolla y cuadro a cuadro.");
+        Poner(d, btnPaginaAnimar, "ANIMAR (página)\nLas pestañas se asoman arriba del panel, como en un archivador: toca una para abrir su página (hacia arriba) y tócala otra vez para guardarla.\nVideo anim: tu animación en MP4 (también en Mis archivos → Compartir). Aquí vendrán papel cebolla y cuadro a cuadro.");
         if (btnLiberarCapa != null)
             foreach (var b in btnLiberarCapa)
                 Poner(d, b, "LIBERAR (de esta capa)\nLo que dibujas en Plano 2D queda encantado en la hoja de su capa: nodos, tiradores, lazo y moverlo se quedan dentro de esa hoja.\nLiberar quita el encantamiento: si tienes líneas elegidas (azules) de esta capa, solo esas; si no, toda la capa. Después se mueven libres en 3D. Se puede deshacer.");

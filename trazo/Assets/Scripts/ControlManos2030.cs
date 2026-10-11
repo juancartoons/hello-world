@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // "COMO DE 2030" (parte de ControlManos, v36):
-//  - LUZ EN LA PUNTA DEL DEDO: el índice derecho lleva una lucecita suave (y el izquierdo una más chiquita). Las
-//    líneas, los rellenos, el vidrio de los menús y las manos se iluminan un poquito cuando el dedo se acerca
-//    (los shaders leen _JCDedo y _JCDedo2, ver Shaders/TrazoLuz.hlsl).
+//  - LUZ EN LA PUNTA DEL DEDO: el índice derecho lleva una lucecita suave (y el izquierdo una más chiquita). Los
+//    rellenos, el vidrio de los menús y las manos se iluminan un poquito cuando el dedo se acerca (v37: las líneas
+//    ya no). Los shaders leen _JCDedo y _JCDedo2, ver Shaders/TrazoLuz.hlsl.
 //  - MANOS DE VIDRIO: las manos de Meta se ven como vidrio, con el contorno iluminado y las yemas brillando.
 //    (Si no te gusta, deja vacío "materialManoVidrio" y vuelven las de siempre.)
 //  - Cuándo editaste por última vez: las capas (al mirar arriba) y la mesa de trabajo (al mirar abajo) no salen
@@ -20,6 +20,8 @@ public partial class ControlManos
     public Material materialManoVidrio;
     [Tooltip("Vidrio de los menús y la paleta: shader TrazoVR/Vidrio")]
     public Material materialVidrio;
+    [Tooltip("v37: los colores de la paleta como perlas, sin aro negro: shader TrazoVR/Perla (vacío = como antes)")]
+    public Material materialPerla;
 
     static readonly int idDedo = Shader.PropertyToID("_JCDedo");
     static readonly int idDedo2 = Shader.PropertyToID("_JCDedo2");
@@ -131,14 +133,32 @@ public partial class ControlManos
 
     // ---------- Vidrio de la paleta ----------
 
-    // El disco blanco de la paleta, de vidrio (si hay material de vidrio).
-    Material MaterialVidrioPaleta()
+    // Un disco de vidrio para la paleta (si hay material de vidrio). v37: con menos blanco, para que se vea tu fondo
+    // borroso a través. "orden": los de orden mayor se dibujan después (el centro, encima del disco grande).
+    Material MaterialVidrioPaleta(float esmerilado, float opacidad, Color tinte, int orden)
     {
         if (materialVidrio == null)
             return null;
         var m = new Material(materialVidrio);
         if (m.HasProperty("_Esmerilado"))
-            m.SetFloat("_Esmerilado", 0.78f);
+            m.SetFloat("_Esmerilado", esmerilado);
+        if (m.HasProperty("_Opacidad"))
+            m.SetFloat("_Opacidad", opacidad);
+        if (m.HasProperty("_BaseColor"))
+            m.SetColor("_BaseColor", tinte);
+        m.renderQueue = materialVidrio.renderQueue + orden;
+        materialesPaleta.Add(m);
+        return m;
+    }
+
+    // Una perla de color (v37): sin aro negro, con volumen y un brillito. Null si no hay material de perla.
+    Material MaterialPerla(Color c)
+    {
+        if (materialPerla == null)
+            return null;
+        var m = new Material(materialPerla);
+        if (m.HasProperty("_BaseColor"))
+            m.SetColor("_BaseColor", c);
         materialesPaleta.Add(m);
         return m;
     }

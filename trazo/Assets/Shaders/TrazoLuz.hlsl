@@ -2,7 +2,7 @@
 #define TRAZO_LUZ_INCLUDED
 
 // LUZ EN LA PUNTA DEL DEDO (v36): ControlManos pone cada cuadro dónde está la punta del índice derecho.
-// Las líneas, los rellenos, el vidrio de los menús y las manos se iluminan un poquito cuando el dedo se acerca.
+// Los rellenos, el vidrio de los menús y las manos se iluminan un poquito cuando el dedo se acerca (v37: las líneas no).
 // _JCDedo: xyz = punta del índice derecho (mundo); w = fuerza (0 = apagada).
 // _JCDedo2: lo mismo con el índice izquierdo (más suave).
 float4 _JCDedo;

@@ -5,8 +5,8 @@ Shader "TrazoVR/Linea"
     //   hacia los lados mirando siempre a la cámara, así se ve como un trazo de tinta limpio.
     // - Tubo (uv.y = 1): la malla ya es un tubo 3D; se le da un brillo suave arriba para que se lea el volumen.
     // Compatible con URP, SRP Batcher y estéreo de Meta Quest (multiview / single-pass instanced).
-    // v36: la luz de la punta del dedo la ilumina; al terminarla, un destello la recorre de punta a punta
-    // (_JCDestello = cuándo empezó); y al deshacer se "rebobina" (_JCCorte: lo que pasa de ahí no se dibuja).
+    // v36: al terminarla, un destello la recorre de punta a punta (_JCDestello = cuándo empezó); y al deshacer se
+    // "rebobina" (_JCCorte: lo que pasa de ahí no se dibuja). (v37: la luz del dedo ya no ilumina las líneas.)
     Properties
     {
         _BaseColor ("Color de la línea", Color) = (0, 0, 0, 1)
@@ -56,8 +56,7 @@ Shader "TrazoVR/Linea"
                 float4 positionCS : SV_POSITION;
                 float3 normalWS   : TEXCOORD0;
                 float esTubo      : TEXCOORD1;
-                float3 posWS      : TEXCOORD2;
-                float lugar       : TEXCOORD3; // 0 al empezar la línea, 1 al terminarla
+                float lugar       : TEXCOORD2; // 0 al empezar la línea, 1 al terminarla
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -97,7 +96,6 @@ Shader "TrazoVR/Linea"
                 o.positionCS = TransformWorldToHClip(posWS);
                 o.normalWS = nWS;
                 o.esTubo = v.uv.y;
-                o.posWS = posWS;
                 o.lugar = v.uv2.y;
                 return o;
             }
@@ -120,8 +118,6 @@ Shader "TrazoVR/Linea"
                         col += TrazoColorLuz * (0.95 * exp(-x * x));
                     }
                 }
-                // La luz de la punta del dedo.
-                col += TrazoColorLuz * (0.55 * TrazoLuzDedo(i.posWS));
                 return half4(col, 1);
             }
             ENDHLSL

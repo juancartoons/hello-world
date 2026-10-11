@@ -177,7 +177,7 @@ public class CapasProfundidad : MonoBehaviour
         nombre = Texto(tarjeta, "Capa 1", new Vector3(-0.035f, 0.015f, -0.002f), new Vector2(0.15f, 0.02f), 0.26f, Color.black);
         nombre.fontStyle = FontStyles.Bold;
         btnMas = Boton(tarjeta, "+ Capa", new Vector3(Ancho * 0.5f - 0.055f, 0.016f, 0f), new Vector2(0.05f, 0.018f));
-        btnCerrar = Boton(tarjeta, "X", new Vector3(Ancho * 0.5f - 0.013f, 0.019f, 0f), new Vector2(0.018f, 0.018f));
+        btnCerrar = Boton(tarjeta, "X", new Vector3(Ancho * 0.5f - 0.015f, 0.018f, 0f), new Vector2(0.022f, 0.022f)); // v37: más grande
         btnVer = Boton(tarjeta, "Ver", new Vector3(-0.0965f, FilaBotones, 0f), new Vector2(0.045f, 0.017f));
         btnBoceto = Boton(tarjeta, "Boceto: No", new Vector3(-0.035f, FilaBotones, 0f), new Vector2(0.062f, 0.017f));
         btnPlano = Boton(tarjeta, "Plano: unido", new Vector3(0.035f, FilaBotones, 0f), new Vector2(0.062f, 0.017f));

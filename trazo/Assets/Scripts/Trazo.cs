@@ -564,6 +564,40 @@ public class Trazo : MonoBehaviour
         Reconstruir();
     }
 
+    // v37: los puntos de la línea que sostenían un nodo (del nodo anterior al siguiente), para que se deshagan en
+    // polvo al borrar ese nodo. Devuelve false si no se puede saber (por ejemplo, una línea sin nodos).
+    public bool CurvaAlrededorDeNodo(int nodo, List<Vector3> salida)
+    {
+        salida.Clear();
+        int n = nodos.Count, m = curva.Count;
+        if (nodo < 0 || nodo >= n || n < 2 || crudos.Count > 0 || curvaSegmento.Count != m)
+            return false;
+        int segmentos = cerrado ? n : n - 1;
+        int llega = cerrado ? (nodo - 1 + n) % n : nodo - 1;   // el tramo que llega al nodo
+        int sale = nodo < segmentos ? nodo : -1;               // el tramo que sale del nodo
+        if (llega >= 0)
+            AgregarTramo(llega, segmentos, salida);
+        if (sale >= 0)
+            AgregarTramo(sale, segmentos, salida);
+        return salida.Count >= 2;
+    }
+
+    // Los puntos de un tramo (de su nodo de inicio a su nodo final). Sin repetir el punto donde se juntan dos tramos.
+    void AgregarTramo(int s, int segmentos, List<Vector3> salida)
+    {
+        int a = InicioTramo(s, segmentos), b = InicioTramo(s + 1, segmentos);
+        if (a < 0 || b < a)
+            return;
+        for (int i = salida.Count > 0 ? a + 1 : a; i <= b; i++)
+            salida.Add(curva[i]);
+    }
+
+    // Dónde empieza un tramo en la curva (el final del último tramo es el último punto).
+    int InicioTramo(int s, int segmentos)
+    {
+        return s >= segmentos ? curva.Count - 1 : curvaSegmento.IndexOf(s);
+    }
+
     // Da la vuelta a la línea (el inicio pasa a ser el final).
     public void Invertir()
     {

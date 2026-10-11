@@ -440,6 +440,8 @@ public partial class ControlManos
     // ---------- Armar la paleta ----------
     // Un disco blanco con borde negro, 12 circulitos de color alrededor y la vista previa en el centro;
     // afuera, la tinta invisible y las dos raíces con sus hijos.
+    // v37: sin aros negros (más fino): el disco y el centro son de vidrio (a través se ve tu fondo borroso, con un
+    // brillo fino en la orilla) y los colores son perlas. Si faltan esos materiales, se ve como antes.
     void ArmarPaleta()
     {
         if (materialNodo == null)
@@ -449,11 +451,16 @@ public partial class ControlManos
         paleta = go.transform;
         var negro = ColorMaterial(Color.black);
         var blanco = ColorMaterial(Color.white);
-        DiscoPaleta(paleta, negro, 0.118f, new Vector3(0f, 0f, 0.002f));
-        DiscoPaleta(paleta, MaterialVidrioPaleta() ?? blanco, 0.11f, new Vector3(0f, 0f, 0.001f)); // v36: de vidrio
-        // El centro: aro fino y fondo gris clarito (así se ve también una línea blanca).
-        DiscoPaleta(paleta, negro, 0.056f, new Vector3(0f, 0f, 0.0005f));
-        DiscoPaleta(paleta, ColorMaterial(new Color(0.85f, 0.85f, 0.87f)), 0.052f, new Vector3(0f, 0f, 0.0003f));
+        var vidrioDisco = MaterialVidrioPaleta(0.35f, 0.82f, new Color(0.97f, 0.97f, 0.98f), 0);
+        if (vidrioDisco == null)
+            DiscoPaleta(paleta, negro, 0.118f, new Vector3(0f, 0f, 0.002f));
+        DiscoPaleta(paleta, vidrioDisco ?? blanco, 0.11f, new Vector3(0f, 0f, 0.001f));
+        // El centro: gris clarito (así se ve también una línea blanca). De vidrio más esmerilado que el disco grande,
+        // así se distingue de él sin necesitar un aro.
+        var vidrioCentro = MaterialVidrioPaleta(0.74f, 0.92f, new Color(0.84f, 0.85f, 0.88f), 1);
+        if (vidrioCentro == null)
+            DiscoPaleta(paleta, negro, 0.056f, new Vector3(0f, 0f, 0.0005f));
+        DiscoPaleta(paleta, vidrioCentro ?? ColorMaterial(new Color(0.85f, 0.85f, 0.87f)), 0.052f, new Vector3(0f, 0f, 0.0003f));
         materialCentroPaleta = ColorMaterial(dibujo != null ? dibujo.ColorNuevo : Color.black);
         ArmarTemblorPaleta(negro);
         ArmarCentroRelleno();
@@ -468,8 +475,10 @@ public partial class ControlManos
             b.SetParent(paleta, false);
             b.localPosition = new Vector3(Mathf.Cos(ang) * RadioPaleta, Mathf.Sin(ang) * RadioPaleta, -0.001f);
             b.localScale = Vector3.one * TamColor;
-            DiscoPaleta(b, negro, 1.18f, new Vector3(0f, 0f, 0.02f));
-            DiscoPaleta(b, ColorMaterial(ColoresPaleta[i]), 1f, Vector3.zero);
+            var perla = MaterialPerla(ColoresPaleta[i]);
+            if (perla == null)
+                DiscoPaleta(b, negro, 1.18f, new Vector3(0f, 0f, 0.02f)); // sin perlas: con su aro negro, como antes
+            DiscoPaleta(b, perla ?? ColorMaterial(ColoresPaleta[i]), 1f, Vector3.zero);
             botonesColor.Add(b);
         }
         go.SetActive(false);

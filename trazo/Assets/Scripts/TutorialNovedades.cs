@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Tutorial de NOVEDADES (sección 4 del panel "?"): lo nuevo de las últimas versiones, con una animación corta
-// de cada cosa. Se actualiza en cada versión (esta es la v36, "como de 2030").
+// de cada cosa. Se actualiza en cada versión (v36 "como de 2030", con los retoques de la v37).
 //  1 · Capas: mira arriba (la pastillita).           5 · Menús que respiran.
 //  2 · Mesa de trabajo: mira abajo.                  6 · Tela con pellizco.
 //  3 · Líneas que cobran vida (destello, polvo...).  7 · Capas: empujar y atraer.
@@ -69,16 +69,16 @@ public class TutorialNovedades : TarjetaTutorial
                     "Arriba de tu vista hay una pastillita chiquita, \"Capa 2 · de 5\": en qué capa estás y cuántas hay. MIRA ARRIBA medio segundo y las capas se despliegan, en el mismo lugar de siempre. BAJA la mirada y se recogen solas. No salen mientras dibujas ni justo después, ni con la paleta abierta. También se abren con el menú de la mano > CAPAS (esas se cierran solas a los 20 segundos).");
             case 1:
                 return Tx(
-                    "The top menu is now a WORK TABLE: LOOK DOWN for half a second (while not drawing) and it appears in front of your waist, tilted like a desk. The player and the timeline (Animate page) STAY in view and follow you slowly. The Media, Mouths and Puppet pages put themselves away when you look ahead again. The X puts it away; the handle still moves it and pins it in place.",
-                    "El menú de arriba ahora es una MESA DE TRABAJO: MIRA ABAJO medio segundo (sin estar dibujando) y aparece frente a tu cintura, inclinada como una mesa. El reproductor y la línea de tiempo (página Animar) se QUEDAN a la vista y te siguen despacio. Las páginas Medios, Bocas y Títere se guardan al volver a mirar al frente. La X la guarda; el asa la sigue moviendo y dejándola fija.");
+                    "The top menu is now a WORK TABLE: LOOK DOWN for half a second (while not drawing) and it appears at the bottom of your view, like a mirror of the layers. The player and the timeline STAY and follow you calmly; with your finger on it, it stays still. The Animate, Mouths and Puppet tabs are on top and their pages open upward. The X (top right) puts it away.",
+                    "El menú de arriba ahora es una MESA DE TRABAJO: MIRA ABAJO medio segundo (sin estar dibujando) y aparece abajo en tu vista, como un espejo de las capas. El reproductor y la línea de tiempo se QUEDAN y te siguen con calma; con tu dedo encima se queda quieta. Las pestañas Animar, Bocas y Títere están arriba y sus páginas se abren hacia arriba. La X (arriba a la derecha) la guarda.");
             case 2:
                 return Tx(
-                    "When you FINISH a line, a flash of light runs along it from end to end. When you ERASE it, it dissolves into glowing dust that falls slowly. When you UNDO, the line rolls itself back, from its end to its start, as if you rewound time. It's only how it looks: your drawing stays the same.",
-                    "Al TERMINAR una línea, un destello de luz la recorre de punta a punta. Al BORRARLA, se deshace en polvo brillante que cae despacio. Al DESHACER, la línea se recoge sola, desde su final hasta su inicio, como si rebobinaras el tiempo. Solo es la forma de verse: tu dibujo queda igual.");
+                    "When you FINISH a line, a flash of light runs along it from end to end. When you ERASE it, it dissolves into glowing dust that falls slowly (and when you erase a node, so do the pieces of line that held it). When you UNDO, the line rolls itself back, from its end to its start, as if you rewound time.",
+                    "Al TERMINAR una línea, un destello de luz la recorre de punta a punta. Al BORRARLA, se deshace en polvo brillante que cae despacio (y al borrar un nodo, los tramos de línea que lo sostenían). Al DESHACER, la línea se recoge sola, desde su final hasta su inicio, como si rebobinaras el tiempo.");
             case 3:
                 return Tx(
-                    "Menus and the palette are frosted GLASS: your 360 background shows through, blurred, and a glint runs along their edges as you move. The tip of your index finger carries a LITTLE LIGHT: lines, fills and glass glow a little when your finger comes close. And your hands now look like glass, with a glowing outline.",
-                    "Los menús y la paleta son de VIDRIO esmerilado: a través se ve borroso tu fondo 360 y un brillo recorre sus bordes cuando te mueves. La punta de tu índice lleva una LUCECITA: las líneas, los rellenos y el vidrio se iluminan un poquito cuando acercas el dedo. Y tus manos ahora se ven de vidrio, con el contorno iluminado.");
+                    "Menus and the palette are made of GLASS: your 360 background shows through, blurred, with a fine glint on the edge. The palette has no black rings anymore: its colors are pearls. The tip of your index finger carries a LITTLE LIGHT that makes fills and glass glow a little when your finger comes close. And your hands look like glass, with a glowing outline.",
+                    "Los menús y la paleta son de VIDRIO: a través se ve borroso tu fondo 360, con un brillo fino en la orilla. La paleta ya no tiene aros negros: sus colores son perlas. La punta de tu índice lleva una LUCECITA que ilumina un poquito los rellenos y el vidrio cuando acercas el dedo. Y tus manos se ven de vidrio, con el contorno iluminado.");
             case 4:
                 return Tx(
                     "The work table breathes with your attention: when you don't look at it, it becomes discreet (more transparent, softer letters) so it doesn't get in the way of your drawing. Look at it or bring your finger close and it wakes up. When it appears it comes out with a small bounce, like a spring, and a soft little sound.",
@@ -93,8 +93,8 @@ public class TutorialNovedades : TarjetaTutorial
                     "Con las capas abiertas, cuelgan como papeles cerca de ti (a unos 35 cm), a 7 cm una de otra. La actual se ve sólida; las de adelante se desvanecen al acercarse a tus ojos. EMPUJA la actual (unos 3 cm) = todo el montón se va al fondo y llega la de adelante; ATRÁELA hacia ti = llega la de atrás. \"+ Capa\" = una capa nueva adelante (hasta 12).");
             default:
                 return Tx(
-                    "Background button > 360, in the little window. NEW: New York rooftop and Luxury living room. RETOUCHED: Shanghai at night (no people, no haze and sharper), Sunset by the sea without the railing and Venice canal without the fence. The graffiti shelter and the Shanghai riverside by day are gone.",
-                    "Botón Fondo > 360, en la ventanita. NUEVOS: Azotea en Nueva York y Sala de lujo. RETOCADOS: Shanghai de noche (sin gente, sin neblina y más nítido), Atardecer en el mar sin la baranda y Canal de Venecia sin la reja. Se fueron el refugio de grafitis y la orilla de Shanghai de día.");
+                    "Background button > 360, in the little window. NEW: New York rooftop and Luxury living room. RETOUCHED: Shanghai at night (no people, no haze and sharper), Sunset by the sea without the railing and Venice canal without the fence and with the water lower down (you feel you are on the bridge). The graffiti shelter and the Shanghai riverside by day are gone.",
+                    "Botón Fondo > 360, en la ventanita. NUEVOS: Azotea en Nueva York y Sala de lujo. RETOCADOS: Shanghai de noche (sin gente, sin neblina y más nítido), Atardecer en el mar sin la baranda y Canal de Venecia sin la reja y con el agua más abajo (te sientes sobre el puente). Se fueron el refugio de grafitis y la orilla de Shanghai de día.");
         }
     }
 
@@ -379,46 +379,30 @@ public class TutorialNovedades : TarjetaTutorial
         return new Vector3(-w * 0.5f, h * 0.5f - d, z);
     }
 
-    static float OndaVidrio(float x)
-    {
-        return Mathf.Sin((x + 0.07f) / 0.14f * Mathf.PI * 3f) * 0.012f - 0.004f;
-    }
-
-    // Vidrio vivo y luz en el dedo: un panel de vidrio con un brillo que da la vuelta por su borde; el dedo, con
-    // su lucecita, pasa cerca de una línea y la ilumina por donde va.
+    // Vidrio vivo y luz en el dedo: a la izquierda, un panel de vidrio con un brillo que da la vuelta por su orilla; a la
+    // derecha, un relleno que se ilumina cuando el dedo (con su lucecita) se le acerca.
     void AnimarVidrio(float t)
     {
-        const float w = 0.2f, h = 0.08f;
-        Rectangulo(puntos, 0f, 0f, w, h, -0.001f);
+        const float w = 0.1f, h = 0.07f, px = -0.065f;
+        Rectangulo(puntos, px, 0f, w, h, -0.001f);
         PonerLinea(lineaGris, puntos);
-        RellenarRect(0f, 0f, w, h, Vidrio, 1f);
-        // El brillo del borde.
         float u = Mathf.Repeat(t / Ciclo, 1f);
         tramo.Clear();
         for (int i = 0; i <= 6; i++)
-            tramo.Add(Perimetro(w, h, u + i * 0.01f, -0.002f));
+            tramo.Add(Perimetro(w, h, u + i * 0.012f, -0.002f) + new Vector3(px, 0f, 0f));
         PonerLinea(luces[0], tramo);
-        // Una línea dibujada sobre el vidrio.
-        otra.Clear();
-        for (int i = 0; i <= 30; i++)
-        {
-            float x = -0.07f + i * 0.14f / 30f;
-            otra.Add(new Vector3(x, OndaVidrio(x), -0.001f));
-        }
+        const float cx = 0.065f, r = 0.03f;
+        Circulo(otra, cx, 0f, r, -0.001f);
         PonerLinea(linea, otra);
-        // El dedo pasa por encima, con su luz alrededor; la línea se ilumina cerca de él.
-        float fx = Mathf.Sin(t / Ciclo * Mathf.PI * 2f) * 0.06f;
-        float fy = OndaVidrio(fx) + 0.008f;
+        float fx = cx + Mathf.Sin(t / Ciclo * Mathf.PI * 2f) * 0.05f, fy = 0.012f;
+        float cerca = 1f - Mathf.Clamp01(Mathf.Abs(fx - cx) / 0.05f);
+        otra.RemoveAt(otra.Count - 1);
+        Rellenar(otra, Color.Lerp(Celeste, Color.white, 0.6f * cerca), 1f);
         dedo.gameObject.SetActive(true);
         dedo.localScale = Vector3.one * 0.007f;
         dedo.localPosition = new Vector3(fx, fy, -0.004f);
         Circulo(forma, fx, fy, 0.011f + 0.0015f * Mathf.Sin(t * 6f), -0.0025f);
         PonerLinea(luces[1], forma);
-        tramo.Clear();
-        foreach (var q in otra)
-            if (Mathf.Abs(q.x - fx) < 0.022f)
-                tramo.Add(q + new Vector3(0f, 0f, -0.001f));
-        PonerLinea(luces[2], tramo);
     }
 
     // Un menú que respira: aparece con un rebote; si lo miras está despierto (sólido); si miras a otro lado se

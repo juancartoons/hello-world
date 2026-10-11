@@ -4,7 +4,8 @@ using UnityEngine;
 // EFECTOS DE LAS LÍNEAS (v36, "como de 2030"). Todo es visual: no cambia los datos del dibujo.
 //  - SE MATERIALIZAN: al terminar una línea, un destello de luz la recorre de punta a punta (lo pinta el shader
 //    TrazoLinea con _JCDestello).
-//  - SE DISUELVEN: al borrarla, se deshace en polvo brillante que cae despacio (un sistema de partículas).
+//  - SE DISUELVEN: al borrarla, se deshace en polvo brillante que cae despacio (un sistema de partículas). Al borrar
+//    un nodo (v37), se deshacen los dos tramos que lo sostenían.
 //  - SE REBOBINAN: al deshacer, la línea que desaparece se recoge desde su final hasta su inicio (una copia de su
 //    malla que el shader va cortando con _JCCorte).
 public class EfectosLinea : MonoBehaviour
@@ -77,14 +78,38 @@ public class EfectosLinea : MonoBehaviour
     // Devuelve true si salió el polvo (entonces no hace falta el destello rojo de antes).
     public static bool Disolver(Trazo t)
     {
-        if (t == null || t.curva.Count < 2 || !t.gameObject.activeInHierarchy)
+        if (!SePuedeVer(t) || t.curva.Count < 2)
             return false;
-        var r = t.GetComponent<MeshRenderer>();
-        if (r == null || r.forceRenderingOff)
-            return false; // tinta invisible u oculta: sin polvo
         var e = Instancia;
         if (!e.PrepararPolvo())
             return false;
+        return e.Emitir(t, t.curva) > 0;
+    }
+
+    // v37: al borrar un nodo, se deshacen en polvo los dos tramos de línea que lo sostenían.
+    public static bool DisolverNodo(Trazo t, int nodo)
+    {
+        if (!SePuedeVer(t) || !t.CurvaAlrededorDeNodo(nodo, tramo))
+            return false;
+        var e = Instancia;
+        if (!e.PrepararPolvo())
+            return false;
+        return e.Emitir(t, tramo) > 0;
+    }
+
+    static readonly List<Vector3> tramo = new List<Vector3>();
+
+    static bool SePuedeVer(Trazo t)
+    {
+        if (t == null || !t.gameObject.activeInHierarchy)
+            return false;
+        var r = t.GetComponent<MeshRenderer>();
+        return r != null && !r.forceRenderingOff; // tinta invisible u oculta: sin polvo
+    }
+
+    // Puntitos de polvo a lo largo de unos puntos de la línea (en sus coordenadas): devuelve cuántos salieron.
+    int Emitir(Trazo t, List<Vector3> puntos)
+    {
         Color c = Color.Lerp(t.color, Color.white, 0.55f);
         c.a = 1f;
         var tr = t.transform;
@@ -93,9 +118,9 @@ public class EfectosLinea : MonoBehaviour
         float hecho = 0f, siguiente = 0f;
         int emitidos = 0;
         var ep = new ParticleSystem.EmitParams();
-        for (int i = 1; i < t.curva.Count && emitidos < MaxPolvoPorLinea; i++)
+        for (int i = 1; i < puntos.Count && emitidos < MaxPolvoPorLinea; i++)
         {
-            Vector3 a = t.curva[i - 1], b = t.curva[i];
+            Vector3 a = puntos[i - 1], b = puntos[i];
             float largo = Vector3.Distance(a, b);
             if (largo < 1e-7f)
                 continue;
@@ -110,14 +135,14 @@ public class EfectosLinea : MonoBehaviour
                     ep.startColor = c;
                     ep.startSize = Random.Range(0.003f, 0.007f);
                     ep.startLifetime = Random.Range(0.8f, 1.5f);
-                    e.polvo.Emit(ep, 1);
+                    polvo.Emit(ep, 1);
                     emitidos++;
                 }
                 siguiente += paso;
             }
             hecho += largo;
         }
-        return emitidos > 0;
+        return emitidos;
     }
 
     bool PrepararPolvo()

@@ -12,6 +12,8 @@ public class Respira : MonoBehaviour
 {
     [Tooltip("Lo que aparece y desaparece (vacío = este mismo objeto)")]
     public Transform contenido;
+    [Tooltip("El centro de lo que se ve, dentro del contenido (para saber si lo miras)")]
+    public Vector3 centro;
     [Tooltip("Grados entre hacia donde miras y el menú para que despierte")]
     public float anguloDespierta = 26f;
     [Tooltip("Qué tan visibles quedan las letras cuando no lo miras (0 a 1)")]
@@ -50,10 +52,11 @@ public class Respira : MonoBehaviour
             Buscar(c);
 
         // ¿Lo miras? (con un poquito de margen para que no parpadee)
-        Vector3 hacia = c.position - cab.position;
+        Vector3 medio = c.TransformPoint(centro);
+        Vector3 hacia = medio - cab.position;
         float ang = Vector3.Angle(cab.forward, hacia);
         bool mira = ang < (atencion > 0.5f ? anguloDespierta + 8f : anguloDespierta);
-        bool dedo = control.Der.valida && Vector3.Distance(control.Der.indice, c.position) < 0.3f;
+        bool dedo = control.Der.valida && Vector3.Distance(control.Der.indice, medio) < 0.3f;
         float objetivo = mira || dedo ? 1f : 0f;
         atencion = Mathf.MoveTowards(atencion, objetivo, Time.deltaTime * (objetivo > atencion ? 4f : 1.5f));
         // Si te acercas a leer (menos de 45 cm), el vidrio se pone firme.
