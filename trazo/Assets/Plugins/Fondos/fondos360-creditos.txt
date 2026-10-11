@@ -14,11 +14,13 @@ De Poly Haven (polyhaven.com, licencia CC0 = dominio público):
 11. golf_noche360.jpg       — "Moonless Golf"             https://polyhaven.com/a/moonless_golf
 12. avenida360.jpg          — "Wide Street" (de los ejemplos de PlayCanvas, originalmente de Poly Haven)
 13. shanghai_dia360.jpg     — "Shanghai Riverside" (de los ejemplos de PlayCanvas, originalmente de Poly Haven)
-14. grafitis360.jpg         — "Graffiti Shelter"          https://polyhaven.com/a/graffiti_shelter
+14. nueva_york360.jpg       — "Azotea en Nueva York": imagen creada por Juan Carlos con ChatGPT (generación de
+    imágenes), subida a 4096 x 2048 con Real-ESRGAN y con profundidad de Depth Anything V2.
 Algunas copias venían en los ejemplos de PlayCanvas, three.js, Filament y Babylon.js (algunos las marcan
 CC BY 4.0): por eso damos el crédito igual. "Shanghai Bund" lo bajó Juan Carlos directo de Poly Haven.
 
-Quitados en la v32 (★ Armar escena los borra solos de tu proyecto): cuarto360, crucero360, columnas360, luna360.
+Quitados (★ Armar escena los borra solos de tu proyecto): cuarto360, crucero360, columnas360, luna360 (v32)
+y grafitis360 (v36, reemplazado por nueva_york360).
 
 Cambios: convertidas de HDR a JPG 4096 x 2048 con ajuste de tonos (ACES). Las que venían en 2048 x 1024
 se subieron a 4096 x 2048 con la IA Real-ESRGAN (realesr-general-x4v3, licencia BSD-3):

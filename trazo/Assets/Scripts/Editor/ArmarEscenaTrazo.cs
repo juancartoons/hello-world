@@ -921,11 +921,11 @@ public static class ArmarEscenaTrazo
         { "golf_noche360", "Golf de noche" },
         { "avenida360", "Avenida ancha" },
         { "shanghai_dia360", "Orilla de Shanghai" },
-        { "grafitis360", "Refugio con grafitis" },
+        { "nueva_york360", "Azotea en Nueva York" },
     };
 
     // Fondos que ya no vienen con la app: si siguen en tu proyecto de Unity, se borran solos.
-    static readonly string[] FondosQuitados = { "cuarto360", "crucero360", "columnas360", "luna360" };
+    static readonly string[] FondosQuitados = { "cuarto360", "crucero360", "columnas360", "luna360", "grafitis360" };
 
     static void QuitarFondosViejos()
     {

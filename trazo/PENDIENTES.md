@@ -17,7 +17,16 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ---
 
-## 0. Hecho en la v35 (falta probarlo en el visor)
+## 0. En curso para la v36
+
+- [x] **Fondo nuevo "Azotea en Nueva York"** (hecho por Juan Carlos con ChatGPT, subido a 4K y con profundidad IA) en lugar de **Refugio con grafitis** (★ Armar escena lo borra solo de tu proyecto).
+- [ ] **Retoques de fondos esperando tu visto bueno** (aparte en `trazo/Herramientas/Retoques`, todavía no están en la app):
+  - Shanghai de noche: sin gente, sin neblina, con nitidez (y una versión 8K aparte).
+  - Atardecer en el mar: sin la baranda cercana.
+  - Canal de Venecia: sin la reja de hierro deformada del puente.
+  - Sala de lujo (nuevo fondo, hecho con ChatGPT): costura unida, 4K y profundidad.
+
+## 0+. Hecho en la v35 (falta probarlo en el visor)
 
 - [x] **Capas más cerca y todo el montón se mueve**: la capa actual queda a unos **35 cm** de tus ojos (al alcance del dedo), en la dirección del cartel de cómic; entre capas siguen **7 cm**. Al empujar o atraer, **todas** las capas se mueven juntas y la tarjeta sólida viaja con su capa hasta el lugar fijo. Las de adelante suben más mientras más cerca están de tus ojos y se desvanecen: la que queda casi en tus ojos no se ve, la siguiente al 10 %, la otra al 20 %... Las de atrás bajan un poco. La tarjeta es un poco más angosta (26 cm).
 - [x] **Botón "+ Capa"** en la tarjeta: una capa nueva adelante de todas (hasta **12**), y el montón se mueve hasta ella. Se puede deshacer. Los personajes del títere siguen yendo a la Capa 4.

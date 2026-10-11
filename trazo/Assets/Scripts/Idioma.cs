@@ -336,7 +336,7 @@ public static class Idioma
         "Golf de noche", "Golf course at night",
         "Avenida ancha", "Wide avenue",
         "Orilla de Shanghai", "Shanghai riverside",
-        "Refugio con grafitis", "Graffiti shelter",
+        "Azotea en Nueva York", "New York rooftop",
         "Callejón de Venecia", "Venice alley",
         "Atardecer en el mar", "Sunset by the sea",
         "Crucero de lujo", "Luxury cruise ship",
