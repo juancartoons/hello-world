@@ -11,7 +11,7 @@ public enum EstiloLinea { Cinta = 0, Tubo = 1 }
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class Trazo : MonoBehaviour
 {
-    // Colores del relleno (se cambian tocando el relleno con el índice derecho).
+    // Colores del relleno de siempre (cuando la figura no tiene un color de la paleta).
     public static readonly Color[] Paleta =
     {
         new Color(1f, 0.85f, 0.35f),   // amarillo
@@ -67,9 +67,11 @@ public class Trazo : MonoBehaviour
     // ---------- Relleno vivo (texturas que se mueven, estilo Quill) ----------
     public int texturaRelleno;                   // 0 liso, 1 facetas, 2 manchas, 3 pinceladas
     public int velocidadTextura = 2;             // índice en VelocidadesTextura
-    public int tamanoTextura = 1;                // índice en TamanosTextura (más grande = manchas más grandes)
+    public float escalaTextura = 1f;             // tamaño de las manchas (x1 normal; se cambia abriendo y cerrando 2 dedos)
+    public const float EscalaTexturaMin = 0.25f, EscalaTexturaMax = 8f;
+    // Los archivos de antes guardaban el tamaño como uno de estos 4 escalones (Chico, Normal, Grande, Enorme).
     public static readonly float[] TamanosTextura = { 0.5f, 1f, 2f, 4f };
-    public static readonly string[] NombresTamanoTextura = { "Chico", "Normal", "Grande", "Enorme" };
+    public static float LimitarEscala(float e) => Mathf.Clamp(e > 0f ? e : 1f, EscalaTexturaMin, EscalaTexturaMax);
     public static readonly float[] VelocidadesTextura = { 0f, 2f, 4f, 8f }; // cambios por segundo (0 = quieto)
     public static readonly string[] NombresTextura = { "Liso", "Facetas", "Manchas", "Pinceladas" };
     public static readonly string[] NombresVelocidadTextura = { "Quieto", "Lento", "Medio", "Rápido" };
@@ -257,7 +259,9 @@ public class Trazo : MonoBehaviour
         orden = d.orden;
         texturaRelleno = Mathf.Clamp(d.texturaRelleno, 0, NombresTextura.Length - 1);
         velocidadTextura = Mathf.Clamp(d.velocidadTextura, 0, VelocidadesTextura.Length - 1);
-        tamanoTextura = Mathf.Clamp(d.tamanoTextura, 0, TamanosTextura.Length - 1);
+        // escalaTextura 0 = archivo de antes: usa su escalón.
+        escalaTextura = d.escalaTextura > 0f ? LimitarEscala(d.escalaTextura)
+                                             : TamanosTextura[Mathf.Clamp(d.tamanoTextura, 0, TamanosTextura.Length - 1)];
     }
 
     // El escalón visual de frente/fondo (lo pone el Dibujo). Rehace la malla solo si cambió.
@@ -274,16 +278,26 @@ public class Trazo : MonoBehaviour
     }
 
     // La textura del relleno vivo (se ve al instante).
-    public void PonerTexturaRelleno(int textura, int velocidad, int tamano)
+    public void PonerTexturaRelleno(int textura, int velocidad, float escala)
     {
         textura = Mathf.Clamp(textura, 0, NombresTextura.Length - 1);
         velocidad = Mathf.Clamp(velocidad, 0, VelocidadesTextura.Length - 1);
-        tamano = Mathf.Clamp(tamano, 0, TamanosTextura.Length - 1);
-        if (textura == texturaRelleno && velocidad == velocidadTextura && tamano == tamanoTextura)
+        escala = LimitarEscala(escala);
+        if (textura == texturaRelleno && velocidad == velocidadTextura && Mathf.Abs(escala - escalaTextura) < 1e-4f)
             return;
         texturaRelleno = textura;
         velocidadTextura = velocidad;
-        tamanoTextura = tamano;
+        escalaTextura = escala;
+        Reconstruir();
+    }
+
+    // Solo el tamaño de la textura (mientras abres y cierras los dedos). Se ve al instante.
+    public void PonerEscalaTextura(float escala)
+    {
+        escala = LimitarEscala(escala);
+        if (Mathf.Abs(escala - escalaTextura) < 1e-4f)
+            return;
+        escalaTextura = escala;
         Reconstruir();
     }
 
@@ -659,8 +673,26 @@ public class Trazo : MonoBehaviour
             orden = orden,
             texturaRelleno = texturaRelleno,
             velocidadTextura = velocidadTextura,
-            tamanoTextura = tamanoTextura
+            escalaTextura = escalaTextura,
+            tamanoTextura = EscalonMasCercano(escalaTextura)
         };
+    }
+
+    // Para los archivos: el escalón de antes más parecido (así una versión vieja del app también lo abre).
+    static int EscalonMasCercano(float escala)
+    {
+        int mejor = 1;
+        float d = float.MaxValue;
+        for (int i = 0; i < TamanosTextura.Length; i++)
+        {
+            float e = Mathf.Abs(Mathf.Log(TamanosTextura[i]) - Mathf.Log(LimitarEscala(escala)));
+            if (e < d)
+            {
+                d = e;
+                mejor = i;
+            }
+        }
+        return mejor;
     }
 
     static bool Completa<T>(List<T> lista, int n)
@@ -1008,7 +1040,7 @@ public class Trazo : MonoBehaviour
         float textura = Mathf.Clamp(texturaRelleno, 0, NombresTextura.Length - 1);
         float cambios = VelocidadesTextura[Mathf.Clamp(velocidadTextura, 0, VelocidadesTextura.Length - 1)];
         float semilla = (id % 97) * 0.731f;
-        float escalaTextura = 1f / TamanosTextura[Mathf.Clamp(tamanoTextura, 0, TamanosTextura.Length - 1)];
+        float porEscala = 1f / LimitarEscala(escalaTextura);
         float nv = NivelVisual;
         for (int i = 0; i < vertices.Count; i++)
         {
@@ -1016,7 +1048,7 @@ public class Trazo : MonoBehaviour
             uvs3.Add(estiloVivo.a);
             uvs4.Add(estiloVivo.b);
             Vector3 d = vertices[i] - poliCentro;
-            uvsRelleno.Add(new Vector4(Vector3.Dot(d, poliU) * escalaTextura, Vector3.Dot(d, poliV) * escalaTextura, textura, cambios));
+            uvsRelleno.Add(new Vector4(Vector3.Dot(d, poliU) * porEscala, Vector3.Dot(d, poliV) * porEscala, textura, cambios));
             uvsRelleno2.Add(new Vector2(semilla, nv));
         }
 

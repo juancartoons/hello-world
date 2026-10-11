@@ -3,166 +3,90 @@ using UnityEngine;
 
 // Temblor dentro de la paleta de colores (parte de ControlManos). Sin textos: todo se ve.
 //  - En el centro de la paleta, una línea corta que tiembla DE VERDAD con el estilo de la capa activa
-//    (y del color elegido). Tócala = cambia el temblor: No, Suave, Medio, Fuerte (y otra vez No).
-//  - Debajo de la paleta, 5 botoncitos con dibujos:
-//      hebras (3 rayitas), grosor vivo (línea gorda en medio), ciclo de 3 / libre (3 puntitos),
-//      suavidad (zigzag) y velocidad (>>). Cada toque cambia esa opción y la línea del centro lo muestra.
-//    El fondo del botoncito se pone amarillo cuando la opción no es la normal.
+//    (y del color de las líneas nuevas). Es la vista previa de LÍNEA (ver ControlManosPaleta.cs).
+//  - Las opciones del temblor son hijos del botón LÍNEA (a las 10 de la paleta): temblor, hebras, grosor vivo,
+//    ciclo de 3 / libre, suavidad y velocidad. Su fondo se pone amarillo cuando la opción no es la normal.
 public partial class ControlManos
 {
     static readonly float[] AmplitudMuestra = { 0f, 0.0008f, 0.0016f, 0.0028f };
     static readonly float[] OndasMuestra = { 1.2f, 2.5f, 5f };
     static readonly Color AmarilloOpcion = new Color(1f, 0.9f, 0.45f);
     const float LargoMuestra = 0.023f;  // media línea de muestra (metros)
-    const float RadioCentro = 0.017f;   // dónde se toca la línea del centro
-    const float RadioOpcion = 0.011f;   // dónde se toca cada botoncito
 
     Transform centroTemblor;
     Mesh mallaMuestra;
-    readonly List<Transform> botonesTemblor = new List<Transform>();
-    readonly List<Material> fondosTemblor = new List<Material>();
     readonly List<Mesh> mallasTemblor = new List<Mesh>();
     readonly List<Vector3> vertsMuestra = new List<Vector3>();
     readonly List<int> trisMuestra = new List<int>();
     readonly List<Vector2> centrosMuestra = new List<Vector2>();
     readonly List<float> anchosMuestra = new List<float>();
     int claveMuestra = int.MinValue;
-    bool dedoEnTemblor;
 
-    // Se llama al armar la paleta: la línea del centro y los 5 botoncitos de abajo.
+    // Se llama al armar la paleta: la línea del centro (la vista previa de LÍNEA).
     void ArmarTemblorPaleta(Material negro)
     {
         centroTemblor = new GameObject("TemblorMuestra").transform;
         centroTemblor.SetParent(paleta, false);
-        // Un aro fino alrededor y fondo gris clarito (para que se vea que es un botón, y la línea blanca también).
-        DiscoPaleta(centroTemblor, negro, 0.056f, new Vector3(0f, 0f, 0.0005f));
-        DiscoPaleta(centroTemblor, ColorMaterial(new Color(0.85f, 0.85f, 0.87f)), 0.052f, new Vector3(0f, 0f, 0.0003f));
         mallaMuestra = new Mesh { name = "TemblorMuestra" };
         mallaMuestra.MarkDynamic();
         mallasTemblor.Add(mallaMuestra);
         var linea = new GameObject("Linea");
         linea.transform.SetParent(centroTemblor, false);
-        linea.transform.localPosition = new Vector3(0f, 0f, -0.0005f);
+        linea.transform.localPosition = new Vector3(0f, 0.004f, -0.0005f);
         linea.AddComponent<MeshFilter>().sharedMesh = mallaMuestra;
         var r = linea.AddComponent<MeshRenderer>();
         r.sharedMaterial = materialCentroPaleta;
         r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         r.receiveShadows = false;
+    }
 
-        // Los 5 botoncitos, en un arco debajo de la paleta.
-        var iconos = new List<Vector2[]>[5];
+    // Los iconos de las 6 opciones del temblor (hijos del botón LÍNEA), en este orden:
+    // temblor, hebras, grosor vivo, ciclo de 3, suavidad, velocidad.
+    static List<Vector2[]>[] IconosTemblor()
+    {
+        var iconos = new List<Vector2[]>[6];
         for (int i = 0; i < iconos.Length; i++)
             iconos[i] = new List<Vector2[]>();
+        // Temblor: una onda con dos rayitas a los lados (como algo que vibra).
+        var onda = new Vector2[9];
+        for (int k = 0; k < onda.Length; k++)
+        {
+            float u = k / (float)(onda.Length - 1);
+            onda[k] = new Vector2(Mathf.Lerp(-0.2f, 0.2f, u), Mathf.Sin(u * Mathf.PI * 2f) * 0.1f);
+        }
+        LineaIcono(iconos[0], onda, 0.07f);
+        BarraIcono(iconos[0], new Vector2(-0.33f, -0.13f), new Vector2(-0.33f, 0.13f), 0.05f);
+        BarraIcono(iconos[0], new Vector2(0.33f, -0.13f), new Vector2(0.33f, 0.13f), 0.05f);
         for (int k = -1; k <= 1; k++)
-            BarraIcono(iconos[0], new Vector2(-0.27f, k * 0.17f), new Vector2(0.27f, k * 0.17f), 0.07f);
-        iconos[1].Add(new[] { new Vector2(-0.33f, 0f), new Vector2(-0.15f, 0.11f), new Vector2(0.15f, 0.11f), new Vector2(0.33f, 0f), new Vector2(0.15f, -0.11f), new Vector2(-0.15f, -0.11f) });
+            BarraIcono(iconos[1], new Vector2(-0.27f, k * 0.17f), new Vector2(0.27f, k * 0.17f), 0.07f);
+        iconos[2].Add(new[] { new Vector2(-0.33f, 0f), new Vector2(-0.15f, 0.11f), new Vector2(0.15f, 0.11f), new Vector2(0.33f, 0f), new Vector2(0.15f, -0.11f), new Vector2(-0.15f, -0.11f) });
         for (int k = 0; k < 3; k++)
         {
             float a = (90f + k * 120f) * Mathf.Deg2Rad;
-            iconos[2].Add(Circulo(new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 0.17f, 0.075f));
+            iconos[3].Add(Circulo(new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 0.17f, 0.075f));
         }
-        LineaIcono(iconos[3], new[] { new Vector2(-0.3f, 0f), new Vector2(-0.15f, 0.15f), new Vector2(0f, -0.15f), new Vector2(0.15f, 0.15f), new Vector2(0.3f, 0f) }, 0.07f);
-        LineaIcono(iconos[4], new[] { new Vector2(-0.25f, 0.17f), new Vector2(-0.06f, 0f), new Vector2(-0.25f, -0.17f) }, 0.07f);
-        LineaIcono(iconos[4], new[] { new Vector2(0.04f, 0.17f), new Vector2(0.23f, 0f), new Vector2(0.04f, -0.17f) }, 0.07f);
-        for (int i = 0; i < iconos.Length; i++)
-        {
-            float ang = (-90f + (i - 2) * 19f) * Mathf.Deg2Rad;
-            var b = new GameObject("OpcionTemblor" + i).transform;
-            b.SetParent(paleta, false);
-            b.localPosition = new Vector3(Mathf.Cos(ang) * 0.073f, Mathf.Sin(ang) * 0.073f, -0.001f);
-            b.localScale = Vector3.one * 0.02f;
-            var fondo = ColorMaterial(Color.white);
-            fondosTemblor.Add(fondo);
-            DiscoPaleta(b, negro, 1.12f, new Vector3(0f, 0f, 0.05f));
-            DiscoPaleta(b, fondo, 1f, new Vector3(0f, 0f, 0.025f));
-            var icono = new GameObject("Icono");
-            icono.transform.SetParent(b, false);
-            icono.AddComponent<MeshFilter>().sharedMesh = MallaIcono(iconos[i]);
-            var ri = icono.AddComponent<MeshRenderer>();
-            ri.sharedMaterial = negro;
-            ri.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            ri.receiveShadows = false;
-            botonesTemblor.Add(b);
-        }
+        LineaIcono(iconos[4], new[] { new Vector2(-0.3f, 0f), new Vector2(-0.15f, 0.15f), new Vector2(0f, -0.15f), new Vector2(0.15f, 0.15f), new Vector2(0.3f, 0f) }, 0.07f);
+        IconoFlechas(iconos[5]);
+        return iconos;
     }
 
-    // Cada cuadro con la paleta abierta: la línea de muestra y los botoncitos. Devuelve true si el dedo
-    // está tocando algo del temblor (así no se toman colores ni líneas en ese momento).
-    bool ActualizarTemblorPaleta(Vector3 punta, bool dedoValido)
+    // ">>" (velocidad).
+    static void IconoFlechas(List<Vector2[]> partes)
     {
+        LineaIcono(partes, new[] { new Vector2(-0.25f, 0.17f), new Vector2(-0.06f, 0f), new Vector2(-0.25f, -0.17f) }, 0.07f);
+        LineaIcono(partes, new[] { new Vector2(0.04f, 0.17f), new Vector2(0.23f, 0f), new Vector2(0.04f, -0.17f) }, 0.07f);
+    }
+
+    // Cada cuadro con la paleta abierta: la línea de muestra (se ve solo con LÍNEA o nada abierto).
+    void ActualizarMuestraPaleta(bool ver)
+    {
+        if (centroTemblor == null)
+            return;
+        if (centroTemblor.gameObject.activeSelf != ver)
+            centroTemblor.gameObject.SetActive(ver);
         var capa = dibujo != null ? dibujo.CapaActual : null;
-        if (capa == null || centroTemblor == null)
-            return false;
-        DibujarMuestra(capa);
-        for (int i = 0; i < fondosTemblor.Count; i++)
-        {
-            Color c = OpcionDistinta(capa, i) ? AmarilloOpcion : Color.white;
-            if (fondosTemblor[i].HasProperty("_BaseColor"))
-                fondosTemblor[i].SetColor("_BaseColor", c);
-        }
-        if (!dedoValido)
-        {
-            dedoEnTemblor = false;
-            return false;
-        }
-        // ¿Qué toca? -1 = la línea del centro; 0..4 = un botoncito; -2 = nada.
-        int tocado = -2;
-        if (Vector3.Distance(punta, centroTemblor.position) < RadioCentro)
-        {
-            tocado = -1;
-        }
-        else
-        {
-            float mejor = RadioOpcion;
-            for (int i = 0; i < botonesTemblor.Count; i++)
-            {
-                float d = Vector3.Distance(punta, botonesTemblor[i].position);
-                if (d < mejor)
-                {
-                    mejor = d;
-                    tocado = i;
-                }
-            }
-        }
-        if (tocado == -2)
-        {
-            dedoEnTemblor = false;
-            return false;
-        }
-        if (!dedoEnTemblor && dibujo.temblor != null)
-        {
-            var tb = dibujo.temblor;
-            switch (tocado)
-            {
-                case -1: tb.Siguiente(); break;
-                case 0: tb.SiguienteHebras(); break;
-                case 1: tb.AlternarGrosor(); break;
-                case 2: tb.AlternarCiclo(); break;
-                case 3: tb.SiguienteSuavidad(); break;
-                default: tb.SiguienteVelocidad(); break;
-            }
-            Vector3 donde = tocado < 0 ? centroTemblor.position : botonesTemblor[tocado].position;
-            Burbuja(donde, tocado < 0 ? 1.1f : 0.8f);
-            claveMuestra = int.MinValue;
-            // Abierta con el botón: mientras ajustas el temblor no se cierra.
-            if (paletaFija)
-                paletaFijaHasta = Mathf.Max(paletaFijaHasta, Time.time + 12f);
-        }
-        dedoEnTemblor = true;
-        return true;
-    }
-
-    // ¿La opción está cambiada respecto a lo normal? (para pintar su botoncito de amarillo)
-    static bool OpcionDistinta(DatosCapa c, int i)
-    {
-        switch (i)
-        {
-            case 0: return c.hebras > 1;
-            case 1: return c.grosorVivo;
-            case 2: return !c.ciclo3;
-            case 3: return c.suavidad != 1;
-            default: return c.velocidad != 1;
-        }
+        if (ver && capa != null)
+            DibujarMuestra(capa);
     }
 
     // La línea de muestra: una curvita que tiembla igual que las líneas de la capa activa.

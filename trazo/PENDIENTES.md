@@ -1,12 +1,13 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 10 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v32***
+*Actualizado: 11 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v33***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
 **Enlaces útiles**
 - Descarga del proyecto: https://github.com/juancartoons/hello-world/archive/refs/heads/claude/trazo-vr.zip
 - Simulador de sonidos (para probar en la computadora): https://claude.ai/artifact/4irW6KNFZ6bB38WRQ9CpbB (y en el proyecto: `trazo/Herramientas/simulador-sonidos.html`)
+- Simulador de la paleta (a escala, igual que en el visor): https://claude.ai/artifact/2ekoCGCN2CACFTmDHhDyrn (y en el proyecto: `trazo/Herramientas/simulador-paleta.html`)
 
 **Cómo instalar cada versión en Unity**
 1. Copia las carpetas **Scripts**, **Shaders** y **Plugins** a tu proyecto.
@@ -16,7 +17,23 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ---
 
-## 0. Hecho en la v32 (falta probarlo en el visor)
+## 0. Hecho en la v33 (falta probarlo en el visor)
+
+- [x] **Paleta con botones hijos**: alrededor de la paleta hay dos raíces, **LÍNEA** (a las 10) y **RELLENO** (a las 2). Al tocar una se pone amarilla y le salen sus hijos por el borde, unidos con un arco. Solo una abierta a la vez; al abrir la paleta empiezan cerradas.
+  - Hijos de LÍNEA: Temblor, Hebras, Grosor vivo, Ciclo de 3, Suavidad, Velocidad, **Imán** y **Halo** (el halo solo con Realidad o 360).
+  - Hijos de RELLENO: **Textura** (Liso → Facetas → Manchas → Pinceladas), **Cubeta** y **Velocidad** de la textura (solo con textura).
+  - **Tinta invisible** a las 12 (con RELLENO abierto = sin relleno).
+  - Se quitó el botón de **tamaño** de la textura (ahora se cambia con los dedos).
+- [x] **Centro = vista previa**: la línea que tiembla, o con RELLENO abierto un circulito con el relleno y su textura moviéndose. Abajo, dentro del círculo, un textito con lo último que tocaste ("Hebras 3", "Temblor 2 · Medio", "Relleno: Rojo").
+- [x] **Color del relleno aparte** del de la línea: los 12 colores pintan lo que esté abierto. Con líneas elegidas, con RELLENO abierto se pinta su relleno. El cartel de datos muestra también el color y la textura del relleno.
+- [x] **Paleta estable**: no copia los temblores chiquitos de la mano (filtro como el del lápiz) y, con tu índice derecho a menos de 12 cm, se queda quieta en el aire (solo se mueve si la mano izquierda se va más de 3 cm).
+- [x] **Tamaño de la textura con dos dedos**: con la paleta abierta, el pulgar y el índice derechos sobre un relleno con textura; ábrelos o ciérralos (x0.25 a x8, sin escalones). Se puede deshacer y ese tamaño queda para los próximos rellenos. Los dibujos de antes conservan su tamaño.
+- [x] **Recta con el lápiz de boceto**: en una capa de Boceto en 2D, el gesto de la recta muestra una guía gris y al soltar queda en grafito, con presión. Si al empezar a dibujar juntas el dedo medio, se borra el poquito de lápiz que alcanzó a pintar.
+- [x] **El relleno ya no cambia de color sin querer**: se quitó "tocar un relleno = siguiente color" (saltaba entre línea y línea). Tocar dentro para rellenar ahora solo funciona con **RELLENO abierto** y espera un instante. Y al unir una línea nueva con una figura abierta rellena, la figura conserva su relleno.
+- [x] **Tutoriales al día**: Rellenos (la cubeta y tocar dentro ahora están en RELLENO) y Novedades (7 temas: relleno vivo con dos dedos, paleta con hijos y recta de lápiz).
+- [x] **Simulador de la paleta** en HTML, a escala, con las medidas del código (enlace arriba).
+
+## 0+. Hecho en la v32
 
 - [x] **Fondos 360**: se quitaron Cuarto, Crucero (el "centro comercial"), Columnas y La Luna (★ Armar escena los borra solo de Unity). Nuevos: **Shanghai de noche** (subido por Juan Carlos) y 6 libres: Orilla de Shanghai, Avenida ancha, Camino entre flores, Refugio con grafitis, Golf de noche y Campo seco (4K + profundidad IA). Total: 14.
 - [x] **Botón Fondo**: Cuadrícula → Blanco → Realidad → **360**. Al llegar a 360 se abre una **ventanita con miniaturas** de todos los fondos 360 (y tus fotos); toca uno para probarlo. Arriba tiene Cuadrícula, Blanco, Realidad y X.
@@ -124,6 +141,14 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [ ] Cuando ya no haga falta, quitar el botón **Tutorial** de Mis archivos (por ahora se queda; abre el mismo panel "?").
 
 ## 5. Para probar en el visor (desde la v21 casi nada se ha probado)
+
+**Nuevo en la v33:**
+- [ ] Paleta: ¿se entienden LÍNEA y RELLENO con sus hijos? ¿se ve el arco? ¿se alcanzan bien los hijos de abajo?
+- [ ] Centro: ¿se lee el textito? ¿se ve bien el circulito del relleno con su textura?
+- [ ] Paleta estable: ¿ya no tiembla al acercar el dedo? ¿sigue bien a la mano cuando la mueves de verdad?
+- [ ] Textura con dos dedos: ¿arranca fácil? ¿no se confunde con tocar dentro para rellenar?
+- [ ] Recta de lápiz en boceto 2D: guía gris, grafito al soltar, presión.
+- [ ] Dibujar cerca de rellenos: ¿ya no cambian de color solos?
 
 **Nuevo en la v32:**
 - [ ] Ventanita de fondos 360: ¿se ven bien las miniaturas? ¿cómoda al lado del menú?

@@ -30,7 +30,9 @@ public class DatosTrazo
     public int orden;
     public int texturaRelleno;
     public int velocidadTextura = 2;
-    public int tamanoTextura = 1;
+    public int tamanoTextura = 1;     // de antes (4 escalones); se sigue guardando para versiones viejas del app
+    // v33: tamaño libre de la textura (0 = archivo de antes: usar tamanoTextura)
+    public float escalaTextura;
 }
 
 [System.Serializable]
@@ -478,18 +480,18 @@ public class Dibujo : MonoBehaviour
     public void RellenarConColor(Trazo t, Color c)
     {
         if (t != null)
-            RellenarConColor(t, c, t.texturaRelleno, t.velocidadTextura, t.tamanoTextura);
+            RellenarConColor(t, c, t.texturaRelleno, t.velocidadTextura, t.escalaTextura);
     }
 
     // Igual, y además con el relleno vivo elegido (textura y velocidad).
-    public void RellenarConColor(Trazo t, Color c, int textura, int velocidad, int tamano)
+    public void RellenarConColor(Trazo t, Color c, int textura, int velocidad, float escala)
     {
         if (t == null)
             return;
         GuardarParaDeshacer();
         t.texturaRelleno = Mathf.Clamp(textura, 0, Trazo.NombresTextura.Length - 1);
         t.velocidadTextura = Mathf.Clamp(velocidad, 0, Trazo.VelocidadesTextura.Length - 1);
-        t.tamanoTextura = Mathf.Clamp(tamano, 0, Trazo.TamanosTextura.Length - 1);
+        t.escalaTextura = Trazo.LimitarEscala(escala);
         if (c.a < 0.01f)
         {
             t.relleno = false;
@@ -508,8 +510,47 @@ public class Dibujo : MonoBehaviour
         Avisar();
     }
 
+    // El color del RELLENO de varias figuras a la vez (las cerradas o las que ya tienen relleno).
+    // Con tinta invisible se les quita el relleno. Se puede deshacer. Devuelve cuántas cambiaron.
+    public int PonerColorRelleno(List<Trazo> lista, Color c)
+    {
+        var cambiar = new List<Trazo>();
+        foreach (var t in lista)
+            if (t != null && (t.cerrado || t.relleno))
+                cambiar.Add(t);
+        if (cambiar.Count == 0)
+            return 0;
+        GuardarParaDeshacer();
+        foreach (var t in cambiar)
+        {
+            if (c.a < 0.01f)
+            {
+                t.relleno = false;
+                t.rellenoAbierto = false;
+            }
+            else
+            {
+                t.relleno = true;
+                t.colorFondo = new Color(c.r, c.g, c.b, 1f);
+            }
+            t.Reconstruir();
+        }
+        Trazo.huboCambio = false;
+        HayCambios = true;
+        Avisar();
+        return cambiar.Count;
+    }
+
+    // Después de cambiar el tamaño de una textura con los dedos (ya se guardó "deshacer" al empezar).
+    public void TexturaCambiada()
+    {
+        Trazo.huboCambio = false;
+        HayCambios = true;
+        Avisar();
+    }
+
     // Relleno vivo para las líneas elegidas que tienen relleno. Devuelve cuántas cambiaron.
-    public int TexturaEnElegidas(int textura, int velocidad, int tamano)
+    public int TexturaEnElegidas(int textura, int velocidad, float escala)
     {
         var lista = new List<Trazo>();
         foreach (var t in Seleccionadas())
@@ -519,7 +560,7 @@ public class Dibujo : MonoBehaviour
             return 0;
         GuardarParaDeshacer();
         foreach (var t in lista)
-            t.PonerTexturaRelleno(textura, velocidad, tamano);
+            t.PonerTexturaRelleno(textura, velocidad, escala);
         Trazo.huboCambio = false;
         Avisar();
         return lista.Count;
@@ -1085,25 +1126,21 @@ public class Dibujo : MonoBehaviour
             a.grosorNodo.Add(b.grosorNodo[i]);
         }
         a.ancho = Mathf.Max(a.ancho, b.ancho);
+        // Si la otra tenía relleno (por ejemplo una "C" hecha con la cubeta) y la nueva no, la unida lo conserva:
+        // así dibujar cerca de una figura rellena no le cambia ni le quita el color.
+        if (b.relleno && !a.relleno)
+        {
+            a.relleno = true;
+            a.rellenoAbierto = b.rellenoAbierto;
+            a.colorFondo = b.colorFondo;
+            a.colorRelleno = b.colorRelleno;
+            a.texturaRelleno = b.texturaRelleno;
+            a.velocidadTextura = b.velocidadTextura;
+            a.escalaTextura = b.escalaTextura;
+        }
         QuitarDeLaLista(b);
         a.Reconstruir();
         Mensaje("Líneas unidas");
-        Avisar();
-    }
-
-    // Tocar un relleno: si no tiene color lo pinta; si ya tiene, pasa al siguiente color.
-    public void CambiarColorRelleno(Trazo t)
-    {
-        if (t == null || (!t.cerrado && !t.rellenoAbierto))
-            return;
-        GuardarParaDeshacer();
-        if (!t.relleno)
-            t.relleno = true;
-        else if (t.colorFondo.a > 0.01f)
-            t.colorFondo = new Color(0f, 0f, 0f, 0f); // tenía un color de la paleta: vuelve a los de siempre
-        else
-            t.colorRelleno = (t.colorRelleno + 1) % Trazo.Paleta.Length;
-        t.Reconstruir();
         Avisar();
     }
 

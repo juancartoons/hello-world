@@ -128,6 +128,46 @@ public class HojasLapiz : MonoBehaviour
         lista.Add(nuevo);
     }
 
+    // Quita el trazo de lápiz que se estaba haciendo (por ejemplo, si al empezar a dibujar juntaste también el
+    // dedo medio: era una recta). La hoja se vuelve a pintar sin él.
+    public void CancelarActual()
+    {
+        if (actual == null)
+            return;
+        trazos.Remove(actual);
+        actual = null;
+        dibujo.DescartarUltimoDeshacer();
+        RedibujarTodo();
+    }
+
+    // Una línea RECTA de lápiz de un punto a otro (el gesto de la recta en una capa de boceto 2D).
+    // La presión va de la del inicio a la del final. Se guarda como un trazo de 2 puntos (deshacer, guardar, cargar).
+    public void PintarRecta(Vector3 a, float presionA, Vector3 b, float presionB)
+    {
+        if (dibujo == null || materialSello == null)
+            return;
+        int capa = dibujo.capaActual;
+        var h = HojaDe(capa);
+        if (h == null)
+            return;
+        Terminar();
+        dibujo.GuardarParaDeshacer();
+        var t = new TrazoLapiz
+        {
+            capa = capa,
+            borra = false,
+            radio = radioLapiz / dibujo.EscalaMundo,
+        };
+        Vector3 pa = dibujo.ProyectarEnPlano(a), pb = dibujo.ProyectarEnPlano(b);
+        var va = new Vector4(pa.x, pa.y, pa.z, Mathf.Clamp01(presionA));
+        var vb = new Vector4(pb.x, pb.y, pb.z, Mathf.Clamp01(presionB));
+        t.puntos.Add(va);
+        t.puntos.Add(vb);
+        trazos.Add(t);
+        Sellar(h, t, va, va);
+        Sellar(h, t, va, vb);
+    }
+
     public void Terminar()
     {
         if (actual == null)

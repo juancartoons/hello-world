@@ -52,6 +52,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
 /* Escena */
 .escena { position: relative; width: 100%; border: 3px solid #16181b; border-radius: 6px; overflow: hidden; box-shadow: 4px 4px 0 var(--sombra); touch-action: pan-y; cursor: none; user-select: none; -webkit-user-select: none; background: #d9dce1; }
 .escena canvas, .escena svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.escena canvas.centro { inset: auto; left: 0; top: 0; width: 1px; height: 1px; pointer-events: none; }
 .cartel { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 24px); background: #ffffff; color: #16181b; border: 2px solid #16181b; border-radius: 14px; padding: 4px 14px; font: 700 0.9rem var(--body); text-align: center; box-shadow: 2px 2px 0 #16181b; pointer-events: none; }
 .pie { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 0.88rem; margin: 0; }
 .pie b { color: var(--ink); }
@@ -80,7 +81,7 @@ tr:last-child td { border-bottom: 0; }
 <div class="wrap">
   <header>
     <h1><span>Paleta</span> de la mano</h1>
-    <p class="sub">La paleta de tu mano izquierda tal como está en el visor (v32), a escala y con las medidas del código. Tócala con el ratón o el dedo como si fuera tu índice derecho: los colores, la línea que tiembla, sus 5 opciones, la tinta invisible, la cubeta, el relleno vivo, el halo, el imán y el cartel de datos funcionan igual que en el Quest.</p>
+    <p class="sub">La paleta de tu mano izquierda tal como está en el visor (v33), a escala y con las medidas del código. Tócala con el ratón o el dedo como si fuera tu índice derecho. Los botones LÍNEA (a las 10) y RELLENO (a las 2) se abren y muestran sus hijos; el centro te enseña cómo queda.</p>
   </header>
 
   <section class="barra" aria-label="Opciones del simulador">
@@ -107,44 +108,45 @@ tr:last-child td { border-bottom: 0; }
     <svg id="fondoSvg" aria-hidden="true"></svg>
     <canvas id="gl" aria-hidden="true"></canvas>
     <svg id="svg" role="img" aria-label="Paleta de colores de JCartoons"></svg>
+    <canvas id="glCentro" class="centro" aria-hidden="true"></canvas>
     <div class="cartel" id="cartel" role="status" aria-live="polite" hidden></div>
   </div>
   <p class="pie">
-    <span><b>Toca dentro</b> de la figura con la paleta = la rellenas con el color y el relleno vivo elegidos.</span>
-    <span><b>Toca una línea</b> = cuentagotas (tomas su color).</span>
+    <span>Abre <b>RELLENO</b> (a las 2): los colores son del relleno y <b>tocar dentro</b> de la figura la rellena.</span>
+    <span><b>Toca una línea</b> = cuentagotas.</span>
     <span>A menos de <b>10 cm</b> del centro de la paleta no se toman colores ni se rellena.</span>
   </p>
 
-  <section class="propuestas" aria-label="Propuestas">
+  <section class="propuestas" aria-label="Lo nuevo de la paleta">
     <div class="tarjeta">
-      <span class="sello">Propuesta 1 · aún no está en el visor</span>
+      <span class="sello">Nuevo en v33</span>
       <h2>Paleta estable</h2>
-      <p>Hoy la paleta sigue tu palma casi al instante, así que también copia cada temblor. Y cuando acercas el dedo derecho, el Quest ve tu mano izquierda medio tapada y el temblor crece. El estabilizador funciona como el de una cámara: ignora los temblores chiquitos, sigue los movimientos grandes y, cuando tu dedo está a menos de 12 cm, la paleta se queda quieta en el aire (solo se mueve si tu mano izquierda se va más de 3 cm).</p>
+      <p>La paleta ignora los temblores chiquitos de tu mano y, cuando tu dedo derecho está a menos de 12 cm, se queda quieta en el aire. Solo se mueve si tu mano izquierda se va más de 3 cm.</p>
       <div class="grupo">
         <button class="opcion" id="temblorMano" aria-pressed="false">Mano temblorosa</button>
-        <button class="opcion" id="estabilizador" aria-pressed="false">Estabilizador</button>
+        <button class="opcion" id="estabilizador" aria-pressed="true">Estabilizador</button>
       </div>
-      <p class="nota">Prende "Mano temblorosa", acerca el ratón a la paleta e intenta tocar un color. Luego prende el estabilizador. El círculo punteado es donde está tu mano de verdad.</p>
+      <p class="nota">Prende "Mano temblorosa" y acerca el ratón a la paleta. Apaga el estabilizador para ver cómo era en la v32. El círculo punteado es donde está tu mano de verdad.</p>
     </div>
     <div class="tarjeta">
-      <span class="sello">Propuesta 2 · aún no está en el visor</span>
+      <span class="sello">Nuevo en v33</span>
       <h2>Textura con dos dedos</h2>
-      <p>Con la paleta abierta, pones el pulgar y el índice derechos sobre una figura con relleno vivo y los abres o cierras, como el zoom del teléfono: la textura de esa figura se hace más grande o más chica, sin escalones.</p>
+      <p>Con la paleta abierta, pones el pulgar y el índice derechos sobre un relleno con textura y los abres o cierras, como el zoom del teléfono: la textura se hace más grande o más chica, sin escalones. Ese tamaño queda para tus próximos rellenos.</p>
       <p class="nota">Aquí: rueda del ratón o pellizco del trackpad sobre la figura, pellizco con dos dedos en el teléfono, o esta barra.</p>
       <div class="deslizador">
         <label for="escalaTex" class="etiqueta">Textura</label>
         <input type="range" id="escalaTex" min="-2" max="3" step="0.01" value="0">
-        <span class="lectura" id="lecturaTex">×1.00</span>
+        <span class="lectura" id="lecturaTex">x1.0</span>
       </div>
     </div>
   </section>
 
   <section class="medidas" aria-labelledby="tituloMedidas">
     <h2 id="tituloMedidas">Piezas y medidas</h2>
-    <p class="nota">En milímetros. El centro de la paleta es 0, 0; x va a la derecha e y hacia arriba. La paleta flota 5 cm delante de tu palma izquierda y 1 cm más arriba, mirando hacia tus ojos. "Se toca a" es la distancia del dedo al centro del botón.</p>
+    <p class="nota">En milímetros. El centro de la paleta es 0, 0; x va a la derecha e y hacia arriba. Los ángulos van como en matemáticas (0° a la derecha, 90° arriba): las 12 = 90°, las 10 = 150°, las 2 = 30°. La paleta flota 5 cm delante de tu palma izquierda y 1 cm más arriba. "Se toca a" es la distancia del dedo al centro del botón.</p>
     <div class="tabla">
       <table>
-        <thead><tr><th>Pieza</th><th>Dónde (x, y)</th><th>Tamaño</th><th>Se toca a</th><th>Qué hace</th></tr></thead>
+        <thead><tr><th>Pieza</th><th>Dónde</th><th>Tamaño</th><th>Se toca a</th><th>Qué hace</th></tr></thead>
         <tbody id="filas"></tbody>
       </table>
     </div>
@@ -175,42 +177,30 @@ const COLORES = [[0, 0, 0], [0.97, 0.97, 0.97], [0.55, 0.55, 0.58], [1, 0.82, 0.
 const NOMBRES_COLOR = ['Negro', 'Blanco', 'Gris', 'Amarillo', 'Naranja', 'Rojo', 'Rosado', 'Morado', 'Azul', 'Verde', 'Café', 'Piel'];
 const TEMBLOR = ['No', 'Suave', 'Medio', 'Fuerte'];
 const SUAVIDAD = ['Suave', 'Normal', 'Nervioso'];
-const VELOCIDADES = [4, 8, 12, 24];             // Dibujo.Velocidades (cambios por segundo)
+const VELOCIDADES = [4, 8, 12, 24];
 const HEBRAS = [1, 3, 5];
 const TEXTURAS = ['Liso', 'Facetas', 'Manchas', 'Pinceladas'];
 const VEL_TEX = [0, 2, 4, 8];
 const NOM_VEL_TEX = ['Quieto', 'Lento', 'Medio', 'Rápido'];
-const TAM_TEX = [0.5, 1, 2, 4];
-const NOM_TAM_TEX = ['Chico', 'Normal', 'Grande', 'Enorme'];
-const AMARILLO = [1, 0.9, 0.45];                // AmarilloOpcion
-const AMPLITUD = [0, 0.0008, 0.0016, 0.0028];   // AmplitudMuestra
+const AMARILLO = [1, 0.9, 0.45];
+const AMPLITUD = [0, 0.0008, 0.0016, 0.0028];
 const ONDAS = [1.2, 2.5, 5];
-const RADIO_PALETA = 40, TAM_COLOR = 20;        // mm
-
-// Botones (mm, centro de la paleta = 0,0; y hacia arriba)
-const B = {
-  invisible: { x: -19, y: 71, tam: 21, toque: 12 },
-  cubeta: { x: 19, y: 71, tam: 21, toque: 12 },
-  textura: { x: -56, y: 47, tam: 21, toque: 12 },
-  velocidad: { x: -71.9, y: 12.7, tam: 18, toque: 11 },
-  tamano: { x: -69, y: -23.8, tam: 18, toque: 11 },
-  halo: { x: 56, y: 47, tam: 21, toque: 12 },
-  iman: { x: 71.9, y: 12.7, tam: 20, toque: 12 },
-};
+const RADIO_PALETA = 40, TAM_COLOR = 20, RADIO_BOTONES = 73;
+const ANG_LINEA = 150, ANG_RELLENO = 30, ANG_INVISIBLE = 90, PASO_HIJOS = 22, PRIMER_HIJO = 24;
+const ESPERA_RELLENO = 0.15;
 const POS_COLOR = COLORES.map((_, i) => {
   const a = Math.PI * 0.5 - i * Math.PI * 2 / COLORES.length;
   return [Math.cos(a) * RADIO_PALETA, Math.sin(a) * RADIO_PALETA];
 });
-const POS_OPCION = [0, 1, 2, 3, 4].map(i => {
-  const a = rad(-90 + (i - 2) * 19);
-  return [Math.cos(a) * 73, Math.sin(a) * 73];
-});
+const enArco = g => [Math.cos(rad(g)) * RADIO_BOTONES, Math.sin(rad(g)) * RADIO_BOTONES];
+const limitarEscala = e => clamp(e > 0 ? e : 1, 0.25, 8);
+const fmt1 = x => (Math.round(x * 10) / 10).toFixed(1);
 
 function estadoInicial() {
   return {
-    color: [0, 0, 0, 1], colorElegido: 0, ultimoVisible: [1, 0.85, 0.35],
+    color: [0, 0, 0, 1], colorRelleno: [1, 0.82, 0.1, 1], ultimoRellenoVisible: [1, 0.82, 0.1, 1],
     temblor: 0, hebras: 1, grosorVivo: false, ciclo3: true, suavidad: 1, velocidad: 1,
-    cubeta: false, tex: 0, vel: 2, tam: 1, halo: true, iman: true,
+    cubeta: false, tex: 0, vel: 2, escala: 1, halo: true, iman: true, rama: null,
   };
 }
 function figuraInicial() {
@@ -219,7 +209,7 @@ function figuraInicial() {
 let E = estadoInicial();
 let F = figuraInicial();
 const AZUL = { color: [0.15, 0.45, 0.95], ancho: 5 };
-const op = { fondo: 0, dedo: 'clic', zonas: false, sonido: true, temblorMano: false, estabilizador: false };
+const op = { fondo: 0, dedo: 'clic', zonas: false, sonido: true, temblorMano: false, estabilizador: true };
 
 // ---------- Escena: dos acomodos (ancho y angosto) ----------
 const LAYOUTS = {
@@ -227,10 +217,8 @@ const LAYOUTS = {
   angosto: { x0: -116, x1: 116, y0: -322, y1: 128, fig: [0, -242], figEsc: 0.78, azul: false, regla: [-108, -314] },
 };
 let L = LAYOUTS.ancho;
+const escena = $('#escena'), svg = $('#svg'), fondoSvg = $('#fondoSvg'), canvas = $('#gl'), canvasCentro = $('#glCentro'), cartel = $('#cartel');
 
-const escena = $('#escena'), svg = $('#svg'), fondoSvg = $('#fondoSvg'), canvas = $('#gl'), cartel = $('#cartel');
-
-// Figura de prueba: una forma redonda e irregular, y una línea azul ondulada debajo.
 function puntosFigura() {
   const n = 48, p = [];
   for (let i = 0; i < n; i++) {
@@ -270,7 +258,7 @@ function barra(lista, a, b, g) {
   lista.push(circulo(a, g * 0.5));
   lista.push(circulo(b, g * 0.5));
 }
-function linea(lista, pts, g) { for (let i = 0; i + 1 < pts.length; i++) barra(lista, pts[i], pts[i + 1], g); }
+function linea(lista, pts, g) { for (let i = 0; i + 1 < pts.length; i++) barra(lista, pts[i], pts[i + 1], g); return lista; }
 function area(p) { let s = 0; for (let i = 0; i < p.length; i++) { const a = p[i], b = p[(i + 1) % p.length]; s += a[0] * b[1] - b[0] * a[1]; } return s; }
 function camino(polys) {
   return polys.map(p => {
@@ -278,26 +266,30 @@ function camino(polys) {
     return 'M' + q.map(v => v[0].toFixed(4) + ' ' + v[1].toFixed(4)).join('L') + 'Z';
   }).join('');
 }
-const ICONOS = {
-  opciones: [
-    (() => { const l = []; for (let k = -1; k <= 1; k++) barra(l, [-0.27, k * 0.17], [0.27, k * 0.17], 0.07); return l; })(),
-    [[[-0.33, 0], [-0.15, 0.11], [0.15, 0.11], [0.33, 0], [0.15, -0.11], [-0.15, -0.11]]],
-    [0, 1, 2].map(k => { const a = rad(90 + k * 120); return circulo([Math.cos(a) * 0.17, Math.sin(a) * 0.17], 0.075); }),
-    (() => { const l = []; linea(l, [[-0.3, 0], [-0.15, 0.15], [0, -0.15], [0.15, 0.15], [0.3, 0]], 0.07); return l; })(),
-    null,
-  ],
-  flechas: (() => {
-    const l = [];
-    linea(l, [[-0.25, 0.17], [-0.06, 0], [-0.25, -0.17]], 0.07);
-    linea(l, [[0.04, 0.17], [0.23, 0], [0.04, -0.17]], 0.07);
-    return l;
-  })(),
-};
-ICONOS.opciones[4] = ICONOS.flechas;
+function flechas() {
+  const l = [];
+  linea(l, [[-0.25, 0.17], [-0.06, 0], [-0.25, -0.17]], 0.07);
+  linea(l, [[0.04, 0.17], [0.23, 0], [0.04, -0.17]], 0.07);
+  return l;
+}
+function iconosTemblor() {
+  const onda = [];
+  for (let k = 0; k < 9; k++) { const u = k / 8; onda.push([-0.2 + 0.4 * u, Math.sin(u * Math.PI * 2) * 0.1]); }
+  const temblor = linea([], onda, 0.07);
+  barra(temblor, [-0.33, -0.13], [-0.33, 0.13], 0.05);
+  barra(temblor, [0.33, -0.13], [0.33, 0.13], 0.05);
+  const hebras = []; for (let k = -1; k <= 1; k++) barra(hebras, [-0.27, k * 0.17], [0.27, k * 0.17], 0.07);
+  const grosor = [[[-0.33, 0], [-0.15, 0.11], [0.15, 0.11], [0.33, 0], [0.15, -0.11], [-0.15, -0.11]]];
+  const ciclo = [0, 1, 2].map(k => { const a = rad(90 + k * 120); return circulo([Math.cos(a) * 0.17, Math.sin(a) * 0.17], 0.075); });
+  const suavidad = linea([], [[-0.3, 0], [-0.15, 0.15], [0, -0.15], [0.15, 0.15], [0.3, 0]], 0.07);
+  return [temblor, hebras, grosor, ciclo, suavidad, flechas()];
+}
 
 // ---------- Armar la escena ----------
-let gFlip, gFigura, gHalo, gFantasma, P, gZonas, cursor, cursorAro;
+let gFlip, gHalo, gFantasma, P, gZonas, cursor, cursorAro;
 const vista = {};
+const botones = [];
+const ramas = {};
 
 function armarFondo() {
   fondoSvg.innerHTML = '';
@@ -335,8 +327,24 @@ function armarFondo() {
   }
 }
 
+// Un botón redondo de la paleta: aro negro, fondo blanco (o amarillo) e iconos. Igual que CrearBotonPaleta.
+function boton(nombre, angulo, tam, rama, extra) {
+  const [x, y] = enArco(angulo);
+  const capa = rama ? ramas[rama].gHijos : vista.gBotones;
+  const g = el('g', { transform: 'translate(' + x.toFixed(3) + ' ' + y.toFixed(3) + ') scale(' + tam + ')' }, capa);
+  el('path', { d: camino([disco(1.12)]), fill: '#000' }, g);
+  const fondo = el('path', { d: camino([disco(1)]), fill: '#fff' }, g);
+  const b = Object.assign({ nombre, angulo, tam, x, y, g, fondo, rama, toque: 11, tono: 0.9, dedoEn: false,
+    visible: null, amarillo: null, alTocar: null, texto: null }, extra || {});
+  botones.push(b);
+  if (rama) ramas[rama].hijos.push(b);
+  return b;
+}
+function icono(b, polys, color) { return el('path', { d: camino(polys), fill: color }, b.g); }
+
 function armar() {
   svg.innerHTML = '';
+  botones.length = 0;
   const w = L.x1 - L.x0, h = L.y1 - L.y0;
   svg.setAttribute('viewBox', L.x0 + ' ' + (-L.y1) + ' ' + w + ' ' + h);
   escena.style.aspectRatio = w + ' / ' + h;
@@ -349,12 +357,10 @@ function armar() {
 
   // Figura: halo, relleno sin WebGL (respaldo), borde negro y línea azul
   gHalo = el('g', { filter: 'url(#suave)', opacity: 0.85 }, gFlip);
-  gFigura = el('g', null, gFlip);
+  const gFigura = el('g', null, gFlip);
   vista.rellenoPlano = el('path', { d: camino([FIG]), fill: 'none' }, gFigura);
   vista.borde = el('path', { d: camino([FIG]), fill: 'none', stroke: '#000', 'stroke-width': F.ancho, 'stroke-linejoin': 'round' }, gFigura);
-  if (L.azul) {
-    vista.azul = el('polyline', { points: LINEA_AZUL.map(p => p.join(',')).join(' '), fill: 'none', stroke: css(AZUL.color), 'stroke-width': AZUL.ancho, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, gFigura);
-  }
+  if (L.azul) el('polyline', { points: LINEA_AZUL.map(p => p.join(',')).join(' '), fill: 'none', stroke: css(AZUL.color), 'stroke-width': AZUL.ancho, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, gFigura);
   vista.lecturaFig = el('text', { transform: 'translate(' + L.fig[0] + ' ' + (L.fig[1] - 4) + ') scale(1,-1)', 'text-anchor': 'middle', 'font-family': 'IBM Plex Mono, monospace', 'font-size': 7, fill: 'rgba(0,0,0,0.55)' }, gFigura);
 
   // Regla de 5 cm
@@ -363,34 +369,36 @@ function armar() {
   el('path', { d: 'M' + r[0] + ' ' + r[1] + 'L' + (r[0] + 50) + ' ' + r[1] + 'M' + r[0] + ' ' + (r[1] - 3) + 'L' + r[0] + ' ' + (r[1] + 3) + 'M' + (r[0] + 50) + ' ' + (r[1] - 3) + 'L' + (r[0] + 50) + ' ' + (r[1] + 3), stroke: 'rgba(0,0,0,0.6)', 'stroke-width': 1.2, fill: 'none' }, gr);
   const tr = el('text', { transform: 'translate(' + (r[0] + 25) + ' ' + (r[1] + 3) + ') scale(1,-1)', 'text-anchor': 'middle', 'font-family': 'IBM Plex Mono, monospace', 'font-size': 6.5, fill: 'rgba(0,0,0,0.65)' }, gr);
   tr.textContent = '5 cm';
-  vista.regla = gr;
 
-  // Dónde está tu mano de verdad (solo con "Mano temblorosa")
   gFantasma = el('circle', { r: 59, fill: 'none', stroke: 'rgba(0,0,0,0.45)', 'stroke-width': 0.9, 'stroke-dasharray': '3 3' }, gFlip);
 
   // ---------- La paleta ----------
   P = el('g', null, gFlip);
   el('path', { d: camino([disco(118)]), fill: '#000' }, P);
   el('path', { d: camino([disco(110)]), fill: '#fff' }, P);
-  // Centro: aro negro, fondo gris clarito y la línea que tiembla
   el('path', { d: camino([disco(56)]), fill: '#000' }, P);
   el('path', { d: camino([disco(52)]), fill: css([0.85, 0.85, 0.87]) }, P);
-  vista.muestra = el('path', { d: '', fill: '#000' }, P);
-  // 12 colores: primero todos los aros negros, luego los colores (el elegido, encima de todos)
+  vista.muestra = el('path', { d: '', fill: '#000', transform: 'translate(0 4)' }, P);
+  // El hueco del relleno del centro (lo pinta el lienzo WebGL de encima)
+  vista.huecoRelleno = el('path', { d: camino([circuloN(17, 28)]), transform: 'translate(0 4)', fill: 'none' }, P);
+  vista.textoCentro = el('text', { transform: 'translate(0 -18.5) scale(1,-1)', 'text-anchor': 'middle', 'font-family': '"Liberation Sans", Arial, Helvetica, sans-serif', fill: css([0.12, 0.12, 0.15]) }, P);
+
+  // Arcos de las ramas (detrás de los botones) y capas de botones
+  for (const nombre of ['linea', 'relleno']) {
+    ramas[nombre] = { hijos: [], arco: el('path', { d: '', fill: '#000' }, P), hasta: NaN };
+  }
   const anillos = el('g', null, P);
   vista.discos = el('g', null, P);
   vista.colores = COLORES.map((c, i) => ({
     anillo: el('path', { d: camino([disco(1.18)]), fill: '#000' }, anillos),
     disco: el('path', { d: camino([disco(1)]), fill: css(c) }, vista.discos),
   }));
-  // 5 opciones del temblor
-  vista.opciones = POS_OPCION.map((p, i) => {
-    const b = boton(P, p[0], p[1], 20);
-    icono(b, ICONOS.opciones[i], '#000');
-    return b;
-  });
-  // Tinta invisible (a cuadritos)
-  const inv = boton(P, B.invisible.x, B.invisible.y, B.invisible.tam);
+  vista.gBotones = el('g', null, P);
+  ramas.linea.gHijos = el('g', null, P);
+  ramas.relleno.gHijos = el('g', null, P);
+
+  // Tinta invisible (a las 12)
+  const inv = boton('Tinta invisible', ANG_INVISIBLE, 21, null, { toque: 12, tono: 1.1 });
   const cuadros = [];
   for (let fy = 0; fy < 4; fy++) for (let fx = 0; fx < 4; fx++) {
     if ((fx + fy) % 2 === 1) continue;
@@ -398,137 +406,170 @@ function armar() {
     cuadros.push([[x0, y0], [x0, y0 + 0.15], [x0 + 0.15, y0 + 0.15], [x0 + 0.15, y0]]);
   }
   icono(inv, cuadros, css([0.7, 0.72, 0.76]));
+  inv.alTocar = () => elegirColor([0, 0, 0, 0]);
   vista.invisible = inv;
-  // Cubeta: balde con asa y una gota del color de relleno
-  const cub = boton(P, B.cubeta.x, B.cubeta.y, B.cubeta.tam);
+
+  // LÍNEA (a las 10)
+  const rl = boton('Línea', ANG_LINEA, 22, null, { toque: 12, tono: 1 });
+  const s = [];
+  for (let k = 0; k < 9; k++) { const u = k / 8; s.push([-0.26 + 0.52 * u, -0.15 + 0.3 * u + 0.09 * Math.sin(u * Math.PI * 2)]); }
+  icono(rl, linea([], s, 0.09), '#000');
+  rl.amarillo = () => E.rama === 'linea';
+  rl.alTocar = () => abrirRama('linea');
+  rl.texto = () => E.rama === 'linea' ? 'Línea' : '';
+  ramas.linea.raiz = rl;
+  const it = iconosTemblor();
+  const hijoLinea = (k, icon) => { const b = boton('Línea ' + k, ANG_LINEA + PRIMER_HIJO + k * PASO_HIJOS, 20, 'linea'); if (icon) icono(b, icon, '#000'); return b; };
+  let b = hijoLinea(0, it[0]);
+  Object.assign(b, { nombre: 'Temblor', amarillo: () => E.temblor > 0, alTocar: () => { E.temblor = (E.temblor + 1) % 4; aviso('Capa 1: temblor ' + TEMBLOR[E.temblor]); }, texto: () => 'Temblor ' + E.temblor + ' · ' + TEMBLOR[E.temblor] });
+  b = hijoLinea(1, it[1]);
+  Object.assign(b, { nombre: 'Hebras', amarillo: () => E.hebras > 1, alTocar: () => { E.hebras = HEBRAS[(HEBRAS.indexOf(E.hebras) + 1) % HEBRAS.length]; aviso('Capa 1: ' + (E.hebras === 1 ? 'una sola línea' : E.hebras + ' hebras por línea')); }, texto: () => 'Hebras ' + E.hebras });
+  b = hijoLinea(2, it[2]);
+  Object.assign(b, { nombre: 'Grosor vivo', amarillo: () => E.grosorVivo, alTocar: () => { E.grosorVivo = !E.grosorVivo; aviso('Capa 1: ' + (E.grosorVivo ? 'grosor vivo' : 'grosor normal')); }, texto: () => E.grosorVivo ? 'Grosor vivo: Sí' : 'Grosor vivo: No' });
+  b = hijoLinea(3, it[3]);
+  Object.assign(b, { nombre: 'Ciclo de 3', amarillo: () => !E.ciclo3, alTocar: () => { E.ciclo3 = !E.ciclo3; aviso('Capa 1: ' + (E.ciclo3 ? 'temblor en ciclo de 3 dibujos' : 'temblor libre')); }, texto: () => E.ciclo3 ? 'Ciclo de 3' : 'Libre' });
+  b = hijoLinea(4, it[4]);
+  Object.assign(b, { nombre: 'Suavidad', amarillo: () => E.suavidad !== 1, alTocar: () => { E.suavidad = (E.suavidad + 1) % 3; aviso('Capa 1: temblor ' + SUAVIDAD[E.suavidad]); }, texto: () => 'Suavidad ' + (E.suavidad + 1) + ' · ' + SUAVIDAD[E.suavidad] });
+  b = hijoLinea(5, it[5]);
+  Object.assign(b, { nombre: 'Velocidad', amarillo: () => E.velocidad !== 1, alTocar: () => { E.velocidad = (E.velocidad + 1) % VELOCIDADES.length; aviso('Capa 1: ' + VELOCIDADES[E.velocidad] + ' cambios por segundo'); }, texto: () => VELOCIDADES[E.velocidad] + ' cambios/s' });
+  b = hijoLinea(6, null);
+  icono(b, linea([], [[-0.17, 0.12], [-0.17, -0.06], [-0.1, -0.2], [0, -0.24], [0.1, -0.2], [0.17, -0.06], [0.17, 0.12]], 0.11), css([0.88, 0.15, 0.15]));
+  const puntas = []; barra(puntas, [-0.17, 0.13], [-0.17, 0.25], 0.11); barra(puntas, [0.17, 0.13], [0.17, 0.25], 0.11);
+  icono(b, puntas, css([0.75, 0.76, 0.8]));
+  Object.assign(b, { nombre: 'Imán', tono: 1.2, amarillo: () => E.iman, alTocar: () => { E.iman = !E.iman; aviso('Capa 1' + (E.iman ? ': imán encendido (las puntas se unen)' : ': imán apagado (las líneas quedan como las dibujas)')); }, texto: () => E.iman ? 'Imán: Sí' : 'Imán: No' });
+  b = hijoLinea(7, null);
+  const brillo = []; barra(brillo, [-0.2, -0.2], [0.2, 0.2], 0.3);
+  icono(b, brillo, css([0.68, 0.7, 0.75]));
+  const raya = []; barra(raya, [-0.2, -0.2], [0.2, 0.2], 0.08);
+  icono(b, raya, '#000');
+  Object.assign(b, { nombre: 'Halo', tono: 1.1, visible: () => op.fondo >= 2, amarillo: () => E.halo, alTocar: () => { E.halo = !E.halo; aviso(E.halo ? 'Halo: sí (las líneas se separan del fondo)' : 'Halo: no'); pintarFigura(); }, texto: () => E.halo ? 'Halo: Sí' : 'Halo: No' });
+
+  // RELLENO (a las 2)
+  const rr = boton('Relleno', ANG_RELLENO, 22, null, { toque: 12, tono: 1 });
+  icono(rr, [[[-0.3, -0.3], [0.05, -0.3], [-0.1, 0.1], [-0.3, 0.15]]], css([0.3, 0.5, 0.32]));
+  icono(rr, [[[0.05, -0.3], [0.3, -0.3], [0.3, 0.05], [-0.1, 0.1]]], css([0.45, 0.68, 0.42]));
+  icono(rr, [[[-0.3, 0.15], [-0.1, 0.1], [0.3, 0.05], [0.3, 0.3], [-0.3, 0.3]]], css([0.62, 0.82, 0.55]));
+  rr.amarillo = () => E.rama === 'relleno';
+  rr.alTocar = () => abrirRama('relleno');
+  rr.texto = () => E.rama === 'relleno' ? 'Relleno: ' + nombreColor(E.colorRelleno) : '';
+  ramas.relleno.raiz = rr;
+  const hijoRelleno = k => boton('Relleno ' + k, ANG_RELLENO - PRIMER_HIJO - k * PASO_HIJOS, 20, 'relleno');
+  b = hijoRelleno(0);
+  icono(b, [circulo([-0.13, 0.1], 0.13)], css([0.3, 0.5, 0.32]));
+  icono(b, [circulo([0.14, 0.08], 0.11)], css([0.45, 0.68, 0.42]));
+  icono(b, [circulo([0, -0.15], 0.12)], css([0.62, 0.82, 0.55]));
+  Object.assign(b, { nombre: 'Textura', tono: 1.15, amarillo: () => E.tex > 0, alTocar: () => elegirTextura((E.tex + 1) % 4, E.vel), texto: () => 'Textura ' + E.tex + ' · ' + TEXTURAS[E.tex] });
+  b = hijoRelleno(1);
   const balde = [[[-0.24, 0.08], [0.16, 0.08], [0.11, -0.28], [-0.19, -0.28]]];
   linea(balde, [[-0.22, 0.1], [-0.16, 0.27], [0.08, 0.27], [0.14, 0.1]], 0.05);
-  icono(cub, balde, '#000');
-  cub.gota = icono(cub, [circulo([0.27, -0.14], 0.09), [[0.27, 0.03], [0.19, -0.11], [0.35, -0.11]]], css(E.ultimoVisible));
-  vista.cubeta = cub;
-  // Relleno vivo: 3 facetas verdes
-  const tex = boton(P, B.textura.x, B.textura.y, B.textura.tam);
-  icono(tex, [[[-0.3, -0.3], [0.05, -0.3], [-0.1, 0.1], [-0.3, 0.15]]], css([0.3, 0.5, 0.32]));
-  icono(tex, [[[0.05, -0.3], [0.3, -0.3], [0.3, 0.05], [-0.1, 0.1]]], css([0.45, 0.68, 0.42]));
-  icono(tex, [[[-0.3, 0.15], [-0.1, 0.1], [0.3, 0.05], [0.3, 0.3], [-0.3, 0.3]]], css([0.62, 0.82, 0.55]));
-  vista.textura = tex;
-  const vel = boton(P, B.velocidad.x, B.velocidad.y, B.velocidad.tam);
-  icono(vel, ICONOS.flechas, '#000');
-  vista.velocidad = vel;
-  const tam = boton(P, B.tamano.x, B.tamano.y, B.tamano.tam);
-  icono(tam, [[[-0.3, -0.25], [-0.12, -0.25], [-0.12, -0.07], [-0.3, -0.07]], [[-0.04, -0.25], [0.3, -0.25], [0.3, 0.09], [-0.04, 0.09]]], '#000');
-  vista.tamano = tam;
-  // Halo: brillo gris detrás de una raya negra
-  const halo = boton(P, B.halo.x, B.halo.y, B.halo.tam);
-  const brillo = []; barra(brillo, [-0.2, -0.2], [0.2, 0.2], 0.3);
-  icono(halo, brillo, css([0.68, 0.7, 0.75]));
-  const raya = []; barra(raya, [-0.2, -0.2], [0.2, 0.2], 0.08);
-  icono(halo, raya, '#000');
-  vista.halo = halo;
-  // Imán: herradura roja con puntas grises
-  const iman = boton(P, B.iman.x, B.iman.y, B.iman.tam);
-  const u = []; linea(u, [[-0.17, 0.12], [-0.17, -0.06], [-0.1, -0.2], [0, -0.24], [0.1, -0.2], [0.17, -0.06], [0.17, 0.12]], 0.11);
-  icono(iman, u, css([0.88, 0.15, 0.15]));
-  const puntas = []; barra(puntas, [-0.17, 0.13], [-0.17, 0.25], 0.11); barra(puntas, [0.17, 0.13], [0.17, 0.25], 0.11);
-  icono(iman, puntas, css([0.75, 0.76, 0.8]));
-  vista.iman = iman;
+  icono(b, balde, '#000');
+  vista.gota = icono(b, [circulo([0.27, -0.14], 0.09), [[0.27, 0.03], [0.19, -0.11], [0.35, -0.11]]], '#000');
+  Object.assign(b, { nombre: 'Cubeta', tono: 1.1, amarillo: () => E.cubeta, alTocar: () => { E.cubeta = !E.cubeta; aviso(E.cubeta ? 'Cubeta: Sí' : 'Cubeta: No'); }, texto: () => E.cubeta ? 'Cubeta: Sí' : 'Cubeta: No' });
+  b = hijoRelleno(2);
+  icono(b, flechas(), '#000');
+  Object.assign(b, { nombre: 'Velocidad de la textura', tono: 1.3, visible: () => E.tex > 0, alTocar: () => elegirTextura(E.tex, (E.vel + 1) % 4), texto: () => 'Velocidad: ' + NOM_VEL_TEX[E.vel] });
+
   // Cartel de datos
   el('rect', { x: -100, y: -160, width: 200, height: 64, fill: css([0.97, 0.97, 0.95]) }, P);
   vista.datos = el('text', { transform: 'translate(0 -128) scale(1,-1)', 'text-anchor': 'middle', 'font-family': '"Liberation Sans", Arial, Helvetica, sans-serif', fill: css([0.12, 0.12, 0.15]) }, P);
-  vista.lineas = [0, 1, 2, 3].map(() => el('tspan', { x: 0 }, vista.datos));
+  vista.lineas = [0, 1, 2, 3, 4].map(() => el('tspan', { x: 0 }, vista.datos));
 
   // Zonas de toque
   gZonas = el('g', { fill: 'none', stroke: '#e0457b', 'stroke-width': 0.6, 'stroke-dasharray': '1.6 1.2' }, P);
   for (const p of POS_COLOR) el('circle', { cx: p[0], cy: p[1], r: 14 }, gZonas);
-  for (const p of POS_OPCION) el('circle', { cx: p[0], cy: p[1], r: 11 }, gZonas);
-  el('circle', { cx: 0, cy: 0, r: 17 }, gZonas);
-  vista.zonasBoton = {};
-  for (const k in B) vista.zonasBoton[k] = el('circle', { cx: B[k].x, cy: B[k].y, r: B[k].toque }, gZonas);
+  for (const bt of botones) bt.zona = el('circle', { cx: bt.x, cy: bt.y, r: bt.toque }, gZonas);
   el('circle', { cx: 0, cy: 0, r: 100, stroke: '#1f9d94', 'stroke-dasharray': '4 3' }, gZonas);
 
-  // La puntita del índice derecho (lleva el color elegido)
   cursor = el('circle', { r: 4, 'stroke-width': 0.7, stroke: '#16181b' }, gFlip);
   cursorAro = el('circle', { r: 7, fill: 'none', stroke: '#16181b', 'stroke-width': 0.8 }, gFlip);
 
   claveMuestra = null;
   datosAntes = [];
-  pintar();
+  refrescar();
   pintarFigura();
   redimensionarGl();
 }
-
-function boton(padre, x, y, tam) {
-  const g = el('g', { transform: 'translate(' + x + ' ' + y + ') scale(' + tam + ')' }, padre);
-  el('path', { d: camino([disco(1.12)]), fill: '#000' }, g);
-  const fondo = el('path', { d: camino([disco(1)]), fill: '#fff' }, g);
-  return { g, fondo, x, y, tam };
+function circuloN(r, n) {
+  const p = [];
+  for (let i = 0; i < n; i++) { const a = i * Math.PI * 2 / n; p.push([Math.cos(a) * r, Math.sin(a) * r]); }
+  return p;
 }
-function icono(b, polys, color) { return el('path', { d: camino(polys), fill: color }, b.g); }
-function escalar(b, s) { b.g.setAttribute('transform', 'translate(' + b.x + ' ' + b.y + ') scale(' + (b.tam * s) + ')'); }
-function ver(b, si) { b.g.style.display = si ? '' : 'none'; }
 
-// ---------- Pintar el estado (lo que hace cada Actualizar...Paleta) ----------
-const haloDisponible = () => op.fondo >= 2;
-const invisible = () => E.color[3] < 0.01;
-const colorDeRelleno = () => invisible() ? E.ultimoVisible : E.color;
+// ---------- Estado → dibujo (RefrescarBotonesPaleta) ----------
+const invisible = c => c[3] < 0.01;
+const rellenoAbierto = () => E.rama === 'relleno';
+const colorDeRelleno = () => invisible(E.colorRelleno) ? E.ultimoRellenoVisible : E.colorRelleno;
+const colorObjetivo = () => rellenoAbierto() ? E.colorRelleno : E.color;
 
-function opcionDistinta(i) {
-  switch (i) {
-    case 0: return E.hebras > 1;
-    case 1: return E.grosorVivo;
-    case 2: return !E.ciclo3;
-    case 3: return E.suavidad !== 1;
-    default: return E.velocidad !== 1;
+function abrirRama(r) { E.rama = E.rama === r ? null : r; }
+
+function refrescar() {
+  for (const b of botones) {
+    const ver = (!b.rama || b.rama === E.rama) && (!b.visible || b.visible());
+    b.g.style.display = ver ? '' : 'none';
+    if (b.zona) b.zona.style.display = ver ? '' : 'none';
+    b.ver = ver;
+    if (!ver) b.dedoEn = false;
+    else b.fondo.setAttribute('fill', b.amarillo && b.amarillo() ? css(AMARILLO) : '#fff');
   }
-}
-
-function pintar() {
-  if (!invisible()) E.ultimoVisible = E.color.slice(0, 3);
+  for (const nombre in ramas) actualizarArco(nombre);
+  const marcado = indiceColor(colorObjetivo());
   vista.colores.forEach((c, i) => {
-    const s = TAM_COLOR * (i === E.colorElegido ? 1.3 : 1);
-    const t = 'translate(' + POS_COLOR[i][0] + ' ' + POS_COLOR[i][1] + ') scale(' + s + ')';
+    const s = TAM_COLOR * (i === marcado ? 1.3 : 1);
+    const t = 'translate(' + POS_COLOR[i][0].toFixed(3) + ' ' + POS_COLOR[i][1].toFixed(3) + ') scale(' + s + ')';
     c.anillo.setAttribute('transform', t);
     c.disco.setAttribute('transform', t);
   });
-  if (E.colorElegido >= 0) vista.discos.appendChild(vista.colores[E.colorElegido].disco);
-  vista.muestra.setAttribute('fill', invisible() ? css([0.72, 0.74, 0.8]) : css(E.color));
-  vista.opciones.forEach((b, i) => b.fondo.setAttribute('fill', opcionDistinta(i) ? css(AMARILLO) : '#fff'));
-  escalar(vista.invisible, invisible() ? 1.3 : 1);
-  vista.cubeta.fondo.setAttribute('fill', E.cubeta ? css(AMARILLO) : '#fff');
-  vista.cubeta.gota.setAttribute('fill', css(colorDeRelleno()));
-  vista.textura.fondo.setAttribute('fill', E.tex > 0 ? css(AMARILLO) : '#fff');
-  ver(vista.velocidad, E.tex > 0);
-  ver(vista.tamano, E.tex > 0);
-  vista.zonasBoton.velocidad.style.display = E.tex > 0 ? '' : 'none';
-  vista.zonasBoton.tamano.style.display = E.tex > 0 ? '' : 'none';
-  ver(vista.halo, haloDisponible());
-  vista.zonasBoton.halo.style.display = haloDisponible() ? '' : 'none';
-  vista.halo.fondo.setAttribute('fill', E.halo ? css(AMARILLO) : '#fff');
-  vista.iman.fondo.setAttribute('fill', E.iman ? css(AMARILLO) : '#fff');
+  if (marcado >= 0) vista.discos.appendChild(vista.colores[marcado].disco);
+  const inv = vista.invisible;
+  inv.g.setAttribute('transform', 'translate(' + inv.x.toFixed(3) + ' ' + inv.y.toFixed(3) + ') scale(' + (inv.tam * (marcado < 0 ? 1.3 : 1)) + ')');
+  vista.gota.setAttribute('fill', css(colorDeRelleno()));
+  vista.muestra.setAttribute('fill', invisible(E.color) ? css([0.72, 0.74, 0.8]) : css(E.color));
+  vista.muestra.style.display = rellenoAbierto() ? 'none' : '';
   gZonas.style.display = op.zonas ? '' : 'none';
-  if (invisible()) {
+  const cObj = colorObjetivo();
+  if (invisible(cObj)) {
     cursor.setAttribute('fill', 'rgba(255,255,255,0.35)');
     cursor.setAttribute('stroke-dasharray', '1.2 1');
   } else {
-    cursor.setAttribute('fill', css(E.color));
+    cursor.setAttribute('fill', css(cObj));
     cursor.removeAttribute('stroke-dasharray');
   }
-  proximosDatos = 0;
+}
+
+// El arco va de la raíz hasta su último hijo a la vista (ActualizarArco).
+function actualizarArco(nombre) {
+  const r = ramas[nombre];
+  const ver = E.rama === nombre;
+  r.arco.style.display = ver ? '' : 'none';
+  if (!ver) return;
+  let hasta = r.raiz.angulo;
+  for (const h of r.hijos) if (h.ver) hasta = h.angulo;
+  if (hasta === r.hasta) return;
+  r.hasta = hasta;
+  const desde = r.raiz.angulo, ancho = 1.5;
+  const n = Math.max(2, Math.ceil(Math.abs(hasta - desde) / 3) + 1);
+  const fuera = [], dentro = [];
+  for (let i = 0; i < n; i++) {
+    const a = rad(desde + (hasta - desde) * i / (n - 1));
+    fuera.push([Math.cos(a) * (RADIO_BOTONES + ancho / 2), Math.sin(a) * (RADIO_BOTONES + ancho / 2)]);
+    dentro.push([Math.cos(a) * (RADIO_BOTONES - ancho / 2), Math.sin(a) * (RADIO_BOTONES - ancho / 2)]);
+  }
+  r.arco.setAttribute('d', camino([fuera.concat(dentro.reverse())]));
 }
 
 function pintarFigura() {
-  const conHalo = haloDisponible() && E.halo;
+  const conHalo = op.fondo >= 2 && E.halo;
   gHalo.innerHTML = '';
   if (conHalo) {
-    const extra = (ancho) => ancho + 2 * (3.5 + 0.6 * ancho * 0.5);
+    const extra = ancho => ancho + 2 * (3.5 + 0.6 * ancho * 0.5);
     el('path', { d: camino([FIG]), fill: 'none', stroke: '#fff', 'stroke-width': extra(F.ancho), 'stroke-linejoin': 'round' }, gHalo);
     if (L.azul) el('polyline', { points: LINEA_AZUL.map(p => p.join(',')).join(' '), fill: 'none', stroke: '#fff', 'stroke-width': extra(AZUL.ancho), 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, gHalo);
   }
   vista.borde.setAttribute('stroke', css(F.linea));
-  // Sin WebGL: relleno liso de respaldo
-  vista.rellenoPlano.setAttribute('fill', F.relleno && !gl ? css(F.color) : 'none');
-  vista.lecturaFig.textContent = F.relleno && F.tex > 0 ? TEXTURAS[F.tex] + ' ×' + F.escala.toFixed(2) : '';
-  $('#lecturaTex').textContent = '×' + F.escala.toFixed(2);
+  vista.rellenoPlano.setAttribute('fill', F.relleno && !glFig ? css(F.color) : 'none');
+  vista.lecturaFig.textContent = F.relleno && F.tex > 0 ? TEXTURAS[F.tex] + ' x' + fmt1(F.escala) : '';
+  $('#lecturaTex').textContent = 'x' + fmt1(F.escala);
   const v = Math.log2(F.escala);
   if (Math.abs(parseFloat($('#escalaTex').value) - v) > 0.005) $('#escalaTex').value = v.toFixed(2);
 }
@@ -580,7 +621,18 @@ function dibujarMuestra(t) {
   vista.muestra.setAttribute('d', polys.map(p => 'M' + p.map(v => v[0].toFixed(3) + ' ' + v[1].toFixed(3)).join('L') + 'Z').join(''));
 }
 
-// ---------- Cartel de datos (ActualizarDatosPaleta) ----------
+// ---------- Textos: el centro y el cartel de datos ----------
+function ponerTextoCentro(texto) {
+  const t = vista.textoCentro;
+  t.textContent = texto || '';
+  t.setAttribute('font-size', 5);
+  let largo = 0;
+  try { largo = t.getComputedTextLength(); } catch (e) { largo = 0; }
+  const fs = largo > 0 ? Math.min(5, 5 * 40 / largo) : 5;
+  t.setAttribute('font-size', fs.toFixed(3));
+  t.setAttribute('y', (fs * 0.35).toFixed(3));
+}
+
 let datosAntes = [], proximosDatos = 0;
 const resaltarHasta = new Array(12).fill(0);
 function indiceColor(c) {
@@ -592,21 +644,20 @@ function indiceColor(c) {
   });
   return mejor;
 }
+const nombreColor = c => { const i = indiceColor(c); return i < 0 ? 'Tinta invisible' : NOMBRES_COLOR[i]; };
 function datosAhora() {
-  const i = indiceColor(E.color);
+  const cr = E.colorRelleno;
   return [
-    '8 mm',
-    i < 0 ? 'Tinta invisible' : NOMBRES_COLOR[i],
-    'Capa 1',
+    '8 mm', nombreColor(E.color), 'Capa 1',
     'Temblor: ' + TEMBLOR[E.temblor],
     'Hebras: ' + E.hebras + (E.hebras > 1 ? ' (50 %)' : ''),
     E.grosorVivo ? 'Grosor vivo: Sí' : 'Grosor vivo: No',
     E.ciclo3 ? 'Ciclo de 3' : 'Libre',
     'Suavidad: ' + SUAVIDAD[E.suavidad],
     VELOCIDADES[E.velocidad] + ' cambios/s',
-    'Relleno: ' + TEXTURAS[E.tex] + (E.tex > 0 ? ' · ' + NOM_VEL_TEX[E.vel] + ' · ' + NOM_TAM_TEX[E.tam] : ''),
+    'Relleno: ' + (invisible(cr) ? 'Sin relleno' : nombreColor(cr)) + ' · ' + TEXTURAS[E.tex] + (E.tex > 0 ? ' · ' + NOM_VEL_TEX[E.vel] + ' · x' + fmt1(E.escala) : ''),
     (E.cubeta ? 'Cubeta: Sí' : 'Cubeta: No') + (E.iman ? ' · Imán: Sí' : ' · Imán: No'),
-    haloDisponible() ? (E.halo ? 'Halo: Sí' : 'Halo: No') : '',
+    op.fondo >= 2 ? (E.halo ? 'Halo: Sí' : 'Halo: No') : '',
   ];
 }
 function actualizarDatos(ahora) {
@@ -617,7 +668,7 @@ function actualizarDatos(ahora) {
     if (datosAntes[i] !== undefined && datosAntes[i] !== d[i]) resaltarHasta[i] = ahora + 2.5;
     datosAntes[i] = d[i];
   }
-  const filas = [['Líneas nuevas: ', [0, 1, 2]], ['', [3, 4, 5]], ['', [6, 7, 8]], ['', [9, 10, 11]]];
+  const filas = [['Líneas nuevas: ', [0, 1, 2]], ['', [3, 4, 5]], ['', [6, 7, 8]], ['', [9]], ['', [10, 11]]];
   filas.forEach(([antes, idx], k) => {
     const t = vista.lineas[k];
     t.textContent = '';
@@ -635,15 +686,16 @@ function actualizarDatos(ahora) {
       }
     }
   });
-  // Tamaño automático (como el texto del app): que la línea más larga quepa en 19 cm.
+  // Tamaño automático (como el texto del app): que quepa en 19 x 5.8 cm.
   const maximo = 9;
   vista.datos.setAttribute('font-size', maximo);
   let largo = 0;
   for (const t of vista.lineas) { try { largo = Math.max(largo, t.getComputedTextLength()); } catch (e) { /* sin medir */ } }
-  const fs = largo > 0 ? Math.min(maximo, maximo * 190 / largo) : 5;
+  let fs = largo > 0 ? Math.min(maximo, maximo * 190 / largo) : 5;
+  fs = Math.min(fs, 58 / (vista.lineas.length * 1.2));
   vista.datos.setAttribute('font-size', fs.toFixed(3));
-  const lh = fs * 1.2;
-  vista.lineas.forEach((t, k) => t.setAttribute('y', ((k - 1.5) * lh + fs * 0.35).toFixed(3)));
+  const lh = fs * 1.2, medio = (vista.lineas.length - 1) / 2;
+  vista.lineas.forEach((t, k) => t.setAttribute('y', ((k - medio) * lh + fs * 0.35).toFixed(3)));
 }
 
 // ---------- Avisos y sonido ----------
@@ -669,10 +721,15 @@ function crearPlop(ctx) {
   }
   return b;
 }
+function prepararAudio() {
+  if (!op.sonido || audio) return;
+  try { audio = new (window.AudioContext || window.webkitAudioContext)(); plop = crearPlop(audio); } catch (e) { audio = null; }
+}
 function burbuja(tono) {
   if (!op.sonido) return;
   try {
-    if (!audio) { audio = new (window.AudioContext || window.webkitAudioContext)(); plop = crearPlop(audio); }
+    prepararAudio();
+    if (!audio) return;
     if (audio.state === 'suspended') audio.resume();
     const s = audio.createBufferSource();
     s.buffer = plop;
@@ -686,105 +743,53 @@ function burbuja(tono) {
 }
 
 // ---------- Tocar (ActualizarPaleta, en el mismo orden) ----------
-const dedoEn = { temblor: false, botonRelleno: false, halo: false, iman: false, textura: false, color: false, linea: false, relleno: false };
-function soltarTodo() { for (const k in dedoEn) dedoEn[k] = false; }
+const dedoEn = { color: false, linea: false, relleno: false };
+let rellenoCandidato = null, rellenoDesde = 0;
 
-function elegirColor(c, i) {
-  E.colorElegido = i;
-  E.color = c;
+function soltarTodo() {
+  dedoEn.color = dedoEn.linea = dedoEn.relleno = false;
+  rellenoCandidato = null;
+  for (const b of botones) b.dedoEn = false;
+}
+
+function elegirColor(c) {
   burbuja(1.1);
-  aviso(c[3] < 0.01 ? 'Tinta invisible' : 'Color');
-  pintar();
+  if (rellenoAbierto()) {
+    E.colorRelleno = c;
+    if (!invisible(c)) E.ultimoRellenoVisible = c;
+    aviso(invisible(c) ? 'Sin relleno' : 'Color del relleno');
+    ponerTextoCentro(invisible(c) ? 'Sin relleno' : 'Relleno: ' + nombreColor(c));
+  } else {
+    E.color = c;
+    aviso(invisible(c) ? 'Tinta invisible' : 'Color');
+    ponerTextoCentro(invisible(c) ? 'Línea invisible' : 'Línea: ' + nombreColor(c));
+  }
+  refrescar();
 }
 
-function tocarTemblor(l) {
-  let tocado = -2;
-  if (dist(l, [0, 0]) < 17) tocado = -1;
-  else {
-    let mejor = 11;
-    POS_OPCION.forEach((p, i) => { const d = dist(l, p); if (d < mejor) { mejor = d; tocado = i; } });
-  }
-  if (tocado === -2) { dedoEn.temblor = false; return false; }
-  if (!dedoEn.temblor) {
-    let msg;
-    switch (tocado) {
-      case -1: E.temblor = (E.temblor + 1) % 4; msg = 'temblor ' + TEMBLOR[E.temblor]; break;
-      case 0: E.hebras = HEBRAS[(HEBRAS.indexOf(E.hebras) + 1) % HEBRAS.length]; msg = E.hebras === 1 ? 'una sola línea' : E.hebras + ' hebras por línea'; break;
-      case 1: E.grosorVivo = !E.grosorVivo; msg = E.grosorVivo ? 'grosor vivo' : 'grosor normal'; break;
-      case 2: E.ciclo3 = !E.ciclo3; msg = E.ciclo3 ? 'temblor en ciclo de 3 dibujos' : 'temblor libre'; break;
-      case 3: E.suavidad = (E.suavidad + 1) % 3; msg = 'temblor ' + SUAVIDAD[E.suavidad]; break;
-      default: E.velocidad = (E.velocidad + 1) % VELOCIDADES.length; msg = VELOCIDADES[E.velocidad] + ' cambios por segundo'; break;
-    }
-    aviso('Capa 1: ' + msg);
-    burbuja(tocado < 0 ? 1.1 : 0.8);
-    claveMuestra = null;
-    pintar();
-  }
-  dedoEn.temblor = true;
-  return true;
-}
-
-function tocarRellenoBotones(l) {
-  const enInv = dist(l, [B.invisible.x, B.invisible.y]) < 12;
-  const enCub = dist(l, [B.cubeta.x, B.cubeta.y]) < 12;
-  if (!enInv && !enCub) { dedoEn.botonRelleno = false; return false; }
-  if (!dedoEn.botonRelleno) {
-    if (enInv) elegirColor([0, 0, 0, 0], -1);
-    else {
-      E.cubeta = !E.cubeta;
-      burbuja(1.1);
-      aviso(E.cubeta ? 'Cubeta: Sí' : 'Cubeta: No');
-      pintar();
-    }
-  }
-  dedoEn.botonRelleno = true;
-  return true;
-}
-
-function tocarHalo(l) {
-  if (!haloDisponible()) { dedoEn.halo = false; return false; }
-  if (dist(l, [B.halo.x, B.halo.y]) > 12) { dedoEn.halo = false; return false; }
-  if (!dedoEn.halo) {
-    E.halo = !E.halo;
-    aviso(E.halo ? 'Halo: sí (las líneas se separan del fondo)' : 'Halo: no');
-    burbuja(1.1);
-    pintar();
-    pintarFigura();
-  }
-  dedoEn.halo = true;
-  return true;
-}
-
-function tocarIman(l) {
-  if (dist(l, [B.iman.x, B.iman.y]) > 12) { dedoEn.iman = false; return false; }
-  if (!dedoEn.iman) {
-    E.iman = !E.iman;
-    aviso('Capa 1' + (E.iman ? ': imán encendido (las puntas se unen)' : ': imán apagado (las líneas quedan como las dibujas)'));
-    burbuja(1.2);
-    pintar();
-  }
-  dedoEn.iman = true;
-  return true;
-}
-
-function elegirTextura(tex, vel, tam) {
-  E.tex = tex; E.vel = vel; E.tam = tam;
-  const nombre = TEXTURAS[tex] + (tex > 0 ? ' · ' + NOM_VEL_TEX[vel] + ' · ' + NOM_TAM_TEX[tam] : '');
+function elegirTextura(tex, vel) {
+  E.tex = tex; E.vel = vel;
+  const nombre = TEXTURAS[tex] + (tex > 0 ? ' · ' + NOM_VEL_TEX[vel] + ' · x' + fmt1(E.escala) : '');
   aviso('Relleno vivo: ' + nombre + '. Toca dentro de una figura (o usa la cubeta)');
-  pintar();
 }
-function tocarTextura(l) {
-  const conTex = E.tex > 0;
-  const enTex = dist(l, [B.textura.x, B.textura.y]) < 12;
-  const enVel = conTex && dist(l, [B.velocidad.x, B.velocidad.y]) < 11;
-  const enTam = conTex && dist(l, [B.tamano.x, B.tamano.y]) < 11;
-  if (!enTex && !enVel && !enTam) { dedoEn.textura = false; return false; }
-  if (!dedoEn.textura) {
-    if (enTex) { elegirTextura((E.tex + 1) % TEXTURAS.length, E.vel, E.tam); burbuja(1.15); }
-    else if (enVel) { elegirTextura(E.tex, (E.vel + 1) % VEL_TEX.length, E.tam); burbuja(1.3); }
-    else { elegirTextura(E.tex, E.vel, (E.tam + 1) % TAM_TEX.length); burbuja(0.9); }
+
+function tocarBotones(l) {
+  let tocado = null, mejor = Infinity;
+  for (const b of botones) {
+    if (!b.ver) continue;
+    const d = dist(l, [b.x, b.y]);
+    if (d < b.toque && d < mejor) { mejor = d; tocado = b; }
   }
-  dedoEn.textura = true;
+  for (const b of botones) if (b !== tocado) b.dedoEn = false;
+  if (!tocado) return false;
+  if (!tocado.dedoEn) {
+    tocado.dedoEn = true;
+    if (tocado.alTocar) tocado.alTocar();
+    burbuja(tocado.tono);
+    claveMuestra = null;
+    if (tocado.texto) ponerTextoCentro(tocado.texto());
+    refrescar();
+  }
   return true;
 }
 
@@ -808,68 +813,76 @@ function dentroDe(p, poly) {
   return dentro;
 }
 
-function tocar(dedo) {
+function rellenarFigura() {
+  const quitar = invisible(E.colorRelleno);
+  if (quitar) F.relleno = false;
+  else {
+    F.relleno = true;
+    F.color = E.colorRelleno.slice(0, 3);
+    F.tex = E.tex;
+    F.vel = E.vel;
+    F.escala = E.escala;
+  }
+  burbuja(1.2);
+  aviso(quitar ? 'Relleno quitado' : 'Relleno');
+  pintarFigura();
+}
+
+function tocar(dedo, t) {
   if (!dedo) { soltarTodo(); return; }
   const l = aLocal(dedo);
-  if (tocarTemblor(l)) { dedoEn.color = false; dedoEn.linea = false; return; }
-  if (tocarRellenoBotones(l)) { dedoEn.color = false; dedoEn.linea = false; return; }
-  if (tocarHalo(l)) { dedoEn.color = false; dedoEn.linea = false; return; }
-  if (tocarIman(l)) { dedoEn.color = false; dedoEn.linea = false; return; }
-  if (tocarTextura(l)) { dedoEn.color = false; dedoEn.linea = false; return; }
+  if (tocarBotones(l)) { dedoEn.color = false; dedoEn.linea = false; return; }
   let tocado = -1;
   POS_COLOR.forEach((p, i) => { if (dist(l, p) < 14) tocado = i; });
   if (tocado >= 0) {
-    if (!dedoEn.color) elegirColor(COLORES[tocado].concat(1), tocado);
+    if (!dedoEn.color) elegirColor(COLORES[tocado].concat(1));
     dedoEn.color = true;
     return;
   }
   dedoEn.color = false;
-  if (dist(l, [0, 0]) < 100) { dedoEn.linea = false; dedoEn.relleno = false; return; }
-  // Cuentagotas: la línea más cercana (a menos de medio grosor + 1 cm)
-  let cerca = null, mejor = Infinity;
+  if (dist(l, [0, 0]) < 100) { dedoEn.linea = false; dedoEn.relleno = false; rellenoCandidato = null; return; }
+  // Cuentagotas
+  let cerca = null, mejor = Infinity, conRelleno = false;
   const dBorde = distanciaALinea(dedo, FIG, true);
-  if (dBorde < F.ancho * 0.5 + 10 && dBorde < mejor) { mejor = dBorde; cerca = F.linea; }
+  if (dBorde < F.ancho * 0.5 + 10 && dBorde < mejor) { mejor = dBorde; cerca = F.linea; conRelleno = F.relleno; }
   if (L.azul) {
     const dAzul = distanciaALinea(dedo, LINEA_AZUL, false);
-    if (dAzul < AZUL.ancho * 0.5 + 10 && dAzul < mejor) { mejor = dAzul; cerca = AZUL.color; }
+    if (dAzul < AZUL.ancho * 0.5 + 10 && dAzul < mejor) { mejor = dAzul; cerca = AZUL.color; conRelleno = false; }
   }
   if (cerca) {
     if (!dedoEn.linea) {
-      E.color = cerca.concat(1);
-      E.colorElegido = indiceColor(E.color);
+      if (rellenoAbierto()) {
+        E.colorRelleno = (conRelleno ? F.color : cerca).concat(1);
+        E.ultimoRellenoVisible = E.colorRelleno;
+        ponerTextoCentro('Relleno: ' + nombreColor(E.colorRelleno));
+      } else {
+        E.color = cerca.concat(1);
+        ponerTextoCentro('Línea: ' + nombreColor(E.color));
+      }
       burbuja(1.3);
       aviso('Cuentagotas: color tomado');
-      pintar();
+      refrescar();
     }
     dedoEn.linea = true;
     dedoEn.relleno = false;
+    rellenoCandidato = null;
     return;
   }
   dedoEn.linea = false;
-  // Dentro de la figura = rellenarla (con tinta invisible = quitarle el relleno)
-  if (!dentroDe(dedo, FIG)) { dedoEn.relleno = false; return; }
-  if (!dedoEn.relleno) {
-    const quitar = invisible();
-    if (quitar) F.relleno = false;
-    else {
-      F.relleno = true;
-      F.color = E.color.slice(0, 3);
-      F.tex = E.tex;
-      F.vel = E.vel;
-      F.escala = TAM_TEX[E.tam];
-    }
-    burbuja(1.2);
-    aviso(quitar ? 'Relleno quitado' : 'Relleno');
-    pintarFigura();
-  }
+  // Solo con RELLENO abierto: dentro de la figura = rellenarla (después de un instante).
+  if (!rellenoAbierto() || !dentroDe(dedo, FIG)) { dedoEn.relleno = false; rellenoCandidato = null; return; }
+  if (dedoEn.relleno) return;
+  if (rellenoCandidato !== 'figura') { rellenoCandidato = 'figura'; rellenoDesde = t; }
+  // Con clic es un toque a propósito: rellena enseguida. Al pasar, espera 0.15 s como en el visor.
+  if (op.dedo === 'pasar' && t - rellenoDesde < ESPERA_RELLENO) return;
   dedoEn.relleno = true;
+  rellenarFigura();
 }
 
-// ---------- La mano izquierda y el estabilizador (propuesta 1) ----------
+// ---------- La mano izquierda y el estabilizador ----------
 const mano = { x: 0, y: 0, rot: 0, fx: 0, fy: 0, frot: 0, vx: 0, vy: 0, vr: 0, px: 0, py: 0, prot: 0, ancla: null, siguiendo: false, objetivo: [0, 0] };
 let azarSemilla = 12345;
 function azarNormal() {
-  // Box-Muller con un generador sencillo
   azarSemilla = (azarSemilla * 16807) % 2147483647;
   const u = Math.max(1e-9, azarSemilla / 2147483647);
   azarSemilla = (azarSemilla * 16807) % 2147483647;
@@ -880,7 +893,6 @@ const alfa = (dt, corte) => 1 / (1 + 1 / (2 * Math.PI * corte * dt));
 function moverMano(dt, t) {
   let tx = 0, ty = 0, tr = 0;
   if (op.temblorMano) {
-    // Temblor natural de la mano + saltos del seguimiento; con el dedo derecho cerca, la mano se ve tapada y salta más.
     const cerca = puntero && dist(puntero, [mano.x, mano.y]) < 120;
     const k = cerca ? 2.6 : 1;
     tx = k * (1.6 * Math.sin(2 * Math.PI * 5.3 * t) + 1.0 * Math.sin(2 * Math.PI * 8.7 * t + 1.3) + 0.7 * azarNormal()) + 4 * Math.sin(2 * Math.PI * 0.43 * t);
@@ -889,17 +901,18 @@ function moverMano(dt, t) {
   }
   mano.objetivo = [tx, ty];
   if (!op.estabilizador) {
-    // Como hoy: Lerp con 1 - e^(-18·dt) (sigue casi todo)
+    // Como en la v32: Lerp con 1 - e^(-18·dt) (sigue casi todo)
     const a = 1 - Math.exp(-18 * dt);
     mano.x += (tx - mano.x) * a;
     mano.y += (ty - mano.y) * a;
     mano.rot += (tr - mano.rot) * a;
     mano.fx = mano.x; mano.fy = mano.y; mano.frot = mano.rot;
+    mano.px = tx; mano.py = ty; mano.prot = tr;
     mano.ancla = null;
     return;
   }
-  // Filtro "One Euro" (como el del lápiz): quieto = muy suave; rápido = sigue al instante.
-  const corteMin = 0.9, beta = 0.012, corteD = 1;
+  // v33 (ColocarPaleta): filtro "One Euro" + ancla con el dedo a menos de 12 cm.
+  const corteMin = 0.8, beta = 0.012, corteD = 1;
   const filtrar = (v, crudo, previo, eje) => {
     const vel = (crudo - previo) / dt;
     mano[eje] += (vel - mano[eje]) * alfa(dt, corteD);
@@ -912,22 +925,20 @@ function moverMano(dt, t) {
   mano.px = tx; mano.py = ty; mano.prot = tr;
   const dedoCerca = puntero && dist(puntero, [mano.x, mano.y]) < 120;
   if (dedoCerca) {
-    // Ancla: la paleta queda quieta; solo si la mano se va más de 3 cm, se desliza hasta ella.
-    if (!mano.ancla) mano.ancla = [mano.x, mano.y, mano.rot];
+    if (!mano.ancla) { mano.ancla = [mano.x, mano.y, mano.rot]; mano.siguiendo = false; }
     const lejos = Math.hypot(mano.fx - mano.ancla[0], mano.fy - mano.ancla[1]);
     if (lejos > 30) mano.siguiendo = true;
+    else if (lejos < 6) mano.siguiendo = false;
     if (mano.siguiendo) {
       const a = 1 - Math.exp(-6 * dt);
       mano.ancla[0] += (mano.fx - mano.ancla[0]) * a;
       mano.ancla[1] += (mano.fy - mano.ancla[1]) * a;
       mano.ancla[2] += (mano.frot - mano.ancla[2]) * a;
-      if (lejos < 6) mano.siguiendo = false;
     }
     mano.x = mano.ancla[0]; mano.y = mano.ancla[1]; mano.rot = mano.ancla[2];
   } else {
     mano.ancla = null;
-    mano.siguiendo = false;
-    const a = 1 - Math.exp(-10 * dt);
+    const a = 1 - Math.exp(-12 * dt);
     mano.x += (mano.fx - mano.x) * a;
     mano.y += (mano.fy - mano.y) * a;
     mano.rot += (mano.frot - mano.rot) * a;
@@ -940,7 +951,6 @@ function aLocal(p) {
 }
 
 // ---------- Relleno vivo con WebGL (el mismo shader que TrazoRelleno.shader) ----------
-let gl = null, prog = null, buf = null, uni = {}, nVertices = 0;
 const VS = 'attribute vec2 a; uniform vec4 vb; varying vec2 mm;' +
   'void main(){ mm = a; gl_Position = vec4((a.x - vb.x) / vb.z * 2.0 - 1.0, (a.y - vb.y) / vb.w * 2.0 - 1.0, 0.0, 1.0); }';
 const FS = `PRECISION
@@ -982,10 +992,11 @@ void main(){
   if (textura > 0.5) c = Vivo(c, uv, textura, cambios, semilla);
   gl_FragColor = vec4(c, 1.0); }`;
 
-function iniciarGl() {
+// Un lienzo WebGL con el shader del relleno. Devuelve null si el navegador no tiene WebGL.
+function crearGl(lienzo) {
   try {
-    gl = canvas.getContext('webgl', { premultipliedAlpha: true, antialias: true, alpha: true });
-    if (!gl) return;
+    const gl = lienzo.getContext('webgl', { premultipliedAlpha: true, antialias: true, alpha: true });
+    if (!gl) return null;
     const hp = gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER, gl.HIGH_FLOAT);
     const precision = hp && hp.precision > 0 ? 'precision highp float;' : 'precision mediump float;';
     const sh = (tipo, fuente) => {
@@ -995,61 +1006,97 @@ function iniciarGl() {
       if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
       return s;
     };
-    prog = gl.createProgram();
+    const prog = gl.createProgram();
     gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS));
     gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS.replace('PRECISION', precision)));
     gl.linkProgram(prog);
     if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+    const uni = {};
     for (const n of ['vb', 'centro', 'color', 'textura', 'cambios', 'tiempo', 'semilla', 'escala']) uni[n] = gl.getUniformLocation(prog, n);
-    buf = gl.createBuffer();
+    return { gl, prog, uni, buf: gl.createBuffer(), lienzo, n: 0 };
   } catch (e) {
-    gl = null;
+    return null;
   }
 }
-function subirFigura() {
-  if (!gl) return;
-  const datos = [L.fig[0], L.fig[1]];
-  for (const p of FIG) datos.push(p[0], p[1]);
-  datos.push(FIG[0][0], FIG[0][1]);
-  nVertices = datos.length / 2;
-  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(datos), gl.STATIC_DRAW);
+function subirAbanico(g, centro, borde) {
+  if (!g) return;
+  const datos = [centro[0], centro[1]];
+  for (const p of borde) datos.push(p[0], p[1]);
+  datos.push(borde[0][0], borde[0][1]);
+  g.n = datos.length / 2;
+  g.gl.bindBuffer(g.gl.ARRAY_BUFFER, g.buf);
+  g.gl.bufferData(g.gl.ARRAY_BUFFER, new Float32Array(datos), g.gl.STATIC_DRAW);
 }
+function dibujarRelleno(g, vb, centro, color, tex, vel, escala, semilla, t) {
+  const gl = g.gl;
+  gl.viewport(0, 0, g.lienzo.width, g.lienzo.height);
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  if (!color) return;
+  gl.useProgram(g.prog);
+  gl.bindBuffer(gl.ARRAY_BUFFER, g.buf);
+  const a = gl.getAttribLocation(g.prog, 'a');
+  gl.enableVertexAttribArray(a);
+  gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
+  gl.uniform4f(g.uni.vb, vb[0], vb[1], vb[2], vb[3]);
+  gl.uniform2f(g.uni.centro, centro[0], centro[1]);
+  gl.uniform3f(g.uni.color, color[0], color[1], color[2]);
+  gl.uniform1f(g.uni.textura, tex);
+  gl.uniform1f(g.uni.cambios, VEL_TEX[vel]);
+  gl.uniform1f(g.uni.tiempo, t);
+  gl.uniform1f(g.uni.semilla, semilla);
+  gl.uniform1f(g.uni.escala, escala);
+  gl.drawArrays(gl.TRIANGLE_FAN, 0, g.n);
+}
+const glFig = crearGl(canvas);
+const glCentro = crearGl(canvasCentro);
+if (glCentro) subirAbanico(glCentro, [0, 0], circuloN(17, 28));
+
 function redimensionarGl() {
   const r = escena.getBoundingClientRect();
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   canvas.width = Math.max(1, Math.round(r.width * dpr));
   canvas.height = Math.max(1, Math.round(r.height * dpr));
-  subirFigura();
-}
-function dibujarGl(t) {
-  if (!gl) return;
-  gl.viewport(0, 0, canvas.width, canvas.height);
-  gl.clearColor(0, 0, 0, 0);
-  gl.clear(gl.COLOR_BUFFER_BIT);
-  if (!F.relleno) return;
-  gl.useProgram(prog);
-  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-  const a = gl.getAttribLocation(prog, 'a');
-  gl.enableVertexAttribArray(a);
-  gl.vertexAttribPointer(a, 2, gl.FLOAT, false, 0, 0);
-  gl.uniform4f(uni.vb, L.x0, L.y0, L.x1 - L.x0, L.y1 - L.y0);
-  gl.uniform2f(uni.centro, L.fig[0], L.fig[1]);
-  gl.uniform3f(uni.color, F.color[0], F.color[1], F.color[2]);
-  gl.uniform1f(uni.textura, F.tex);
-  gl.uniform1f(uni.cambios, VEL_TEX[F.vel]);
-  gl.uniform1f(uni.tiempo, t);
-  gl.uniform1f(uni.semilla, (5 % 97) * 0.731);
-  gl.uniform1f(uni.escala, F.escala);
-  gl.drawArrays(gl.TRIANGLE_FAN, 0, nVertices);
+  subirAbanico(glFig, L.fig, FIG);
 }
 
-// ---------- Tamaño de la textura con dos dedos (propuesta 2) ----------
+// El lienzo del centro sigue a la paleta (que se mueve con la mano).
+function ponerLienzoCentro() {
+  const ver = rellenoAbierto() && !invisible(E.colorRelleno) && glCentro;
+  canvasCentro.style.display = ver ? '' : 'none';
+  vista.huecoRelleno.setAttribute('fill', rellenoAbierto() && !invisible(E.colorRelleno) && !glCentro ? css(E.colorRelleno) : 'none');
+  if (!ver) return false;
+  const m = P.getScreenCTM();
+  if (!m) return false;
+  const caja = escena.getBoundingClientRect();
+  const pt = svg.createSVGPoint();
+  pt.x = 0; pt.y = 4;
+  const c = pt.matrixTransform(m);
+  pt.x = 17; pt.y = 4;
+  const b = pt.matrixTransform(m);
+  const radio = Math.hypot(b.x - c.x, b.y - c.y);
+  const lado = radio * 2;
+  canvasCentro.style.left = (c.x - caja.left - radio).toFixed(2) + 'px';
+  canvasCentro.style.top = (c.y - caja.top - radio).toFixed(2) + 'px';
+  canvasCentro.style.width = lado.toFixed(2) + 'px';
+  canvasCentro.style.height = lado.toFixed(2) + 'px';
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const px = Math.max(1, Math.round(lado * dpr));
+  if (canvasCentro.width !== px) { canvasCentro.width = px; canvasCentro.height = px; }
+  return true;
+}
+
+// ---------- Tamaño de la textura con dos dedos ----------
+let avisoTextura = 0;
 function escalarTextura(factor) {
-  if (!F.relleno) { aviso('Primero rellena la figura: toca dentro con la paleta'); return; }
-  if (F.tex === 0) { aviso('Este relleno es liso: elige Facetas, Manchas o Pinceladas y toca la figura'); return; }
-  F.escala = clamp(F.escala * factor, 0.25, 8);
+  if (!F.relleno) { aviso('Primero rellena la figura: abre RELLENO y toca dentro'); return; }
+  if (F.tex === 0) { aviso('Este relleno es liso: elige una textura en RELLENO (las 2 de la paleta)'); return; }
+  F.escala = limitarEscala(F.escala * factor);
+  E.escala = F.escala; // el último tamaño queda para los próximos rellenos
+  ponerTextoCentro('Textura x' + fmt1(F.escala));
   pintarFigura();
+  const ahora = performance.now();
+  if (ahora - avisoTextura > 400) { avisoTextura = ahora; aviso('Textura x' + fmt1(F.escala)); }
 }
 
 // ---------- Puntero ----------
@@ -1081,8 +1128,8 @@ escena.addEventListener('pointerdown', e => {
   puntero = p;
   presionado = true;
   dedo = p;
-  burbujaLista();
-  tocar(dedo); // enseguida: un clic muy rápido no espera al siguiente cuadro
+  prepararAudio();
+  tocar(dedo, performance.now() / 1000); // enseguida: un clic muy rápido no espera al siguiente cuadro
 });
 escena.addEventListener('pointermove', e => {
   const p = aEscena(e);
@@ -1116,10 +1163,6 @@ escena.addEventListener('wheel', e => {
   e.preventDefault();
   escalarTextura(Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)));
 }, { passive: false });
-function burbujaLista() {
-  // El sonido solo puede empezar después de un toque: aquí se prepara.
-  if (op.sonido && !audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); plop = crearPlop(audio); } catch (e) { audio = null; } }
-}
 
 // ---------- Interruptores ----------
 function marcar(id, si) { $('#' + id).setAttribute('aria-pressed', si ? 'true' : 'false'); }
@@ -1127,46 +1170,50 @@ document.querySelectorAll('[data-fondo]').forEach(b => b.addEventListener('click
   op.fondo = parseInt(b.dataset.fondo, 10);
   for (let i = 0; i < 4; i++) marcar('fondo' + i, i === op.fondo);
   armarFondo();
-  pintar();
+  refrescar();
   pintarFigura();
 }));
 $('#dedoClic').addEventListener('click', () => { op.dedo = 'clic'; marcar('dedoClic', true); marcar('dedoPasar', false); dedo = null; });
 $('#dedoPasar').addEventListener('click', () => { op.dedo = 'pasar'; marcar('dedoClic', false); marcar('dedoPasar', true); });
-$('#verZonas').addEventListener('click', () => { op.zonas = !op.zonas; marcar('verZonas', op.zonas); pintar(); });
+$('#verZonas').addEventListener('click', () => { op.zonas = !op.zonas; marcar('verZonas', op.zonas); refrescar(); });
 $('#sonido').addEventListener('click', () => { op.sonido = !op.sonido; marcar('sonido', op.sonido); });
 $('#temblorMano').addEventListener('click', () => { op.temblorMano = !op.temblorMano; marcar('temblorMano', op.temblorMano); });
-$('#estabilizador').addEventListener('click', () => { op.estabilizador = !op.estabilizador; marcar('estabilizador', op.estabilizador); mano.fx = mano.x; mano.fy = mano.y; mano.frot = mano.rot; mano.px = mano.objetivo[0]; mano.py = mano.objetivo[1]; mano.vx = mano.vy = mano.vr = 0; });
+$('#estabilizador').addEventListener('click', () => {
+  op.estabilizador = !op.estabilizador;
+  marcar('estabilizador', op.estabilizador);
+  mano.fx = mano.x; mano.fy = mano.y; mano.frot = mano.rot;
+  mano.px = mano.objetivo[0]; mano.py = mano.objetivo[1];
+  mano.vx = mano.vy = mano.vr = 0;
+  mano.ancla = null;
+});
 $('#reiniciar').addEventListener('click', () => {
   E = estadoInicial();
   F = figuraInicial();
   soltarTodo();
   claveMuestra = null;
   datosAntes = [];
-  pintar();
+  ponerTextoCentro('');
+  refrescar();
   pintarFigura();
   aviso('Paleta como recién abierta');
 });
 $('#escalaTex').addEventListener('input', e => {
-  const v = parseFloat(e.target.value);
   if (!F.relleno || F.tex === 0) { escalarTextura(1); pintarFigura(); return; }
-  F.escala = Math.pow(2, v);
-  pintarFigura();
+  escalarTextura(Math.pow(2, parseFloat(e.target.value)) / F.escala);
 });
 
 // ---------- Tabla de medidas ----------
 const FILAS = [
   ['Disco blanco', '0, 0', 'Ø 110 (borde negro Ø 118)', '—', 'La base de la paleta'],
-  ['12 colores', 'círculo de radio 40, desde arriba como el reloj', 'Ø 20 (el elegido ×1.3)', '14', 'Color de las líneas nuevas; con líneas elegidas, las pinta'],
-  ['Línea que tiembla', '0, 0', 'Ø 52', '17', 'Temblor: No → Suave → Medio → Fuerte'],
-  ['5 opciones del temblor', 'arco de radio 73, de −128° a −52°', 'Ø 20', '11', 'Hebras · Grosor vivo · Ciclo de 3 · Suavidad · Velocidad (amarillo = cambiada)'],
-  ['Tinta invisible', '−19, 71', 'Ø 21 (elegida ×1.3)', '12', 'Un color que no se ve (cierra formas sin línea)'],
-  ['Cubeta', '19, 71', 'Ø 21', '12', 'Lo que dibujas se va rellenando (amarillo = encendida)'],
-  ['Relleno vivo', '−56, 47', 'Ø 21', '12', 'Liso → Facetas → Manchas → Pinceladas'],
-  ['Velocidad del relleno', '−71.9, 12.7', 'Ø 18', '11', 'Quieto → Lento → Medio → Rápido (solo con textura)'],
-  ['Tamaño del relleno', '−69, −23.8', 'Ø 18', '11', 'Chico → Normal → Grande → Enorme (solo con textura)'],
-  ['Halo', '56, 47', 'Ø 21', '12', 'Brillo detrás de las líneas (solo con Realidad o 360)'],
-  ['Imán', '71.9, 12.7', 'Ø 20', '12', 'Las puntas se pegan a otras líneas (de la capa activa)'],
-  ['Cartel de datos', '0, −128', '200 × 64', '—', 'Cómo está la línea; lo que cambia sale en naranja 2.5 s'],
+  ['12 colores', 'círculo de radio 40, desde arriba como el reloj', 'Ø 20 (el marcado ×1.3)', '14', 'Color de lo que esté abierto: relleno con RELLENO abierto; si no, la línea'],
+  ['Centro (vista previa)', '0, 0', 'Ø 52; textito abajo (y −18.5)', '—', 'La línea que tiembla, o el relleno con su textura si RELLENO está abierto'],
+  ['Tinta invisible', '90° (las 12), radio 73', 'Ø 21 (marcada ×1.3)', '12', 'Un color que no se ve; en el relleno: sin relleno'],
+  ['LÍNEA (raíz)', '150° (las 10), radio 73', 'Ø 22', '12', 'Abre o cierra sus hijos (amarillo = abierta)'],
+  ['Hijos de LÍNEA', '174°, 196°, 218°… cada 22°, radio 73', 'Ø 20', '11', 'Temblor · Hebras · Grosor vivo · Ciclo de 3 · Suavidad · Velocidad · Imán · Halo (solo con Realidad o 360)'],
+  ['RELLENO (raíz)', '30° (las 2), radio 73', 'Ø 22', '12', 'Abre o cierra sus hijos; los colores pasan a ser del relleno'],
+  ['Hijos de RELLENO', '6°, −16°, −38°, radio 73', 'Ø 20', '11', 'Textura · Cubeta · Velocidad de la textura (solo con textura)'],
+  ['Arco', 'radio 73, de la raíz a su último hijo', '1.5 de grosor', '—', 'Une la raíz abierta con sus hijos'],
+  ['Cartel de datos', '0, −128', '200 × 64', '—', 'Línea y relleno; lo que cambia sale en naranja 2.5 s'],
   ['Zona sin cuentagotas', 'radio 100 desde el centro', '—', '—', 'Ahí no se toman colores de líneas ni se rellena'],
 ];
 const tbody = $('#filas');
@@ -1193,7 +1240,6 @@ function elegirAcomodo() {
     redimensionarGl();
   }
 }
-iniciarGl();
 elegirAcomodo();
 if (window.ResizeObserver) new ResizeObserver(() => elegirAcomodo()).observe(escena.parentElement);
 else window.addEventListener('resize', elegirAcomodo);
@@ -1208,10 +1254,12 @@ function cuadro() {
   gFantasma.style.display = op.temblorMano ? '' : 'none';
   gFantasma.setAttribute('cx', mano.objetivo[0].toFixed(2));
   gFantasma.setAttribute('cy', mano.objetivo[1].toFixed(2));
-  tocar(dedo);
-  dibujarMuestra(t);
+  refrescar();
+  tocar(dedo, t);
+  if (!rellenoAbierto()) dibujarMuestra(t);
   actualizarDatos(t);
-  dibujarGl(t);
+  if (glFig) dibujarRelleno(glFig, [L.x0, L.y0, L.x1 - L.x0, L.y1 - L.y0], L.fig, F.relleno ? F.color : null, F.tex, F.vel, F.escala, (5 % 97) * 0.731, t);
+  if (ponerLienzoCentro()) dibujarRelleno(glCentro, [-17, -17, 34, 34], [0, 0], E.colorRelleno, E.tex, E.vel, E.escala, 5.117, t);
   if (puntero) {
     cursor.style.display = '';
     cursor.setAttribute('cx', puntero[0].toFixed(2));
@@ -1226,7 +1274,7 @@ function cuadro() {
   if (!cartel.hidden && t > cartelHasta) cartel.hidden = true;
   requestAnimationFrame(cuadro);
 }
-aviso('Toca un color, la línea del centro o un botón');
+aviso('Toca LÍNEA (a las 10) o RELLENO (a las 2)');
 requestAnimationFrame(cuadro);
 })();
 </script>

@@ -1336,7 +1336,7 @@ public class PanelArriba : MonoBehaviour
         { "- CLAVE", "- KEY\nRemoves the active layer's key at this frame.\nTo MOVE a key: pinch it on the bar and drag it." },
         { "FPS", "FPS\nAnimation speed: 12, 24, 30 or 60 frames per second." },
         { "CAPAS (lista plegable)", "LAYERS (folding list)\nOpens or closes the list of layers above the timeline. Each row: pick the layer, Show/Hidden and ITS keys (each layer has its own keys).\nThe big bar shows the active layer's keys." },
-        { "CAPA 1-4", "LAYER 1-4\nChoose the layer you draw on. Each layer has its own style: wobble and strands in the palette (left palm); Sketch and Plane here, in its row.\nTip: sketch on layer 1 (Sketch: Gray) and ink on layer 2." },
+        { "CAPA 1-4", "LAYER 1-4\nChoose the layer you draw on. Each layer has its own style: wobble and strands in the palette (left palm) > LINE; Sketch and Plane here, in its row.\nTip: sketch on layer 1 (Sketch: Gray) and ink on layer 2." },
         { "VER / OCULTA", "SHOW / HIDDEN\nShows or hides that layer. A hidden layer can't be edited." },
         { "LIBRE (3D) / PLANO (2D)", "FREE (3D) / PLANE (2D)\nPlane: you draw on an invisible sheet in front of you (if you move your finger more than ~2.5 cm toward you, the line ends, like lifting the pencil; if you push it BEHIND the sheet, the line goes on and you see a copy of your hand on the sheet). Free: you draw in the air, in 3D.\nWith a Sketch layer in Plane mode, you draw with a pencil on paper." },
         { "FONDO", "BACKGROUND\nGrid → White → Reality (passthrough) → 360. At 360 a small window opens with all the 3D 360 backgrounds (Rome, Shanghai, Venice, the sea, fields...) and your own 360 photos: tap one to try it." },
@@ -1436,7 +1436,7 @@ public class PanelArriba : MonoBehaviour
         Poner(d, btnCapasPlegar, "CAPAS (lista plegable)\nAbre o cierra la lista de capas, encima de la línea de tiempo. Cada fila: elegir la capa, Ver/Oculta y SUS claves (cada capa tiene sus propias claves).\nLa barra grande muestra las claves de la capa activa.");
         if (btnCapas != null)
             foreach (var b in btnCapas)
-                Poner(d, b, "CAPA 1-4\nElige en qué capa dibujas. Cada capa tiene su estilo: temblor y hebras en la paleta (palma izquierda); Boceto y Plano aquí, en su fila.\nIdea: boceto en la capa 1 (Boceto: Gris) y tinta encima en la capa 2.");
+                Poner(d, b, "CAPA 1-4\nElige en qué capa dibujas. Cada capa tiene su estilo: temblor y hebras en la paleta (palma izquierda) > LÍNEA; Boceto y Plano aquí, en su fila.\nIdea: boceto en la capa 1 (Boceto: Gris) y tinta encima en la capa 2.");
         if (btnVer != null)
             foreach (var b in btnVer)
                 Poner(d, b, "VER / OCULTA\nMuestra o esconde esa capa. Una capa oculta no se puede editar.");

@@ -20,7 +20,7 @@ using UnityEngine;
 //  Como mirar la hora: dorso de la muñeca izquierda hacia tu cara -> menú.
 //  Palma izquierda abierta hacia tu cara -> paleta de colores (toca un color con el índice derecho).
 //  LAS DOS manos pellizcando (índice + pulgar) -> escalar, girar (como volante) y mover todo.
-//  Tocar un relleno con el índice derecho -> cambiar su color.
+//  (Rellenar y cambiar el color de un relleno: con la paleta, botón RELLENO abierto, tocando dentro de la figura.)
 //  Pellizcar una línea con la derecha (sin gesto izquierdo) -> seleccionarla y moverla.
 //  Pellizcar en el aire -> quitar la selección (los cambios vuelven a afectar a todo el dibujo).
 [DefaultExecutionOrder(-50)]
@@ -165,10 +165,6 @@ public partial class ControlManos : MonoBehaviour
     int grosorIndice = -1;
     float grosorNodoInicio = 1f;
     float alturaDerGrosor;
-
-    // Borrador, deshacer, rellenos
-    bool tocandoRelleno;
-    float proximoToque;
 
     // Menú (se queda abierto aunque la mano derecha tape un momento a la izquierda)
     bool menuAbierto;
@@ -411,7 +407,6 @@ public partial class ControlManos : MonoBehaviour
                 if (!menuAbierto && !paletaAbierta && !protegido)
                 {
                     RevisarAgarreLinea();
-                    RevisarToqueRelleno();
                 }
                 break;
         }
@@ -572,6 +567,10 @@ public partial class ControlManos : MonoBehaviour
             if (trazoActual != null)
                 dibujo.CancelarTrazo(trazoActual);
             trazoActual = null;
+            // Con el lápiz de boceto: se quita el poquito de grafito que alcanzó a pintar.
+            lapizPendiente = false;
+            if (dibujo.hojas != null && dibujo.UsaHoja)
+                dibujo.hojas.CancelarActual();
             EntrarEnGesto(Gesto.Recta);
             return;
         }
@@ -748,6 +747,7 @@ public partial class ControlManos : MonoBehaviour
         }
         if (GestoIzq == Gesto.Nodos)
             TerminarModoNodos();
+        TerminarRectaLapiz(true);
         SoltarLapizAtrapado();
         if (dibujo.hojas != null)
             dibujo.hojas.Terminar();
@@ -915,6 +915,7 @@ public partial class ControlManos : MonoBehaviour
     }
 
     // ---------- Línea recta (pulgar + índice + medio, o pulgar + meñique) ----------
+    // (En una capa de boceto 2D es de lápiz: ver ControlManosRectaLapiz.cs.)
 
     void Recta()
     {
@@ -922,6 +923,14 @@ public partial class ControlManos : MonoBehaviour
             return;
         if (DibujoBloqueado || LapizAtrapado)
             return;
+        // En una capa de boceto 2D, la recta es de lápiz (ver ControlManosRectaLapiz.cs).
+        if (dibujo.UsaHoja)
+        {
+            RectaLapiz();
+            return;
+        }
+        if (rectaLapiz)
+            TerminarRectaLapiz(true);
         Vector3 local = dibujo.transform.InverseTransformPoint(Der.indice);
         if (LapizLevantado(local))
             return;
@@ -2422,34 +2431,6 @@ public partial class ControlManos : MonoBehaviour
             if (Dibujo.Editable(t) && t.relleno && t.DentroDeRelleno(localPinza, 0.03f / escala))
                 return t;
         return null;
-    }
-
-    // ---------- Tocar un relleno para cambiar su color ----------
-
-    void RevisarToqueRelleno()
-    {
-        if (!Der.valida)
-        {
-            tocandoRelleno = false;
-            return;
-        }
-        Vector3 local = dibujo.transform.InverseTransformPoint(Der.indice);
-        float grosor = 0.01f / dibujo.EscalaMundo;
-        Trazo tocado = null;
-        foreach (var t in dibujo.trazos)
-        {
-            if (Dibujo.Editable(t) && (t.cerrado || (t.rellenoAbierto && t.relleno)) && t.DentroDeRelleno(local, grosor))
-            {
-                tocado = t;
-                break;
-            }
-        }
-        if (tocado != null && !tocandoRelleno && Time.time >= proximoToque)
-        {
-            dibujo.CambiarColorRelleno(tocado);
-            proximoToque = Time.time + 0.5f;
-        }
-        tocandoRelleno = tocado != null;
     }
 
     // ---------- Cursor y menú ----------

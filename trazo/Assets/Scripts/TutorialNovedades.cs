@@ -3,9 +3,10 @@ using UnityEngine;
 
 // Tutorial de NOVEDADES (sección 4 del panel "?"): lo nuevo de las últimas versiones, con una animación corta
 // de cada cosa. Se actualiza en cada versión.
-//  1 · Encantamiento 2D y Liberar.          4 · Menú de arriba (archivador) y Mis archivos.
-//  2 · Frente / fondo con un empujón.        5 · Fondos 360 (ventanita) y papel blanco del boceto.
-//  3 · Relleno vivo (estilo Quill).          6 · Paleta: imán, datos de la línea y modo rendimiento.
+//  1 · Encantamiento 2D y Liberar.          5 · Fondos 360 (ventanita) y papel blanco del boceto.
+//  2 · Frente / fondo con un empujón.        6 · Paleta con botones hijos (LÍNEA y RELLENO), estable.
+//  3 · Relleno vivo y su tamaño (2 dedos).   7 · Recta con el lápiz de boceto.
+//  4 · Menú de arriba (archivador) y Mis archivos.
 public class TutorialNovedades : TarjetaTutorial
 {
     static readonly Color Verde = new Color(0.45f, 0.72f, 0.42f);
@@ -13,13 +14,18 @@ public class TutorialNovedades : TarjetaTutorial
     static readonly Color Celeste = new Color(0.55f, 0.78f, 1f);
 
     LineRenderer extra;   // una segunda línea (para frente/fondo y los rectángulos)
+    LineRenderer arco;    // el arco que une una raíz de la paleta con sus hijos
+    readonly LineRenderer[] hijos = new LineRenderer[4];
     readonly List<Vector3> otra = new List<Vector3>();
 
-    protected override int Paginas => 6;
+    protected override int Paginas => 7;
 
     protected override void ArmarExtra()
     {
         extra = Linea("Extra", tutorial.materialNegro, 0.0025f);
+        arco = Linea("Arco", tutorial.materialNegro, 0.0012f);
+        for (int i = 0; i < hijos.Length; i++)
+            hijos[i] = Linea("Hijo" + i, tutorial.materialNegro, 0.0016f);
     }
 
     protected override string Titulo(int p)
@@ -28,10 +34,11 @@ public class TutorialNovedades : TarjetaTutorial
         {
             case 0: return Tx("1 · 2D lines stay on their sheet", "1 · Las líneas 2D se quedan en su hoja");
             case 1: return Tx("2 · Front and back", "2 · Frente y fondo");
-            case 2: return Tx("3 · Live fill (like Quill)", "3 · Relleno vivo (como Quill)");
+            case 2: return Tx("3 · Live fill and its size", "3 · Relleno vivo y su tamaño");
             case 3: return Tx("4 · Top menu and My files", "4 · Menú de arriba y Mis archivos");
             case 4: return Tx("5 · 360 backgrounds and white paper", "5 · Fondos 360 y papel blanco");
-            default: return Tx("6 · Palette: magnet and line data", "6 · Paleta: imán y datos de la línea");
+            case 5: return Tx("6 · Palette with child buttons", "6 · Paleta con botones hijos");
+            default: return Tx("7 · Pencil straight line", "7 · Recta con el lápiz");
         }
     }
 
@@ -49,8 +56,8 @@ public class TutorialNovedades : TarjetaTutorial
                     "Agarra líneas de una hoja 2D (lazo o pellizco) y EMPUJA la mano unos 3 cm hacia adentro: pasan DETRÁS de la siguiente figura que tocan. TIRA hacia ti: pasan ADELANTE. Las líneas nuevas siempre salen al frente.");
             case 2:
                 return Tx(
-                    "Palette, top left (3 green facets): Plain → Facets → Patches → Brushstrokes. Next to it: speed (arrows) and size (squares). With selected lines it goes on them; if not, on your next fills (tap inside or use the bucket).",
-                    "Paleta, arriba a la izquierda (3 facetas verdes): Liso → Facetas → Manchas → Pinceladas. Al lado: la velocidad (flechas) y el tamaño (cuadritos). Con líneas elegidas se les pone a ellas; si no, a tus próximos rellenos (toca dentro o usa la cubeta).");
+                    "Palette > FILL (at 2 o'clock) > Texture: Plain → Facets → Patches → Brushstrokes, and its speed (>>). SIZE: put your right thumb and index on the fill and open or close them, like zooming on a phone. That size stays for your next fills.",
+                    "Paleta > RELLENO (a las 2) > Textura: Liso → Facetas → Manchas → Pinceladas, y su velocidad (>>). El TAMAÑO: pon el pulgar y el índice derechos sobre el relleno y ábrelos o ciérralos, como el zoom del teléfono. Ese tamaño queda para tus próximos rellenos.");
             case 3:
                 return Tx(
                     "Top menu: only the timeline and player; the pages peek out as tabs (tap = open, again = close). The pin fixes the panel. My files: tap a thumbnail for its actions, swipe sideways to change page; Share, Record and Versions are there.",
@@ -59,10 +66,14 @@ public class TutorialNovedades : TarjetaTutorial
                 return Tx(
                     "Background button: Grid → White → Reality → 360. At 360 a small window with all the photos opens: tap one to try it. In a Sketch layer in 2D, behind the pencil there is white paper; its corner button: White → 50% → Clear.",
                     "Botón Fondo: Cuadrícula → Blanco → Realidad → 360. Al llegar a 360 se abre una ventanita con todas las fotos: toca una para probarla. En una capa de Boceto en 2D, detrás del lápiz hay papel blanco; su botón de la esquina: Blanco → 50 % → Transparente.");
+            case 5:
+                return Tx(
+                    "Around the palette there are two buttons: LINE (at 10 o'clock) and FILL (at 2 o'clock). Tap one and its children come out joined by an arc (wobble, strands, magnet, halo... or texture, bucket, speed). The colors paint whatever is open. The center shows how it looks, with a small label (\"Strands 3\"). The palette no longer shakes: with your finger close, it stays still.",
+                    "Alrededor de la paleta hay dos botones: LÍNEA (a las 10) y RELLENO (a las 2). Toca uno y salen sus hijos unidos por un arco (temblor, hebras, imán, halo... o textura, cubeta, velocidad). Los colores pintan lo que esté abierto. El centro te muestra cómo queda, con un textito (\"Hebras 3\"). La paleta ya no tiembla: con tu dedo cerca se queda quieta.");
             default:
                 return Tx(
-                    "The MAGNET (line ends stick together) is now in the palette, on the right. Under the palette you see the data of the line (width, color, wobble, fill...): what you just changed glows orange. If the headset slows down, performance mode helps by itself.",
-                    "El IMÁN (las puntas se pegan) ahora está en la paleta, a la derecha. Debajo de la paleta ves los datos de la línea (grosor, color, temblor, relleno...): lo que acabas de cambiar se ve en naranja. Si el visor se pone lento, el modo rendimiento ayuda solo.");
+                    "In a Sketch layer in 2D, the straight-line gesture (left thumb + index + middle) is now PENCIL: while you stretch it you see a gray guide, and when you let go it becomes graphite, with its pressure. Also: touching a fill no longer changes its color by accident.",
+                    "En una capa de Boceto en 2D, el gesto de la recta (izquierda pulgar + índice + medio) ahora es de LÁPIZ: mientras la estiras ves una guía gris y al soltar queda en grafito, con su presión. Además: tocar un relleno ya no le cambia el color sin querer.");
         }
     }
 
@@ -70,6 +81,9 @@ public class TutorialNovedades : TarjetaTutorial
     {
         extra.positionCount = 0;
         lineaGris.positionCount = 0;
+        arco.positionCount = 0;
+        foreach (var h in hijos)
+            h.positionCount = 0;
         SinRelleno();
         dedo.gameObject.SetActive(false);
         dedo.localScale = Vector3.one * 0.009f;
@@ -80,7 +94,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 2: AnimarRellenoVivo(t); break;
             case 3: AnimarMenu(t); break;
             case 4: AnimarPapel(t); break;
-            default: AnimarPaleta(t); break;
+            case 5: AnimarPaleta(t); break;
+            default: AnimarRectaLapiz(t); break;
         }
     }
 
@@ -159,6 +174,21 @@ public class TutorialNovedades : TarjetaTutorial
         c.a = 1f;
         Rellenar(puntos, c, 1f);
         PonerLinea(linea, puntos);
+        // Pulgar e índice abriéndose y cerrándose: la mancha (circulito gris) crece y se achica con ellos.
+        float abre = 0.5f + 0.5f * Mathf.Sin(t / Ciclo * Mathf.PI * 2f);
+        Circulo(forma, -0.012f, 0.008f, Mathf.Lerp(0.006f, 0.022f, abre), -0.001f);
+        PonerLinea(lineaGris, forma);
+        Vector3 baseMano = new Vector3(0.03f, -0.03f, -0.003f);
+        float aIndice = (115f - 25f * abre) * Mathf.Deg2Rad, aPulgar = (170f + 10f * abre) * Mathf.Deg2Rad;
+        Vector3 indice = baseMano + new Vector3(Mathf.Cos(aIndice), Mathf.Sin(aIndice), 0f) * 0.035f;
+        Vector3 pulgar = baseMano + new Vector3(Mathf.Cos(aPulgar), Mathf.Sin(aPulgar), 0f) * 0.028f;
+        otra.Clear();
+        otra.Add(indice);
+        otra.Add(baseMano);
+        otra.Add(pulgar);
+        PonerLinea(extra, otra);
+        dedo.gameObject.SetActive(true);
+        dedo.localPosition = indice + new Vector3(0f, 0f, -0.001f);
     }
 
     // Un panel con su reproductor y una página que se despliega y se guarda.
@@ -204,20 +234,69 @@ public class TutorialNovedades : TarjetaTutorial
         dedo.localPosition = new Vector3(0.085f, 0.033f, -0.004f);
     }
 
-    // La paleta con el imán (a la derecha) y el cartelito de datos abajo.
+    // La paleta: se toca la raíz LÍNEA (a las 10), se pone amarilla y le salen sus hijos unidos por un arco.
     void AnimarPaleta(float t)
     {
-        Circulo(puntos, -0.04f, 0.005f, 0.04f);
-        Rellenar(puntos, Color.white, 1f);
+        const float cx = -0.01f, cy = -0.005f, radio = 0.032f, fuera = 0.046f;
+        Circulo(puntos, cx, cy, radio);
         PonerLinea(linea, puntos);
-        Circulo(otra, 0.01f, 0.012f, 0.008f);
-        PonerLinea(extra, otra);
-        Rectangulo(forma, 0.06f, -0.01f, 0.08f, 0.03f);
+        // En el centro, la vista previa: una línea ondulada.
+        forma.Clear();
+        for (int i = 0; i <= 12; i++)
+        {
+            float k = i / 12f;
+            forma.Add(new Vector3(cx - 0.015f + k * 0.03f, cy + Mathf.Sin(k * Mathf.PI * 2f) * 0.004f, -0.001f));
+        }
         PonerLinea(lineaGris, forma);
-        bool toca = Mathf.Repeat(t, 1.5f) < 0.6f;
-        dedo.gameObject.SetActive(true);
-        dedo.localPosition = new Vector3(0.01f, 0.012f, toca ? -0.003f : -0.012f);
-        if (toca)
-            Rellenar(puntos, Amarillo, 0.25f);
+        float aRaiz = 150f * Mathf.Deg2Rad;
+        Vector3 raiz = new Vector3(cx + Mathf.Cos(aRaiz) * fuera, cy + Mathf.Sin(aRaiz) * fuera, -0.001f);
+        Circulo(otra, raiz.x, raiz.y, 0.007f, -0.001f);
+        PonerLinea(extra, otra);
+        bool abierta = t > 1.0f && t < 3.6f;
+        if (abierta)
+        {
+            Rellenar(otra, Amarillo, 1f);
+            // Los hijos salen uno tras otro, por el borde, unidos por el arco.
+            int cuantos = Mathf.Clamp(Mathf.FloorToInt((t - 1.0f) / 0.25f) + 1, 1, hijos.Length);
+            float hasta = 150f + 24f + (cuantos - 1) * 22f;
+            otra.Clear();
+            for (float g = 150f; g <= hasta + 0.01f; g += 3f)
+                otra.Add(new Vector3(cx + Mathf.Cos(g * Mathf.Deg2Rad) * fuera, cy + Mathf.Sin(g * Mathf.Deg2Rad) * fuera, 0f));
+            PonerLinea(arco, otra);
+            for (int i = 0; i < cuantos; i++)
+            {
+                float a = (174f + i * 22f) * Mathf.Deg2Rad;
+                Circulo(otra, cx + Mathf.Cos(a) * fuera, cy + Mathf.Sin(a) * fuera, 0.006f, -0.001f);
+                PonerLinea(hijos[i], otra);
+            }
+        }
+        bool toca = (t > 0.5f && t < 1.0f) || (t > 3.2f && t < 3.6f);
+        dedo.gameObject.SetActive(toca);
+        dedo.localPosition = raiz + new Vector3(0f, 0f, -0.003f);
+    }
+
+    // La recta del lápiz: mientras la estiras, una guía gris; al soltar, grafito.
+    void AnimarRectaLapiz(float t)
+    {
+        linea.positionCount = 0;
+        Rectangulo(otra, 0f, 0f, 0.2f, 0.08f);
+        PonerLinea(extra, otra);
+        Vector3 a = new Vector3(-0.07f, -0.02f, -0.001f), b = new Vector3(0.07f, 0.025f, -0.001f);
+        float estira = Suave(Mathf.InverseLerp(0.3f, 2.4f, t));
+        Vector3 punta = Vector3.Lerp(a, b, estira);
+        forma.Clear();
+        forma.Add(a);
+        if (t < 2.6f)
+        {
+            forma.Add(punta);
+            PonerLinea(lineaGris, forma);
+            dedo.gameObject.SetActive(true);
+            dedo.localPosition = punta + new Vector3(0f, 0f, -0.003f);
+        }
+        else
+        {
+            forma.Add(b);
+            PonerLinea(linea, forma);
+        }
     }
 }
