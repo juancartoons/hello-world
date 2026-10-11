@@ -239,6 +239,17 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 **Orden sugerido:** Teatro → pinceles, línea de tiempo y grupos → galería curada y visor web → app solo para ver y biblioteca abierta → exportar y colaborar.
 
+**Para animar y bocetar** (largo plazo, después del concurso):
+- [ ] **Modo stop motion**: modelar personajes con la plastilina y animarlos cuadro a cuadro (como Wallace & Gromit), con papel cebolla para ver el cuadro anterior. Idea de Juan Carlos desde antes.
+- [ ] **Maniquí para bocetos**: un muñeco 3D (como el muñeco guía) que pones en pose con las manos, al lado o de fondo, como modelo mientras bocetas. Opcional: poses cronometradas para practicar figura humana.
+
+**Otra app aparte (más adelante, aún no): DJ + VJ con las manos**
+- [ ] Hacer música electrónica de verdad con movimientos, líneas y figuras: un instrumento y un DJ set a la vez (bucles, capas, mezclas).
+- [ ] Gestos predefinidos que crean figuras que se mueven al ritmo (VJ, para video jockeys).
+- [ ] Verlo en una pantalla externa para fiestas reales: lo más simple es transmitir el Quest a un televisor (gratis); una "vista para el público" distinta a la tuya necesitaría un computador que la reciba por wifi.
+- [ ] Sonido a parlantes de fiesta por cable (la salida de audífonos o el USB-C del Quest), porque el Bluetooth llega con retraso.
+- Se puede reusar de JCartoons: el sintetizador de sonidos, las escalas que siempre suenan bonito, los ritmos y las líneas vivas.
+
 ## 8. IA y "trucos que parecen IA" (sin granjas de servidores)
 
 **Recomendación:** primero los trucos, que son gratis, instantáneos, sin internet y respetuosos con los artistas: *"tú dibujas y la app le da vida"*.
