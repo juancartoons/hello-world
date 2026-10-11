@@ -83,7 +83,7 @@ public partial class ControlManos : MonoBehaviour
     public ManoSeguida Der { get; } = new ManoSeguida(false);
     public Transform Cabeza { get; private set; }
 
-    enum Objetivo { Nada, Nodo, Asa, Linea, Relleno }
+    enum Objetivo { Nada, Nodo, Asa, Linea, Relleno, Tela }
 
     OVRCameraRig rig;
     Gesto candidato;
@@ -416,6 +416,7 @@ public partial class ControlManos : MonoBehaviour
         if (GestoIzq != Gesto.Nodos && figuras != null)
             figuras.OcultarNodos();
         ActualizarFlechas();
+        RevisarGiros();
         ActualizarMusica(true);
         if (Der.soltoPellizco)
             finGestoDer = Time.time;
@@ -776,6 +777,15 @@ public partial class ControlManos : MonoBehaviour
         Vector3 local = dibujo.transform.InverseTransformPoint(Der.indice);
         if (dibujo.UsaHoja)
         {
+            // Junto a las capas en profundidad el dedo queda libre (no pinta): el trazo se corta ahí.
+            if (CapasProfundidad.DedoCerca)
+            {
+                if (dibujo.hojas != null)
+                    dibujo.hojas.Terminar();
+                lapizTiene = false;
+                lapizPendiente = false;
+                return;
+            }
             LapizHoja(local, false);
             return;
         }
@@ -784,7 +794,7 @@ public partial class ControlManos : MonoBehaviour
         if (trazoActual == null && permitirEmpezarLinea != null && !permitirEmpezarLinea(Der.indice))
             return;
         // Con el dedo en el parlante, en el carrusel de instrumentos o junto a un botón de un menú no empieza una línea.
-        if (trazoActual == null && (BotonSonido.DedoCerca || BotonTocable.DedoCerca))
+        if (trazoActual == null && (BotonSonido.DedoCerca || BotonTocable.DedoCerca || CapasProfundidad.DedoCerca))
             return;
         if (trazoActual == null)
         {
@@ -810,8 +820,36 @@ public partial class ControlManos : MonoBehaviour
     public float lapizBeta = 70f;
     [Tooltip("Segundos que se adelanta el punto (compensa el retraso del seguimiento)")]
     public float lapizPrediccion = 0.02f;
-    Vector3 lapizFiltrado, lapizVelocidad, lapizCrudoPrevio;
+    Vector3 lapizFiltrado, lapizVelocidad, lapizCrudoPrevio, lapizCuerda;
     bool lapizTiene;
+
+    // Cómo sigue el lápiz a tu dedo (paleta > LÍNEA > Lápiz, solo en boceto 2D):
+    //  0 Pegado: justo en el dedo (como ahora). 1 Suave: un poco arrastrado (como antes), línea más lisa.
+    //  2 Cuerda: el lápiz va detrás del dedo como si lo jalaras con un hilo corto: líneas muy limpias.
+    public static readonly string[] NombresModoLapiz = { "Pegado", "Suave", "Cuerda" };
+    static readonly string[] ExplicacionModoLapiz = { "va justo en tu dedo", "un poco arrastrado, más liso", "te sigue con un hilo, muy liso" };
+    const string ClaveModoLapiz = "jcartoons_lapiz_modo";
+    const float LargoCuerda = 0.007f; // metros de "hilo"
+    int modoLapiz = -1; // -1 = aún no leído
+
+    public int ModoLapiz
+    {
+        get
+        {
+            if (modoLapiz < 0)
+                modoLapiz = Mathf.Clamp(PlayerPrefs.GetInt(ClaveModoLapiz, 0), 0, NombresModoLapiz.Length - 1);
+            return modoLapiz;
+        }
+    }
+
+    void SiguienteModoLapiz()
+    {
+        modoLapiz = (ModoLapiz + 1) % NombresModoLapiz.Length;
+        PlayerPrefs.SetInt(ClaveModoLapiz, modoLapiz);
+        PlayerPrefs.Save();
+        lapizTiene = false;
+        dibujo.Mensaje("Lápiz: " + NombresModoLapiz[modoLapiz] + " (" + ExplicacionModoLapiz[modoLapiz] + ")");
+    }
 
     static float AlfaFiltro(float dt, float corte)
     {
@@ -827,15 +865,28 @@ public partial class ControlManos : MonoBehaviour
             lapizTiene = true;
             lapizFiltrado = crudo;
             lapizCrudoPrevio = crudo;
+            lapizCuerda = crudo;
             lapizVelocidad = Vector3.zero;
             return crudo;
         }
+        int modo = ModoLapiz;
+        float corteMinimo = modo == 0 ? lapizCorteMinimo : modo == 1 ? 1.2f : 2f;
+        float beta = modo == 0 ? lapizBeta : modo == 1 ? 12f : 20f;
+        float prediccion = modo == 0 ? lapizPrediccion : 0f;
         Vector3 v = (crudo - lapizCrudoPrevio) / dt;
         lapizCrudoPrevio = crudo;
         lapizVelocidad = Vector3.Lerp(lapizVelocidad, v, AlfaFiltro(dt, 8f));
-        float corte = lapizCorteMinimo + lapizBeta * lapizVelocidad.magnitude;
+        float corte = corteMinimo + beta * lapizVelocidad.magnitude;
         lapizFiltrado = Vector3.Lerp(lapizFiltrado, crudo, AlfaFiltro(dt, corte));
-        return lapizFiltrado + Vector3.ClampMagnitude(lapizVelocidad * lapizPrediccion, 0.012f);
+        Vector3 salida = lapizFiltrado + Vector3.ClampMagnitude(lapizVelocidad * prediccion, 0.012f);
+        if (modo != 2)
+            return salida;
+        // Cuerda: el lápiz solo se mueve cuando el dedo estira el hilo.
+        Vector3 d = salida - lapizCuerda;
+        float largo = d.magnitude;
+        if (largo > LargoCuerda)
+            lapizCuerda += d * ((largo - LargoCuerda) / largo);
+        return lapizCuerda;
     }
 
     // El lápiz se pinta al FINAL del cuadro (LateUpdate), con la posición más nueva del dedo.
@@ -1381,7 +1432,7 @@ public partial class ControlManos : MonoBehaviour
     {
         hoverTipo = Objetivo.Nada;
         // Con el dedo en el parlante, en el carrusel de instrumentos o junto a un botón de un menú no se borra nada.
-        if (!Der.valida || BotonSonido.DedoCerca || BotonTocable.DedoCerca)
+        if (!Der.valida || BotonSonido.DedoCerca || BotonTocable.DedoCerca || CapasProfundidad.DedoCerca)
         {
             CancelarFrote();
             MostrarModoNodos(false, null);
@@ -1425,6 +1476,10 @@ public partial class ControlManos : MonoBehaviour
         else if (BuscarNodoCercano(punta, punta, rb + 0.005f, null, out t, out i))
         {
             tipo = Objetivo.Nodo;
+        }
+        else if (BuscarTelaCercana(punta, rb + 0.005f, null, out t, out i))
+        {
+            tipo = Objetivo.Tela; // un punto de tela: se quita él solo (no el relleno)
         }
         else
         {
@@ -1493,6 +1548,13 @@ public partial class ControlManos : MonoBehaviour
                     dibujo.Destello(dibujo.transform.TransformPoint(t.nodos[i]), 0.02f);
                     Burbuja(dibujo.transform.TransformPoint(t.nodos[i]), 1f);
                     dibujo.QuitarNodo(t, i);
+                }
+                else if (tipo == Objetivo.Tela)
+                {
+                    Vector3 donde = dibujo.transform.TransformPoint(t.PosicionTela(i));
+                    dibujo.Destello(donde, 0.02f);
+                    Burbuja(donde, 1.1f);
+                    t.QuitarTela(i);
                 }
                 else
                 {
@@ -1666,6 +1728,7 @@ public partial class ControlManos : MonoBehaviour
         }
         OcultarNodosDesde(n);
         MostrarAsas(conAsas);
+        MostrarTelas(solo);
     }
 
     // Las asas (como en Illustrator) se ven solo en el nodo seleccionado.
@@ -1716,6 +1779,7 @@ public partial class ControlManos : MonoBehaviour
     void OcultarModoNodos()
     {
         OcultarNodosDesde(0);
+        OcultarTelasDesde(0);
         foreach (var asa in asasVisibles)
             if (asa != null && asa.gameObject.activeSelf)
                 asa.gameObject.SetActive(false);
@@ -2442,7 +2506,7 @@ public partial class ControlManos : MonoBehaviour
         // Cerca del parlante o del carrusel de instrumentos la bolita se esconde (se ve bien lo que tocas).
         // En el modo nodos tampoco (no estás dibujando: estás moviendo nodos), ni cerca de un botón de un menú.
         bool ver = Der.valida && GestoIzq != Gesto.Transformar && GestoIzq != Gesto.Nodos && !flechaDer.activa
-                   && !BotonSonido.DedoCerca && !BotonTocable.DedoCerca && !LapizAtrapado;
+                   && !BotonSonido.DedoCerca && !BotonTocable.DedoCerca && !CapasProfundidad.DedoCerca && !LapizAtrapado;
         if (cursor.gameObject.activeSelf != ver)
             cursor.gameObject.SetActive(ver);
         if (!ver)

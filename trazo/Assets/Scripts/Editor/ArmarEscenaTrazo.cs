@@ -530,9 +530,9 @@ public static class ArmarEscenaTrazo
         Texto(contenido.transform, "JCartoons", new Vector3(0f, 0.09f, -0.001f), new Vector2(0.09f, 0.014f), Color.black);
         panel.textoEstado = Texto(contenido.transform, "", new Vector3(0f, -0.105f, -0.001f), new Vector2(0.098f, 0.02f), new Color(0.2f, 0.2f, 0.25f));
 
-        // Dos columnas: Plano / Fondo · Guardar / Cargar · Borrar todo / Imán · Esfera / Cubo · Cilindro / A líneas · Quitar figura
+        // Dos columnas: Plano / Fondo · Guardar / Cargar · Borrar todo / Capas · Esfera / Cubo · Cilindro / A líneas
         // El imán ahora está en la paleta (palma izquierda).
-        string[] nombres = { "Libre (3D)", "Fondo: Cuadrícula", "Guardar", "Archivos", "Borrar todo", "Esfera", "Cubo", "Cilindro", "A líneas" };
+        string[] nombres = { "Libre (3D)", "Fondo: Cuadrícula", "Guardar", "Archivos", "Borrar todo", "Esfera", "Cubo", "Cilindro", "A líneas", "Capas: 1" };
         Vector2[] lugares =
         {
             new Vector2(-0.025f, 0.064f), new Vector2(0.025f, 0.064f),
@@ -540,6 +540,7 @@ public static class ArmarEscenaTrazo
             new Vector2(-0.025f, 0.012f),
             new Vector2(-0.025f, -0.022f), new Vector2(0.025f, -0.022f),
             new Vector2(-0.025f, -0.048f), new Vector2(0.025f, -0.048f),
+            new Vector2(0.025f, 0.012f), // Capas (donde antes estaba el imán)
         };
         var botones = new BotonTocable[nombres.Length];
         for (int i = 0; i < nombres.Length; i++)
@@ -553,6 +554,8 @@ public static class ArmarEscenaTrazo
         panel.btnCubo = botones[6];
         panel.btnCilindro = botones[7];
         panel.btnALineas = botones[8];
+        // Capas en profundidad (arriba al centro de tu vista).
+        panel.btnCapas = botones[9];
         // "Quitar figura" ya no hace falta (la figura elegida tiene su X). La música se elige en el carrusel
         // de íconos que está sobre el parlante (arriba a la derecha).
         panel.btnQuitarFigura = null;

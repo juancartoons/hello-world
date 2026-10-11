@@ -1,7 +1,8 @@
 Shader "TrazoVR/Relleno"
 {
     // Relleno plano de las figuras cerradas (color por vértice, sin luces).
-    // "Offset" lo empuja un poquito hacia atrás para que la línea negra siempre quede encima.
+    // "Offset" lo empuja un poquito hacia atrás para que la línea negra siempre quede encima. Además su borde está
+    // un poquito hacia adentro, escondido debajo de la línea (ver Trazo.MeterBordeBajoLinea).
     // RELLENO VIVO (opcional, estilo Quill): dentro del color hay manchitas de tonos cercanos que cambian
     // solas (facetas, manchas o pinceladas), como un fondo pintado que respira.
     // Frente / fondo: el mismo escalón que su línea (ver TrazoAdelante en TrazoTemblor.hlsl).
@@ -19,7 +20,8 @@ Shader "TrazoVR/Relleno"
             Name "Relleno"
             Tags { "LightMode" = "UniversalForward" }
             Cull Off
-            Offset 1, 1
+            // Un poco más atrás que su línea, y más cuando lo miras de lado (el primer número crece con la inclinación).
+            Offset 2, 3
 
             HLSLPROGRAM
             #pragma vertex Vert
@@ -94,6 +96,7 @@ Shader "TrazoVR/Relleno"
             }
 
             // Un tono cercano al color (más claro u oscuro y un poquito de otro matiz), distinto en cada celda.
+            // (v34: unas 2.5 veces más marcado que antes, para que el cambio se note bien.)
             float3 TonoCercano(float3 c, float2 celda, float fase, float semilla, float fuerza)
             {
                 float3 r = float3(TrazoHash(float3(celda, semilla + fase * 1.31 + 5.0)),
@@ -111,7 +114,7 @@ Shader "TrazoVR/Relleno"
                 if (estilo < 1.5)
                 {
                     // Facetas: polígonos como cristales (celdas de 3 cm).
-                    return TonoCercano(c, CeldaCercana(uv / 0.03, fase, semilla), fase, semilla, 0.14);
+                    return TonoCercano(c, CeldaCercana(uv / 0.03, fase, semilla), fase, semilla, 0.36);
                 }
                 if (estilo < 2.5)
                 {
@@ -119,15 +122,15 @@ Shader "TrazoVR/Relleno"
                     float2 p = uv / 0.045;
                     p += (float2(TrazoRuido(float3(p * 0.6, semilla + fase * 1.7)),
                                  TrazoRuido(float3(p * 0.6 + 11.3, semilla + fase * 2.3))) - 0.5) * 1.4;
-                    float3 grande = TonoCercano(c, CeldaCercana(p, fase, semilla), fase, semilla, 0.12);
-                    float3 chica = TonoCercano(c, CeldaCercana(p * 2.3 + 5.1, fase, semilla + 3.0), fase, semilla + 3.0, 0.1);
+                    float3 grande = TonoCercano(c, CeldaCercana(p, fase, semilla), fase, semilla, 0.32);
+                    float3 chica = TonoCercano(c, CeldaCercana(p * 2.3 + 5.1, fase, semilla + 3.0), fase, semilla + 3.0, 0.26);
                     return lerp(grande, chica, 0.35);
                 }
                 // Pinceladas: manchas alargadas, todas más o menos en la misma dirección (cambia un poco por zonas).
                 float ang = semilla * 2.1 + (TrazoRuido(float3(uv * 6.0, semilla)) - 0.5) * 1.2;
                 float2 dir = float2(cos(ang), sin(ang));
                 float2 q = float2(dot(uv, dir) / 0.075, dot(uv, float2(-dir.y, dir.x)) / 0.02);
-                return TonoCercano(c, CeldaCercana(q, fase, semilla), fase, semilla, 0.13);
+                return TonoCercano(c, CeldaCercana(q, fase, semilla), fase, semilla, 0.34);
             }
 
             half4 Frag(Varyings i) : SV_Target

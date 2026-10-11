@@ -3,10 +3,10 @@ using UnityEngine;
 
 // Tutorial de NOVEDADES (sección 4 del panel "?"): lo nuevo de las últimas versiones, con una animación corta
 // de cada cosa. Se actualiza en cada versión.
-//  1 · Encantamiento 2D y Liberar.          5 · Fondos 360 (ventanita) y papel blanco del boceto.
-//  2 · Frente / fondo con un empujón.        6 · Paleta con botones hijos (LÍNEA y RELLENO), estable.
-//  3 · Relleno vivo y su tamaño (2 dedos).   7 · Recta con el lápiz de boceto.
-//  4 · Menú de arriba (archivador) y Mis archivos.
+//  1 · Capas en profundidad (empujar / atraer).   5 · Paleta con botones hijos (LÍNEA y RELLENO), estable.
+//  2 · Puntos de tela (relieve en el relleno).    6 · Relleno vivo y su tamaño (2 dedos).
+//  3 · Girar con el pulgar (fondos 360).          7 · Fondos 360 (ventanita) y papel blanco del boceto.
+//  4 · El lápiz: Pegado / Suave / Cuerda y recta.  8 · Las líneas 2D se quedan en su hoja.
 public class TutorialNovedades : TarjetaTutorial
 {
     static readonly Color Verde = new Color(0.45f, 0.72f, 0.42f);
@@ -18,7 +18,7 @@ public class TutorialNovedades : TarjetaTutorial
     readonly LineRenderer[] hijos = new LineRenderer[4];
     readonly List<Vector3> otra = new List<Vector3>();
 
-    protected override int Paginas => 7;
+    protected override int Paginas => 8;
 
     protected override void ArmarExtra()
     {
@@ -32,13 +32,14 @@ public class TutorialNovedades : TarjetaTutorial
     {
         switch (p)
         {
-            case 0: return Tx("1 · 2D lines stay on their sheet", "1 · Las líneas 2D se quedan en su hoja");
-            case 1: return Tx("2 · Front and back", "2 · Frente y fondo");
-            case 2: return Tx("3 · Live fill and its size", "3 · Relleno vivo y su tamaño");
-            case 3: return Tx("4 · Top menu and My files", "4 · Menú de arriba y Mis archivos");
-            case 4: return Tx("5 · 360 backgrounds and white paper", "5 · Fondos 360 y papel blanco");
-            case 5: return Tx("6 · Palette with child buttons", "6 · Paleta con botones hijos");
-            default: return Tx("7 · Pencil straight line", "7 · Recta con el lápiz");
+            case 0: return Tx("1 · Layers in depth", "1 · Capas en profundidad");
+            case 1: return Tx("2 · Cloth points", "2 · Puntos de tela");
+            case 2: return Tx("3 · Turn with your thumb", "3 · Girar con el pulgar");
+            case 3: return Tx("4 · The pencil: how it follows you", "4 · El lápiz: cómo te sigue");
+            case 4: return Tx("5 · Palette with child buttons", "5 · Paleta con botones hijos");
+            case 5: return Tx("6 · Live fill and its size", "6 · Relleno vivo y su tamaño");
+            case 6: return Tx("7 · 360 backgrounds and white paper", "7 · Fondos 360 y papel blanco");
+            default: return Tx("8 · 2D lines stay on their sheet", "8 · Las líneas 2D se quedan en su hoja");
         }
     }
 
@@ -48,32 +49,36 @@ public class TutorialNovedades : TarjetaTutorial
         {
             case 0:
                 return Tx(
-                    "What you draw in Plane 2D is ENCHANTED on its layer's sheet: handles, nodes, lasso and moving it stay inside that sheet, even in 3D. To take lines out: top menu > + Layer > RELEASE (selected lines, or the whole layer).",
-                    "Lo que dibujas en Plano 2D queda ENCANTADO en la hoja de su capa: tiradores, nodos, lazo y moverla se quedan dentro de esa hoja, aunque pases a 3D. Para sacarlas: menú de arriba > + Capa > LIBERAR (las elegidas o toda la capa).");
+                    "Hand menu > LAYERS: the layers hang like sheets of paper at the top center of your view. The current one is solid; the ones in front and behind are see-through. PUSH the current one (about 3 cm) = the layer in front; PULL it toward you = the one behind. They close by themselves after 8 seconds.",
+                    "Menú de la mano > CAPAS: las capas cuelgan como papeles arriba al centro de tu vista. La actual se ve sólida; las de adelante y atrás, transparentes. EMPUJA la actual (unos 3 cm) = la capa de adelante; ATRÁELA hacia ti = la de atrás. Se cierran solas a los 8 segundos.");
             case 1:
                 return Tx(
-                    "Grab lines of a 2D sheet (lasso or pinch) and PUSH your hand about 3 cm into the sheet: they go BEHIND the next shape they touch. PULL toward you: they come to the FRONT. New lines always start in front.",
-                    "Agarra líneas de una hoja 2D (lazo o pellizco) y EMPUJA la mano unos 3 cm hacia adentro: pasan DETRÁS de la siguiente figura que tocan. TIRA hacia ti: pasan ADELANTE. Las líneas nuevas siempre salen al frente.");
+                    "In node mode, touch INSIDE the fill of the selected shape and hold still for half a second: a purple diamond appears. Move it toward you or away: the cloth bends smoothly, like a bell, and the edge stays on the line. Eraser on the diamond = it's removed.",
+                    "En el modo nodos, toca DENTRO del relleno de la figura elegida y quédate quieto medio segundo: sale un rombito morado. Llévalo hacia ti o hacia el fondo: la tela se dobla suave, como una campana, y el borde se queda en la línea. Borrador sobre el rombito = se quita.");
             case 2:
                 return Tx(
-                    "Palette > FILL (at 2 o'clock) > Texture: Plain → Facets → Patches → Brushstrokes, and its speed (>>). SIZE: put your right thumb and index on the fill and open or close them, like zooming on a phone. That size stays for your next fills.",
-                    "Paleta > RELLENO (a las 2) > Textura: Liso → Facetas → Manchas → Pinceladas, y su velocidad (>>). El TAMAÑO: pon el pulgar y el índice derechos sobre el relleno y ábrelos o ciérralos, como el zoom del teléfono. Ese tamaño queda para tus próximos rellenos.");
+                    "With either hand in a loose fist, slide your thumb along the side of your index finger to the left or right: you turn 30° to see the back of the 360 background. Your drawings stay in front of you.",
+                    "Con cualquier mano en puño suelto, desliza el pulgar sobre el costado del índice hacia la izquierda o la derecha: giras 30° para ver la parte de atrás del fondo 360. Tus dibujos se quedan delante de ti.");
             case 3:
                 return Tx(
-                    "Top menu: only the timeline and player; the pages peek out as tabs (tap = open, again = close). The pin fixes the panel. My files: tap a thumbnail for its actions, swipe sideways to change page; Share, Record and Versions are there.",
-                    "Menú de arriba: solo la línea de tiempo y el reproductor; las páginas se asoman como pestañas (tocar = abrir, otra vez = guardar). El alfiler fija el panel. Mis archivos: toca una miniatura para ver sus acciones, desliza de lado para cambiar de página; ahí están Compartir, Grabar y las Versiones.");
+                    "In a Sketch layer in 2D: palette > LINE > Pencil: Stuck (right on your finger), Smooth (a little dragged) or String (it follows you on a short string, very clean lines). The straight-line gesture also draws with the pencil.",
+                    "En una capa de Boceto en 2D: paleta > LÍNEA > Lápiz: Pegado (justo en tu dedo), Suave (un poco arrastrado) o Cuerda (te sigue con un hilo, líneas muy limpias). El gesto de la recta también dibuja con el lápiz.");
             case 4:
-                return Tx(
-                    "Background button: Grid → White → Reality → 360. At 360 a small window with all the photos opens: tap one to try it. In a Sketch layer in 2D, behind the pencil there is white paper; its corner button: White → 50% → Clear.",
-                    "Botón Fondo: Cuadrícula → Blanco → Realidad → 360. Al llegar a 360 se abre una ventanita con todas las fotos: toca una para probarla. En una capa de Boceto en 2D, detrás del lápiz hay papel blanco; su botón de la esquina: Blanco → 50 % → Transparente.");
-            case 5:
                 return Tx(
                     "Around the palette there are two buttons: LINE (at 10 o'clock) and FILL (at 2 o'clock). Tap one and its children come out joined by an arc (wobble, strands, magnet, halo... or texture, bucket, speed). The colors paint whatever is open. The center shows how it looks, with a small label (\"Strands 3\"). The palette no longer shakes: with your finger close, it stays still.",
                     "Alrededor de la paleta hay dos botones: LÍNEA (a las 10) y RELLENO (a las 2). Toca uno y salen sus hijos unidos por un arco (temblor, hebras, imán, halo... o textura, cubeta, velocidad). Los colores pintan lo que esté abierto. El centro te muestra cómo queda, con un textito (\"Hebras 3\"). La paleta ya no tiembla: con tu dedo cerca se queda quieta.");
+            case 5:
+                return Tx(
+                    "Palette > FILL (at 2 o'clock) > Texture: Plain → Facets → Patches → Brushstrokes, and its speed (>>). SIZE: put your right thumb and index on the fill and open or close them, like zooming on a phone. That size stays for your next fills. The patches now show much more, and the fill no longer peeks out of the line.",
+                    "Paleta > RELLENO (a las 2) > Textura: Liso → Facetas → Manchas → Pinceladas, y su velocidad (>>). El TAMAÑO: pon el pulgar y el índice derechos sobre el relleno y ábrelos o ciérralos, como el zoom del teléfono. Ese tamaño queda para tus próximos rellenos. Las manchas ahora se notan mucho más y el relleno ya no se sale de la línea.");
+            case 6:
+                return Tx(
+                    "Background button: Grid → White → Reality → 360. At 360 a small window with all the photos opens: tap one to try it. In a Sketch layer in 2D, behind the pencil there is white paper; its corner button: White → 50% → Clear.",
+                    "Botón Fondo: Cuadrícula → Blanco → Realidad → 360. Al llegar a 360 se abre una ventanita con todas las fotos: toca una para probarla. En una capa de Boceto en 2D, detrás del lápiz hay papel blanco; su botón de la esquina: Blanco → 50 % → Transparente.");
             default:
                 return Tx(
-                    "In a Sketch layer in 2D, the straight-line gesture (left thumb + index + middle) is now PENCIL: while you stretch it you see a gray guide, and when you let go it becomes graphite, with its pressure. Also: touching a fill no longer changes its color by accident.",
-                    "En una capa de Boceto en 2D, el gesto de la recta (izquierda pulgar + índice + medio) ahora es de LÁPIZ: mientras la estiras ves una guía gris y al soltar queda en grafito, con su presión. Además: tocar un relleno ya no le cambia el color sin querer.");
+                    "What you draw in Plane 2D is ENCHANTED on its layer's sheet: handles, nodes, lasso and moving it stay inside that sheet, even in 3D. To take lines out: top menu > + Layer > RELEASE (selected lines, or the whole layer).",
+                    "Lo que dibujas en Plano 2D queda ENCANTADO en la hoja de su capa: tiradores, nodos, lazo y moverla se quedan dentro de esa hoja, aunque pases a 3D. Para sacarlas: menú de arriba > + Capa > LIBERAR (las elegidas o toda la capa).");
         }
     }
 
@@ -89,13 +94,14 @@ public class TutorialNovedades : TarjetaTutorial
         dedo.localScale = Vector3.one * 0.009f;
         switch (p)
         {
-            case 0: AnimarHoja(t); break;
-            case 1: AnimarOrden(t); break;
-            case 2: AnimarRellenoVivo(t); break;
-            case 3: AnimarMenu(t); break;
-            case 4: AnimarPapel(t); break;
-            case 5: AnimarPaleta(t); break;
-            default: AnimarRectaLapiz(t); break;
+            case 0: AnimarCapas(t); break;
+            case 1: AnimarTela(t); break;
+            case 2: AnimarGiro(t); break;
+            case 3: AnimarLapiz(t); break;
+            case 4: AnimarPaleta(t); break;
+            case 5: AnimarRellenoVivo(t); break;
+            case 6: AnimarPapel(t); break;
+            default: AnimarHoja(t); break;
         }
     }
 
@@ -148,22 +154,6 @@ public class TutorialNovedades : TarjetaTutorial
         dedo.localPosition = asa + new Vector3(0f, 0f, -0.004f);
     }
 
-    // Un círculo relleno y otro solo línea: la línea pasa detrás y delante del relleno.
-    void AnimarOrden(float t)
-    {
-        Circulo(puntos, -0.02f, 0f, 0.035f);
-        Rellenar(puntos, Celeste, 1f);
-        PonerLinea(linea, puntos);
-        bool atras = t > Ciclo * 0.5f;
-        Circulo(otra, 0.025f, 0.005f, 0.03f, atras ? 0.002f : -0.002f);
-        PonerLinea(extra, otra);
-        // El dedo "empuja" (se achica: va hacia adentro) y luego "tira" (crece: hacia ti).
-        dedo.gameObject.SetActive(true);
-        float empuje = Suave(Mathf.InverseLerp(Ciclo * 0.3f, Ciclo * 0.5f, t)) - Suave(Mathf.InverseLerp(Ciclo * 0.8f, Ciclo, t));
-        dedo.localPosition = new Vector3(0.09f, 0.02f, -0.004f);
-        dedo.localScale = Vector3.one * Mathf.Lerp(0.011f, 0.006f, empuje);
-    }
-
     // Un relleno que cambia de tono a saltitos (así se ve el "respirar" de las manchas).
     void AnimarRellenoVivo(float t)
     {
@@ -189,22 +179,6 @@ public class TutorialNovedades : TarjetaTutorial
         PonerLinea(extra, otra);
         dedo.gameObject.SetActive(true);
         dedo.localPosition = indice + new Vector3(0f, 0f, -0.001f);
-    }
-
-    // Un panel con su reproductor y una página que se despliega y se guarda.
-    void AnimarMenu(float t)
-    {
-        Rectangulo(puntos, 0f, 0.03f, 0.2f, 0.035f);
-        PonerLinea(linea, puntos);
-        float abre = Suave(Mathf.InverseLerp(0.6f, 1.2f, t)) - Suave(Mathf.InverseLerp(3.2f, 3.8f, t));
-        float alto = Mathf.Lerp(0.004f, 0.05f, abre);
-        Rectangulo(otra, 0f, 0.0125f - alto * 0.5f, 0.2f, alto);
-        PonerLinea(extra, otra);
-        // La pestaña que se toca.
-        Rectangulo(forma, -0.05f, 0.0055f, 0.04f, 0.012f);
-        PonerLinea(lineaGris, forma);
-        dedo.gameObject.SetActive(t < 1.4f || (t > 2.8f && t < 3.6f));
-        dedo.localPosition = new Vector3(-0.05f, 0.0055f, -0.004f);
     }
 
     // La hoja con su papel blanco: aparece, queda a la mitad y luego transparente.
@@ -275,28 +249,113 @@ public class TutorialNovedades : TarjetaTutorial
         dedo.localPosition = raiz + new Vector3(0f, 0f, -0.003f);
     }
 
-    // La recta del lápiz: mientras la estiras, una guía gris; al soltar, grafito.
-    void AnimarRectaLapiz(float t)
+    // Capas en profundidad: la actual sólida, las de adelante más arriba y grandes, las de atrás más abajo.
+    // El dedo empuja la actual y todo el montón se corre un paso hacia el fondo.
+    void AnimarCapas(float t)
     {
-        linea.positionCount = 0;
-        Rectangulo(otra, 0f, 0f, 0.2f, 0.08f);
+        float paso = Suave(Mathf.InverseLerp(1.9f, 2.7f, t));
+        bool empuja = t > 1.0f && t < 2.0f;
+        int h = 0;
+        for (int k = 0; k < 4; k++)
+        {
+            float s = k - 1 - paso; // antes: la capa 2 (k = 1) es la actual
+            float ancho = 0.15f * (1f + 0.14f * s), alto = 0.03f * (1f + 0.14f * s);
+            float y = 0.012f + (s > 0f ? s * 0.02f : s * 0.016f);
+            if (Mathf.Abs(s) < 0.5f)
+            {
+                Rectangulo(puntos, 0f, y, ancho, alto, -0.001f);
+                PonerLinea(linea, puntos);
+                var lleno = new List<Vector3>(puntos);
+                lleno.RemoveAt(lleno.Count - 1);
+                Rellenar(lleno, Color.white, 1f);
+                dedo.gameObject.SetActive(t < 2.0f);
+                dedo.localPosition = new Vector3(-0.03f, y, -0.006f);
+                dedo.localScale = Vector3.one * (empuja ? Mathf.Lerp(0.011f, 0.006f, Mathf.InverseLerp(1.0f, 1.9f, t)) : 0.011f);
+            }
+            else if (h < hijos.Length)
+            {
+                Rectangulo(otra, 0f, y, ancho, alto, s > 0f ? -0.002f : 0.002f);
+                PonerLinea(hijos[h++], otra);
+            }
+        }
+        lineaGris.positionCount = 0;
+    }
+
+    // Tela: tres hilos que cruzan el relleno se abomban suave alrededor del punto morado (el dedo) que sube y baja.
+    void AnimarTela(float t)
+    {
+        Circulo(puntos, 0f, 0f, 0.045f);
+        var lleno = new List<Vector3>(puntos);
+        lleno.RemoveAt(lleno.Count - 1);
+        Rellenar(lleno, Celeste, 1f);
+        PonerLinea(linea, puntos);
+        float alto = Mathf.Sin(t / Ciclo * Mathf.PI * 2f) * 0.014f;
+        var hilos = new[] { extra, arco, hijos[0] };
+        for (int h = 0; h < hilos.Length; h++)
+        {
+            float y0 = (h - 1) * 0.018f;
+            otra.Clear();
+            float medio = Mathf.Sqrt(Mathf.Max(0f, 0.045f * 0.045f - y0 * y0));
+            for (int k = 0; k <= 20; k++)
+            {
+                float x = Mathf.Lerp(-medio, medio, k / 20f);
+                float r2 = (x * x + y0 * y0) / (0.04f * 0.04f);
+                float campana = r2 < 1f ? (1f - r2) * (1f - r2) : 0f;
+                otra.Add(new Vector3(x, y0 + alto * campana, -0.001f));
+            }
+            PonerLinea(hilos[h], otra);
+        }
+        dedo.gameObject.SetActive(true);
+        dedo.localPosition = new Vector3(0f, alto, -0.004f);
+    }
+
+    // Girar: el fondo 360 visto desde arriba (un círculo con marcas) gira de a 30° cuando el pulgar se desliza.
+    void AnimarGiro(float t)
+    {
+        Circulo(puntos, 0f, 0f, 0.045f);
+        PonerLinea(linea, puntos);
+        int giros = t > 2.6f ? 2 : t > 1.1f ? 1 : 0;
+        float extraGiro = giros * 30f + 30f * Suave(Mathf.InverseLerp(0f, 0.25f, t - (giros == 2 ? 2.6f : 1.1f))) - (giros > 0 ? 30f : 0f);
+        for (int h = 0; h < hijos.Length; h++)
+        {
+            float a = (90f + h * 90f + extraGiro) * Mathf.Deg2Rad;
+            otra.Clear();
+            otra.Add(new Vector3(Mathf.Cos(a) * 0.038f, Mathf.Sin(a) * 0.038f, -0.001f));
+            otra.Add(new Vector3(Mathf.Cos(a) * 0.052f, Mathf.Sin(a) * 0.052f, -0.001f));
+            PonerLinea(hijos[h], otra);
+        }
+        // Tú, en el centro, mirando hacia arriba (siempre igual: lo que gira es el fondo).
+        otra.Clear();
+        otra.Add(new Vector3(-0.008f, -0.006f, -0.001f));
+        otra.Add(new Vector3(0f, 0.012f, -0.001f));
+        otra.Add(new Vector3(0.008f, -0.006f, -0.001f));
+        otra.Add(new Vector3(-0.008f, -0.006f, -0.001f));
         PonerLinea(extra, otra);
-        Vector3 a = new Vector3(-0.07f, -0.02f, -0.001f), b = new Vector3(0.07f, 0.025f, -0.001f);
-        float estira = Suave(Mathf.InverseLerp(0.3f, 2.4f, t));
-        Vector3 punta = Vector3.Lerp(a, b, estira);
+        // El pulgar que se desliza (abajo a la derecha).
+        float u = Mathf.Repeat(t, 1.5f);
+        dedo.gameObject.SetActive(u > 0.6f && u < 1.2f);
+        dedo.localPosition = new Vector3(Mathf.Lerp(0.065f, 0.09f, Mathf.InverseLerp(0.6f, 1.1f, u)), -0.04f, -0.004f);
+    }
+
+    // El lápiz con "cuerda": el dedo tiembla (gris) y el lápiz lo sigue liso, un poquito atrás (negro).
+    void AnimarLapiz(float t)
+    {
+        float hasta = Mathf.Clamp01(t / (Ciclo * 0.8f));
+        int n = Mathf.Max(2, Mathf.RoundToInt(40 * hasta));
         forma.Clear();
-        forma.Add(a);
-        if (t < 2.6f)
+        otra.Clear();
+        for (int k = 0; k < n; k++)
         {
-            forma.Add(punta);
-            PonerLinea(lineaGris, forma);
-            dedo.gameObject.SetActive(true);
-            dedo.localPosition = punta + new Vector3(0f, 0f, -0.003f);
+            float u = k / 39f;
+            float x = -0.07f + u * 0.14f;
+            float y = Mathf.Sin(u * 5f) * 0.02f;
+            float temblor = Mathf.Sin(u * 90f) * 0.003f + Mathf.Sin(u * 53f + 1f) * 0.002f;
+            otra.Add(new Vector3(x, y + temblor + 0.012f, -0.001f));
+            forma.Add(new Vector3(x - 0.004f, Mathf.Sin((u - 0.03f) * 5f) * 0.02f - 0.012f, -0.001f));
         }
-        else
-        {
-            forma.Add(b);
-            PonerLinea(linea, forma);
-        }
+        PonerLinea(lineaGris, otra);
+        PonerLinea(linea, forma);
+        dedo.gameObject.SetActive(true);
+        dedo.localPosition = otra[otra.Count - 1] + new Vector3(0f, 0f, -0.003f);
     }
 }

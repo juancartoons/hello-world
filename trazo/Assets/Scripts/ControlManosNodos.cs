@@ -16,6 +16,8 @@ using UnityEngine;
 //  - Lo que vas a agarrar (nodo o tirador) se ilumina un poquito antes de tocarlo.
 //  - Tocar la línea elegida (lejos de sus nodos) y quedarte quieto medio segundo = nodo nuevo, pegado al dedo.
 //  - Tocar otra línea = elegirla (y ver solo sus nodos).
+//  - PUNTOS DE TELA: tocar DENTRO del relleno de la figura elegida (lejos de su línea) y quedarte quieto medio
+//    segundo = punto de tela nuevo (rombito morado), pegado al dedo: dale relieve a la tela (ver ControlManosTela.cs).
 //  - Al entrar al modo, si el dedo ya estaba sobre algo, no agarra nada hasta que salga y vuelva a tocar.
 // Al abrir la mano izquierda todo se suelta y se deseleccionan los del lazo.
 // (Respaldo de la versión con pellizco: trazo/Respaldos/nodos-con-pellizco-v26.)
@@ -69,6 +71,7 @@ public partial class ControlManos
     // Al salir del modo nodos (abrir la mano izquierda): se suelta todo.
     void TerminarModoNodos()
     {
+        SoltarTela();
         moviendoGrupo = false;
         grupoPlastilina = false;
         grupoGira = false;
@@ -90,6 +93,12 @@ public partial class ControlManos
         Vector3 punta = Der.indice;
 
         // 1. Algo agarrado: sigue al dedo (se suelta al abrir la mano izquierda).
+        if (telaTrazo != null)
+        {
+            MoverTelaConDedo(punta);
+            MostrarModoNodos(true, dibujo.Seleccion);
+            return;
+        }
         if (moviendoGrupo)
         {
             MoverGrupo(punta);
@@ -128,6 +137,19 @@ public partial class ControlManos
                 distancia = dAsa;
                 t = selTrazo;
                 i = selIndice;
+            }
+        }
+        Trazo tTela;
+        int iTela;
+        if (BuscarTelaCercana(punta, RadioPrevio, solo, out tTela, out iTela))
+        {
+            float dTela = Vector3.Distance(punta, dibujo.transform.TransformPoint(tTela.PosicionTela(iTela)));
+            if (dTela < distancia)
+            {
+                candidato = Objetivo.Tela;
+                distancia = dTela;
+                t = tTela;
+                i = iTela;
             }
         }
         if (candidato != Objetivo.Nada && distancia < RadioToqueNodo)
@@ -177,6 +199,14 @@ public partial class ControlManos
             MostrarModoNodos(true, dibujo.Seleccion);
             return;
         }
+        if (tipo == Objetivo.Tela)
+        {
+            CancelarLazo();
+            esperaDesde = -1f;
+            EmpezarArrastreTela(t, i, punta);
+            MostrarModoNodos(true, dibujo.Seleccion);
+            return;
+        }
         if (tipo == Objetivo.Asa)
         {
             CancelarLazo();
@@ -207,7 +237,11 @@ public partial class ControlManos
                 else if (Time.time - esperaDesde > EsperaNodoNuevo)
                 {
                     esperaDesde = -1f;
-                    AgregarNodoEn(linea, punta);
+                    // Dentro del relleno (lejos de la línea) = punto de tela; sobre la línea = nodo nuevo.
+                    if (TocaSoloRelleno(linea, punta))
+                        AgregarTelaEn(linea, punta);
+                    else
+                        AgregarNodoEn(linea, punta);
                 }
             }
             MostrarModoNodos(true, dibujo.Seleccion);

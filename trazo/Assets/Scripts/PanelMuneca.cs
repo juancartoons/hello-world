@@ -16,6 +16,8 @@ public class PanelMuneca : MonoBehaviour
     public BotonTocable btnIman;
     [Tooltip("Abre la paleta de colores (por si el gesto de la palma no la abre)")]
     public BotonTocable btnColores;
+    [Tooltip("Abre las capas en profundidad (arriba al centro de tu vista)")]
+    public BotonTocable btnCapas;
     [Tooltip("? = las secciones del tutorial")]
     public BotonTocable btnAyuda;
     [Tooltip("X para cerrar el menú")]
@@ -62,6 +64,11 @@ public class PanelMuneca : MonoBehaviour
             dibujo.alMensaje += Mensaje;
         }
         Conectar(btnFondo, SiguienteFondo);
+        Conectar(btnCapas, () =>
+        {
+            CapasProfundidad.Alternar();
+            Refrescar();
+        });
         if (control != null)
         {
             Conectar(btnCerrar, control.CerrarMenu);
@@ -297,6 +304,11 @@ public class PanelMuneca : MonoBehaviour
         }
         if (btnFondo != null && escenario != null)
             btnFondo.PonerTexto("Fondo: " + escenario.NombreModo);
+        if (btnCapas != null && dibujo != null)
+        {
+            btnCapas.PonerTexto("Capas: " + (dibujo.capaActual + 1));
+            btnCapas.Marcar(CapasProfundidad.Abierta);
+        }
         if (btnIman != null && dibujo != null)
         {
             bool iman = dibujo.CapaActual.iman;

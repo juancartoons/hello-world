@@ -268,6 +268,9 @@ public static class CartelArriba
     // Se llaman cada cuadro mientras cada uno quiere verse. Devuelven si le toca verse (el más nuevo).
     public static bool PuedeVerAviso(float desde)
     {
+        // Mientras están abiertas las capas en profundidad (en este mismo lugar), el cartel no sale.
+        if (CapasProfundidad.Abierta)
+            return false;
         desdeAviso = desde;
         cuadroAviso = Time.frameCount;
         return !(Vivo(cuadroGesto) && desdeGesto > desde);
@@ -275,6 +278,8 @@ public static class CartelArriba
 
     public static bool PuedeVerGesto(float desde)
     {
+        if (CapasProfundidad.Abierta)
+            return false;
         desdeGesto = desde;
         cuadroGesto = Time.frameCount;
         return !(Vivo(cuadroAviso) && desdeAviso >= desde);

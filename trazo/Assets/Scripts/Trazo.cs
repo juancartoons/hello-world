@@ -76,6 +76,13 @@ public class Trazo : MonoBehaviour
     public static readonly string[] NombresTextura = { "Liso", "Facetas", "Manchas", "Pinceladas" };
     public static readonly string[] NombresVelocidadTextura = { "Quieto", "Lento", "Medio", "Rápido" };
 
+    // ---------- Puntos de TELA (relieve suave dentro del relleno) ----------
+    // Puntos sueltos dentro del relleno (no tienen que ver con la línea): al moverlos, la "tela" de alrededor los
+    // sigue en forma de campana suave (nunca en punta) y el borde se queda pegado a la línea.
+    public List<Vector3> telaBase = new List<Vector3>();    // dónde está cada punto sobre el relleno (local)
+    public List<Vector3> telaMovida = new List<Vector3>();  // cuánto se movió (local)
+    public bool TieneTela => telaBase.Count > 0 && telaBase.Count == telaMovida.Count;
+
     // La curva ya calculada (local), para tocarla y medirla.
     public readonly List<Vector3> curva = new List<Vector3>();
     readonly List<int> curvaSegmento = new List<int>();   // en qué tramo (entre dos nodos) cae cada punto
@@ -157,7 +164,8 @@ public class Trazo : MonoBehaviour
     const float pasoMuestras = 0.004f;           // detalle de la curva final
     const int ladosTubo = 8;
     const float puntaMinima = 0.06f;             // grosor de las puntas (fracción del centro)
-    const int maxPuntosRelleno = 64;
+    const int maxPuntosRelleno = 200;            // el relleno sigue la curva de cerca (así no se sale de la línea)
+    const int maxPuntosRellenoDibujando = 64;    // mientras dibujas con la cubeta, menos (va más rápido)
 
     readonly List<Vector3> crudos = new List<Vector3>();
     Mesh malla;
@@ -617,6 +625,13 @@ public class Trazo : MonoBehaviour
             }
         }
         ancho = Mathf.Clamp(origen.ancho * escala, 0.0005f, 0.5f);
+        // Los puntos de tela giran y se mueven con la figura.
+        if (origen.telaBase != null && origen.telaMovida != null && origen.telaBase.Count == telaBase.Count && origen.telaMovida.Count == telaMovida.Count)
+            for (int k = 0; k < telaBase.Count; k++)
+            {
+                telaBase[k] = m.MultiplyPoint3x4(origen.telaBase[k]);
+                telaMovida[k] = m.MultiplyVector(origen.telaMovida[k]);
+            }
         PegarAHoja(); // encantada: se queda en su hoja
         Reconstruir();
     }
@@ -674,7 +689,9 @@ public class Trazo : MonoBehaviour
             texturaRelleno = texturaRelleno,
             velocidadTextura = velocidadTextura,
             escalaTextura = escalaTextura,
-            tamanoTextura = EscalonMasCercano(escalaTextura)
+            tamanoTextura = EscalonMasCercano(escalaTextura),
+            telaBase = new List<Vector3>(telaBase),
+            telaMovida = new List<Vector3>(telaMovida)
         };
     }
 
@@ -741,6 +758,16 @@ public class Trazo : MonoBehaviour
         ancho = mezclar ? Mathf.Lerp(a.ancho, b.ancho, u) : a.ancho;
         if (ancho <= 0f)
             ancho = 0.008f;
+        // Los puntos de tela también son parte de la pose (se mezclan si las dos poses tienen los mismos).
+        telaBase.Clear();
+        telaMovida.Clear();
+        int nt = a.telaBase != null && a.telaMovida != null && a.telaBase.Count == a.telaMovida.Count ? a.telaBase.Count : 0;
+        bool telaB = mezclar && nt > 0 && b.telaBase != null && b.telaMovida != null && b.telaBase.Count == nt && b.telaMovida.Count == nt;
+        for (int k = 0; k < nt; k++)
+        {
+            telaBase.Add(telaB ? Vector3.Lerp(a.telaBase[k], b.telaBase[k], u) : a.telaBase[k]);
+            telaMovida.Add(telaB ? Vector3.Lerp(a.telaMovida[k], b.telaMovida[k], u) : a.telaMovida[k]);
+        }
         Reconstruir();
     }
 
@@ -1028,8 +1055,15 @@ public class Trazo : MonoBehaviour
         vertices.Clear();
         indices.Clear();
         colores.Clear();
-        vertices.AddRange(poli3D);
-        Triangular(poli2D, indices, vertices);
+        // Con puntos de tela: una malla más fina que se dobla. Si no, la de siempre (pocos triángulos).
+        if (!(TieneTela && !Dibujando && ArmarMallaTela(vertices, indices)))
+        {
+            vertices.Clear();
+            indices.Clear();
+            vertices.AddRange(poli3D);
+            Triangular(poli2D, indices, vertices);
+            MeterBordeBajoLinea(vertices, poli2D, poli3D.Count);
+        }
         Color c = ColorDelRelleno;
         var estiloVivo = Estilo();
         uvs3.Clear();
@@ -1063,6 +1097,316 @@ public class Trazo : MonoBehaviour
         mallaRelleno.RecalculateBounds();
     }
 
+    // ---------- El borde del relleno, escondido debajo de la línea ----------
+    // El borde se mete un poquito hacia adentro (menos de medio grosor de la línea): así el relleno nunca asoma
+    // por fuera de la línea ni la "muerde", y la línea se ve completa de frente y de espalda.
+    float HundimientoBorde(List<Vector2> p)
+    {
+        float area = Mathf.Abs(AreaDoble(p)) * 0.5f;
+        return Mathf.Min(ancho * 0.3f, Mathf.Sqrt(area) * 0.08f);
+    }
+
+    static float AreaDoble(List<Vector2> p)
+    {
+        float a = 0f;
+        for (int i = 0; i < p.Count; i++)
+        {
+            Vector2 u = p[i], v = p[(i + 1) % p.Count];
+            a += u.x * v.y - v.x * u.y;
+        }
+        return a;
+    }
+
+    // Hacia adentro del polígono en el punto i, con el largo justo para que el borde se corra "dist".
+    // signo: 1 si el polígono va contra el reloj, -1 si va como el reloj.
+    static Vector2 HaciaAdentro(List<Vector2> p, int i, float signo, float dist)
+    {
+        int n = p.Count;
+        Vector2 a = p[(i - 1 + n) % n], b = p[i], c = p[(i + 1) % n];
+        Vector2 e1 = b - a, e2 = c - b;
+        if (e1.sqrMagnitude < 1e-14f)
+            e1 = e2;
+        if (e2.sqrMagnitude < 1e-14f)
+            e2 = e1;
+        if (e1.sqrMagnitude < 1e-14f)
+            return Vector2.zero;
+        e1.Normalize();
+        e2.Normalize();
+        Vector2 n1 = new Vector2(-e1.y, e1.x) * signo, n2 = new Vector2(-e2.y, e2.x) * signo;
+        Vector2 m = n1 + n2;
+        if (m.sqrMagnitude < 1e-8f)
+            m = n1;
+        m.Normalize();
+        float coseno = Mathf.Max(0.5f, Vector2.Dot(m, n1));
+        return m * (dist / coseno);
+    }
+
+    void MeterBordeBajoLinea(List<Vector3> verts, List<Vector2> p, int n)
+    {
+        if (n < 3 || p.Count != n)
+            return;
+        float dist = HundimientoBorde(p);
+        if (dist <= 0f)
+            return;
+        float signo = AreaDoble(p) >= 0f ? 1f : -1f;
+        for (int i = 0; i < n && i < verts.Count; i++)
+        {
+            Vector2 d = HaciaAdentro(p, i, signo, dist);
+            verts[i] += poliU * d.x + poliV * d.y;
+        }
+    }
+
+    // ---------- Puntos de tela ----------
+    readonly List<Vector2> telaBorde = new List<Vector2>();     // el borde (hundido), en el plano de la figura
+    readonly List<Vector2> telaContorno = new List<Vector2>();  // el contorno con que se armó (para reusarla)
+    readonly List<Vector2> telaPlano = new List<Vector2>();     // la malla fina en el plano (el borde primero)
+    readonly List<float> telaAlto = new List<float>();          // cuánto se sale del plano (contornos en 3D)
+    readonly List<int> telaTris = new List<int>();
+    float telaHundido = -1f;
+    bool telaMallaLista;
+    static readonly List<Vector3> telaTemp = new List<Vector3>();
+    static readonly List<float> altosBorde = new List<float>();
+    static readonly List<Vector2> telaCentros = new List<Vector2>();
+    static readonly List<float> telaRadios = new List<float>();
+
+    bool MismoContorno()
+    {
+        if (telaContorno.Count != poli2D.Count)
+            return false;
+        for (int i = 0; i < poli2D.Count; i++)
+            if ((telaContorno[i] - poli2D[i]).sqrMagnitude > 1e-14f)
+                return false;
+        return true;
+    }
+
+    // El borde hundido del relleno (se rehace solo si la figura cambió).
+    List<Vector2> ContornoTela()
+    {
+        float hundido = HundimientoBorde(poli2D);
+        if (MismoContorno() && Mathf.Abs(hundido - telaHundido) < 1e-7f && telaBorde.Count == poli2D.Count)
+            return telaBorde;
+        telaBorde.Clear();
+        float signo = AreaDoble(poli2D) >= 0f ? 1f : -1f;
+        for (int i = 0; i < poli2D.Count; i++)
+            telaBorde.Add(poli2D[i] + HaciaAdentro(poli2D, i, signo, hundido));
+        telaContorno.Clear();
+        telaContorno.AddRange(poli2D);
+        telaHundido = hundido;
+        telaMallaLista = false;
+        return telaBorde;
+    }
+
+    Vector2 EnPlano(Vector3 local)
+    {
+        Vector3 d = local - poliCentro;
+        return new Vector2(Vector3.Dot(d, poliU), Vector3.Dot(d, poliV));
+    }
+
+    static float DistanciaAlContorno(Vector2 q, List<Vector2> borde)
+    {
+        float mejor = float.MaxValue;
+        int n = borde.Count;
+        for (int i = 0; i < n; i++)
+        {
+            Vector2 a = borde[i], b = borde[(i + 1) % n];
+            Vector2 ab = b - a;
+            float t = ab.sqrMagnitude > 1e-14f ? Mathf.Clamp01(Vector2.Dot(q - a, ab) / ab.sqrMagnitude) : 0f;
+            mejor = Mathf.Min(mejor, (q - (a + ab * t)).sqrMagnitude);
+        }
+        return Mathf.Sqrt(mejor);
+    }
+
+    // La campana: 1 en el centro, 0 en el radio (con la orilla suave, sin punta ni escalón).
+    static float Campana(Vector2 q, Vector2 centro, float radio)
+    {
+        float x2 = (q - centro).sqrMagnitude / Mathf.Max(1e-12f, radio * radio);
+        if (x2 >= 1f)
+            return 0f;
+        float t = 1f - x2;
+        return t * t;
+    }
+
+    // Centro y radio de cada punto de tela: el radio llega justo hasta el borde más cercano (ahí ya no se mueve).
+    void PrepararCampanas(List<Vector2> borde)
+    {
+        telaCentros.Clear();
+        telaRadios.Clear();
+        for (int i = 0; i < telaBase.Count; i++)
+        {
+            Vector2 q = EnPlano(telaBase[i]);
+            telaCentros.Add(q);
+            telaRadios.Add(Mathf.Max(1e-4f, DistanciaAlContorno(q, borde)));
+        }
+    }
+
+    Vector3 Desplazamiento(Vector2 q, int sinEste)
+    {
+        Vector3 d = Vector3.zero;
+        for (int i = 0; i < telaCentros.Count && i < telaMovida.Count; i++)
+        {
+            if (i == sinEste)
+                continue;
+            float w = Campana(q, telaCentros[i], telaRadios[i]);
+            if (w > 0f)
+                d += telaMovida[i] * w;
+        }
+        return d;
+    }
+
+    // La altura (fuera del plano) de un punto de adentro: un promedio de las del borde, más pesadas las cercanas.
+    float AltoInterpolado(Vector2 q, List<Vector2> borde, List<float> altos)
+    {
+        float suma = 0f, pesos = 0f;
+        for (int i = 0; i < borde.Count && i < altos.Count; i++)
+        {
+            float d2 = (borde[i] - q).sqrMagnitude;
+            if (d2 < 1e-14f)
+                return altos[i];
+            float w = 1f / d2;
+            suma += altos[i] * w;
+            pesos += w;
+        }
+        return pesos > 0f ? suma / pesos : 0f;
+    }
+
+    void AltosDelBorde()
+    {
+        altosBorde.Clear();
+        foreach (var p in poli3D)
+            altosBorde.Add(Vector3.Dot(p - poliCentro, poliN));
+    }
+
+    // La malla fina (en el plano): el borde por orejas y una cuadrícula de puntos adentro.
+    bool ArmarBaseTela(List<Vector2> borde)
+    {
+        telaPlano.Clear();
+        telaAlto.Clear();
+        telaTris.Clear();
+        int n = borde.Count;
+        if (n < 3 || poli3D.Count != n)
+            return false;
+        telaTemp.Clear();
+        for (int i = 0; i < n; i++)
+            telaTemp.Add(Vector3.zero);
+        Triangular(borde, telaTris, telaTemp);
+        if (telaTemp.Count != n || telaTris.Count < 3)
+        {
+            // La figura se cruza a sí misma: sin malla fina.
+            telaTris.Clear();
+            return false;
+        }
+        AltosDelBorde();
+        telaPlano.AddRange(borde);
+        telaAlto.AddRange(altosBorde);
+        Vector2 min = borde[0], max = borde[0];
+        foreach (var q in borde)
+        {
+            min = Vector2.Min(min, q);
+            max = Vector2.Max(max, q);
+        }
+        float paso = Mathf.Max(max.x - min.x, max.y - min.y) / 16f;
+        if (paso <= 1e-6f)
+            return false;
+        for (float y = min.y + paso * 0.5f; y < max.y; y += paso)
+            for (float x = min.x + paso * 0.5f; x < max.x; x += paso)
+            {
+                var q = new Vector2(x, y);
+                if (!PuntoEnPoligono(q, borde) || DistanciaAlContorno(q, borde) < paso * 0.45f)
+                    continue;
+                if (InsertarEnMalla(q))
+                    telaAlto.Add(AltoInterpolado(q, borde, altosBorde));
+            }
+        telaMallaLista = true;
+        return true;
+    }
+
+    // Mete un punto en el triángulo que lo contiene (ese triángulo se parte en 3).
+    bool InsertarEnMalla(Vector2 q)
+    {
+        for (int t = 0; t + 2 < telaTris.Count; t += 3)
+        {
+            int a = telaTris[t], b = telaTris[t + 1], c = telaTris[t + 2];
+            if (!PuntoEnTriangulo(q, telaPlano[a], telaPlano[b], telaPlano[c]))
+                continue;
+            int k = telaPlano.Count;
+            telaPlano.Add(q);
+            telaTris[t + 2] = k;
+            telaTris.Add(b); telaTris.Add(c); telaTris.Add(k);
+            telaTris.Add(c); telaTris.Add(a); telaTris.Add(k);
+            return true;
+        }
+        return false;
+    }
+
+    // La malla del relleno con la tela movida. Devuelve false si no se pudo (y se usa la de siempre).
+    bool ArmarMallaTela(List<Vector3> verts, List<int> tris)
+    {
+        var borde = ContornoTela();
+        if (!telaMallaLista && !ArmarBaseTela(borde))
+            return false;
+        PrepararCampanas(borde);
+        for (int k = 0; k < telaPlano.Count; k++)
+        {
+            Vector2 q = telaPlano[k];
+            Vector3 p = poliCentro + poliU * q.x + poliV * q.y + poliN * (k < telaAlto.Count ? telaAlto[k] : 0f);
+            verts.Add(p + Desplazamiento(q, -1));
+        }
+        tris.AddRange(telaTris);
+        return true;
+    }
+
+    bool PuedeTela => PoligonoValido && relleno && !Dibujando;
+
+    // Dónde se ve el punto de tela i (local del Dibujo).
+    public Vector3 PosicionTela(int i)
+    {
+        if (i < 0 || i >= telaBase.Count || i >= telaMovida.Count)
+            return Vector3.zero;
+        if (!PuedeTela)
+            return telaBase[i] + telaMovida[i];
+        PrepararCampanas(ContornoTela());
+        return telaBase[i] + Desplazamiento(telaCentros[i], -1);
+    }
+
+    // Un punto de tela nuevo donde toca el dedo (local). Devuelve su número, o -1 si no se pudo.
+    public int AgregarTela(Vector3 local)
+    {
+        if (!PuedeTela)
+            return -1;
+        var borde = ContornoTela();
+        Vector2 q = EnPlano(local);
+        AltosDelBorde();
+        Vector3 b = poliCentro + poliU * q.x + poliV * q.y + poliN * AltoInterpolado(q, poli2D, altosBorde);
+        telaBase.Add(b);
+        telaMovida.Add(Vector3.zero);
+        int k = telaBase.Count - 1;
+        PrepararCampanas(borde);
+        // Ya hay relieve de los otros puntos en ese lugar: el nuevo empieza justo ahí (sin saltos).
+        telaMovida[k] = Desplazamiento(q, k);
+        Reconstruir();
+        return k;
+    }
+
+    // Lleva el punto de tela i a "objetivo" (local): la tela de alrededor lo sigue suave.
+    public void MoverTela(int i, Vector3 objetivo)
+    {
+        if (i < 0 || i >= telaBase.Count || i >= telaMovida.Count || !PuedeTela)
+            return;
+        PrepararCampanas(ContornoTela());
+        telaMovida[i] = objetivo - telaBase[i] - Desplazamiento(telaCentros[i], i);
+        Reconstruir();
+    }
+
+    public void QuitarTela(int i)
+    {
+        if (i < 0 || i >= telaBase.Count)
+            return;
+        telaBase.RemoveAt(i);
+        if (i < telaMovida.Count)
+            telaMovida.RemoveAt(i);
+        Reconstruir();
+    }
+
     // Toma la curva cerrada, la reduce a pocos puntos y calcula su plano promedio.
     void PrepararPoligono()
     {
@@ -1070,7 +1414,8 @@ public class Trazo : MonoBehaviour
         poli2D.Clear();
         bool abierta = !CerradoAhora;
         int total = abierta ? curva.Count : curva.Count - 1; // cerrada: el último punto repite el primero
-        int paso = Mathf.Max(1, Mathf.CeilToInt(total / (float)maxPuntosRelleno));
+        int maximo = Dibujando ? maxPuntosRellenoDibujando : maxPuntosRelleno;
+        int paso = Mathf.Max(1, Mathf.CeilToInt(total / (float)maximo));
         for (int i = 0; i < total; i += paso)
             poli3D.Add(curva[i]);
         int m = poli3D.Count;

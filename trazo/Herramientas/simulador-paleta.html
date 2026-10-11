@@ -81,7 +81,7 @@ tr:last-child td { border-bottom: 0; }
 <div class="wrap">
   <header>
     <h1><span>Paleta</span> de la mano</h1>
-    <p class="sub">La paleta de tu mano izquierda tal como está en el visor (v33), a escala y con las medidas del código. Tócala con el ratón o el dedo como si fuera tu índice derecho. Los botones LÍNEA (a las 10) y RELLENO (a las 2) se abren y muestran sus hijos; el centro te enseña cómo queda.</p>
+    <p class="sub">La paleta de tu mano izquierda tal como está en el visor (v34), a escala y con las medidas del código. Tócala con el ratón o el dedo como si fuera tu índice derecho. Los botones LÍNEA (a las 10) y RELLENO (a las 2) se abren y muestran sus hijos; el centro te enseña cómo queda.</p>
   </header>
 
   <section class="barra" aria-label="Opciones del simulador">
@@ -98,6 +98,7 @@ tr:last-child td { border-bottom: 0; }
       <button class="opcion" id="dedoPasar" aria-pressed="false">Al pasar (como en el visor)</button>
     </div>
     <div class="grupo">
+      <button class="opcion" id="boceto" aria-pressed="false">Capa de boceto 2D</button>
       <button class="opcion" id="verZonas" aria-pressed="false">Ver zonas de toque</button>
       <button class="opcion" id="sonido" aria-pressed="true">Sonido de burbuja</button>
       <button class="opcion simple" id="reiniciar">Reiniciar</button>
@@ -200,7 +201,7 @@ function estadoInicial() {
   return {
     color: [0, 0, 0, 1], colorRelleno: [1, 0.82, 0.1, 1], ultimoRellenoVisible: [1, 0.82, 0.1, 1],
     temblor: 0, hebras: 1, grosorVivo: false, ciclo3: true, suavidad: 1, velocidad: 1,
-    cubeta: false, tex: 0, vel: 2, escala: 1, halo: true, iman: true, rama: null,
+    cubeta: false, tex: 0, vel: 2, escala: 1, halo: true, iman: true, rama: null, lapiz: 0,
   };
 }
 function figuraInicial() {
@@ -209,7 +210,9 @@ function figuraInicial() {
 let E = estadoInicial();
 let F = figuraInicial();
 const AZUL = { color: [0.15, 0.45, 0.95], ancho: 5 };
-const op = { fondo: 0, dedo: 'clic', zonas: false, sonido: true, temblorMano: false, estabilizador: true };
+const op = { fondo: 0, dedo: 'clic', zonas: false, sonido: true, temblorMano: false, estabilizador: true, boceto: false };
+const MODOS_LAPIZ = ['Pegado', 'Suave', 'Cuerda'];
+const EXPLICA_LAPIZ = ['va justo en tu dedo', 'un poco arrastrado, más liso', 'te sigue con un hilo, muy liso'];
 
 // ---------- Escena: dos acomodos (ancho y angosto) ----------
 const LAYOUTS = {
@@ -385,7 +388,7 @@ function armar() {
 
   // Arcos de las ramas (detrás de los botones) y capas de botones
   for (const nombre of ['linea', 'relleno']) {
-    ramas[nombre] = { hijos: [], arco: el('path', { d: '', fill: '#000' }, P), hasta: NaN };
+    ramas[nombre] = { hijos: [], arco: el('path', { d: '', fill: '#000' }, P), hasta: NaN, sentido: nombre === 'linea' ? 1 : -1 };
   }
   const anillos = el('g', null, P);
   vista.discos = el('g', null, P);
@@ -443,6 +446,16 @@ function armar() {
   const raya = []; barra(raya, [-0.2, -0.2], [0.2, 0.2], 0.08);
   icono(b, raya, '#000');
   Object.assign(b, { nombre: 'Halo', tono: 1.1, visible: () => op.fondo >= 2, amarillo: () => E.halo, alTocar: () => { E.halo = !E.halo; aviso(E.halo ? 'Halo: sí (las líneas se separan del fondo)' : 'Halo: no'); pintarFigura(); }, texto: () => E.halo ? 'Halo: Sí' : 'Halo: No' });
+  // Lápiz (solo en una capa de boceto 2D): un lápiz amarillo con su punta.
+  b = hijoLinea(8, null);
+  const dirL = [0.7071, -0.7071], ladoL = [0.7071, 0.7071], finC = [0.05, -0.05];
+  const puntaL = [finC[0] + dirL[0] * 0.2, finC[1] + dirL[1] * 0.2];
+  const cuerpo = []; barra(cuerpo, [-0.24, 0.24], finC, 0.15);
+  icono(b, cuerpo, css([0.96, 0.76, 0.2]));
+  icono(b, [[[finC[0] + ladoL[0] * 0.075, finC[1] + ladoL[1] * 0.075], puntaL, [finC[0] - ladoL[0] * 0.075, finC[1] - ladoL[1] * 0.075]]], css([0.93, 0.8, 0.62]));
+  const baseG = [puntaL[0] - dirL[0] * 0.07, puntaL[1] - dirL[1] * 0.07];
+  icono(b, [[[baseG[0] + ladoL[0] * 0.026, baseG[1] + ladoL[1] * 0.026], puntaL, [baseG[0] - ladoL[0] * 0.026, baseG[1] - ladoL[1] * 0.026]]], '#000');
+  Object.assign(b, { nombre: 'Lápiz', tono: 1, visible: () => op.boceto, amarillo: () => E.lapiz !== 0, alTocar: () => { E.lapiz = (E.lapiz + 1) % 3; aviso('Lápiz: ' + MODOS_LAPIZ[E.lapiz] + ' (' + EXPLICA_LAPIZ[E.lapiz] + ')'); }, texto: () => 'Lápiz: ' + MODOS_LAPIZ[E.lapiz] });
 
   // RELLENO (a las 2)
   const rr = boton('Relleno', ANG_RELLENO, 22, null, { toque: 12, tono: 1 });
@@ -503,7 +516,25 @@ const colorObjetivo = () => rellenoAbierto() ? E.colorRelleno : E.color;
 
 function abrirRama(r) { E.rama = E.rama === r ? null : r; }
 
+// Los hijos que se ven quedan seguidos, sin huecos (AcomodarHijos).
+function acomodarHijos(nombre) {
+  const r = ramas[nombre];
+  let k = 0;
+  for (const h of r.hijos) {
+    if (h.visible && !h.visible()) continue;
+    const ang = r.raiz.angulo + r.sentido * (PRIMER_HIJO + k * PASO_HIJOS);
+    k++;
+    if (Math.abs(ang - h.angulo) < 0.01) continue;
+    h.angulo = ang;
+    [h.x, h.y] = enArco(ang);
+    h.g.setAttribute('transform', 'translate(' + h.x.toFixed(3) + ' ' + h.y.toFixed(3) + ') scale(' + h.tam + ')');
+    if (h.zona) { h.zona.setAttribute('cx', h.x); h.zona.setAttribute('cy', h.y); }
+  }
+}
+
 function refrescar() {
+  acomodarHijos('linea');
+  acomodarHijos('relleno');
   for (const b of botones) {
     const ver = (!b.rama || b.rama === E.rama) && (!b.visible || b.visible());
     b.g.style.display = ver ? '' : 'none';
@@ -975,17 +1006,17 @@ vec3 Tono(vec3 c, vec2 celda, float fase, float sem, float fuerza){
   return clamp(v, 0.0, 1.0); }
 vec3 Vivo(vec3 c, vec2 uv, float estilo, float cps, float sem){
   float fase = cps > 0.0 ? mod(floor(tiempo * cps), 4.0) : 0.0;
-  if (estilo < 1.5) return Tono(c, Celda(uv / 0.03, fase, sem), fase, sem, 0.14);
+  if (estilo < 1.5) return Tono(c, Celda(uv / 0.03, fase, sem), fase, sem, 0.36);
   if (estilo < 2.5) {
     vec2 p = uv / 0.045;
     p += (vec2(R(vec3(p * 0.6, sem + fase * 1.7)), R(vec3(p * 0.6 + 11.3, sem + fase * 2.3))) - 0.5) * 1.4;
-    vec3 grande = Tono(c, Celda(p, fase, sem), fase, sem, 0.12);
-    vec3 chica = Tono(c, Celda(p * 2.3 + 5.1, fase, sem + 3.0), fase, sem + 3.0, 0.1);
+    vec3 grande = Tono(c, Celda(p, fase, sem), fase, sem, 0.32);
+    vec3 chica = Tono(c, Celda(p * 2.3 + 5.1, fase, sem + 3.0), fase, sem + 3.0, 0.26);
     return mix(grande, chica, 0.35); }
   float ang = sem * 2.1 + (R(vec3(uv * 6.0, sem)) - 0.5) * 1.2;
   vec2 dir = vec2(cos(ang), sin(ang));
   vec2 q = vec2(dot(uv, dir) / 0.075, dot(uv, vec2(-dir.y, dir.x)) / 0.02);
-  return Tono(c, Celda(q, fase, sem), fase, sem, 0.13); }
+  return Tono(c, Celda(q, fase, sem), fase, sem, 0.34); }
 void main(){
   vec2 uv = (mm - centro) / 1000.0 / escala;
   vec3 c = color;
@@ -1176,6 +1207,7 @@ document.querySelectorAll('[data-fondo]').forEach(b => b.addEventListener('click
 $('#dedoClic').addEventListener('click', () => { op.dedo = 'clic'; marcar('dedoClic', true); marcar('dedoPasar', false); dedo = null; });
 $('#dedoPasar').addEventListener('click', () => { op.dedo = 'pasar'; marcar('dedoClic', false); marcar('dedoPasar', true); });
 $('#verZonas').addEventListener('click', () => { op.zonas = !op.zonas; marcar('verZonas', op.zonas); refrescar(); });
+$('#boceto').addEventListener('click', () => { op.boceto = !op.boceto; marcar('boceto', op.boceto); refrescar(); });
 $('#sonido').addEventListener('click', () => { op.sonido = !op.sonido; marcar('sonido', op.sonido); });
 $('#temblorMano').addEventListener('click', () => { op.temblorMano = !op.temblorMano; marcar('temblorMano', op.temblorMano); });
 $('#estabilizador').addEventListener('click', () => {
@@ -1209,7 +1241,7 @@ const FILAS = [
   ['Centro (vista previa)', '0, 0', 'Ø 52; textito abajo (y −18.5)', '—', 'La línea que tiembla, o el relleno con su textura si RELLENO está abierto'],
   ['Tinta invisible', '90° (las 12), radio 73', 'Ø 21 (marcada ×1.3)', '12', 'Un color que no se ve; en el relleno: sin relleno'],
   ['LÍNEA (raíz)', '150° (las 10), radio 73', 'Ø 22', '12', 'Abre o cierra sus hijos (amarillo = abierta)'],
-  ['Hijos de LÍNEA', '174°, 196°, 218°… cada 22°, radio 73', 'Ø 20', '11', 'Temblor · Hebras · Grosor vivo · Ciclo de 3 · Suavidad · Velocidad · Imán · Halo (solo con Realidad o 360)'],
+  ['Hijos de LÍNEA', '174°, 196°, 218°… cada 22°, radio 73 (seguidos, sin huecos)', 'Ø 20', '11', 'Temblor · Hebras · Grosor vivo · Ciclo de 3 · Suavidad · Velocidad · Imán · Halo (solo con Realidad o 360) · Lápiz (solo en boceto 2D)'],
   ['RELLENO (raíz)', '30° (las 2), radio 73', 'Ø 22', '12', 'Abre o cierra sus hijos; los colores pasan a ser del relleno'],
   ['Hijos de RELLENO', '6°, −16°, −38°, radio 73', 'Ø 20', '11', 'Textura · Cubeta · Velocidad de la textura (solo con textura)'],
   ['Arco', 'radio 73, de la raíz a su último hijo', '1.5 de grosor', '—', 'Une la raíz abierta con sus hijos'],

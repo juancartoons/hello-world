@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 11 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v33***
+*Actualizado: 11 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v34***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -17,7 +17,17 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ---
 
-## 0. Hecho en la v33 (falta probarlo en el visor)
+## 0. Hecho en la v34 (falta probarlo en el visor)
+
+- [x] **Capas en profundidad** (experimento de computación espacial): botón **Capas** en el menú de la mano (y el botón de la capa del menú de arriba). Las capas cuelgan como papeles arriba al centro de tu vista, donde sale el cartel de cómic (que se esconde mientras tanto). La actual se ve sólida con su nombre y sus botones (Ver, Boceto, Plano, Liberar, X); las de adelante y atrás son fantasmas transparentes con bordes iluminados. Capa 1 al fondo, Capa 4 más cerca. **Empujar** la actual (3 cm, en la parte del nombre) = la de adelante; **atraerla** = la de atrás. Se cierran solas a los 8 s. Cerca de ellas el dedo queda libre (sin bolita, no dibuja). Ya no se abre la lista vertical de capas.
+- [x] **Puntos de tela**: en el modo nodos, tocar dentro del relleno de la figura elegida y quedarse quieto medio segundo = rombito morado; al moverlo, la tela se dobla en campana suave y el borde queda pegado a la línea. Borrador sobre el rombito = se quita. Se guarda en el proyecto y en las claves de animación.
+- [x] **Girar con el pulgar**: puño suelto (cualquier mano) y el pulgar se desliza sobre el costado del índice = el fondo 360 gira 30° (como si giraras tú); los dibujos se quedan delante de ti.
+- [x] **Lápiz: Pegado / Suave / Cuerda** (paleta > LÍNEA > Lápiz, solo en una capa de boceto 2D). Los hijos de las raíces ahora quedan seguidos, sin huecos.
+- [x] **El relleno ya no muerde la línea**: sigue la curva con más puntos (hasta 200), su borde queda escondido debajo de la línea y se va un poco más atrás (sobre todo de lado).
+- [x] **Texturas del relleno vivo unas 2.5 veces más marcadas**.
+- [x] Tutorial **Novedades** con 8 temas (capas, tela, giro, lápiz, paleta, relleno vivo, fondos y papel, hoja 2D). Simulador de la paleta al día.
+
+## 0+. Hecho en la v33
 
 - [x] **Paleta con botones hijos**: alrededor de la paleta hay dos raíces, **LÍNEA** (a las 10) y **RELLENO** (a las 2). Al tocar una se pone amarilla y le salen sus hijos por el borde, unidos con un arco. Solo una abierta a la vez; al abrir la paleta empiezan cerradas.
   - Hijos de LÍNEA: Temblor, Hebras, Grosor vivo, Ciclo de 3, Suavidad, Velocidad, **Imán** y **Halo** (el halo solo con Realidad o 360).
@@ -141,6 +151,14 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [ ] Cuando ya no haga falta, quitar el botón **Tutorial** de Mis archivos (por ahora se queda; abre el mismo panel "?").
 
 ## 5. Para probar en el visor (desde la v21 casi nada se ha probado)
+
+**Nuevo en la v34:**
+- [ ] Capas en profundidad: ¿se entiende empujar y atraer? ¿la distancia entre capas (7 cm) y el tamaño están bien? ¿molesta que tapen la vista arriba?
+- [ ] Puntos de tela: ¿se crean fácil sin crear nodos por error? ¿la campana se ve suave? ¿el borde se queda en la línea?
+- [ ] Girar con el pulgar: ¿lo detecta bien con cada mano? ¿se dispara sin querer al hacer puño (borrador)?
+- [ ] Lápiz Suave y Cuerda: ¿cuál te gusta más?
+- [ ] Relleno: ¿ya no muerde la línea de frente, de espalda y de lado?
+- [ ] Texturas: ¿ahora sí se notan? ¿demasiado?
 
 **Nuevo en la v33:**
 - [ ] Paleta: ¿se entienden LÍNEA y RELLENO con sus hijos? ¿se ve el arco? ¿se alcanzan bien los hijos de abajo?

@@ -384,6 +384,19 @@ public class Escenario : MonoBehaviour
         if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", Color.white);
     }
 
+    // Girar el fondo 360 alrededor de ti, como si TÚ giraras (el gesto del pulgar sobre el puño).
+    // grados > 0 = giras a la derecha: lo que estaba a tu derecha queda delante. Tus dibujos no se mueven.
+    // Devuelve false si no hay un fondo 360 puesto.
+    public bool Girar(float grados)
+    {
+        if (cascara == null || !cascara.activeSelf)
+            return false;
+        Transform cab = camara != null ? camara.transform : (Camera.main != null ? Camera.main.transform : null);
+        Vector3 pivote = cab != null ? cab.position : cascara.transform.position;
+        cascara.transform.RotateAround(pivote, Vector3.up, -grados);
+        return true;
+    }
+
     // La cáscara queda alrededor de tu cabeza (a la altura de la cámara de la foto, con su piso en tu piso)
     // y la foto mira hacia donde estás mirando.
     void Centrar()

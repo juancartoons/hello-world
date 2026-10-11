@@ -152,7 +152,8 @@ public class PanelArriba : MonoBehaviour
         Conectar(btnSeguir, AlternarFijo);
         CrearX();
         Conectar(btnAyuda, AlternarAyuda);
-        Conectar(btnCapasPlegar, () => AbrirCapas(!capasAbiertas));
+        // Las capas ahora cuelgan en profundidad (ver CapasProfundidad.cs); la lista de antes ya no se abre.
+        Conectar(btnCapasPlegar, CapasProfundidad.Alternar);
         PrepararCapas();
 
         if (animacion != null)
@@ -357,8 +358,8 @@ public class PanelArriba : MonoBehaviour
             return;
         if (btnCapasPlegar != null)
         {
-            btnCapasPlegar.PonerTexto((capasAbiertas ? "- " : "+ ") + dibujo.CapaActual.nombre);
-            btnCapasPlegar.Marcar(capasAbiertas);
+            btnCapasPlegar.PonerTexto(dibujo.CapaActual.nombre);
+            btnCapasPlegar.Marcar(CapasProfundidad.Abierta);
         }
         if (!capasAbiertas || capasDesplegable == null || animacion == null || barra == null)
             return;
@@ -1335,7 +1336,7 @@ public class PanelArriba : MonoBehaviour
         { "+ CLAVE", "+ KEY\nSaves the current shape of the active layer's lines at this frame (orange mark). Usually not needed: editing on a frame saves the key by itself." },
         { "- CLAVE", "- KEY\nRemoves the active layer's key at this frame.\nTo MOVE a key: pinch it on the bar and drag it." },
         { "FPS", "FPS\nAnimation speed: 12, 24, 30 or 60 frames per second." },
-        { "CAPAS (lista plegable)", "LAYERS (folding list)\nOpens or closes the list of layers above the timeline. Each row: pick the layer, Show/Hidden and ITS keys (each layer has its own keys).\nThe big bar shows the active layer's keys." },
+        { "CAPAS (en profundidad)", "LAYERS (in depth)\nOpens the layers hanging one behind the other, at the top center of your view (also with the Layers button on the hand menu). Push the current one = the layer in front; pull it toward you = the one behind. They close by themselves after 8 seconds." },
         { "CAPA 1-4", "LAYER 1-4\nChoose the layer you draw on. Each layer has its own style: wobble and strands in the palette (left palm) > LINE; Sketch and Plane here, in its row.\nTip: sketch on layer 1 (Sketch: Gray) and ink on layer 2." },
         { "VER / OCULTA", "SHOW / HIDDEN\nShows or hides that layer. A hidden layer can't be edited." },
         { "LIBRE (3D) / PLANO (2D)", "FREE (3D) / PLANE (2D)\nPlane: you draw on an invisible sheet in front of you (if you move your finger more than ~2.5 cm toward you, the line ends, like lifting the pencil; if you push it BEHIND the sheet, the line goes on and you see a copy of your hand on the sheet). Free: you draw in the air, in 3D.\nWith a Sketch layer in Plane mode, you draw with a pencil on paper." },
@@ -1433,7 +1434,7 @@ public class PanelArriba : MonoBehaviour
         Poner(d, btnClave, "+ CLAVE\nGuarda la forma actual de todas las líneas en este fotograma (marca naranja). Normalmente no hace falta: al editar en un fotograma, la clave se guarda sola.");
         Poner(d, btnQuitarClave, "- CLAVE\nQuita la clave de este fotograma.\nPara MOVER una clave: pellízcala en la barra y arrástrala.");
         Poner(d, btnFps, "FPS\nVelocidad de la animación: 12, 24, 30 o 60 cuadros por segundo.");
-        Poner(d, btnCapasPlegar, "CAPAS (lista plegable)\nAbre o cierra la lista de capas, encima de la línea de tiempo. Cada fila: elegir la capa, Ver/Oculta y SUS claves (cada capa tiene sus propias claves).\nLa barra grande muestra las claves de la capa activa.");
+        Poner(d, btnCapasPlegar, "CAPAS (en profundidad)\nAbre las capas colgadas una detrás de otra, arriba al centro de tu vista (también con el botón Capas del menú de la mano). Empuja la actual = la capa de adelante; atráela hacia ti = la de atrás. Se cierran solas a los 8 segundos.\nLa barra grande muestra las claves de la capa activa.");
         if (btnCapas != null)
             foreach (var b in btnCapas)
                 Poner(d, b, "CAPA 1-4\nElige en qué capa dibujas. Cada capa tiene su estilo: temblor y hebras en la paleta (palma izquierda) > LÍNEA; Boceto y Plano aquí, en su fila.\nIdea: boceto en la capa 1 (Boceto: Gris) y tinta encima en la capa 2.");

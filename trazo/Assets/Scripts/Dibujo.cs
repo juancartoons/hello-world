@@ -33,6 +33,9 @@ public class DatosTrazo
     public int tamanoTextura = 1;     // de antes (4 escalones); se sigue guardando para versiones viejas del app
     // v33: tamaño libre de la textura (0 = archivo de antes: usar tamanoTextura)
     public float escalaTextura;
+    // v34: puntos de tela (relieve suave dentro del relleno)
+    public List<Vector3> telaBase = new List<Vector3>();
+    public List<Vector3> telaMovida = new List<Vector3>();
 }
 
 [System.Serializable]
@@ -1137,6 +1140,10 @@ public class Dibujo : MonoBehaviour
             a.texturaRelleno = b.texturaRelleno;
             a.velocidadTextura = b.velocidadTextura;
             a.escalaTextura = b.escalaTextura;
+            a.telaBase.Clear();
+            a.telaBase.AddRange(b.telaBase);
+            a.telaMovida.Clear();
+            a.telaMovida.AddRange(b.telaMovida);
         }
         QuitarDeLaLista(b);
         a.Reconstruir();

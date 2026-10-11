@@ -73,6 +73,7 @@ public partial class ControlManos
         public Transform arco;
         public Mesh mallaArco;
         public float hastaArco = float.NaN;
+        public float sentido = 1f;           // 1: los hijos van contra el reloj; -1: como el reloj
     }
 
     Transform paleta;
@@ -598,9 +599,26 @@ public partial class ControlManos
         hijo.alTocar = () => dibujo.AlternarHalo();
         hijo.texto = () => dibujo.HaloEncendido ? "Halo: Sí" : "Halo: No";
         hijo.tono = 1.1f;
+        // Lápiz (solo en una capa de boceto 2D): cómo sigue a tu dedo. Un lápiz amarillo con su punta.
+        hijo = HijoLinea(8, null, negro);
+        Vector2 dirLapiz = new Vector2(0.7071f, -0.7071f), ladoLapiz = new Vector2(0.7071f, 0.7071f);
+        Vector2 finCuerpo = new Vector2(0.05f, -0.05f), puntaLapiz = finCuerpo + dirLapiz * 0.2f;
+        var cuerpo = new List<Vector2[]>();
+        BarraIcono(cuerpo, new Vector2(-0.24f, 0.24f), finCuerpo, 0.15f);
+        IconoPaleta(hijo.t, cuerpo, ColorMaterial(new Color(0.96f, 0.76f, 0.2f)));
+        IconoPaleta(hijo.t, new List<Vector2[]> { new[] { finCuerpo + ladoLapiz * 0.075f, puntaLapiz, finCuerpo - ladoLapiz * 0.075f } },
+                    ColorMaterial(new Color(0.93f, 0.8f, 0.62f)));
+        Vector2 baseGrafito = puntaLapiz - dirLapiz * 0.07f;
+        IconoPaleta(hijo.t, new List<Vector2[]> { new[] { baseGrafito + ladoLapiz * 0.026f, puntaLapiz, baseGrafito - ladoLapiz * 0.026f } }, negro);
+        hijo.visible = () => dibujo.UsaHoja;
+        hijo.amarillo = () => ModoLapiz != 0;
+        hijo.alTocar = SiguienteModoLapiz;
+        hijo.texto = () => "Lápiz: " + NombresModoLapiz[ModoLapiz];
+        hijo.tono = 1f;
 
         // ---- RELLENO (a las 2): 3 facetas verdes.
         ramaRelleno = CrearRama("Relleno", AnguloRelleno, negro);
+        ramaRelleno.sentido = -1f;
         IconoPaleta(ramaRelleno.raiz.t, new List<Vector2[]>
         {
             new[] { new Vector2(-0.3f, -0.3f), new Vector2(0.05f, -0.3f), new Vector2(-0.1f, 0.1f), new Vector2(-0.3f, 0.15f) },
@@ -687,6 +705,8 @@ public partial class ControlManos
     // Cada cuadro: qué botones se ven, cuáles van en amarillo, los arcos y el tamaño de los colores.
     void RefrescarBotonesPaleta()
     {
+        AcomodarHijos(ramaLinea);
+        AcomodarHijos(ramaRelleno);
         foreach (var b in botonesPaleta)
         {
             bool ver = (b.rama == null || b.rama == ramaAbierta) && (b.visible == null || b.visible());
@@ -707,6 +727,26 @@ public partial class ControlManos
         if (botonInvisible != null)
             botonInvisible.t.localScale = Vector3.one * botonInvisible.tamano * (marcado < 0 ? 1.3f : 1f);
         PonerColorMaterial(gotaCubeta, ColorDeRelleno);
+    }
+
+    // Los hijos que se ven quedan seguidos, sin huecos (por ejemplo, el halo o el lápiz solo a veces).
+    void AcomodarHijos(RamaPaleta r)
+    {
+        if (r == null)
+            return;
+        int k = 0;
+        foreach (var h in r.hijos)
+        {
+            if (h.visible != null && !h.visible())
+                continue;
+            float angulo = r.raiz.angulo + r.sentido * (PrimerHijo + k * PasoHijos);
+            k++;
+            if (Mathf.Abs(angulo - h.angulo) < 0.01f)
+                continue;
+            h.angulo = angulo;
+            float a = angulo * Mathf.Deg2Rad;
+            h.t.localPosition = new Vector3(Mathf.Cos(a) * RadioBotones, Mathf.Sin(a) * RadioBotones, -0.001f);
+        }
     }
 
     // El arco va de la raíz hasta su último hijo a la vista (se rehace solo si eso cambia).

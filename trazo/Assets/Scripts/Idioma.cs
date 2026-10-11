@@ -683,6 +683,21 @@ public static class Idioma
         "Nervioso", "Jittery",
         "Este relleno es liso: elige una textura en RELLENO (las 2 de la paleta)", "This fill is plain: pick a texture in FILL (2 o'clock on the palette)",
         "Línea recta de lápiz", "Pencil straight line",
+        // v34: capas en profundidad, puntos de tela, giro con el pulgar, modos del lápiz
+        "Empuja: capa de adelante · Atrae hacia ti: capa de atrás", "Push: layer in front · Pull toward you: layer behind",
+        "Esta ya es la capa de más adelante", "This is already the front layer",
+        "Esta ya es la capa del fondo", "This is already the back layer",
+        "Capas: ", "Layers: ",
+        "Punto de tela: llévalo hacia ti o hacia el fondo", "Cloth point: move it toward you or away",
+        "Lápiz: ", "Pencil: ",
+        "Pegado", "Stuck",
+        "Cuerda", "String",
+        "va justo en tu dedo", "right on your finger",
+        "un poco arrastrado, más liso", "a little dragged, smoother",
+        "te sigue con un hilo, muy liso", "follows you on a string, very smooth",
+        "El giro con el pulgar es para los fondos 360", "Turning with your thumb is for 360 backgrounds",
+        "Girar →", "Turn →",
+        "← Girar", "← Turn",
         "Toca la barra = ir a un fotograma · pellizca una clave = moverla · Foto, SVG, Grabar proceso e imágenes: en Mis archivos", "Touch the bar = go to a frame · pinch a key = move it · Photo, SVG, Record process and images: in My files",
     };
 }
