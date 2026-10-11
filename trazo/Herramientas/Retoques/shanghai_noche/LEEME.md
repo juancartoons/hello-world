@@ -5,8 +5,8 @@ Aquí se guarda cada paso aparte, para revisarlo antes de montarlo.
 
 | Paso | Archivo | Estado |
 |---|---|---|
-| 1. Quitar la gente | `paso1_sin_gente.jpg` (4096 × 2048) | Hecho, falta tu visto bueno |
-| 2. Quitar la neblina y dar contraste | — | Pendiente |
+| 1. Quitar la gente | `paso1_sin_gente.jpg` (4096 × 2048) | Hecho |
+| 2. Quitar la neblina y dar contraste | `paso2_sin_neblina.jpg` | Hecho, falta tu visto bueno |
 | 3. Nitidez (Real-ESRGAN) | — | Pendiente |
 | 4. Versión 8K (opcional, para probar en el visor) | — | Pendiente |
 | 5. Profundidad 3D nueva | — | Pendiente |
@@ -17,3 +17,8 @@ Aquí se guarda cada paso aparte, para revisarlo antes de montarlo.
 3. `rellenar.py`: rellena lo marcado con **LaMa** (licencia Apache-2.0), en ventanas de 512 × 512 a tamaño real que se traslapan, para que cada pedazo continúe al anterior sin costuras.
 
 Modelos (del OpenCV Model Zoo): `inpainting_lama_2025jan.onnx` y `object_detection_yolox_2022nov.onnx`.
+
+## Cómo se hizo el paso 2
+`neblina.py paso1_sin_gente.jpg paso2_sin_neblina.jpg 0.6 0.5`: quita el velo lechoso (el "canal oscuro" suavizado
+siguiendo los bordes, fuerza 0.6), luego contraste local en la luz (CLAHE, mezcla 0.5) y un 8 % más de color.
+Todos los filtros dan la vuelta (360), así que la costura sigue invisible.
