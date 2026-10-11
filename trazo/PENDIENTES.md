@@ -132,10 +132,7 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ## 2. Propuestas esperando tu decisión (escribe HY para hacerlas)
 
-- [ ] **Dar vida (con un soplo)**: cualquier dibujo cobra vida sin animarlo.
-  - Respirar y balancearse funciona con **cualquier** dibujo.
-  - Parpadear y mover la boca: la app **adivina** los ojos con reglas de forma (formas pequeñas cerradas, en pareja y arriba dentro de una forma grande) y la boca (una curva debajo).
-  - Si adivina mal, tú marcas una línea como **"Ojo"** o **"Boca"** (igual que en el títere se marcan las piernas).
+- [ ] **Dar vida (con un soplo)**: se pasó a la **sección 8 → C. Movimiento automático** (con todos sus detalles).
 - [ ] **Tutorial: tu primer personaje cobra vida**: al final del tutorial el usuario dibuja un círculo, dos puntos y una sonrisa, y la app le da vida. Como el tutorial pide el orden (cara, ojos, boca), nunca falla.
 - [ ] **Tutorial: el logo se dibuja en tu cuarto**: al empezar, en passthrough, una línea mágica dibuja el logo JCartoons en el aire, al ritmo de la música, y el muñequito sale caminando.
 - [ ] **Tutorial: tu primera película**: al terminar, un video automático de unos 10 segundos con lo que hiciste, con música y el título "Mi primera animación", listo para compartir.
@@ -283,18 +280,76 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [ ] Sonido a parlantes de fiesta por cable (la salida de audífonos o el USB-C del Quest), porque el Bluetooth llega con retraso.
 - Se puede reusar de JCartoons: el sintetizador de sonidos, las escalas que siempre suenan bonito, los ritmos y las líneas vivas.
 
-## 8. IA y "trucos que parecen IA" (sin granjas de servidores)
+## 8. Herramientas automáticas: nuestro camino hacia "lo que hace la IA"
 
-**Recomendación:** primero los trucos, que son gratis, instantáneos, sin internet y respetuosos con los artistas: *"tú dibujas y la app le da vida"*.
+**La idea:** la IA generativa fabrica **píxeles**; JCartoons trabaja con **líneas vivas** (nodos, curvas, capas y 3D). Nuestro camino son herramientas que **entienden los trazos** y ayudan al artista: el resultado siempre se puede editar, animar y mover en 3D, y sigue siendo tuyo.
 
-- [ ] **Reconocer garabatos dentro del visor**: Unity Inference Engine (antes "Sentis", gratis) con un modelo entrenado con los datos abiertos de *Quick Draw* de Google. La app sabe que dibujaste un gato y te ofrece orejas, cola o una versión limpia de tu biblioteca.
-- [ ] Física de línea: pelo, colas y orejas que rebotan como gelatina.
-- [ ] Dibujos intermedios automáticos entre dos poses (la base ya existe en la animación).
-- [ ] Efectos que se dibujan solos: lluvia, fuego, chispas, humo, burbujas.
-- [ ] Multitud: duplicar un personaje con pequeñas diferencias.
-- [ ] Cámara de cine automática.
-- [x] Ya existen: títere que camina y salta, lipsync, música automática y temblor de línea.
-- [ ] Más adelante: IA en tu propio PC (modelos abiertos) o en la nube **como opción de pago**, nunca como base de la app.
+**Reglas del camino**
+- Todo **gratis**.
+- Primero **algoritmos propios** (nivel 1): instantáneos, sin internet y sin licencias raras.
+- Después, **IA pequeña dentro del visor** (nivel 2), con modelos abiertos.
+- La **IA grande** solo como opción en tu PC (nivel 3), **nunca** como base de la app.
+- **Respeto a los artistas**: nada entrenado con trabajo ajeno sin permiso. Lo ideal: que la app aprenda de **tus** dibujos.
+
+**Orden recomendado**
+1. Calcar (imagen → vector).
+2. Dar vida (movimientos para cualquier dibujo).
+3. Inflar y Torno (2D → 3D).
+4. Pasar a limpio (boceto → tinta).
+5. Cubeta entre varias líneas.
+6. Esqueleto automático.
+7. Después, el nivel 2 (IA pequeña).
+
+### Nivel 1 · Algoritmos propios (sin IA)
+
+**A. De imagen a dibujo**
+- [ ] **Calcar** ★ *el primero*: importas una imagen y aparece una **capa nueva** con líneas y rellenos editables.
+  - Cómo: reduce la imagen a pocos colores (2 a 8), encuentra los contornos y los convierte en curvas con nodos y rellenos.
+  - Opciones: cuántos colores, nivel de detalle, o **solo contornos** (para colorear tú).
+  - Es como el "Calco de imagen" de Illustrator (que no es IA). Lo escribimos nosotros (el programa libre conocido, Potrace, tiene una licencia que nos obligaría a abrir todo el código).
+  - Tamaño: 1 o 2 tandas.
+- [ ] **Línea imán sobre la imagen**: mientras dibujas encima de una imagen, la línea se pega sola a los bordes cercanos (como el lazo magnético de Photoshop).
+
+**B. Del boceto a la tinta**
+- [ ] **Pasar a limpio**: los trazos de lápiz que se enciman se agrupan y se vuelven **una sola línea limpia** de tinta, en otra capa (el boceto queda debajo).
+- [ ] **Cubeta entre varias líneas**: rellenar una zona encerrada por **varias** líneas que se cruzan (hoy la cubeta necesita una sola línea cerrada). Los huecos pequeñitos se cierran solos.
+
+**C. Movimiento automático**
+- [ ] **Dar vida (con un soplo)**: cualquier dibujo cobra vida sin animarlo.
+  - Movimientos listos para **cualquier** dibujo: respirar, balancearse, rebotar, saludar, temblar de miedo, saltar de alegría (una "jaula" invisible deforma el dibujo).
+  - Parpadear y mover la boca: la app **adivina** los ojos con reglas de forma (formas pequeñas cerradas, en pareja y arriba dentro de una forma grande) y la boca (una curva debajo).
+  - Si adivina mal, tú marcas una línea como **"Ojo"** o **"Boca"** (igual que en el títere se marcan las piernas).
+- [ ] **Esqueleto automático**: la app calcula los huesos desde la forma del dibujo (su "eje del medio") y cualquier personaje puede caminar y saltar, sin marcar piernas. Base: el títere.
+- [ ] **Física de línea**: pelo, colas y orejas que rebotan como gelatina.
+- [ ] **Dibujos intermedios automáticos** entre dos poses (la base ya existe en la animación).
+- [ ] **Efectos que se dibujan solos**: lluvia, fuego, chispas, humo, burbujas.
+- [ ] **Multitud**: duplicar un personaje con pequeñas diferencias.
+- [ ] **Cámara de cine automática**: recorridos de cámara listos (acercarse, girar alrededor, paneo).
+
+**D. De 2D a 3D**
+- [ ] **Inflar**: una figura rellena se infla como globo y gana volumen (ideas públicas de *Teddy* y *Monster Mash* de Google). Sigue el camino de los puntos de tela de la v35.
+- [ ] **Extruir**: darle grosor a una figura plana, como una galleta.
+- [ ] **Torno**: dibujas medio perfil y la app lo gira para hacer un jarrón, una botella o un árbol.
+- [ ] *Largo plazo*: **dos vistas → 3D**: con un dibujo de frente y otro de lado, la app calcula las líneas en 3D.
+
+### Nivel 2 · IA pequeña dentro del visor (Unity Inference Engine, gratis)
+*Límite: el Quest 2 es modesto. Los modelos deben ser pequeños, y algunos tardarían unos segundos en vez de ser instantáneos.*
+- [ ] **Reconocer garabatos**: un modelo entrenado con los datos abiertos de *Quick Draw* de Google. La app sabe que dibujaste un gato y te ofrece orejas, cola o una versión limpia de tu biblioteca.
+- [ ] **Recortar al personaje** de una foto antes de calcarlo (así el vector sale limpio, sin el fondo).
+- [ ] **Profundidad de una imagen importada** para darle relieve (hoy los fondos 360 la calculan en tu PC; ver también la sección 1).
+- [ ] **Poses desde un video**: un personaje copia los movimientos de una persona grabada (modelos abiertos de pose).
+- [ ] **Tu propia IA** (idea propia): la app aprende de **tus** dibujos (tus ojos, tus manos, tu estilo) y te los ofrece mientras dibujas. Personal, ética y única.
+
+### Nivel 3 · IA grande, opcional, en tu PC (open source)
+*Necesita una PC con buena tarjeta de video. Hay que revisar la licencia de cada modelo (algunos no permiten vender lo que hagas).*
+- [ ] **Boceto → imagen** (ControlNet "scribble", en tu PC con ComfyUI) y luego **Calcar** la vuelve líneas editables.
+- [ ] **Imagen → modelo 3D** con modelos abiertos.
+- [ ] La nube, solo como **opción de pago**, nunca como base de la app.
+
+### Ya existe
+- [x] Títere que camina y salta, lipsync, música automática y temblor de línea.
+- [x] Profundidad IA para los fondos 360 (en tu PC: `trazo/Herramientas/profundidad360.py`).
+- [x] Puntos de tela (relieve en el relleno, v35).
 
 ## 9. Forma de trabajo (para cualquier sesión futura)
 
