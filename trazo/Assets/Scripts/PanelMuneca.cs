@@ -31,7 +31,7 @@ public class PanelMuneca : MonoBehaviour
     public TMP_Text textoAviso;
     public float suavizado = 20f;
 
-    const string textoAyuda = "Izq + pulgar: índice dibuja · índice+medio recta · medio nodos · anular grosor\nPuño: borrar · Pulgar izq/der: deshacer/rehacer · Doble toque: candado · Mira arriba: panel";
+    const string textoAyuda = "Izq + pulgar: índice dibuja · índice+medio recta · medio nodos · anular grosor\nPuño: borrar · Pulgar izq/der: deshacer/rehacer · Doble toque: candado · Mira arriba: capas · Mira abajo: mesa";
 
     bool visible;
     float ultimaVezVisto;
@@ -153,13 +153,20 @@ public class PanelMuneca : MonoBehaviour
         }
     }
 
+    // v36: ¿se está viendo el menú de la muñeca? (Mirar la muñeca es mirar hacia abajo: la mesa de trabajo espera.)
+    public static float VistoHasta { get; private set; } = -10f;
+    public static bool Visible => Time.time - VistoHasta < 0.8f;
+
     void Update()
     {
         Vector3 pos = Vector3.zero;
         Quaternion rot = Quaternion.identity;
         bool pose = control != null && control.PuedeVerPanel(visible, out pos, out rot);
         if (pose)
+        {
             ultimaVezVisto = Time.time;
+            VistoHasta = Time.time;
+        }
         // Pequeña espera antes de esconderlo, para que no parpadee.
         bool ver = pose || (visible && Time.time - ultimaVezVisto < 0.2f);
 

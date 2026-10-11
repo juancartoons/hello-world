@@ -997,6 +997,7 @@ public class Trazo : MonoBehaviour
             }
             Vector3 b = Vector3.Cross(t, n);
             float h = MedioGrosor(i, total);
+            float lugar = total > 0f ? largos[i] / total : 0f; // por dónde va (para el destello y el rebobinado)
             for (int k = 0; k < ladosTubo; k++)
             {
                 float ang = k * Mathf.PI * 2f / ladosTubo;
@@ -1004,6 +1005,7 @@ public class Trazo : MonoBehaviour
                 vertices.Add(p + dir * h);
                 normales.Add(dir);
                 uvs.Add(new Vector3(0f, 1f, NivelVisual));
+                uvs2.Add(new Vector2(0f, lugar));
             }
             if (i > 0)
             {

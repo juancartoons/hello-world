@@ -59,6 +59,15 @@ public class Escenario : MonoBehaviour
     readonly List<string> fotosPropias = new List<string>();
     Camera camara;
 
+    // VIDRIO VIVO (v36): el vidrio de los menús "mira" una versión chiquita y borrosa del fondo 360 puesto
+    // (ver Shaders/TrazoVidrio.shader). Se hace una sola vez al poner el fondo: no cuesta nada cada cuadro.
+    RenderTexture fondoBorroso;
+    Texture fotoBorrosa;
+    static readonly int idFondoBorroso = Shader.PropertyToID("_JCFondoBorroso");
+    static readonly int idFondoRot = Shader.PropertyToID("_JCFondoRot");
+    static readonly int idFondoHay = Shader.PropertyToID("_JCFondoHay");
+    static readonly int idFondoColor = Shader.PropertyToID("_JCFondoColor");
+
     // Tus fotos 360 se copian aquí al elegirlas.
     public static string CarpetaFotos360 => Path.Combine(Application.persistentDataPath, "Dibujos", "Fondos360");
     static string RutaAntigua => Path.Combine(Application.persistentDataPath, "Dibujos", "Fondo360.jpg"); // v27
@@ -90,6 +99,9 @@ public class Escenario : MonoBehaviour
         mr.receiveShadows = false;
         mf.sharedMesh = CrearMallaCuadricula();
         ListarFotosPropias();
+        // El vidrio, mientras tanto: blanco esmerilado.
+        Shader.SetGlobalFloat(idFondoHay, 0f);
+        Shader.SetGlobalColor(idFondoColor, fondo);
     }
 
     void Start()
@@ -249,6 +261,70 @@ public class Escenario : MonoBehaviour
             camara.clearFlags = CameraClearFlags.SolidColor;
             camara.backgroundColor = realidad ? new Color(0f, 0f, 0f, 0f) : fondo;
         }
+        ActualizarVidrio();
+    }
+
+    // ---------- Vidrio vivo (v36) ----------
+
+    void ActualizarVidrio()
+    {
+        Texture foto = null;
+        if (modo >= 3 && cascara != null && cascara.activeSelf && materialCascara != null)
+            foto = materialCascara.HasProperty("_BaseMap") ? materialCascara.GetTexture("_BaseMap") : materialCascara.mainTexture;
+        bool hay = false;
+        if (foto != null)
+        {
+            if (foto != fotoBorrosa || fondoBorroso == null || !fondoBorroso.IsCreated())
+            {
+                HacerBorroso(foto);
+                fotoBorrosa = foto;
+            }
+            hay = fondoBorroso != null;
+        }
+        Shader.SetGlobalFloat(idFondoHay, hay ? 1f : 0f);
+        // Sin fondo 360: el color de detrás (en la realidad, un gris claro).
+        Shader.SetGlobalColor(idFondoColor, modo == 2 ? new Color(0.72f, 0.73f, 0.76f) : fondo);
+    }
+
+    // La foto se achica a la mitad varias veces (cada vez promedia 4 pixeles) hasta 128 x 64: queda suave.
+    void HacerBorroso(Texture foto)
+    {
+        if (fondoBorroso == null)
+        {
+            fondoBorroso = new RenderTexture(128, 64, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default);
+            fondoBorroso.name = "FondoBorroso";
+            fondoBorroso.useMipMap = false;
+            fondoBorroso.wrapModeU = TextureWrapMode.Repeat;
+            fondoBorroso.wrapModeV = TextureWrapMode.Clamp;
+            fondoBorroso.filterMode = FilterMode.Bilinear;
+            fondoBorroso.Create();
+        }
+        int w = foto.width, h = foto.height;
+        Texture actual = foto;
+        RenderTexture temporal = null;
+        while (w > 256)
+        {
+            w = Mathf.Max(256, w / 2);
+            h = Mathf.Max(128, h / 2);
+            var rt = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Default);
+            rt.filterMode = FilterMode.Bilinear;
+            Graphics.Blit(actual, rt);
+            if (temporal != null)
+                RenderTexture.ReleaseTemporary(temporal);
+            temporal = rt;
+            actual = rt;
+        }
+        Graphics.Blit(actual, fondoBorroso);
+        if (temporal != null)
+            RenderTexture.ReleaseTemporary(temporal);
+        Shader.SetGlobalTexture(idFondoBorroso, fondoBorroso);
+    }
+
+    // El fondo 360 puede estar girado (el gesto del pulgar): el vidrio lo sabe cada cuadro.
+    void LateUpdate()
+    {
+        if (cascara != null && cascara.activeSelf)
+            Shader.SetGlobalMatrix(idFondoRot, Matrix4x4.Rotate(Quaternion.Inverse(cascara.transform.rotation)));
     }
 
     // ---------- Tus fotos 360 ----------
@@ -550,6 +626,11 @@ public class Escenario : MonoBehaviour
             Destroy(materialCascara);
         if (mallaCascara != null)
             Destroy(mallaCascara);
+        if (fondoBorroso != null)
+        {
+            fondoBorroso.Release();
+            Destroy(fondoBorroso);
+        }
     }
 
     Mesh CrearMallaCuadricula()

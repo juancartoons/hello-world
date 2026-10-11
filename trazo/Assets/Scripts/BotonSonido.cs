@@ -360,7 +360,7 @@ public class BotonSonido : MonoBehaviour
                     fuente.playOnAwake = false;
                     fuente.spatialBlend = 0f;
                 }
-                fuente.PlayOneShot(Sonidos.Burbuja, 0.6f);
+                fuente.PlayOneShot(Sonidos.Toque, 0.6f);
             }
         }
         dedoEnParlante = toca;

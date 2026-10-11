@@ -29,6 +29,7 @@ Shader "TrazoVR/Relleno"
             #pragma multi_compile_instancing
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "TrazoTemblor.hlsl"
+            #include "TrazoLuz.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseColor;
@@ -51,6 +52,7 @@ Shader "TrazoVR/Relleno"
                 float4 color      : COLOR;
                 float4 textura    : TEXCOORD0;
                 float semilla     : TEXCOORD1;
+                float3 posWS      : TEXCOORD2;
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -65,6 +67,7 @@ Shader "TrazoVR/Relleno"
                 o.color = v.color;
                 o.textura = v.textura;
                 o.semilla = v.extra.x;
+                o.posWS = posWS;
                 return o;
             }
 
@@ -139,6 +142,8 @@ Shader "TrazoVR/Relleno"
                 float3 c = i.color.rgb * _BaseColor.rgb;
                 if (i.textura.z > 0.5)
                     c = RellenoVivo(c, i.textura.xy, i.textura.z, i.textura.w, i.semilla);
+                // v36: la luz de la punta del dedo (suave).
+                c += TrazoColorLuz * (0.3 * TrazoLuzDedo(i.posWS));
                 return half4(c, 1);
             }
             ENDHLSL

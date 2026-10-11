@@ -211,6 +211,7 @@ public class Dibujo : MonoBehaviour
     readonly List<FotoDeshacer> rehacerRespaldo = new List<FotoDeshacer>();
     readonly List<float> anchosInicio = new List<float>();
     float pincelInicio, pincelLocalInicio;
+    bool rebobinando;   // deshaciendo: las líneas que desaparecen se rebobinan (EfectosLinea)
 
     // Destellos rojos del borrador
     readonly List<Transform> destellos = new List<Transform>();
@@ -894,6 +895,7 @@ public class Dibujo : MonoBehaviour
         if (!CapaActual.iman && !t.cerrado)
         {
             // Imán apagado: la línea queda tal como la dibujaste.
+            EfectosLinea.Materializar(t);
             Avisar();
             return;
         }
@@ -920,6 +922,9 @@ public class Dibujo : MonoBehaviour
                     Mensaje("Figura cerrada");
             }
         }
+        // v36: un destello la recorre de punta a punta (si al unirse quedó dentro de otra, no hace falta).
+        if (t != null && trazos.Contains(t))
+            EfectosLinea.Materializar(t);
         Avisar();
     }
 
@@ -1025,6 +1030,9 @@ public class Dibujo : MonoBehaviour
         {
             trazos.Remove(t);
         }
+        // v36: se deshace en polvo brillante (entonces ya no hace falta el destello rojo).
+        if (conDestello && EfectosLinea.Disolver(t))
+            conDestello = false;
         if (conDestello && materialBorrado != null && t.gameObject.activeSelf)
         {
             StartCoroutine(DestelloRojo(t, !esconder));
@@ -1697,7 +1705,15 @@ public class Dibujo : MonoBehaviour
         if (rehacer.Count > maxHistorial)
             rehacer.RemoveAt(0);
         rehacerRespaldo.Clear();
-        AplicarFoto(foto);
+        rebobinando = true; // las líneas que desaparecen se recogen solas (EfectosLinea)
+        try
+        {
+            AplicarFoto(foto);
+        }
+        finally
+        {
+            rebobinando = false;
+        }
         VecesDeshecho++;
         Mensaje("Deshecho");
         return true;
@@ -2373,7 +2389,11 @@ public class Dibujo : MonoBehaviour
         }
         foreach (var t in viejos.Values)
             if (t != null)
+            {
+                if (rebobinando)
+                    EfectosLinea.Rebobinar(t);
                 Destroy(t.gameObject);
+            }
         if (d.version < 7)
             EncantarDibujoViejo();
         nivelesSucios = true;

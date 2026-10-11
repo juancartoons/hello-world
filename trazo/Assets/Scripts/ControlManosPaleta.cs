@@ -450,7 +450,7 @@ public partial class ControlManos
         var negro = ColorMaterial(Color.black);
         var blanco = ColorMaterial(Color.white);
         DiscoPaleta(paleta, negro, 0.118f, new Vector3(0f, 0f, 0.002f));
-        DiscoPaleta(paleta, blanco, 0.11f, new Vector3(0f, 0f, 0.001f));
+        DiscoPaleta(paleta, MaterialVidrioPaleta() ?? blanco, 0.11f, new Vector3(0f, 0f, 0.001f)); // v36: de vidrio
         // El centro: aro fino y fondo gris clarito (así se ve también una línea blanca).
         DiscoPaleta(paleta, negro, 0.056f, new Vector3(0f, 0f, 0.0005f));
         DiscoPaleta(paleta, ColorMaterial(new Color(0.85f, 0.85f, 0.87f)), 0.052f, new Vector3(0f, 0f, 0.0003f));
@@ -459,6 +459,7 @@ public partial class ControlManos
         ArmarCentroRelleno();
         ArmarTextoCentro();
         ArmarBotonesPaleta(negro);
+        ArmarBurbujaSecreta();
         ArmarDatosPaleta();
         for (int i = 0; i < ColoresPaleta.Length; i++)
         {
@@ -727,6 +728,7 @@ public partial class ControlManos
         if (botonInvisible != null)
             botonInvisible.t.localScale = Vector3.one * botonInvisible.tamano * (marcado < 0 ? 1.3f : 1f);
         PonerColorMaterial(gotaCubeta, ColorDeRelleno);
+        RefrescarBurbujaSecreta();
     }
 
     // Los hijos que se ven quedan seguidos, sin huecos (por ejemplo, el halo o el lápiz solo a veces).

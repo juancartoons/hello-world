@@ -3,8 +3,54 @@ using UnityEngine;
 // Sonidos hechos por la app (sin archivos de audio): todo se calcula con matemáticas al empezar.
 public static class Sonidos
 {
-    static AudioClip burbuja, magia, paso, ding, tada;
+    static AudioClip burbuja, magia, paso, ding, tada, cristal;
     const int Frecuencia = 44100;
+
+    // Opción secreta de la paleta (la burbujita de arriba a la derecha): con burbujas (el "plop" de siempre) o sin
+    // burbujas (un "tin" fino de cristal). Se recuerda entre sesiones.
+    const string ClaveBurbujas = "jcartoons_burbujas";
+    static int conBurbujas = -1;
+    public static bool ConBurbujas
+    {
+        get
+        {
+            if (conBurbujas < 0)
+                conBurbujas = PlayerPrefs.GetInt(ClaveBurbujas, 1);
+            return conBurbujas != 0;
+        }
+        set
+        {
+            conBurbujas = value ? 1 : 0;
+            PlayerPrefs.SetInt(ClaveBurbujas, conBurbujas);
+        }
+    }
+
+    // El sonido de tocar algo: la burbujita o el cristal, según la opción secreta.
+    public static AudioClip Toque => ConBurbujas ? Burbuja : Cristal;
+
+    // "Tin" de cristal: una campanita muy corta y aguda (dos tonos que no son armónicos, como el vidrio),
+    // con un ataque suave y una cola que se apaga rápido.
+    public static AudioClip Cristal
+    {
+        get
+        {
+            if (cristal != null)
+                return cristal;
+            int muestras = Mathf.RoundToInt(Frecuencia * 0.32f);
+            var datos = new float[muestras];
+            for (int i = 0; i < muestras; i++)
+            {
+                float t = i / (float)Frecuencia;
+                float ataque = Mathf.Clamp01(t / 0.002f);
+                float a = Mathf.Sin(2f * Mathf.PI * 2637f * t) * Mathf.Exp(-t * 14f);
+                float b = Mathf.Sin(2f * Mathf.PI * 6980f * t) * Mathf.Exp(-t * 30f) * 0.35f;
+                float c = Mathf.Sin(2f * Mathf.PI * 4186f * t) * Mathf.Exp(-t * 22f) * 0.25f;
+                datos[i] = (a + b + c) * ataque;
+            }
+            cristal = Clip("Cristal", datos, 0.55f);
+            return cristal;
+        }
+    }
 
     // "Plop" de una burbujita que revienta: un tono corto que sube rápido y se apaga, con un pequeño chasquido.
     public static AudioClip Burbuja

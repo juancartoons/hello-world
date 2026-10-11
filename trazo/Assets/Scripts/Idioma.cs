@@ -335,8 +335,8 @@ public static class Idioma
         "Campo seco", "Dry field",
         "Golf de noche", "Golf course at night",
         "Avenida ancha", "Wide avenue",
-        "Orilla de Shanghai", "Shanghai riverside",
         "Azotea en Nueva York", "New York rooftop",
+        "Sala de lujo", "Luxury living room",
         "Callejón de Venecia", "Venice alley",
         "Atardecer en el mar", "Sunset by the sea",
         "Crucero de lujo", "Luxury cruise ship",
@@ -380,8 +380,8 @@ public static class Idioma
         "Borrador x", "Eraser x",
         " líneas elegidas", " lines selected",
         "1 línea elegida", "1 line selected",
-        "Izq + pulgar: índice dibuja · índice+medio recta · medio nodos · anular grosor\nPuño: borrar · Pulgar izq/der: deshacer/rehacer · Doble toque: candado · Mira arriba: panel",
-        "Left + thumb: index draws · index+middle straight · middle nodes · ring width\nFist: erase · Thumb left/right: undo/redo · Double tap: lock · Look up: panel",
+        "Izq + pulgar: índice dibuja · índice+medio recta · medio nodos · anular grosor\nPuño: borrar · Pulgar izq/der: deshacer/rehacer · Doble toque: candado · Mira arriba: capas · Mira abajo: mesa",
+        "Left + thumb: index draws · index+middle straight · middle nodes · ring width\nFist: erase · Thumb left/right: undo/redo · Double tap: lock · Look up: layers · Look down: desk",
 
         // ----- Mensajes -----
         "Guardado: ", "Saved: ",
@@ -416,7 +416,7 @@ public static class Idioma
         "Imagen: ", "Image: ",
         "Borde de la hoja del lápiz", "Edge of the pencil sheet",
         "Panel fijo. Pellizca el asa (arriba) para moverlo", "Panel pinned. Pinch the handle (top) to move it",
-        "El panel aparece al mirar arriba", "The panel appears when you look up",
+        "La mesa aparece al mirar abajo", "The desk appears when you look down",
         "Barra: todos los fotogramas", "Bar: all frames",
         "Barra: ", "Bar: ",
         " fotogramas", " frames",
@@ -704,6 +704,8 @@ public static class Idioma
         "Toca la barra = ir a un fotograma · pellizca una clave = moverla · Foto, SVG, Grabar proceso e imágenes: en Mis archivos", "Touch the bar = go to a frame · pinch a key = move it · Photo, SVG, Record process and images: in My files",
         // v35: capas más cerca con "+ Capa", tela con pellizco
         "+ Capa", "+ Layer",
+        // v36: como de 2030 (pastillita de capas, mesa de trabajo, burbujita secreta)
+        " · de ", " · of ",
         "Ya no caben más capas (máximo 12)", "No room for more layers (12 max)",
     };
 }

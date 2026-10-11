@@ -5,10 +5,14 @@ Shader "TrazoVR/Linea"
     //   hacia los lados mirando siempre a la cámara, así se ve como un trazo de tinta limpio.
     // - Tubo (uv.y = 1): la malla ya es un tubo 3D; se le da un brillo suave arriba para que se lea el volumen.
     // Compatible con URP, SRP Batcher y estéreo de Meta Quest (multiview / single-pass instanced).
+    // v36: la luz de la punta del dedo la ilumina; al terminarla, un destello la recorre de punta a punta
+    // (_JCDestello = cuándo empezó); y al deshacer se "rebobina" (_JCCorte: lo que pasa de ahí no se dibuja).
     Properties
     {
         _BaseColor ("Color de la línea", Color) = (0, 0, 0, 1)
         _ColorLuz ("Brillo del tubo", Color) = (0.45, 0.45, 0.45, 1)
+        [HideInInspector] _JCDestello ("Destello (segundos)", Float) = 0
+        [HideInInspector] _JCCorte ("Corte (0 a 1)", Float) = 2
     }
 
     SubShader
@@ -27,10 +31,13 @@ Shader "TrazoVR/Linea"
             #pragma multi_compile_instancing
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "TrazoTemblor.hlsl"
+            #include "TrazoLuz.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseColor;
                 float4 _ColorLuz;
+                float _JCDestello;
+                float _JCCorte;
             CBUFFER_END
 
             struct Attributes
@@ -49,6 +56,8 @@ Shader "TrazoVR/Linea"
                 float4 positionCS : SV_POSITION;
                 float3 normalWS   : TEXCOORD0;
                 float esTubo      : TEXCOORD1;
+                float3 posWS      : TEXCOORD2;
+                float lugar       : TEXCOORD3; // 0 al empezar la línea, 1 al terminarla
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -88,15 +97,32 @@ Shader "TrazoVR/Linea"
                 o.positionCS = TransformWorldToHClip(posWS);
                 o.normalWS = nWS;
                 o.esTubo = v.uv.y;
+                o.posWS = posWS;
+                o.lugar = v.uv2.y;
                 return o;
             }
 
             half4 Frag(Varyings i) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
+                // Rebobinar (deshacer): lo que pasa del corte no se dibuja.
+                clip(_JCCorte - i.lugar);
                 float luz = saturate(dot(normalize(i.normalWS), normalize(float3(0.3, 0.9, -0.3))));
                 float k = step(0.5, i.esTubo) * luz * luz;
-                return half4(lerp(_BaseColor.rgb, _ColorLuz.rgb, k), 1);
+                float3 col = lerp(_BaseColor.rgb, _ColorLuz.rgb, k);
+                // Se materializa: un destello de luz recorre la línea de punta a punta (unos 0.55 segundos).
+                if (_JCDestello > 0.0)
+                {
+                    float paso = (_Time.y - _JCDestello) / 0.55;
+                    if (paso > -0.25 && paso < 1.35)
+                    {
+                        float x = (i.lugar - paso) / 0.07;
+                        col += TrazoColorLuz * (0.95 * exp(-x * x));
+                    }
+                }
+                // La luz de la punta del dedo.
+                col += TrazoColorLuz * (0.55 * TrazoLuzDedo(i.posWS));
+                return half4(col, 1);
             }
             ENDHLSL
         }

@@ -3,10 +3,15 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 
-// Panel de arriba. Aparece cuando miras hacia arriba.
+// Panel de arriba, que desde la v36 es la MESA DE TRABAJO: aparece al MIRAR HACIA ABAJO (medio segundo), inclinada
+// frente a tu cintura, como una mesa de edición. (Mirar arriba ahora es para las capas.)
+//  - No sale mientras dibujas ni justo después, ni mientras miras el menú de la muñeca o la paleta.
+//  - El reproductor y la línea de tiempo (página Animar, o las páginas guardadas) se QUEDAN a la vista y te
+//    siguen despacio; las otras páginas (Medios, Bocas, Títere) solo mientras miras abajo. Su X la guarda.
+//  - Si no la miras, se vuelve discreta (Respira); al mirarla despierta.
 //  - ASA (barra de arriba): pellízcala con la derecha y arrastra el panel a donde quieras.
 //    Mientras lo arrastras, pellizca también con la izquierda y separa/junta las manos = tamaño.
-//    Después de moverlo (o con "Fijar aquí") se queda fijo y siempre visible. "Seguirme" lo devuelve a "mirar arriba".
+//    Después de moverlo (o con "Fijar aquí") se queda fijo y siempre visible. "Seguirme" lo devuelve a la mesa.
 //  - Línea de tiempo (hasta 2000 fotogramas): toca la barra con el índice derecho para ir a un fotograma.
 //    "Zoom" cambia cuántos fotogramas caben en la barra (Todo, 400, 100, 25).
 //    Pellizca una clave (marca naranja) y arrástrala para moverla a otro fotograma.
@@ -82,7 +87,7 @@ public class PanelArriba : MonoBehaviour
     public BotonTocable btnPosar, btnCiclo, btnGuardarCiclo, btnBrazo1, btnBrazo2, btnPiso;
     public TMP_Text textoTitere;
 
-    [Tooltip("Qué tanto hay que mirar hacia arriba para que aparezca (0 a 1)")]
+    [Tooltip("Sin uso desde la v36 (ahora es la mesa de trabajo, al mirar abajo)")]
     public float mirarArribaEntra = 0.35f;
     public float mirarArribaSale = 0.15f;
     public float distancia = 0.32f;
@@ -91,7 +96,15 @@ public class PanelArriba : MonoBehaviour
 
     bool visible;
     bool anclado;          // lo moviste: se queda fijo y siempre visible
-    BotonTocable btnVolverArriba; // la X: vuelve a aparecer solo al mirar arriba
+    // v36: la mesa de trabajo (al mirar abajo).
+    const float MirarAbajoEntra = 0.5f;   // cuánto hay que mirar abajo (y de la mirada, unos 30°)
+    const float MirarAbajoSale = 0.12f;
+    const float EsperaMesa = 0.5f;
+    const float DistanciaMesa = 0.42f, AlturaMesa = -0.36f;  // frente a tu cintura (desde tus ojos)
+    const float SeguirMesa = 1.5f;        // qué tan rápido te sigue cuando giras
+    float abajoDesde = -1f, arribaDesde = -1f;
+    Respira respira;
+    BotonTocable btnVolverArriba; // la X: guarda la mesa (vuelve a salir al mirar abajo)
     bool arrastrando;
     bool escalando;
     Vector3 desfaseAsa;
@@ -466,7 +479,7 @@ public class PanelArriba : MonoBehaviour
             dibujo.Mensaje(Ventanas[zoom] <= 0 ? "Barra: todos los fotogramas" : "Barra: " + Ventanas[zoom] + " fotogramas");
     }
 
-    // "Fijar aquí": el panel se queda donde está y siempre visible. "Seguirme": vuelve a aparecer al mirar arriba.
+    // "Fijar aquí": el panel se queda donde está y siempre visible. "Seguirme": vuelve a ser la mesa (al mirar abajo).
     void AlternarFijo()
     {
         if (anclado)
@@ -479,7 +492,7 @@ public class PanelArriba : MonoBehaviour
             dibujo.Mensaje("Panel fijo. Pellizca el asa (arriba) para moverlo");
     }
 
-    // X arriba a la derecha (solo cuando el panel está fijo en otro lugar): lo devuelve a "mirar arriba".
+    // X arriba a la derecha: guarda la mesa (vuelve a salir al mirar abajo). Si estaba fija, también la suelta.
     void CrearX()
     {
         if (contenido == null || btnSeguir == null)
@@ -525,11 +538,12 @@ public class PanelArriba : MonoBehaviour
     void Seguirme()
     {
         anclado = false;
-        visible = false; // al volver a mirar arriba aparece frente a ti
+        visible = false; // al volver a mirar abajo aparece frente a ti
+        abajoDesde = -1f;
         if (contenido != null)
             contenido.SetActive(false);
         if (dibujo != null)
-            dibujo.Mensaje("El panel aparece al mirar arriba");
+            dibujo.Mensaje("La mesa aparece al mirar abajo");
     }
 
     void SiguienteFondo()
@@ -585,21 +599,63 @@ public class PanelArriba : MonoBehaviour
         if (cabeza == null || contenido == null)
             return;
 
-        float arriba = cabeza.forward.y;
-        bool ver = anclado || (visible ? arriba > mirarArribaSale : arriba > mirarArribaEntra);
+        if (respira == null)
+        {
+            // Una interfaz que respira con tu atención (v36).
+            respira = gameObject.AddComponent<Respira>();
+            respira.contenido = contenido.transform;
+        }
+
+        float abajo = -cabeza.forward.y;
+        float ahora = Time.time;
+        bool ver = visible;
+        if (anclado)
+        {
+            ver = true;
+        }
+        else if (!visible)
+        {
+            arribaDesde = -1f;
+            bool libre = control.SegundosSinEditar > 1f && !control.Ocupado && !control.PaletaAbierta && !PanelMuneca.Visible
+                         && !CapasProfundidad.Abierta;
+            if (abajo > MirarAbajoEntra && libre)
+            {
+                if (abajoDesde < 0f)
+                    abajoDesde = ahora;
+                else if (ahora - abajoDesde > EsperaMesa)
+                    ver = true;
+            }
+            else
+            {
+                abajoDesde = -1f;
+            }
+        }
+        else
+        {
+            abajoDesde = -1f;
+            // El reproductor y la línea de tiempo se quedan; las otras páginas, solo mientras miras abajo.
+            bool queda = plegado || pagina == 0;
+            bool dedoEnMesa = control.Der.valida && Contiene(control.Der.indice);
+            if (!queda && abajo < MirarAbajoSale && !dedoEnMesa && !arrastrando)
+            {
+                if (arribaDesde < 0f)
+                    arribaDesde = ahora;
+                else if (ahora - arribaDesde > 0.4f)
+                    ver = false;
+            }
+            else
+            {
+                arribaDesde = -1f;
+            }
+        }
         if (ver != visible)
         {
             visible = ver;
             contenido.SetActive(ver);
             if (ver && !anclado)
             {
-                // Se queda en la dirección hacia donde mirabas al levantar la vista.
-                Vector3 adelante = cabeza.forward;
-                adelante.y = 0f;
-                if (adelante.sqrMagnitude < 1e-4f)
-                    adelante = cabeza.up;
-                adelante.y = 0f;
-                giro = Quaternion.LookRotation(adelante.sqrMagnitude > 1e-6f ? adelante.normalized : Vector3.forward, Vector3.up);
+                // Aparece frente a ti, hacia donde mirabas (solo el giro de lado: la mesa no se inclina contigo).
+                giro = GiroDeLado(cabeza);
                 Colocar(cabeza, 1f);
             }
         }
@@ -612,15 +668,33 @@ public class PanelArriba : MonoBehaviour
 
         RevisarAsa(cabeza);
         if (!anclado)
+        {
+            // Te sigue despacio cuando giras (como las capas).
+            giro = Quaternion.Slerp(giro, GiroDeLado(cabeza), 1f - Mathf.Exp(-SeguirMesa * Time.deltaTime));
             Colocar(cabeza, 1f - Mathf.Exp(-suavizado * Time.deltaTime));
+        }
         if (!arrastrando)
             RevisarBarra();
         Refrescar();
     }
 
+    // Hacia dónde miras, solo de lado (sin subir ni bajar).
+    static Quaternion GiroDeLado(Transform cabeza)
+    {
+        Vector3 adelante = cabeza.forward;
+        adelante.y = 0f;
+        if (adelante.sqrMagnitude < 1e-4f)
+        {
+            adelante = cabeza.up;   // mirando justo abajo: la coronilla dice hacia dónde estás
+            adelante.y = 0f;
+        }
+        return Quaternion.LookRotation(adelante.sqrMagnitude > 1e-6f ? adelante.normalized : Vector3.forward, Vector3.up);
+    }
+
+    // La mesa: frente a tu cintura, inclinada mirando hacia tus ojos.
     void Colocar(Transform cabeza, float a)
     {
-        Vector3 pos = cabeza.position + giro * new Vector3(0f, altura, distancia);
+        Vector3 pos = cabeza.position + giro * new Vector3(0f, AlturaMesa, DistanciaMesa);
         Quaternion rot = Quaternion.LookRotation(pos - cabeza.position, Vector3.up);
         transform.position = Vector3.Lerp(transform.position, pos, a);
         transform.rotation = Quaternion.Slerp(transform.rotation, rot, a);
@@ -868,7 +942,7 @@ public class PanelArriba : MonoBehaviour
         {
             btnSeguir.Marcar(anclado); // el alfiler: oscuro = fijo aquí
         }
-        MostrarX(anclado);
+        MostrarX(true); // v36: la X siempre está (guarda la mesa)
 
         RefrescarCapas();
         if (pagina == 0)
@@ -1198,7 +1272,8 @@ public class PanelArriba : MonoBehaviour
             return;
         var o = original.transform;
         transform.localScale = o.localScale;
-        transform.SetPositionAndRotation(o.position - o.up * (BajarAyuda * o.lossyScale.y), o.rotation);
+        // v36: la mesa está abajo, así que la copia azul va ENCIMA de ella.
+        transform.SetPositionAndRotation(o.position + o.up * (BajarAyuda * o.lossyScale.y), o.rotation);
     }
 
     void PrepararAyuda()
@@ -1328,7 +1403,7 @@ public class PanelArriba : MonoBehaviour
         { "BOCAS (página)", "MOUTHS (page)\nLipsync: save mouth shapes (A, E, I, O, U, M...) and the app makes the keys from your voice or an audio." },
         { "TÍTERE (página)", "PUPPET (page)\nCharacters that walk, run and jump with your hand. Create, record, walk cycles and build your own characters." },
         { "ZOOM", "ZOOM\nHow many frames fit on the timeline: All, 400, 100 or 25. With fewer frames the keys (orange marks) are farther apart and easier to touch." },
-        { "FIJAR AQUÍ / SEGUIRME", "PIN HERE / FOLLOW ME\nThe pin: tap it and the panel stays in place and always visible (dark pin). Tap it again: it appears only when you look up.\nAlso: pinch the blue handle to move it; pinching with your left hand too, spread your hands = bigger." },
+        { "FIJAR AQUÍ / SEGUIRME", "PIN HERE / FOLLOW ME\nThe pin: tap it and the panel stays in place and always visible (dark pin). Tap it again: it goes back to being the work desk (it appears when you look down).\nAlso: pinch the blue handle to move it; pinching with your left hand too, spread your hands = bigger." },
         { "INICIO", "START\nGoes to frame 1." },
         { "< (ANTERIOR)", "< (PREVIOUS)\nGoes back one frame. You can also touch the timeline with your right index finger." },
         { "> (SIGUIENTE)", "> (NEXT)\nGoes forward one frame." },
@@ -1424,7 +1499,7 @@ public class PanelArriba : MonoBehaviour
             foreach (var b in btnPlanoCapa)
                 Poner(d, b, "PLANO (de esta capa)\nPropio: la capa tiene su propia hoja en Plano 2D. Unido: usa la misma hoja que las otras capas unidas (boceto atrás, tinta adelante).");
         Poner(d, btnZoom, "ZOOM\nCuántos fotogramas caben en la barra de tiempo: Todo, 400, 100 o 25. Con menos fotogramas ves las claves (marcas naranjas) más separadas y es más fácil tocarlas.");
-        Poner(d, btnSeguir, "FIJAR AQUÍ / SEGUIRME\nEl alfiler: tócalo y el panel se queda en ese lugar y siempre visible (alfiler oscuro). Tócalo otra vez: vuelve a aparecer solo cuando miras hacia arriba.\nTambién: pellizca el asa azul para moverlo; pellizcando además con la izquierda, separa las manos = más grande.");
+        Poner(d, btnSeguir, "FIJAR AQUÍ / SEGUIRME\nEl alfiler: tócalo y el panel se queda en ese lugar y siempre visible (alfiler oscuro). Tócalo otra vez: vuelve a ser la mesa de trabajo (aparece al mirar hacia abajo).\nTambién: pellizca el asa azul para moverlo; pellizcando además con la izquierda, separa las manos = más grande.");
 
         // Animar
         Poner(d, btnInicio, "INICIO\nVa al fotograma 1.");

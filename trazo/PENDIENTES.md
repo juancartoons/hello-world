@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 11 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v35***
+*Actualizado: 11 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v36***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -17,14 +17,27 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ---
 
-## 0. En curso para la v36
+## 0+. Hecho en la v36 "como de 2030" (falta probarlo en el visor)
 
-- [x] **Fondo nuevo "Azotea en Nueva York"** (hecho por Juan Carlos con ChatGPT, subido a 4K y con profundidad IA) en lugar de **Refugio con grafitis** (★ Armar escena lo borra solo de tu proyecto).
-- [ ] **Retoques de fondos esperando tu visto bueno** (aparte en `trazo/Herramientas/Retoques`, todavía no están en la app):
-  - Shanghai de noche: sin gente, sin neblina, con nitidez (y una versión 8K aparte).
-  - Atardecer en el mar: sin la baranda cercana.
-  - Canal de Venecia: sin la reja de hierro deformada del puente.
-  - Sala de lujo (nuevo fondo, hecho con ChatGPT): costura unida, 4K y profundidad.
+**Fondos** (★ Armar escena borra solos de tu proyecto los que se fueron)
+- [x] **Shanghai de noche retocado**: sin gente, sin neblina y más nítido.
+- [x] **Atardecer en el mar** sin la baranda cercana y **Canal de Venecia** sin la reja deformada del puente.
+- [x] **Sala de lujo** (nuevo, hecho con ChatGPT): costura unida, 4K y profundidad IA.
+- [x] **Azotea en Nueva York** en lugar de Refugio con grafitis.
+- [x] Se quitó **Orilla de Shanghai** (el de día).
+
+**Como de 2030**
+- [x] **Vidrio vivo**: los menús y la paleta son de vidrio esmerilado; a través se ve tu fondo 360 borroso (y gris en modo realidad), con un brillo en el borde que cambia al moverte.
+- [x] **Interfaz que respira** (la mesa de trabajo): discreta si no la miras, despierta al mirarla o acercar el dedo; aparece con un rebote de resorte y un sonidito fino.
+- [x] **Luz en la punta del dedo**: el índice lleva una lucecita; las líneas, los rellenos y el vidrio se iluminan un poquito cerca del dedo. **Manos de vidrio** con el contorno iluminado. *(Si no te gusta: se vuelve a lo de antes dejando vacío "Material Mano Vidrio" en ControlManos, o me escribes y lo quito.)*
+- [x] **Líneas que cobran vida**: al terminar una línea, un destello la recorre; al borrarla, se deshace en **polvo brillante**; al deshacer, se **rebobina** (se recoge desde su final).
+- [x] **Burbujita secreta** de la paleta (arriba a la derecha, por fuera de los botones): **llena** = con burbujas (el "plop" de siempre); **hueca** = sin burbujas (un "tin" de cristal). Tócala para cambiar. No sale en los tutoriales.
+
+**Capas y mesa de trabajo**
+- [x] **Pastillita "Capa 2 · de 5"**, siempre visible, chiquita y de vidrio, arriba de tu vista. Se despierta cuando la miras.
+- [x] **Mirar arriba** (medio segundo) = se despliegan las capas, **en el mismo lugar de siempre**. **Bajar la mirada** = se recogen. No salen mientras dibujas ni justo después (1 s), ni con la paleta, el títere, un tutorial o una exportación. Abiertas con la mano: se cierran solas a los 20 s, como antes.
+- [x] **Mesa de trabajo**: el menú de arriba aparece al **mirar abajo** (medio segundo), inclinado frente a tu cintura. Con la página **Animar** (reproductor y línea de tiempo) o las pestañas guardadas, **se queda** y te sigue despacio; **Medios, Bocas y Títere** se van al volver a mirar al frente (salvo si tienes el dedo encima). La **X** la guarda. El asa sigue funcionando para moverla y dejarla fija.
+- [x] Tutorial Novedades y ayudas al día.
 
 ## 0+. Hecho en la v35 (falta probarlo en el visor)
 
@@ -141,6 +154,8 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ## 2. Propuestas esperando tu decisión (escribe HY para hacerlas)
 
+- [ ] **Persiana** (plan B de la mesa de trabajo): si la mesa al mirar abajo no te convence, el menú de arriba baja como una persiana desde arriba de tu vista.
+- [ ] **Burbujas o cristal**: después de probar las dos con la burbujita secreta, decide cuál queda por defecto (o si se quedan las dos).
 - [ ] **Dar vida (con un soplo)**: se pasó a la **sección 8 → C. Movimiento automático** (con todos sus detalles).
 - [ ] **Tutorial: tu primer personaje cobra vida**: al final del tutorial el usuario dibuja un círculo, dos puntos y una sonrisa, y la app le da vida. Como el tutorial pide el orden (cara, ojos, boca), nunca falla.
 - [ ] **Tutorial: el logo se dibuja en tu cuarto**: al empezar, en passthrough, una línea mágica dibuja el logo JCartoons en el aire, al ritmo de la música, y el muñequito sale caminando.
@@ -167,6 +182,16 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [ ] Cuando ya no haga falta, quitar el botón **Tutorial** de Mis archivos (por ahora se queda; abre el mismo panel "?").
 
 ## 5. Para probar en el visor (desde la v21 casi nada se ha probado)
+
+**Nuevo en la v36:**
+- [ ] Vidrio vivo: ¿se ve el fondo borroso a través de los menús y la paleta? ¿se leen bien las letras? ¿algo se ve raro detrás del vidrio (líneas que desaparecen detrás del panel)?
+- [ ] Luz en el dedo y manos de vidrio: ¿se nota la luz? ¿las manos de vidrio se ven bien o prefieres las de antes?
+- [ ] Líneas: ¿el destello al terminar, el polvo al borrar y el rebobinado al deshacer se ven bonitos? ¿alguno molesta o se pone lento?
+- [ ] Burbujita secreta: prueba con burbujas y sin burbujas. ¿Cuál te gusta más?
+- [ ] Pastillita: ¿se lee? ¿estorba? ¿está a buena altura?
+- [ ] Mirar arriba / abajo para las capas: ¿se abren sin querer? ¿el medio segundo está bien? ¿se cierran bien al bajar la mirada?
+- [ ] Mesa de trabajo: ¿aparece cómoda al mirar abajo? ¿estorba cuando dibujas abajo? ¿te gusta que el reproductor y la línea de tiempo se queden? ¿respira bien (discreta / despierta)?
+- [ ] Fondos: Shanghai de noche, Atardecer en el mar, Canal de Venecia y Sala de lujo: ¿se ven bien los retoques? ¿la profundidad?
 
 **Nuevo en la v35:**
 - [ ] Capas: ¿la distancia de 35 cm está bien? ¿se nota que todo el montón se mueve? ¿las de adelante ya no molestan cerca de los ojos? ¿el botón "+ Capa" se toca fácil?

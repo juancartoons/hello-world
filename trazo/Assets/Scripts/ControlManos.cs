@@ -1826,8 +1826,14 @@ public partial class ControlManos : MonoBehaviour
             tri[i * 3 + 1] = 1 + (i + 1) % lados;
             tri[i * 3 + 2] = 1 + i;
         }
+        // UV: el centro en (0.5, 0.5) y la orilla en (0, 0) (así el vidrio sabe dónde está el borde del círculo).
+        var uv = new Vector2[lados + 1];
+        uv[0] = new Vector2(0.5f, 0.5f);
+        for (int i = 1; i <= lados; i++)
+            uv[i] = Vector2.zero;
         mallaDisco = new Mesh { name = "Disco" };
         mallaDisco.vertices = v;
+        mallaDisco.uv = uv;
         mallaDisco.triangles = tri;
         mallaDisco.RecalculateNormals();
         mallaDisco.RecalculateBounds();
@@ -2091,7 +2097,7 @@ public partial class ControlManos : MonoBehaviour
         }
         fuenteSonidos.transform.position = donde;
         fuenteSonidos.pitch = tono * Random.Range(0.85f, 1.25f);
-        fuenteSonidos.PlayOneShot(Sonidos.Burbuja, 0.7f);
+        fuenteSonidos.PlayOneShot(Sonidos.Toque, 0.7f);
     }
 
     // ---------- Esconder una mano (cuando se vuelve borrador o flecha) ----------
@@ -2177,6 +2183,7 @@ public partial class ControlManos : MonoBehaviour
 
     void LateUpdate()
     {
+        Actualizar2030();
         ActualizarGuante();
         EjecutarLapiz();
         ActualizarManoCopia();

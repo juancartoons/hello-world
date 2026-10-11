@@ -80,7 +80,16 @@ public static class ArmarEscenaTrazo
         var matHalo = shaderHalo != null ? Mat("Halo", shaderHalo, new Color(1f, 1f, 1f, 0.85f)) : null;
         var matCaja = Mat("Caja", unlit, new Color(0.65f, 0.78f, 1f));
         var matGuia = Mat("Guia", unlit, new Color(0.7f, 0.8f, 0.95f));
-        var matPanel = Mat("Panel", unlit, new Color(0.97f, 0.97f, 0.98f));
+        // v36: los menús y la paleta son de VIDRIO VIVO (si falta el shader, quedan blancos como antes).
+        var shaderVidrio = Shader.Find("TrazoVR/Vidrio");
+        var matPanel = Mat("Panel", shaderVidrio != null ? shaderVidrio : unlit, new Color(0.97f, 0.97f, 0.98f));
+        if (shaderVidrio == null)
+            Debug.LogWarning("TrazoVR: no encontré el shader del vidrio (copia otra vez la carpeta Shaders).");
+        // v36: el polvo brillante al borrar, la lucecita de los índices y las manos de vidrio.
+        var shaderPolvo = Shader.Find("TrazoVR/Polvo");
+        var shaderManoVidrio = Shader.Find("TrazoVR/ManoVidrio");
+        Material matPolvo = shaderPolvo != null ? Mat("Polvo", shaderPolvo, Color.white) : null;
+        Material matManoVidrio = shaderManoVidrio != null ? Mat("ManoVidrio", shaderManoVidrio, new Color(0.72f, 0.86f, 1f)) : null;
         var matBoton = Mat("Boton", unlit, new Color(0.86f, 0.87f, 0.9f));
         var matBotonMarcado = Mat("BotonMarcado", unlit, new Color(0.08f, 0.08f, 0.1f));
         var matBorrado = Mat("Borrado", unlit, new Color(0.95f, 0.15f, 0.15f));
@@ -224,6 +233,9 @@ public static class ArmarEscenaTrazo
         control.dibujo = dibujo;
         control.caja = caja;
         control.materialNodo = matNodo;
+        control.materialPolvo = matPolvo;
+        control.materialManoVidrio = matManoVidrio;
+        control.materialVidrio = shaderVidrio != null ? matPanel : null;
         control.materialIconos = matIconos;
         control.materialNodoActivo = matNodoActivo;
         control.materialCursor = matCursor;
@@ -920,12 +932,12 @@ public static class ArmarEscenaTrazo
         { "campo_seco360", "Campo seco" },
         { "golf_noche360", "Golf de noche" },
         { "avenida360", "Avenida ancha" },
-        { "shanghai_dia360", "Orilla de Shanghai" },
         { "nueva_york360", "Azotea en Nueva York" },
+        { "sala_lujo360", "Sala de lujo" },
     };
 
     // Fondos que ya no vienen con la app: si siguen en tu proyecto de Unity, se borran solos.
-    static readonly string[] FondosQuitados = { "cuarto360", "crucero360", "columnas360", "luna360", "grafitis360" };
+    static readonly string[] FondosQuitados = { "cuarto360", "crucero360", "columnas360", "luna360", "grafitis360", "shanghai_dia360" };
 
     static void QuitarFondosViejos()
     {

@@ -2,21 +2,28 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Tutorial de NOVEDADES (sección 4 del panel "?"): lo nuevo de las últimas versiones, con una animación corta
-// de cada cosa. Se actualiza en cada versión.
-//  1 · Capas en profundidad (empujar / atraer).   5 · Paleta con botones hijos (LÍNEA y RELLENO), estable.
-//  2 · Puntos de tela (relieve en el relleno).    6 · Relleno vivo y su tamaño (2 dedos).
-//  3 · Girar con el pulgar (fondos 360).          7 · Fondos 360 (ventanita) y papel blanco del boceto.
-//  4 · El lápiz: Pegado / Suave / Cuerda y recta.  8 · Las líneas 2D se quedan en su hoja.
+// de cada cosa. Se actualiza en cada versión (esta es la v36, "como de 2030").
+//  1 · Capas: mira arriba (la pastillita).           5 · Menús que respiran.
+//  2 · Mesa de trabajo: mira abajo.                  6 · Tela con pellizco.
+//  3 · Líneas que cobran vida (destello, polvo...).  7 · Capas: empujar y atraer.
+//  4 · Vidrio vivo y luz en tu dedo.                 8 · Fondos nuevos y retocados.
 public class TutorialNovedades : TarjetaTutorial
 {
-    static readonly Color Verde = new Color(0.45f, 0.72f, 0.42f);
     static readonly Color Amarillo = new Color(1f, 0.85f, 0.35f);
     static readonly Color Celeste = new Color(0.55f, 0.78f, 1f);
+    static readonly Color Vidrio = new Color(0.84f, 0.89f, 0.96f);
 
-    LineRenderer extra;   // una segunda línea (para frente/fondo y los rectángulos)
-    LineRenderer arco;    // el arco que une una raíz de la paleta con sus hijos
+    // La pastillita "Capa 2 · de 5" (en el recuadro de la animación).
+    const float PastillaX = 0.02f, PastillaY = 0.042f, PastillaW = 0.05f, PastillaH = 0.011f;
+
+    LineRenderer extra;   // una segunda línea (frente/fondo, la línea de tiempo...)
+    LineRenderer arco;    // una línea fina
+    LineRenderer mirada;  // el ojo y hacia dónde miras (azul)
     readonly LineRenderer[] hijos = new LineRenderer[4];
+    readonly LineRenderer[] luces = new LineRenderer[3];   // líneas de luz celeste (destellos, la luz del dedo)
+    readonly Transform[] polvo = new Transform[14];        // puntitos de polvo brillante
     readonly List<Vector3> otra = new List<Vector3>();
+    readonly List<Vector3> tramo = new List<Vector3>();
 
     protected override int Paginas => 8;
 
@@ -24,22 +31,31 @@ public class TutorialNovedades : TarjetaTutorial
     {
         extra = Linea("Extra", tutorial.materialNegro, 0.0025f);
         arco = Linea("Arco", tutorial.materialNegro, 0.0012f);
+        mirada = Linea("Mirada", tutorial.materialAzul, 0.0018f);
         for (int i = 0; i < hijos.Length; i++)
             hijos[i] = Linea("Hijo" + i, tutorial.materialNegro, 0.0016f);
+        var matLuz = Copia(tutorial.materialBlanco, new Color(0.45f, 0.72f, 1f));
+        for (int i = 0; i < luces.Length; i++)
+            luces[i] = Linea("Luz" + i, matLuz, 0.0045f);
+        for (int i = 0; i < polvo.Length; i++)
+        {
+            polvo[i] = Bolita("Polvo" + i, matLuz, 0.004f);
+            polvo[i].gameObject.SetActive(false);
+        }
     }
 
     protected override string Titulo(int p)
     {
         switch (p)
         {
-            case 0: return Tx("1 · Layers in depth", "1 · Capas en profundidad");
-            case 1: return Tx("2 · Cloth points", "2 · Puntos de tela");
-            case 2: return Tx("3 · Turn with your thumb", "3 · Girar con el pulgar");
-            case 3: return Tx("4 · The pencil: how it follows you", "4 · El lápiz: cómo te sigue");
-            case 4: return Tx("5 · Palette with child buttons", "5 · Paleta con botones hijos");
-            case 5: return Tx("6 · Live fill and its size", "6 · Relleno vivo y su tamaño");
-            case 6: return Tx("7 · 360 backgrounds and white paper", "7 · Fondos 360 y papel blanco");
-            default: return Tx("8 · 2D lines stay on their sheet", "8 · Las líneas 2D se quedan en su hoja");
+            case 0: return Tx("1 · Layers: look up", "1 · Capas: mira arriba");
+            case 1: return Tx("2 · Work table: look down", "2 · Mesa de trabajo: mira abajo");
+            case 2: return Tx("3 · Lines that come alive", "3 · Líneas que cobran vida");
+            case 3: return Tx("4 · Living glass, light on your finger", "4 · Vidrio vivo y luz en tu dedo");
+            case 4: return Tx("5 · Menus that breathe", "5 · Menús que respiran");
+            case 5: return Tx("6 · Cloth points", "6 · Puntos de tela");
+            case 6: return Tx("7 · Layers: push and pull", "7 · Capas: empujar y atraer");
+            default: return Tx("8 · New and retouched backgrounds", "8 · Fondos nuevos y retocados");
         }
     }
 
@@ -49,59 +65,69 @@ public class TutorialNovedades : TarjetaTutorial
         {
             case 0:
                 return Tx(
-                    "Hand menu > LAYERS: the layers hang like sheets of paper close to you (about 35 cm), at the top center of your view, 7 cm apart. The current one is solid; the ones in front fade away as they get near your eyes. PUSH the current one (about 3 cm) = the whole stack moves back and the layer in front arrives; PULL it toward you = the one behind arrives. \"+ Layer\" = a new layer in front (up to 12). They close by themselves after 20 seconds.",
-                    "Menú de la mano > CAPAS: las capas cuelgan como papeles cerca de ti (a unos 35 cm), arriba al centro de tu vista, a 7 cm una de otra. La actual se ve sólida; las de adelante se desvanecen al acercarse a tus ojos. EMPUJA la actual (unos 3 cm) = todo el montón se va al fondo y llega la de adelante; ATRÁELA hacia ti = llega la de atrás. \"+ Capa\" = una capa nueva adelante (hasta 12). Se cierran solas a los 20 segundos.");
+                    "At the top of your view there is a tiny pill, \"Layer 2 · of 5\": the layer you are on and how many there are. LOOK UP for half a second and the layers unfold, in the same spot as always. LOOK DOWN and they fold away by themselves. They don't appear while you draw or right after, or with the palette open. Hand menu > LAYERS also opens them (those close by themselves after 20 seconds).",
+                    "Arriba de tu vista hay una pastillita chiquita, \"Capa 2 · de 5\": en qué capa estás y cuántas hay. MIRA ARRIBA medio segundo y las capas se despliegan, en el mismo lugar de siempre. BAJA la mirada y se recogen solas. No salen mientras dibujas ni justo después, ni con la paleta abierta. También se abren con el menú de la mano > CAPAS (esas se cierran solas a los 20 segundos).");
             case 1:
+                return Tx(
+                    "The top menu is now a WORK TABLE: LOOK DOWN for half a second (while not drawing) and it appears in front of your waist, tilted like a desk. The player and the timeline (Animate page) STAY in view and follow you slowly. The Media, Mouths and Puppet pages put themselves away when you look ahead again. The X puts it away; the handle still moves it and pins it in place.",
+                    "El menú de arriba ahora es una MESA DE TRABAJO: MIRA ABAJO medio segundo (sin estar dibujando) y aparece frente a tu cintura, inclinada como una mesa. El reproductor y la línea de tiempo (página Animar) se QUEDAN a la vista y te siguen despacio. Las páginas Medios, Bocas y Títere se guardan al volver a mirar al frente. La X la guarda; el asa la sigue moviendo y dejándola fija.");
+            case 2:
+                return Tx(
+                    "When you FINISH a line, a flash of light runs along it from end to end. When you ERASE it, it dissolves into glowing dust that falls slowly. When you UNDO, the line rolls itself back, from its end to its start, as if you rewound time. It's only how it looks: your drawing stays the same.",
+                    "Al TERMINAR una línea, un destello de luz la recorre de punta a punta. Al BORRARLA, se deshace en polvo brillante que cae despacio. Al DESHACER, la línea se recoge sola, desde su final hasta su inicio, como si rebobinaras el tiempo. Solo es la forma de verse: tu dibujo queda igual.");
+            case 3:
+                return Tx(
+                    "Menus and the palette are frosted GLASS: your 360 background shows through, blurred, and a glint runs along their edges as you move. The tip of your index finger carries a LITTLE LIGHT: lines, fills and glass glow a little when your finger comes close. And your hands now look like glass, with a glowing outline.",
+                    "Los menús y la paleta son de VIDRIO esmerilado: a través se ve borroso tu fondo 360 y un brillo recorre sus bordes cuando te mueves. La punta de tu índice lleva una LUCECITA: las líneas, los rellenos y el vidrio se iluminan un poquito cuando acercas el dedo. Y tus manos ahora se ven de vidrio, con el contorno iluminado.");
+            case 4:
+                return Tx(
+                    "The work table breathes with your attention: when you don't look at it, it becomes discreet (more transparent, softer letters) so it doesn't get in the way of your drawing. Look at it or bring your finger close and it wakes up. When it appears it comes out with a small bounce, like a spring, and a soft little sound.",
+                    "La mesa de trabajo respira con tu atención: si no la miras, se vuelve discreta (más transparente y con letras suaves) para no estorbar tu dibujo. Al mirarla o acercar el dedo, despierta. Al aparecer sale con un pequeño rebote, como un resorte, y un sonidito fino.");
+            case 5:
                 return Tx(
                     "In node mode (left thumb + middle), PINCH a fill with your right hand (thumb + index) and pull it toward you or push it away; open the pinch and it stays. The cloth bends smoothly, like a bell, and the edge stays on the line. A purple diamond marks it: touch it with your index, like a node, to move it again. Leave it flat (or use the eraser) = it's removed.",
                     "En el modo nodos (izquierda pulgar + medio), PELLIZCA un relleno con la derecha (pulgar + índice) y jálalo hacia ti o empújalo al fondo; abre el pellizco y se queda así. La tela se dobla suave, como una campana, y el borde se queda en la línea. Un rombito morado lo marca: tócalo con el índice, como un nodo, para moverlo otra vez. Si lo dejas plano (o con el borrador), se quita.");
-            case 2:
-                return Tx(
-                    "With either hand in a loose fist, slide your thumb along the side of your index finger to the left or right: you turn 30° to see the back of the 360 background. Your drawings stay in front of you.",
-                    "Con cualquier mano en puño suelto, desliza el pulgar sobre el costado del índice hacia la izquierda o la derecha: giras 30° para ver la parte de atrás del fondo 360. Tus dibujos se quedan delante de ti.");
-            case 3:
-                return Tx(
-                    "In a Sketch layer in 2D: palette > LINE > Pencil: Stuck (right on your finger), Smooth (a little dragged) or String (it follows you on a short string, very clean lines). The straight-line gesture also draws with the pencil.",
-                    "En una capa de Boceto en 2D: paleta > LÍNEA > Lápiz: Pegado (justo en tu dedo), Suave (un poco arrastrado) o Cuerda (te sigue con un hilo, líneas muy limpias). El gesto de la recta también dibuja con el lápiz.");
-            case 4:
-                return Tx(
-                    "Around the palette there are two buttons: LINE (at 10 o'clock) and FILL (at 2 o'clock). Tap one and its children come out joined by an arc (wobble, strands, magnet, halo... or texture, bucket, speed). The colors paint whatever is open. The center shows how it looks, with a small label (\"Strands 3\"). The palette no longer shakes: with your finger close, it stays still.",
-                    "Alrededor de la paleta hay dos botones: LÍNEA (a las 10) y RELLENO (a las 2). Toca uno y salen sus hijos unidos por un arco (temblor, hebras, imán, halo... o textura, cubeta, velocidad). Los colores pintan lo que esté abierto. El centro te muestra cómo queda, con un textito (\"Hebras 3\"). La paleta ya no tiembla: con tu dedo cerca se queda quieta.");
-            case 5:
-                return Tx(
-                    "Palette > FILL (at 2 o'clock) > Texture: Plain → Facets → Patches → Brushstrokes, and its speed (>>). SIZE: put your right thumb and index on the fill and open or close them, like zooming on a phone. That size stays for your next fills. The patches now show much more, and the fill no longer peeks out of the line.",
-                    "Paleta > RELLENO (a las 2) > Textura: Liso → Facetas → Manchas → Pinceladas, y su velocidad (>>). El TAMAÑO: pon el pulgar y el índice derechos sobre el relleno y ábrelos o ciérralos, como el zoom del teléfono. Ese tamaño queda para tus próximos rellenos. Las manchas ahora se notan mucho más y el relleno ya no se sale de la línea.");
             case 6:
                 return Tx(
-                    "Background button: Grid → White → Reality → 360. At 360 a small window with all the photos opens: tap one to try it. In a Sketch layer in 2D, behind the pencil there is white paper; its corner button: White → 50% → Clear.",
-                    "Botón Fondo: Cuadrícula → Blanco → Realidad → 360. Al llegar a 360 se abre una ventanita con todas las fotos: toca una para probarla. En una capa de Boceto en 2D, detrás del lápiz hay papel blanco; su botón de la esquina: Blanco → 50 % → Transparente.");
+                    "With the layers open, they hang like sheets of paper close to you (about 35 cm), 7 cm apart. The current one is solid; the ones in front fade away as they get near your eyes. PUSH the current one (about 3 cm) = the whole stack moves back and the layer in front arrives; PULL it toward you = the one behind arrives. \"+ Layer\" = a new layer in front (up to 12).",
+                    "Con las capas abiertas, cuelgan como papeles cerca de ti (a unos 35 cm), a 7 cm una de otra. La actual se ve sólida; las de adelante se desvanecen al acercarse a tus ojos. EMPUJA la actual (unos 3 cm) = todo el montón se va al fondo y llega la de adelante; ATRÁELA hacia ti = llega la de atrás. \"+ Capa\" = una capa nueva adelante (hasta 12).");
             default:
                 return Tx(
-                    "What you draw in Plane 2D is ENCHANTED on its layer's sheet: handles, nodes, lasso and moving it stay inside that sheet, even in 3D. To take lines out: top menu > + Layer > RELEASE (selected lines, or the whole layer).",
-                    "Lo que dibujas en Plano 2D queda ENCANTADO en la hoja de su capa: tiradores, nodos, lazo y moverla se quedan dentro de esa hoja, aunque pases a 3D. Para sacarlas: menú de arriba > + Capa > LIBERAR (las elegidas o toda la capa).");
+                    "Background button > 360, in the little window. NEW: New York rooftop and Luxury living room. RETOUCHED: Shanghai at night (no people, no haze and sharper), Sunset by the sea without the railing and Venice canal without the fence. The graffiti shelter and the Shanghai riverside by day are gone.",
+                    "Botón Fondo > 360, en la ventanita. NUEVOS: Azotea en Nueva York y Sala de lujo. RETOCADOS: Shanghai de noche (sin gente, sin neblina y más nítido), Atardecer en el mar sin la baranda y Canal de Venecia sin la reja. Se fueron el refugio de grafitis y la orilla de Shanghai de día.");
         }
     }
 
     protected override void Animar(int p, float t)
     {
+        linea.positionCount = 0;
         extra.positionCount = 0;
         lineaGris.positionCount = 0;
         arco.positionCount = 0;
+        mirada.positionCount = 0;
         foreach (var h in hijos)
+        {
             h.positionCount = 0;
+            h.widthMultiplier = 0.0016f;
+        }
+        foreach (var l in luces)
+            l.positionCount = 0;
+        foreach (var b in polvo)
+            if (b.gameObject.activeSelf)
+                b.gameObject.SetActive(false);
         SinRelleno();
         dedo.gameObject.SetActive(false);
         dedo.localScale = Vector3.one * 0.009f;
         switch (p)
         {
-            case 0: AnimarCapas(t); break;
-            case 1: AnimarTela(t); break;
-            case 2: AnimarGiro(t); break;
-            case 3: AnimarLapiz(t); break;
-            case 4: AnimarPaleta(t); break;
-            case 5: AnimarRellenoVivo(t); break;
-            case 6: AnimarPapel(t); break;
-            default: AnimarHoja(t); break;
+            case 0: AnimarMirarArriba(t); break;
+            case 1: AnimarMesa(t); break;
+            case 2: AnimarLineas(t); break;
+            case 3: AnimarVidrio(t); break;
+            case 4: AnimarRespira(t); break;
+            case 5: AnimarTela(t); break;
+            case 6: AnimarCapas(t); break;
+            default: AnimarFondos(t); break;
         }
     }
 
@@ -128,125 +154,319 @@ public class TutorialNovedades : TarjetaTutorial
         }
     }
 
+    // Rellena un rectángulo (sin repetir la primera esquina al final).
+    void RellenarRect(float cx, float cy, float w, float h, Color c, float aparece)
+    {
+        Rectangulo(forma, cx, cy, w, h);
+        forma.RemoveAt(forma.Count - 1);
+        Rellenar(forma, c, aparece);
+    }
+
+    // Un ojo (circulito azul) y una flechita que sale de él hacia donde mira.
+    void Mirada(Vector3 ojo, Vector3 hacia)
+    {
+        Vector3 dir = hacia - ojo;
+        dir.z = 0f;
+        if (dir.sqrMagnitude < 1e-8f)
+            dir = Vector3.right;
+        dir.Normalize();
+        float a0 = Mathf.Atan2(dir.y, dir.x);
+        const float r = 0.006f;
+        otra.Clear();
+        for (int i = 0; i <= 16; i++)
+        {
+            float a = a0 + i * Mathf.PI * 2f / 16f;
+            otra.Add(new Vector3(ojo.x + Mathf.Cos(a) * r, ojo.y + Mathf.Sin(a) * r, -0.001f));
+        }
+        Vector3 punta = new Vector3(hacia.x, hacia.y, -0.001f);
+        Vector3 lado = new Vector3(-dir.y, dir.x, 0f);
+        otra.Add(punta);
+        otra.Add(punta - dir * 0.007f + lado * 0.0045f);
+        otra.Add(punta);
+        otra.Add(punta - dir * 0.007f - lado * 0.0045f);
+        PonerLinea(mirada, otra);
+    }
+
+    // Un resorte: empieza un poco chico, se pasa un poquito y se acomoda (como los menús al aparecer).
+    static float Resorte(float t)
+    {
+        return 1f - 0.25f * Mathf.Exp(-6f * t) * Mathf.Cos(14f * t);
+    }
+
+    static Vector3 Escalar(Vector3 centro, Vector3 p, float s)
+    {
+        return centro + (p - centro) * s;
+    }
+
+    // Un número "al azar" entre 0 y 1, pero siempre el mismo para el mismo i (así el polvo no salta).
+    static float Azar(int i)
+    {
+        float x = Mathf.Sin(i * 12.9898f) * 43758.5453f;
+        return x - Mathf.Floor(x);
+    }
+
     // ---------- Las animaciones ----------
 
-    // La hoja (rectángulo gris) y una curva; el tirador se mueve, pero siempre dentro de la hoja.
-    void AnimarHoja(float t)
+    // Capas al mirar arriba: la pastillita arriba; el ojo mira arriba y las capas se despliegan desde ella;
+    // baja la mirada y se recogen otra vez en la pastillita.
+    void AnimarMirarArriba(float t)
     {
-        Rectangulo(otra, 0f, 0f, 0.24f, 0.09f);
-        PonerLinea(lineaGris, otra);
-        float u = Mathf.Sin(t / Ciclo * Mathf.PI * 2f);
-        Vector3 a = new Vector3(-0.07f, -0.02f, 0f), b = new Vector3(0.07f, -0.02f, 0f);
-        Vector3 asa = new Vector3(u * 0.04f, 0.03f + u * 0.008f, 0f);
-        puntos.Clear();
-        for (int i = 0; i <= 24; i++)
+        Vector3 ojo = new Vector3(-0.105f, -0.018f, 0f);
+        bool arriba = t > 0.4f && t < 1.3f;
+        bool abajo = t > 2.8f && t < 3.5f;
+        Mirada(ojo, arriba ? new Vector3(-0.092f, 0.02f, 0f) : abajo ? new Vector3(-0.092f, -0.05f, 0f) : new Vector3(-0.07f, -0.018f, 0f));
+        float abre = Suave(Mathf.InverseLerp(1.0f, 1.4f, t)) * (1f - Suave(Mathf.InverseLerp(3.3f, 3.7f, t)));
+        if (abre < 0.02f)
         {
-            float k = i / 24f;
-            // Curva de un tirador (cuadrática): del punto a al b, tirada hacia el asa.
-            puntos.Add((1 - k) * (1 - k) * a + 2 * (1 - k) * k * asa + k * k * b);
-        }
-        PonerLinea(linea, puntos);
-        otra.Clear();
-        otra.Add(new Vector3(0f, 0.005f, 0f));
-        otra.Add(asa);
-        PonerLinea(extra, otra);
-        dedo.gameObject.SetActive(true);
-        dedo.localPosition = asa + new Vector3(0f, 0f, -0.004f);
-    }
-
-    // Un relleno que cambia de tono a saltitos (así se ve el "respirar" de las manchas).
-    void AnimarRellenoVivo(float t)
-    {
-        Circulo(puntos, 0f, 0f, 0.045f);
-        int paso = Mathf.FloorToInt(t * 4f) % 4;
-        float[] tonos = { 0f, 0.08f, -0.06f, 0.04f };
-        Color c = Verde * (1f + tonos[paso]);
-        c.a = 1f;
-        Rellenar(puntos, c, 1f);
-        PonerLinea(linea, puntos);
-        // Pulgar e índice abriéndose y cerrándose: la mancha (circulito gris) crece y se achica con ellos.
-        float abre = 0.5f + 0.5f * Mathf.Sin(t / Ciclo * Mathf.PI * 2f);
-        Circulo(forma, -0.012f, 0.008f, Mathf.Lerp(0.006f, 0.022f, abre), -0.001f);
-        PonerLinea(lineaGris, forma);
-        Vector3 baseMano = new Vector3(0.03f, -0.03f, -0.003f);
-        float aIndice = (115f - 25f * abre) * Mathf.Deg2Rad, aPulgar = (170f + 10f * abre) * Mathf.Deg2Rad;
-        Vector3 indice = baseMano + new Vector3(Mathf.Cos(aIndice), Mathf.Sin(aIndice), 0f) * 0.035f;
-        Vector3 pulgar = baseMano + new Vector3(Mathf.Cos(aPulgar), Mathf.Sin(aPulgar), 0f) * 0.028f;
-        otra.Clear();
-        otra.Add(indice);
-        otra.Add(baseMano);
-        otra.Add(pulgar);
-        PonerLinea(extra, otra);
-        dedo.gameObject.SetActive(true);
-        dedo.localPosition = indice + new Vector3(0f, 0f, -0.001f);
-    }
-
-    // La hoja con su papel blanco: aparece, queda a la mitad y luego transparente.
-    void AnimarPapel(float t)
-    {
-        Rectangulo(puntos, 0f, 0f, 0.2f, 0.08f);
-        int estado = Mathf.FloorToInt(t / Ciclo * 3f) % 3;
-        if (estado < 2)
-        {
-            puntos.RemoveAt(puntos.Count - 1);
-            Rellenar(puntos, estado == 0 ? Color.white : Color.Lerp(FondoDemo, Color.white, 0.5f), 1f);
-        }
-        Rectangulo(otra, 0f, 0f, 0.2f, 0.08f);
-        PonerLinea(lineaGris, otra);
-        // Un trazo de lápiz.
-        forma.Clear();
-        for (int i = 0; i <= 20; i++)
-        {
-            float k = i / 20f;
-            forma.Add(new Vector3(-0.07f + k * 0.12f, Mathf.Sin(k * 6f) * 0.015f, -0.001f));
-        }
-        PonerLinea(linea, forma);
-        // El botón de la esquina.
-        Rectangulo(otra, 0.085f, 0.033f, 0.03f, 0.01f, -0.001f);
-        PonerLinea(extra, otra);
-        dedo.gameObject.SetActive(Mathf.Repeat(t, Ciclo / 3f) < 0.5f);
-        dedo.localPosition = new Vector3(0.085f, 0.033f, -0.004f);
-    }
-
-    // La paleta: se toca la raíz LÍNEA (a las 10), se pone amarilla y le salen sus hijos unidos por un arco.
-    void AnimarPaleta(float t)
-    {
-        const float cx = -0.01f, cy = -0.005f, radio = 0.032f, fuera = 0.046f;
-        Circulo(puntos, cx, cy, radio);
-        PonerLinea(linea, puntos);
-        // En el centro, la vista previa: una línea ondulada.
-        forma.Clear();
-        for (int i = 0; i <= 12; i++)
-        {
-            float k = i / 12f;
-            forma.Add(new Vector3(cx - 0.015f + k * 0.03f, cy + Mathf.Sin(k * Mathf.PI * 2f) * 0.004f, -0.001f));
-        }
-        PonerLinea(lineaGris, forma);
-        float aRaiz = 150f * Mathf.Deg2Rad;
-        Vector3 raiz = new Vector3(cx + Mathf.Cos(aRaiz) * fuera, cy + Mathf.Sin(aRaiz) * fuera, -0.001f);
-        Circulo(otra, raiz.x, raiz.y, 0.007f, -0.001f);
-        PonerLinea(extra, otra);
-        bool abierta = t > 1.0f && t < 3.6f;
-        if (abierta)
-        {
-            Rellenar(otra, Amarillo, 1f);
-            // Los hijos salen uno tras otro, por el borde, unidos por el arco.
-            int cuantos = Mathf.Clamp(Mathf.FloorToInt((t - 1.0f) / 0.25f) + 1, 1, hijos.Length);
-            float hasta = 150f + 24f + (cuantos - 1) * 22f;
+            // La pastillita, con su "texto" (una rayita).
+            Rectangulo(puntos, PastillaX, PastillaY, PastillaW, PastillaH, -0.001f);
+            PonerLinea(lineaGris, puntos);
+            RellenarRect(PastillaX, PastillaY, PastillaW, PastillaH, Color.white, 1f);
             otra.Clear();
-            for (float g = 150f; g <= hasta + 0.01f; g += 3f)
-                otra.Add(new Vector3(cx + Mathf.Cos(g * Mathf.Deg2Rad) * fuera, cy + Mathf.Sin(g * Mathf.Deg2Rad) * fuera, 0f));
-            PonerLinea(arco, otra);
-            for (int i = 0; i < cuantos; i++)
-            {
-                float a = (174f + i * 22f) * Mathf.Deg2Rad;
-                Circulo(otra, cx + Mathf.Cos(a) * fuera, cy + Mathf.Sin(a) * fuera, 0.006f, -0.001f);
-                PonerLinea(hijos[i], otra);
-            }
+            otra.Add(new Vector3(PastillaX - 0.015f, PastillaY, -0.0015f));
+            otra.Add(new Vector3(PastillaX + 0.015f, PastillaY, -0.0015f));
+            PonerLinea(hijos[3], otra);
+            return;
         }
-        bool toca = (t > 0.5f && t < 1.0f) || (t > 3.2f && t < 3.6f);
+        // Las capas salen de la pastillita: la de atrás (abajo, chica), la actual (sólida) y la de adelante (arriba).
+        CapaQueSale(hijos[1], PastillaX, -0.018f, 0.095f, 0.021f, abre, 0.002f, false);
+        CapaQueSale(linea, PastillaX, 0.002f, 0.11f, 0.024f, abre, -0.001f, true);
+        CapaQueSale(hijos[0], PastillaX, 0.024f, 0.125f, 0.027f, abre, -0.002f, false);
+    }
+
+    // Un rectángulo que va de la pastillita (abre = 0) a su lugar (abre = 1).
+    void CapaQueSale(LineRenderer l, float x, float y, float w, float h, float abre, float z, bool lleno)
+    {
+        float cx = Mathf.Lerp(PastillaX, x, abre), cy = Mathf.Lerp(PastillaY, y, abre);
+        float cw = Mathf.Lerp(PastillaW, w, abre), ch = Mathf.Lerp(PastillaH, h, abre);
+        Rectangulo(otra, cx, cy, cw, ch, z);
+        PonerLinea(l, otra);
+        if (lleno)
+            RellenarRect(cx, cy, cw, ch, Color.white, 1f);
+    }
+
+    // La mesa de trabajo: el ojo mira abajo y la mesa aparece con un rebote; al volver a mirar al frente se
+    // QUEDA (con su reproductor y la línea de tiempo andando).
+    void AnimarMesa(float t)
+    {
+        Vector3 ojo = new Vector3(-0.105f, 0.02f, 0f);
+        bool abajo = t > 0.3f && t < 2.6f;
+        Mirada(ojo, abajo ? new Vector3(-0.088f, -0.012f, 0f) : new Vector3(-0.07f, 0.02f, 0f));
+        if (t < 0.9f)
+            return;
+        float s = Resorte(t - 0.9f);
+        Vector3 c = new Vector3(0.02f, -0.03f, 0f);
+        // La mesa, inclinada: un trapecio de vidrio.
+        forma.Clear();
+        forma.Add(Escalar(c, new Vector3(-0.05f, -0.048f, 0f), s));
+        forma.Add(Escalar(c, new Vector3(0.09f, -0.048f, 0f), s));
+        forma.Add(Escalar(c, new Vector3(0.075f, -0.012f, 0f), s));
+        forma.Add(Escalar(c, new Vector3(-0.035f, -0.012f, 0f), s));
+        Rellenar(forma, Vidrio, 1f);
+        otra.Clear();
+        foreach (var q in forma)
+            otra.Add(q + new Vector3(0f, 0f, -0.001f));
+        otra.Add(otra[0]);
+        PonerLinea(linea, otra);
+        // La línea de tiempo y su cabezal, que avanza.
+        otra.Clear();
+        otra.Add(Escalar(c, new Vector3(-0.035f, -0.04f, -0.0015f), s));
+        otra.Add(Escalar(c, new Vector3(0.075f, -0.04f, -0.0015f), s));
+        PonerLinea(extra, otra);
+        float x = Mathf.Lerp(-0.035f, 0.075f, Mathf.Repeat((t - 0.9f) / 2.4f, 1f));
+        otra.Clear();
+        otra.Add(Escalar(c, new Vector3(x, -0.045f, -0.002f), s));
+        otra.Add(Escalar(c, new Vector3(x, -0.035f, -0.002f), s));
+        PonerLinea(hijos[3], otra);
+        // El botón de reproducir (un triangulito) y dos botones más.
+        otra.Clear();
+        otra.Add(Escalar(c, new Vector3(-0.028f, -0.031f, -0.0015f), s));
+        otra.Add(Escalar(c, new Vector3(-0.028f, -0.019f, -0.0015f), s));
+        otra.Add(Escalar(c, new Vector3(-0.018f, -0.025f, -0.0015f), s));
+        otra.Add(otra[0]);
+        PonerLinea(hijos[0], otra);
+        for (int i = 0; i < 2; i++)
+        {
+            Rectangulo(otra, i * 0.022f, -0.025f, 0.014f, 0.009f, -0.0015f);
+            for (int k = 0; k < otra.Count; k++)
+                otra[k] = Escalar(c, otra[k], s);
+            PonerLinea(hijos[1 + i], otra);
+        }
+    }
+
+    // Las dos ondas de la animación de las líneas (k: 0 = inicio, 1 = final).
+    static Vector3 OndaArriba(float k)
+    {
+        return new Vector3(-0.08f + k * 0.16f, 0.024f + Mathf.Sin(k * Mathf.PI * 2f) * 0.012f, -0.001f);
+    }
+
+    static Vector3 OndaAbajo(float k)
+    {
+        return new Vector3(-0.08f + k * 0.16f, -0.028f + Mathf.Sin(k * 5f + 1f) * 0.008f, -0.001f);
+    }
+
+    // Puntos de una onda, de "desde" a "hasta" (corridos un poquito hacia ti con "z").
+    static void Onda(List<Vector3> s, bool deArriba, float desde, float hasta, float z)
+    {
+        s.Clear();
+        if (hasta - desde < 0.005f)
+            return;
+        int m = Mathf.Max(2, Mathf.CeilToInt(30f * (hasta - desde)));
+        for (int i = 0; i <= m; i++)
+        {
+            float k = Mathf.Lerp(desde, hasta, i / (float)m);
+            s.Add((deArriba ? OndaArriba(k) : OndaAbajo(k)) + new Vector3(0f, 0f, z));
+        }
+    }
+
+    // Líneas que cobran vida: la de arriba se dibuja, un destello la recorre y luego se deshace en polvo que cae;
+    // la de abajo se rebobina (se recoge desde su final hasta su inicio).
+    void AnimarLineas(float t)
+    {
+        float dibuja = Mathf.Clamp01(t / 0.9f);
+        if (t < 2.35f)
+        {
+            Onda(puntos, true, 0f, dibuja, 0f);
+            PonerLinea(t < 2.2f ? linea : lineaGris, puntos);
+        }
+        if (t < 0.9f)
+        {
+            dedo.gameObject.SetActive(true);
+            dedo.localPosition = OndaArriba(dibuja) + new Vector3(0f, 0f, -0.003f);
+        }
+        // El destello: una franja de luz que va de punta a punta.
+        float g = (t - 0.9f) / 0.55f;
+        if (g > -0.1f && g < 1.1f)
+        {
+            Onda(tramo, true, Mathf.Clamp01(g - 0.09f), Mathf.Clamp01(g + 0.09f), -0.001f);
+            PonerLinea(luces[0], tramo);
+        }
+        // El polvo brillante: sale de la línea, se abre un poquito y cae mientras se apaga.
+        float disuelve = Mathf.InverseLerp(2.2f, 3.2f, t);
+        if (disuelve > 0f && disuelve < 1f)
+            for (int i = 0; i < polvo.Length; i++)
+            {
+                Vector3 p = OndaArriba((i + 0.5f) / polvo.Length);
+                p.x += (Azar(i) - 0.5f) * 0.012f * disuelve;
+                p.y -= (0.006f + 0.02f * Azar(i + 50)) * disuelve + 0.012f * disuelve * disuelve;
+                p.z = -0.002f;
+                polvo[i].gameObject.SetActive(true);
+                polvo[i].localPosition = p;
+                polvo[i].localScale = Vector3.one * 0.0042f * (1f - disuelve);
+            }
+        // La de abajo se rebobina.
+        float queda = 1f - Suave(Mathf.InverseLerp(3.0f, 3.45f, t));
+        if (queda > 0.02f)
+        {
+            Onda(otra, false, 0f, queda, 0f);
+            PonerLinea(extra, otra);
+        }
+    }
+
+    // Un punto del borde de un rectángulo centrado (u de 0 a 1 = una vuelta, desde la esquina de abajo a la izquierda).
+    static Vector3 Perimetro(float w, float h, float u, float z)
+    {
+        float d = Mathf.Repeat(u, 1f) * 2f * (w + h);
+        if (d < w)
+            return new Vector3(-w * 0.5f + d, -h * 0.5f, z);
+        d -= w;
+        if (d < h)
+            return new Vector3(w * 0.5f, -h * 0.5f + d, z);
+        d -= h;
+        if (d < w)
+            return new Vector3(w * 0.5f - d, h * 0.5f, z);
+        d -= w;
+        return new Vector3(-w * 0.5f, h * 0.5f - d, z);
+    }
+
+    static float OndaVidrio(float x)
+    {
+        return Mathf.Sin((x + 0.07f) / 0.14f * Mathf.PI * 3f) * 0.012f - 0.004f;
+    }
+
+    // Vidrio vivo y luz en el dedo: un panel de vidrio con un brillo que da la vuelta por su borde; el dedo, con
+    // su lucecita, pasa cerca de una línea y la ilumina por donde va.
+    void AnimarVidrio(float t)
+    {
+        const float w = 0.2f, h = 0.08f;
+        Rectangulo(puntos, 0f, 0f, w, h, -0.001f);
+        PonerLinea(lineaGris, puntos);
+        RellenarRect(0f, 0f, w, h, Vidrio, 1f);
+        // El brillo del borde.
+        float u = Mathf.Repeat(t / Ciclo, 1f);
+        tramo.Clear();
+        for (int i = 0; i <= 6; i++)
+            tramo.Add(Perimetro(w, h, u + i * 0.01f, -0.002f));
+        PonerLinea(luces[0], tramo);
+        // Una línea dibujada sobre el vidrio.
+        otra.Clear();
+        for (int i = 0; i <= 30; i++)
+        {
+            float x = -0.07f + i * 0.14f / 30f;
+            otra.Add(new Vector3(x, OndaVidrio(x), -0.001f));
+        }
+        PonerLinea(linea, otra);
+        // El dedo pasa por encima, con su luz alrededor; la línea se ilumina cerca de él.
+        float fx = Mathf.Sin(t / Ciclo * Mathf.PI * 2f) * 0.06f;
+        float fy = OndaVidrio(fx) + 0.008f;
+        dedo.gameObject.SetActive(true);
+        dedo.localScale = Vector3.one * 0.007f;
+        dedo.localPosition = new Vector3(fx, fy, -0.004f);
+        Circulo(forma, fx, fy, 0.011f + 0.0015f * Mathf.Sin(t * 6f), -0.0025f);
+        PonerLinea(luces[1], forma);
+        tramo.Clear();
+        foreach (var q in otra)
+            if (Mathf.Abs(q.x - fx) < 0.022f)
+                tramo.Add(q + new Vector3(0f, 0f, -0.001f));
+        PonerLinea(luces[2], tramo);
+    }
+
+    // Un menú que respira: aparece con un rebote; si lo miras está despierto (sólido); si miras a otro lado se
+    // vuelve discreto (transparente, letras finitas) y al volver a mirarlo despierta.
+    void AnimarRespira(float t)
+    {
+        Vector3 ojo = new Vector3(-0.105f, -0.01f, 0f);
+        bool mira = t < 1.9f || t > 3.6f;
+        Mirada(ojo, mira ? new Vector3(-0.07f, -0.006f, 0f) : new Vector3(-0.1f, 0.035f, 0f));
+        if (t < 0.2f)
+            return;
+        float s = Resorte(t - 0.2f);
+        float despierto = 1f - 0.7f * Suave(Mathf.InverseLerp(1.9f, 2.5f, t)) * (1f - Suave(Mathf.InverseLerp(3.6f, 3.9f, t)));
+        const float cx = 0.03f, cy = 0f;
+        Rectangulo(otra, cx, cy, 0.12f * s, 0.07f * s, -0.001f);
+        PonerLinea(despierto > 0.65f ? linea : lineaGris, otra);
+        RellenarRect(cx, cy, 0.12f * s, 0.07f * s, Vidrio, despierto);
+        // Tres renglones de "texto": más finitos cuando está discreto.
+        for (int i = 0; i < 3; i++)
+        {
+            float y = cy + (0.018f - i * 0.016f) * s;
+            float x0 = cx - 0.04f * s;
+            otra.Clear();
+            otra.Add(new Vector3(x0, y, -0.0015f));
+            otra.Add(new Vector3(x0 + (i == 2 ? 0.05f : 0.08f) * s, y, -0.0015f));
+            hijos[i].widthMultiplier = Mathf.Lerp(0.0006f, 0.0016f, despierto);
+            PonerLinea(hijos[i], otra);
+        }
+    }
+
+    // La ventanita de fondos 360: seis fotos; las dos nuevas tienen marco de luz. El dedo toca una y luego la otra.
+    void AnimarFondos(float t)
+    {
+        const float w = 0.042f, h = 0.026f;
+        for (int i = 0; i < 6; i++)
+        {
+            float cx = (i % 3 - 1) * 0.05f, cy = i < 3 ? 0.017f : -0.017f;
+            Rectangulo(otra, cx, cy, w, h, -0.001f);
+            PonerLinea(i < 4 ? hijos[i] : luces[i - 4], otra);
+        }
+        bool primera = t < 2.7f;
+        float desde = primera ? 0.9f : 2.7f;
+        float cxElegida = primera ? 0f : 0.05f;
+        if (t >= 0.9f)
+            RellenarRect(cxElegida, -0.017f, w, h, Amarillo, Suave((t - desde) / 0.3f));
+        bool toca = (t > 0.6f && t < 1.1f) || (t > 2.4f && t < 2.9f);
         dedo.gameObject.SetActive(toca);
-        dedo.localPosition = raiz + new Vector3(0f, 0f, -0.003f);
+        dedo.localPosition = new Vector3(t < 2f ? 0f : 0.05f, -0.017f, -0.004f);
     }
 
     // Capas en profundidad: la actual sólida, las de adelante más arriba y grandes, las de atrás más abajo.
@@ -307,55 +527,5 @@ public class TutorialNovedades : TarjetaTutorial
         }
         dedo.gameObject.SetActive(true);
         dedo.localPosition = new Vector3(0f, alto, -0.004f);
-    }
-
-    // Girar: el fondo 360 visto desde arriba (un círculo con marcas) gira de a 30° cuando el pulgar se desliza.
-    void AnimarGiro(float t)
-    {
-        Circulo(puntos, 0f, 0f, 0.045f);
-        PonerLinea(linea, puntos);
-        int giros = t > 2.6f ? 2 : t > 1.1f ? 1 : 0;
-        float extraGiro = giros * 30f + 30f * Suave(Mathf.InverseLerp(0f, 0.25f, t - (giros == 2 ? 2.6f : 1.1f))) - (giros > 0 ? 30f : 0f);
-        for (int h = 0; h < hijos.Length; h++)
-        {
-            float a = (90f + h * 90f + extraGiro) * Mathf.Deg2Rad;
-            otra.Clear();
-            otra.Add(new Vector3(Mathf.Cos(a) * 0.038f, Mathf.Sin(a) * 0.038f, -0.001f));
-            otra.Add(new Vector3(Mathf.Cos(a) * 0.052f, Mathf.Sin(a) * 0.052f, -0.001f));
-            PonerLinea(hijos[h], otra);
-        }
-        // Tú, en el centro, mirando hacia arriba (siempre igual: lo que gira es el fondo).
-        otra.Clear();
-        otra.Add(new Vector3(-0.008f, -0.006f, -0.001f));
-        otra.Add(new Vector3(0f, 0.012f, -0.001f));
-        otra.Add(new Vector3(0.008f, -0.006f, -0.001f));
-        otra.Add(new Vector3(-0.008f, -0.006f, -0.001f));
-        PonerLinea(extra, otra);
-        // El pulgar que se desliza (abajo a la derecha).
-        float u = Mathf.Repeat(t, 1.5f);
-        dedo.gameObject.SetActive(u > 0.6f && u < 1.2f);
-        dedo.localPosition = new Vector3(Mathf.Lerp(0.065f, 0.09f, Mathf.InverseLerp(0.6f, 1.1f, u)), -0.04f, -0.004f);
-    }
-
-    // El lápiz con "cuerda": el dedo tiembla (gris) y el lápiz lo sigue liso, un poquito atrás (negro).
-    void AnimarLapiz(float t)
-    {
-        float hasta = Mathf.Clamp01(t / (Ciclo * 0.8f));
-        int n = Mathf.Max(2, Mathf.RoundToInt(40 * hasta));
-        forma.Clear();
-        otra.Clear();
-        for (int k = 0; k < n; k++)
-        {
-            float u = k / 39f;
-            float x = -0.07f + u * 0.14f;
-            float y = Mathf.Sin(u * 5f) * 0.02f;
-            float temblor = Mathf.Sin(u * 90f) * 0.003f + Mathf.Sin(u * 53f + 1f) * 0.002f;
-            otra.Add(new Vector3(x, y + temblor + 0.012f, -0.001f));
-            forma.Add(new Vector3(x - 0.004f, Mathf.Sin((u - 0.03f) * 5f) * 0.02f - 0.012f, -0.001f));
-        }
-        PonerLinea(lineaGris, otra);
-        PonerLinea(linea, forma);
-        dedo.gameObject.SetActive(true);
-        dedo.localPosition = otra[otra.Count - 1] + new Vector3(0f, 0f, -0.003f);
     }
 }

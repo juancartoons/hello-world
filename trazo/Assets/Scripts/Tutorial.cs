@@ -887,7 +887,7 @@ public class Tutorial : MonoBehaviour
             {
                 gota.gameObject.SetActive(false);
                 if (fuentePasos != null)
-                    fuentePasos.PlayOneShot(Sonidos.Burbuja, 0.8f);
+                    fuentePasos.PlayOneShot(Sonidos.Toque, 0.8f);
                 Chispas(A, 10, 0.2f);
                 metaVisible = true;
                 metaDesde = Time.time;
@@ -2137,7 +2137,7 @@ public class Tutorial : MonoBehaviour
         if (fuentePasos != null)
         {
             fuentePasos.pitch = Random.Range(0.9f, 1.15f);
-            fuentePasos.PlayOneShot(Sonidos.Burbuja, 0.6f);
+            fuentePasos.PlayOneShot(Sonidos.Toque, 0.6f);
         }
     }
 
