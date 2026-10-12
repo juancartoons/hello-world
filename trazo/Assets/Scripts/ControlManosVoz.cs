@@ -8,22 +8,33 @@ using UnityEngine;
 //  - "deshaz", "rehaz" · "gira izquierda / derecha / atrás" (fondos 360) · "capas", "capa nueva" · "mesa",
 //    "play", "pausa", "siguiente", "anterior", "clave", "quita clave" · "paleta", "guarda", "vista limpia",
 //    "silencio" (o "música"), "halo".
+//  - v42: cada botón dice su palabra en su etiqueta (al acercar el dedo, con un microfonito): la MISMA que se dice.
+//    Nuevas: "plano", "fondo", "archivos", "esfera", "cubo", "cilindro", "a líneas", "ayuda", "inicio", "zoom",
+//    "animar", "bocas", "títere", "video", "muestra" / "oculta" (la capa), "lápiz", "liberar", "avanzar" (fondos
+//    vivos), "universo", "nubes", los COLORES ("rojo", "azul"...), "más grueso" / "más fino" y el IDIOMA (en
+//    inglés di "spanish"; en español di "inglés").
 //  - "Borrar todo" NO va por voz (por seguridad).
 // Los gestos siguen funcionando al mismo tiempo.
 public partial class ControlManos
 {
-    enum ComandoVoz
+    public enum ComandoVoz
     {
         Nada, Dibuja, Borra, Nodos, Recta, Ya, Deshaz, Rehaz, GiraIzquierda, GiraDerecha, GiraAtras, Capas, CapaNueva,
-        Mesa, Play, Pausa, Siguiente, Anterior, Clave, QuitaClave, Paleta, Guarda, VistaLimpia, Silencio, Halo
+        Mesa, Play, Pausa, Siguiente, Anterior, Clave, QuitaClave, Paleta, Guarda, VistaLimpia, Silencio, Halo,
+        // v42
+        Plano, Fondo, Archivos, Esfera, Cubo, Cilindro, ALineas, Ayuda, Inicio, Zoom, Animar, Bocas, Titere, Video,
+        Muestra, Oculta, Lapiz, Liberar, Avanza, Universo, Nubes, Color, Grueso, Fino, Espanol, Ingles
     }
 
     struct FrasesComando
     {
         public ComandoVoz comando;
-        public string nombreEs, nombreEn;   // como se muestra ("Gira derecha")
+        public int dato;                    // (los colores: cuál de la paleta)
+        public string nombreEs, nombreEn;   // como se muestra ("Gira derecha"): en la etiqueta del botón y en la voz
         public string[] es, en;             // lo que se puede decir
     }
+
+    static readonly string[] Nada0 = new string[0];
 
     static readonly FrasesComando[] Comandos =
     {
@@ -41,7 +52,7 @@ public partial class ControlManos
           new[] { "gira derecha", "gira a la derecha", "girar derecha", "girar a la derecha", "gira der", "derecha" },
           new[] { "turn right", "rotate right", "right" }),
         C(ComandoVoz.GiraAtras, "Gira atrás", "Turn around",
-          new[] { "gira atrás", "girar atrás", "da la vuelta", "media vuelta", "vuelta" }, new[] { "turn around", "around" }),
+          new[] { "gira atrás", "girar atrás", "da la vuelta", "media vuelta" }, new[] { "turn around", "around" }),
         C(ComandoVoz.Capas, "Capas", "Layers", new[] { "capas", "las capas" }, new[] { "layers" }),
         C(ComandoVoz.CapaNueva, "Capa nueva", "New layer", new[] { "capa nueva", "nueva capa", "otra capa" }, new[] { "new layer", "add layer" }),
         C(ComandoVoz.Mesa, "Mesa", "Desk", new[] { "mesa", "la mesa", "línea de tiempo" }, new[] { "desk", "timeline" }),
@@ -53,15 +64,80 @@ public partial class ControlManos
         C(ComandoVoz.QuitaClave, "Quita clave", "Remove key", new[] { "quita clave", "quitar clave", "borra clave", "borrar clave" },
           new[] { "remove key", "delete key" }),
         C(ComandoVoz.Paleta, "Paleta", "Palette", new[] { "paleta", "colores", "color" }, new[] { "palette", "colors", "color" }),
-        C(ComandoVoz.Guarda, "Guarda", "Save", new[] { "guarda", "guardar" }, new[] { "save" }),
+        C(ComandoVoz.Guarda, "Guardar", "Save", new[] { "guarda", "guardar" }, new[] { "save" }),
         C(ComandoVoz.VistaLimpia, "Vista limpia", "Clean view", new[] { "vista limpia", "limpia" }, new[] { "clean view", "clean" }),
         C(ComandoVoz.Silencio, "Silencio", "Mute", new[] { "silencio", "música", "sonido" }, new[] { "mute", "music", "sound" }),
         C(ComandoVoz.Halo, "Halo", "Halo", new[] { "halo" }, new[] { "halo" }),
+        // v42: los botones que no tenían voz.
+        C(ComandoVoz.Plano, "Plano", "Plane", new[] { "plano" }, new[] { "plane" }),
+        C(ComandoVoz.Fondo, "Fondo", "Background", new[] { "fondo", "otro fondo", "cambia fondo" }, new[] { "background" }),
+        C(ComandoVoz.Archivos, "Archivos", "Files", new[] { "archivos", "mis archivos" }, new[] { "files", "my files" }),
+        C(ComandoVoz.Esfera, "Esfera", "Sphere", new[] { "esfera" }, new[] { "sphere", "ball" }),
+        C(ComandoVoz.Cubo, "Cubo", "Cube", new[] { "cubo" }, new[] { "cube", "box" }),
+        C(ComandoVoz.Cilindro, "Cilindro", "Cylinder", new[] { "cilindro" }, new[] { "cylinder" }),
+        C(ComandoVoz.ALineas, "A líneas", "To lines", new[] { "a líneas", "en líneas", "convertir a líneas" }, new[] { "to lines", "into lines" }),
+        C(ComandoVoz.Ayuda, "Ayuda", "Help", new[] { "ayuda", "tutorial" }, new[] { "help", "tutorial" }),
+        C(ComandoVoz.Inicio, "Inicio", "Start", new[] { "inicio", "al inicio", "al principio" }, new[] { "start", "beginning" }),
+        C(ComandoVoz.Zoom, "Zoom", "Zoom", new[] { "zoom" }, new[] { "zoom" }),
+        C(ComandoVoz.Animar, "Animar", "Animate", new[] { "animar", "anima" }, new[] { "animate" }),
+        C(ComandoVoz.Bocas, "Bocas", "Mouths", new[] { "bocas", "boca" }, new[] { "mouths", "mouth" }),
+        C(ComandoVoz.Titere, "Títere", "Puppet", new[] { "títere", "títeres" }, new[] { "puppet" }),
+        C(ComandoVoz.Video, "Video", "Video", new[] { "video", "haz video", "haz un video" }, new[] { "video", "make video" }),
+        C(ComandoVoz.Muestra, "Muestra", "Show", new[] { "muestra", "mostrar", "muestra capa", "ver capa" }, new[] { "show", "show layer" }),
+        C(ComandoVoz.Oculta, "Oculta", "Hide", new[] { "oculta", "ocultar", "oculta capa", "esconde" }, new[] { "hide", "hide layer" }),
+        C(ComandoVoz.Lapiz, "Lápiz", "Pencil", new[] { "lápiz" }, new[] { "pencil" }),
+        C(ComandoVoz.Liberar, "Liberar", "Release", new[] { "liberar", "libera" }, new[] { "release" }),
+        // Los fondos vivos.
+        C(ComandoVoz.Avanza, "Avanzar", "Fly", new[] { "avanza", "avanzar", "vuela", "volar", "viaja" }, new[] { "fly", "travel" }),
+        C(ComandoVoz.Universo, "Universo", "Universe", new[] { "universo", "espacio", "estrellas" }, new[] { "universe", "space", "stars" }),
+        C(ComandoVoz.Nubes, "Nubes", "Clouds", new[] { "nubes", "cielo" }, new[] { "clouds", "sky" }),
+        // Lo que no está en ningún botón: los colores, el grosor y el idioma.
+        C(ComandoVoz.Color, "Negro", "Black", new[] { "negro" }, new[] { "black" }, 0),
+        C(ComandoVoz.Color, "Blanco", "White", new[] { "blanco" }, new[] { "white" }, 1),
+        C(ComandoVoz.Color, "Gris", "Gray", new[] { "gris" }, new[] { "gray", "grey" }, 2),
+        C(ComandoVoz.Color, "Amarillo", "Yellow", new[] { "amarillo" }, new[] { "yellow" }, 3),
+        C(ComandoVoz.Color, "Naranja", "Orange", new[] { "naranja" }, new[] { "orange" }, 4),
+        C(ComandoVoz.Color, "Rojo", "Red", new[] { "rojo" }, new[] { "red" }, 5),
+        C(ComandoVoz.Color, "Rosado", "Pink", new[] { "rosado", "rosa" }, new[] { "pink" }, 6),
+        C(ComandoVoz.Color, "Morado", "Purple", new[] { "morado", "violeta" }, new[] { "purple", "violet" }, 7),
+        C(ComandoVoz.Color, "Azul", "Blue", new[] { "azul" }, new[] { "blue" }, 8),
+        C(ComandoVoz.Color, "Verde", "Green", new[] { "verde" }, new[] { "green" }, 9),
+        C(ComandoVoz.Color, "Café", "Brown", new[] { "café", "marrón" }, new[] { "brown" }, 10),
+        C(ComandoVoz.Color, "Piel", "Skin", new[] { "piel" }, new[] { "skin" }, 11),
+        C(ComandoVoz.Grueso, "Más grueso", "Thicker", new[] { "más grueso", "más gruesa", "grueso", "gruesa" }, new[] { "thicker", "thick" }),
+        C(ComandoVoz.Fino, "Más fino", "Thinner", new[] { "más fino", "más fina", "fino", "fina", "delgado" }, new[] { "thinner", "thin" }),
+        C(ComandoVoz.Espanol, "Español", "Spanish", Nada0, new[] { "spanish", "español", "espanol" }),
+        C(ComandoVoz.Ingles, "Inglés", "English", new[] { "inglés", "english", "en inglés" }, Nada0),
     };
 
-    static FrasesComando C(ComandoVoz c, string nombreEs, string nombreEn, string[] es, string[] en)
+    static FrasesComando C(ComandoVoz c, string nombreEs, string nombreEn, string[] es, string[] en, int dato = 0)
     {
-        return new FrasesComando { comando = c, nombreEs = nombreEs, nombreEn = nombreEn, es = es, en = en };
+        return new FrasesComando { comando = c, dato = dato, nombreEs = nombreEs, nombreEn = nombreEn, es = es, en = en };
+    }
+
+    // v42: la palabra de un comando, como se muestra en la etiqueta del botón (en el idioma de la app). "" si no hay.
+    public static string NombreComando(ComandoVoz c)
+    {
+        foreach (var f in Comandos)
+            if (f.comando == c)
+                return Idioma.Ingles ? f.nombreEn : f.nombreEs;
+        return "";
+    }
+
+    // v42: ¿este nombre (en español, como en la paleta: "Rojo", "Halo") también se puede decir? Devuelve la palabra
+    // en el idioma de la app.
+    public static bool EsPalabraDeVoz(string nombreEs, out string palabra)
+    {
+        palabra = null;
+        if (string.IsNullOrEmpty(nombreEs))
+            return false;
+        foreach (var f in Comandos)
+            if (string.Equals(f.nombreEs, nombreEs, System.StringComparison.OrdinalIgnoreCase))
+            {
+                palabra = Idioma.Ingles ? f.nombreEn : f.nombreEs;
+                return true;
+            }
+        return false;
     }
 
     Gesto gestoVoz = Gesto.Ninguno;   // el modo puesto con la voz (hasta decir "ya")
@@ -112,14 +188,18 @@ public partial class ControlManos
         if (mejor < 0)
             return;
         var c = Comandos[mejor];
+        // v42: durante el tutorial solo valen los de la mano izquierda (y el silencio): nada que lo desordene.
+        if (Tutorial.EnCurso && c.comando != ComandoVoz.Dibuja && c.comando != ComandoVoz.Borra && c.comando != ComandoVoz.Nodos
+            && c.comando != ComandoVoz.Ya && c.comando != ComandoVoz.Deshaz && c.comando != ComandoVoz.Silencio)
+            return;
         UltimoComandoVoz = ingles ? c.nombreEn : c.nombreEs;
         UltimoComandoHora = Time.time;
         if (Cabeza != null)
             Burbuja(Cabeza.position + Cabeza.forward * 0.4f - Cabeza.right * 0.15f, 1.05f);
-        HacerComando(c.comando);
+        HacerComando(c.comando, c.dato);
     }
 
-    void HacerComando(ComandoVoz c)
+    void HacerComando(ComandoVoz c, int dato)
     {
         var anim = dibujo != null ? dibujo.animacion : null;
         switch (c)
@@ -183,7 +263,116 @@ public partial class ControlManos
                 dibujo.Mensaje(BotonSonido.Silenciado ? "Silencio" : "Con sonido");
                 break;
             case ComandoVoz.Halo: dibujo.AlternarHalo(); break;
+            // v42
+            case ComandoVoz.Plano: dibujo.AlternarPlano(); break;
+            case ComandoVoz.Fondo:
+            {
+                var reloj = FindFirstObjectByType<PanelMuneca>();
+                if (reloj != null)
+                    reloj.SiguienteFondo();
+                break;
+            }
+            case ComandoVoz.Archivos:
+            {
+                var nav = FindFirstObjectByType<NavegadorArchivos>();
+                if (nav != null)
+                    nav.Abrir(Cabeza);
+                break;
+            }
+            case ComandoVoz.Esfera: if (figuras != null) figuras.Agregar(0); break;
+            case ComandoVoz.Cubo: if (figuras != null) figuras.Agregar(1); break;
+            case ComandoVoz.Cilindro: if (figuras != null) figuras.Agregar(2); break;
+            case ComandoVoz.ALineas: if (figuras != null) figuras.ConvertirSeleccionada(); break;
+            case ComandoVoz.Ayuda:
+                if (Tutorial.Instancia != null)
+                    Tutorial.Instancia.AbrirSecciones();
+                break;
+            case ComandoVoz.Inicio: if (anim != null) anim.Inicio(); break;
+            case ComandoVoz.Zoom: if (panelArriba != null) panelArriba.ComandoZoom(); break;
+            case ComandoVoz.Animar: if (panelArriba != null) panelArriba.ComandoPestana(0); break;
+            case ComandoVoz.Bocas: if (panelArriba != null) panelArriba.ComandoPestana(2); break;
+            case ComandoVoz.Titere: if (panelArriba != null) panelArriba.ComandoPestana(3); break;
+            case ComandoVoz.Video:
+            {
+                var exportador = FindFirstObjectByType<ExportadorVideo>();
+                if (exportador != null)
+                    exportador.ExportarAnimacion();
+                break;
+            }
+            case ComandoVoz.Muestra: VerCapaVoz(true); break;
+            case ComandoVoz.Oculta: VerCapaVoz(false); break;
+            case ComandoVoz.Lapiz: if (dibujo.temblor != null) dibujo.temblor.SiguienteBoceto(); break;
+            case ComandoVoz.Liberar: dibujo.LiberarCapa(dibujo.capaActual); break;
+            case ComandoVoz.Avanza: AvanzarVoz(); break;
+            case ComandoVoz.Universo: FondoVivoVoz(FondosVivos.Universo); break;
+            case ComandoVoz.Nubes: FondoVivoVoz(FondosVivos.Nubes); break;
+            case ComandoVoz.Color:
+                if (dato >= 0 && dato < ColoresPaleta.Length)
+                    ElegirColor(ColoresPaleta[dato], Cabeza != null ? Cabeza.position + Cabeza.forward * 0.4f : transform.position);
+                break;
+            case ComandoVoz.Grueso: GrosorVoz(1.4f); break;
+            case ComandoVoz.Fino: GrosorVoz(1f / 1.4f); break;
+            case ComandoVoz.Espanol: IdiomaVoz(false); break;
+            case ComandoVoz.Ingles: IdiomaVoz(true); break;
         }
+    }
+
+    // v42: "muestra" / "oculta": la capa en la que dibujas.
+    void VerCapaVoz(bool ver)
+    {
+        int capa = dibujo.capaActual;
+        if (capa < 0 || capa >= dibujo.capas.Count)
+            return;
+        if (dibujo.capas[capa].visible != ver)
+            dibujo.AlternarVerCapa(capa);
+    }
+
+    // v42: "avanzar" / "volar" en los fondos vivos.
+    void AvanzarVoz()
+    {
+        if (escenarioGiro == null)
+            escenarioGiro = FindFirstObjectByType<Escenario>();
+        if (escenarioGiro == null || escenarioGiro.VivoPuesto < 0)
+        {
+            dibujo.Mensaje("Avanzar es para los fondos vivos (Universo y Sobre las nubes)");
+            return;
+        }
+        escenarioGiro.AlternarAvanzar();
+        SelectorFondos.RefrescarSiAbierto();
+        dibujo.Mensaje(FondosVivos.NombreAvanzar(escenarioGiro.VivoPuesto) + (escenarioGiro.Avanzando ? ": Sí" : ": No"));
+    }
+
+    // v42: "universo" / "nubes": ese fondo vivo.
+    void FondoVivoVoz(int cual)
+    {
+        if (escenarioGiro == null)
+            escenarioGiro = FindFirstObjectByType<Escenario>();
+        if (escenarioGiro == null)
+            return;
+        if (!escenarioGiro.PonerVivo(cual))
+        {
+            dibujo.Mensaje("Los fondos vivos salen después de TrazoVR > ★ Armar escena");
+            return;
+        }
+        SelectorFondos.RefrescarSiAbierto();
+        dibujo.Mensaje(escenarioGiro.MensajeFondo);
+    }
+
+    // v42: "más grueso" / "más fino": las líneas nuevas.
+    void GrosorVoz(float factor)
+    {
+        dibujo.ElegirAnchoPincel(dibujo.AnchoNuevoMundo * factor);
+        dibujo.Mensaje("Líneas nuevas: " + Mathf.RoundToInt(dibujo.AnchoNuevoMundo * 1000f) + " mm");
+    }
+
+    // v42: en inglés di "spanish"; en español di "inglés". La voz se vuelve a preparar en el otro idioma (la primera
+    // vez lo baja, con internet).
+    void IdiomaVoz(bool ingles)
+    {
+        if (Idioma.Ingles == ingles)
+            return;
+        Idioma.Alternar();
+        dibujo.Mensaje(ingles ? "English" : "Español");
     }
 
     void PonerGestoVoz(Gesto g)

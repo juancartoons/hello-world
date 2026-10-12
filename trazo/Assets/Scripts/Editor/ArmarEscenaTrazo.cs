@@ -1035,6 +1035,16 @@ public static class ArmarEscenaTrazo
         EditorUtility.SetDirty(m);
         AssetDatabase.SaveAssets();
         escenario.materialFondo360 = m;
+        // v42: los fondos vivos (Universo y Sobre las nubes): el cielo, las estrellas y las nubes.
+        var shaderCielo = Shader.Find("TrazoVR/CieloVivo");
+        var shaderEstrellas = Shader.Find("TrazoVR/Estrellas");
+        var shaderNubes = Shader.Find("TrazoVR/Nubes");
+        escenario.materialCielo = shaderCielo != null ? Mat("CieloVivo", shaderCielo, Color.white) : null;
+        escenario.materialEstrellas = shaderEstrellas != null ? Mat("Estrellas", shaderEstrellas, Color.white) : null;
+        escenario.materialNubes = shaderNubes != null ? Mat("Nubes", shaderNubes, Color.white) : null;
+        if (shaderCielo == null || shaderEstrellas == null || shaderNubes == null)
+            Debug.LogWarning("TrazoVR: faltan los shaders de los fondos vivos (copia otra vez la carpeta Shaders).");
+        AssetDatabase.SaveAssets();
     }
 
     // Una foto 360: tamaño máximo 4096, sin mipmaps, y sus distancias (archivo <nombre>_profundidad) si las tiene.

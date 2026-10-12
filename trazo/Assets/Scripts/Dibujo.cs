@@ -632,14 +632,10 @@ public class Dibujo : MonoBehaviour
         Avisar();
     }
 
+    // v42: ya no hay boceto gris ni azul para los vectores: conservan su color (la capa de lápiz solo cambia cómo se
+    // dibuja en Plano 2D y que no sale en fotos ni videos).
     public Material MaterialCapa(int capa, Material normal)
     {
-        if (capa >= 0 && capa < capas.Count)
-        {
-            int b = capas[capa].boceto;
-            if (b == 1 && materialBocetoGris != null) return materialBocetoGris;
-            if (b == 2 && materialBocetoAzul != null) return materialBocetoAzul;
-        }
         return normal;
     }
 

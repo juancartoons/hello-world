@@ -20,9 +20,14 @@ public class BotonTocable : MonoBehaviour
     public float pausa = 0.6f;
     // false = acercar el dedo no esconde la bolita (por ejemplo, los botoncitos de las imágenes para calcar).
     [System.NonSerialized] public bool esconderDedo = true;
+    // v42: su ETIQUETA al acercar el dedo (ver EtiquetasBotones): la palabra de su comando de voz (con microfonito)
+    // o un nombre (en español); si no tiene ninguno, lo que dice el botón.
+    [System.NonSerialized] public ControlManos.ComandoVoz comandoVoz = ControlManos.ComandoVoz.Nada;
+    [System.NonSerialized] public string nombre;
 
     // Cerca de cualquier botón (de cualquier menú), la bolita del dedo y el borrador se esconden y no se dibuja.
     const float DistanciaCerca = 0.045f;
+    const float DistanciaEtiqueta = 0.03f;   // v42: así de cerca (y quieto un momento) sale su etiqueta
     static int cercaCuadro = -10;
     public static bool DedoCerca => Time.frameCount - cercaCuadro <= 1;
 
@@ -60,6 +65,8 @@ public class BotonTocable : MonoBehaviour
         float d = Vector3.Distance(miCollider.ClosestPoint(punta), punta);
         if (d < DistanciaCerca && esconderDedo)
             cercaCuadro = Time.frameCount;
+        if (d < DistanciaEtiqueta)
+            ProponerEtiqueta(d);
         bool toca = d < distancia;
         if (toca && !dentro && Time.time >= bloqueadoHasta)
         {
@@ -68,6 +75,40 @@ public class BotonTocable : MonoBehaviour
             alTocar.Invoke();
         }
         dentro = toca;
+    }
+
+    // v42: para que cada menú le ponga su palabra de voz o su nombre a sus botones.
+    public static void PonerVoz(BotonTocable b, ControlManos.ComandoVoz comando)
+    {
+        if (b != null)
+            b.comandoVoz = comando;
+    }
+
+    public static void PonerNombre(BotonTocable b, string nombreEs)
+    {
+        if (b != null)
+            b.nombre = nombreEs;
+    }
+
+    void ProponerEtiqueta(float d)
+    {
+        string t;
+        bool voz = false;
+        if (comandoVoz != ControlManos.ComandoVoz.Nada)
+        {
+            t = ControlManos.NombreComando(comandoVoz);
+            voz = true;
+        }
+        else if (!string.IsNullOrEmpty(nombre))
+        {
+            t = Idioma.T(nombre);
+        }
+        else
+        {
+            t = etiqueta != null ? etiqueta.text : null;
+        }
+        if (!string.IsNullOrEmpty(t))
+            EtiquetasBotones.ProponerEncima(transform, d, t, voz);
     }
 
     public void Marcar(bool marcado)

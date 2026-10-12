@@ -152,7 +152,12 @@ public class PanelArriba : MonoBehaviour
     // el cabezal (o una clave), un doble toque izquierdo hace que la barra siga tu dedo solo de lado, aunque el dedo se
     // salga lejos de la barra (así puedes mirar solo tu animación). Otro doble toque y vuelve a la normalidad.
     static int barraCuadro = -10;
-    public static bool DedoEnBarra => Time.frameCount - barraCuadro <= 1;
+    static float sinDibujarHasta = -10f;   // v42: un momento después de sujetar o soltar la barra, nada dibuja
+    public static bool DedoEnBarra => Time.frameCount - barraCuadro <= 1 || Time.time < sinDibujarHasta;
+    // v42: el dedo está sobre TODA la mesa (reproductor, línea de tiempo, pestañas y página abierta): ahí no se
+    // dibuja ni se borra (el dedo es de la mesa).
+    static int mesaCuadro = -10;
+    public static bool DedoEnMesa => Time.frameCount - mesaCuadro <= 1 || DedoEnBarra;
     bool barraSujeta, encimaAntes;
     float ultimoEnBarra = -10f;
     Vector3 escalaCabezal;
@@ -211,6 +216,31 @@ public class PanelArriba : MonoBehaviour
         // Las capas ahora cuelgan en profundidad (ver CapasProfundidad.cs); la lista de antes ya no se abre.
         Conectar(btnCapasPlegar, CapasProfundidad.Alternar);
         PrepararCapas();
+
+        // v42: la etiqueta de cada botón es la palabra que se dice (ver EtiquetasBotones y ControlManosVoz). Donde el
+        // botón decía otra cosa, ahora dice lo mismo ("+ Clave" = "Clave", "- Clave" = "Quita clave").
+        BotonTocable.PonerVoz(btnInicio, ControlManos.ComandoVoz.Inicio);
+        BotonTocable.PonerVoz(btnAnterior, ControlManos.ComandoVoz.Anterior);
+        BotonTocable.PonerVoz(btnPlay, ControlManos.ComandoVoz.Play);
+        BotonTocable.PonerVoz(btnSiguiente, ControlManos.ComandoVoz.Siguiente);
+        BotonTocable.PonerVoz(btnClave, ControlManos.ComandoVoz.Clave);
+        BotonTocable.PonerVoz(btnQuitarClave, ControlManos.ComandoVoz.QuitaClave);
+        BotonTocable.PonerVoz(btnZoom, ControlManos.ComandoVoz.Zoom);
+        BotonTocable.PonerVoz(btnPaginaAnimar, ControlManos.ComandoVoz.Animar);
+        BotonTocable.PonerVoz(btnPaginaBocas, ControlManos.ComandoVoz.Bocas);
+        BotonTocable.PonerVoz(btnPaginaTitere, ControlManos.ComandoVoz.Titere);
+        BotonTocable.PonerVoz(btnVideoAnim, ControlManos.ComandoVoz.Video);
+        BotonTocable.PonerVoz(btnCapasPlegar, ControlManos.ComandoVoz.Capas);
+        BotonTocable.PonerNombre(btnFps, "Cuadros por segundo");
+        BotonTocable.PonerNombre(btnAyuda, "Ayuda de la mesa");
+        BotonTocable.PonerNombre(btnSeguir, "Fijar aquí / Seguirme");
+        BotonTocable.PonerNombre(btnVolverArriba, "Guardar la mesa");
+        if (btnClave != null)
+            btnClave.PonerTexto("Clave");
+        if (btnQuitarClave != null)
+            btnQuitarClave.PonerTexto("Quita clave");
+        if (btnVideoAnim != null)
+            btnVideoAnim.PonerTexto("Video");
 
         if (animacion != null)
         {
@@ -435,7 +465,7 @@ public class PanelArriba : MonoBehaviour
             if (btnBocetoCapa[i] == null)
                 continue;
             int boceto = Mathf.Clamp(dibujo.capas[i].boceto, 0, 2);
-            btnBocetoCapa[i].PonerTexto("Boceto: " + NombresBoceto[boceto]);
+            btnBocetoCapa[i].PonerTexto("Lápiz: " + NombresBoceto[boceto]);
             btnBocetoCapa[i].Marcar(boceto > 0);
         }
         for (int i = 0; i < btnPlanoCapa.Length && i < dibujo.capas.Count; i++)
@@ -511,6 +541,22 @@ public class PanelArriba : MonoBehaviour
         if (paginaBocas != null) paginaBocas.SetActive(p == 2);
         if (paginaTitere != null) paginaTitere.SetActive(p == 3);
         MarcarPestanas();
+    }
+
+    // v42: la voz ("zoom", "animar", "bocas", "títere"): si la mesa está guardada, primero sale.
+    public void ComandoZoom()
+    {
+        if (!visible)
+            AbrirDesdePersiana();
+        CambiarZoom();
+    }
+
+    public void ComandoPestana(int p)
+    {
+        if (!visible)
+            AbrirDesdePersiana();
+        if (plegado || pagina != p)
+            TocarPestana(p);
     }
 
     void CambiarZoom()
@@ -684,6 +730,11 @@ public class PanelArriba : MonoBehaviour
             return;
         }
 
+        // v42: con la barra sujeta nunca se dibuja (ni por accidente); con el dedo sobre la mesa, tampoco.
+        if (barraSujeta)
+            barraCuadro = Time.frameCount;
+        if (control.Der.valida && Contiene(control.Der.indice))
+            mesaCuadro = Time.frameCount;
         RevisarAsa(cabeza);
         if (!anclado)
         {
@@ -725,6 +776,7 @@ public class PanelArriba : MonoBehaviour
         persianaAbajo.pose = PanelesFlexibles.PoseMesa;
         persianaAbajo.arriba = () => PanelesFlexibles.MesaPastillaArriba;
         persianaAbajo.alMoverA = MoverPastilla;
+        persianaAbajo.comandoVoz = ControlManos.ComandoVoz.Mesa;
         persianaAbajo.visible = () => !visible && !Tutorial.EnCurso && !ExportadorVideo.Exportando;
         persianaAbajo.puedeJalar = () => control != null && control.SegundosSinEditar > 0.6f && !control.PaletaAbierta;
         persianaAbajo.texto = TextoPastilla;
@@ -740,6 +792,7 @@ public class PanelArriba : MonoBehaviour
         tiradorAbajo.alAbrir = Seguirme;
         // Abajo se guarda bajándolo; arriba (v41), subiéndolo. ("arriba" = se jala hacia abajo.)
         tiradorAbajo.arriba = () => !arribaAhora;
+        tiradorAbajo.comandoVoz = ControlManos.ComandoVoz.Mesa;
     }
 
     // v41: llevaste la pastillita arriba o abajo con un pellizco.
@@ -890,7 +943,9 @@ public class PanelArriba : MonoBehaviour
         Vector3 hacia = giro * (Quaternion.Euler(-elevacion, 0f, 0f) * Vector3.forward);
         Quaternion rot = Quaternion.LookRotation(hacia, Vector3.up);
         // Lo que siempre se ve queda centrado en esa dirección (el panel crece desde más abajo).
-        Vector3 pos = cabeza.position + hacia * DistanciaMesa - rot * Vector3.up * (CentroMesa * escala);
+        // v42: arriba, 1.5 cm más cerca de ti.
+        float distancia = arribaAhora ? DistanciaMesa - 0.015f : DistanciaMesa;
+        Vector3 pos = cabeza.position + hacia * distancia - rot * Vector3.up * (CentroMesa * escala);
         transform.position = Vector3.Lerp(transform.position, pos, a);
         transform.rotation = Quaternion.Slerp(transform.rotation, rot, a);
     }
@@ -994,6 +1049,8 @@ public class PanelArriba : MonoBehaviour
         if (barra == null || animacion == null || control == null)
             return;
         var der = control.Der;
+        if (barraSujeta)
+            barraCuadro = Time.frameCount;
 
         if (claveArrastrada >= 0)
         {
@@ -1112,6 +1169,7 @@ public class PanelArriba : MonoBehaviour
     public void AlternarSujeta()
     {
         barraSujeta = !barraSujeta;
+        sinDibujarHasta = Time.time + 0.8f;   // el doble toque es con el pellizco de dibujar: que no pinte nada
         if (control != null && control.Cabeza != null)
             control.SonidoBurbuja(control.Cabeza.position + control.Cabeza.forward * 0.4f);
         if (dibujo != null)
@@ -1217,7 +1275,11 @@ public class PanelArriba : MonoBehaviour
                 textoFotograma.text = Idioma.T(texto);
             }
             if (btnPlay != null)
+            {
                 btnPlay.PonerTexto(animacion.Reproduciendo ? "Pausa" : "Play");
+                if (!esAyuda)
+                    btnPlay.comandoVoz = animacion.Reproduciendo ? ControlManos.ComandoVoz.Pausa : ControlManos.ComandoVoz.Play;
+            }
             if (btnFps != null)
                 btnFps.PonerTexto(animacion.fotogramasPorSegundo + " fps");
         }
@@ -1314,7 +1376,7 @@ public class PanelArriba : MonoBehaviour
         }
     }
 
-    static readonly string[] NombresBoceto = { "No", "Gris", "Azul" };
+    static readonly string[] NombresBoceto = { "No", "Sí", "Sí" };   // v42: lápiz sí o no
 
     void RefrescarMedios()
     {
@@ -1367,7 +1429,7 @@ public class PanelArriba : MonoBehaviour
                 btnVelocidadTemblor.PonerTexto("Velocidad: " + tb.CambiosPorSegundo);
             if (btnBoceto != null)
             {
-                btnBoceto.PonerTexto("Boceto: " + tb.NombreBoceto);
+                btnBoceto.PonerTexto("Lápiz: " + tb.NombreBoceto);
                 btnBoceto.Marcar(tb.Boceto > 0);
             }
         }
@@ -1707,7 +1769,7 @@ public class PanelArriba : MonoBehaviour
         { "- CLAVE", "- KEY\nRemoves the active layer's key at this frame.\nTo MOVE a key: pinch it on the bar and drag it." },
         { "FPS", "FPS\nAnimation speed: 12, 24, 30 or 60 frames per second." },
         { "CAPAS (en profundidad)", "LAYERS (in depth)\nOpens the layers hanging one behind the other, close to you at the top center of your view (also with the Layers button on the hand menu). Push the current one = the whole stack moves back and the layer in front arrives; pull it toward you = the one behind. + Layer = a new layer in front (up to 12). They close by themselves after 20 seconds." },
-        { "CAPA 1-4", "LAYER 1-4\nChoose the layer you draw on. Each layer has its own style: wobble and strands in the palette (left palm) > LINE; Sketch and Plane here, in its row.\nTip: sketch on layer 1 (Sketch: Gray) and ink on layer 2." },
+        { "CAPA 1-4", "LAYER 1-4\nChoose the layer you draw on. Each layer has its own style: wobble and strands in the palette (left palm) > LINE; Pencil and Plane here, in its row.\nTip: pencil on layer 1 (Pencil: Yes, in Plane 2D) and ink on layer 2." },
         { "VER / OCULTA", "SHOW / HIDDEN\nShows or hides that layer. A hidden layer can't be edited." },
         { "LIBRE (3D) / PLANO (2D)", "FREE (3D) / PLANE (2D)\nPlane: you draw on an invisible sheet in front of you (if you move your finger more than ~2.5 cm toward you, the line ends, like lifting the pencil; if you push it BEHIND the sheet, the line goes on and you see a copy of your hand on the sheet). Free: you draw in the air, in 3D.\nWith a Sketch layer in Plane mode, you draw with a pencil on paper." },
         { "FONDO", "BACKGROUND\nGrid → White → Reality (passthrough) → 360. At 360 a small window opens with all the 3D 360 backgrounds (Rome, Shanghai, Venice, the sea, fields...) and your own 360 photos: tap one to try it." },
@@ -1807,7 +1869,7 @@ public class PanelArriba : MonoBehaviour
         Poner(d, btnCapasPlegar, "CAPAS (en profundidad)\nAbre las capas colgadas una detrás de otra, cerca de ti, arriba al centro de tu vista (también con el botón Capas del menú de la mano). Empuja la actual = todo el montón se va al fondo y llega la capa de adelante; atráela hacia ti = la de atrás. + Capa = una capa nueva adelante (hasta 12). Se cierran solas a los 20 segundos.\nLa barra grande muestra las claves de la capa activa.");
         if (btnCapas != null)
             foreach (var b in btnCapas)
-                Poner(d, b, "CAPA 1-4\nElige en qué capa dibujas. Cada capa tiene su estilo: temblor y hebras en la paleta (palma izquierda) > LÍNEA; Boceto y Plano aquí, en su fila.\nIdea: boceto en la capa 1 (Boceto: Gris) y tinta encima en la capa 2.");
+                Poner(d, b, "CAPA 1-4\nElige en qué capa dibujas. Cada capa tiene su estilo: temblor y hebras en la paleta (palma izquierda) > LÍNEA; Lápiz y Plano aquí, en su fila.\nIdea: lápiz en la capa 1 (Lápiz: Sí, en Plano 2D) y tinta encima en la capa 2.");
         if (btnVer != null)
             foreach (var b in btnVer)
                 Poner(d, b, "VER / OCULTA\nMuestra o esconde esa capa. Una capa oculta no se puede editar.");

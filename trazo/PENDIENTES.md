@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 12 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v41***
+*Actualizado: 12 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v42***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,6 +16,34 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 4. **Build And Run**.
 
 ---
+
+## 0+. Hecho en la v42 (falta probarlo en el visor)
+
+**Etiquetas = palabras de voz** (en TODOS los botones)
+- [x] Deja el índice cerquita de cualquier botón un momento y sale su etiqueta de vidrio (como en la paleta): en el reloj, la mesa, la tarjeta de capas, Mis archivos, la ventanita de fondos, la paleta, las pastillas, el parlante, el micrófono y las flechas de girar.
+- [x] Si esa palabra también se puede **decir**, la etiqueta lleva un **microfonito** verde azulado y es **exactamente** la palabra de la voz ("Capa nueva", "Gira derecha", "Rojo"...).
+- [x] Los botones dicen lo mismo que su voz: "+ Clave" → **Clave**, "- Clave" → **Quita clave**, "+ Capa" → **Capa nueva**, "Colores" → **Paleta**, "Video anim" → **Video**, y el de ver la capa dice lo que hace (**Oculta** / **Muestra**).
+- [x] **Comandos nuevos**: plano, fondo, archivos, esfera, cubo, cilindro, a líneas, ayuda, inicio, zoom, animar, bocas, títere, video, muestra, oculta, lápiz, liberar, avanzar, universo, nubes. Y sin botón: los **12 colores** ("rojo", "azul"...), **más grueso** / **más fino**.
+- [x] **Idioma por voz**: en inglés di **"spanish"** (o "español"); en español di **"inglés"** (o "english"). La voz se vuelve a preparar en el otro idioma (la primera vez lo baja).
+
+**Fondos vivos** (no son fotos: los dibuja la app)
+- [x] **Universo**: miles de estrellas (las cercanas de verdad en 3D), la Vía Láctea con su polvo oscuro y nebulosas de colores. Sin piso.
+- [x] **Sobre las nubes**: un mar de nubes en dos capas, el cielo en degradado y un sol cálido a lo lejos.
+- [x] En la ventanita de fondos (después de los de la app). Botón **"Avanzar" / "Volar"**: las estrellas o las nubes pasan despacio (velocidad suave y pareja). Las flechas de girar también los giran. Voz: "universo", "nubes", "avanzar".
+
+**Girar**
+- [x] Dos **flechitas fijas** en la fila de la pastillita de abajo: la izquierda debajo del micrófono y la derecha debajo del parlante. Solo con un fondo 360 (o vivo). **Toque** = 30° de una vez; **toca y arrastra** de lado = el fondo sigue tu dedo. Se quitó lo de girar la cabeza para que salga la flecha.
+
+**Mesa y línea de tiempo**
+- [x] Con el dedo sobre **toda la mesa** (reproductor, línea de tiempo, las 3 pestañas y la página abierta) no se dibuja ni se borra (tampoco a lápiz). La línea que venía se corta ahí.
+- [x] La **barra sujeta** (doble toque) nunca deja dibujar, ni por accidente (ni un momento después de sujetarla o soltarla).
+- [x] La mesa **arriba** queda 1.5 cm más cerca de ti.
+
+**Otros**
+- [x] **Lápiz: Sí / No** en la tarjeta de capas (se quitaron Boceto gris y azul). Las líneas de vectores ya no cambian de color en una capa de lápiz: para bocetar con vectores, cambia el color de la línea.
+- [x] Micrófono un 13 % más hacia el centro y parlante un 10 % más a la derecha.
+- [x] **Tutorial con voz**: al empezar, **"Solo manos"** o **"Manos + voz"**. Con voz, en los pasos de la mano izquierda la viñeta dice también qué decir ("o di "dibuja"", "ya", "borra", "nodos", "deshaz"). Durante el tutorial la voz solo acepta esas palabras (y "silencio").
+- [x] Novedades: páginas de la voz y de girar al día, y una nueva: **10 · Fondos vivos**.
 
 ## 0+. Hecho en la v41 (falta probarlo en el visor)
 
@@ -267,14 +295,14 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 ## 1. Próxima tanda
 
 - [x] ~~**Pastillas que se mueven**~~ (hecho en la v41: paneles flexibles).
-- [ ] **Tooltips en todos los botones = las palabras de la voz** (aprobado por Juan Carlos para la próxima tanda; él avisa cuándo):
+- [x] **Tooltips en todos los botones = las palabras de la voz** (hecho en la v42):
   - Todos los botones con etiquetita de vidrio al dejar el índice quieto cerca, como en la paleta: los del reloj, los de la mesa, la tarjeta de capas, el micrófono, el parlante, las pastillas y la flecha de girar.
   - Una sola lista de nombres: cada acción tiene UNA palabra (en el idioma de la app), la misma en el tooltip y en la voz.
   - Un microfonito 🎤 en los tooltips que también se pueden decir ("🎤 Capa nueva").
   - Igualar los textos de los botones a la palabra de voz ("+ Clave" → "Clave", "- Clave" → "Quita clave"...).
   - Comandos de voz nuevos para los botones que no los tienen, si la palabra es fácil de decir y Vosk la conoce ("boceto", "plano", "liberar"...). Las que no conoce (como "fps") quedan sin 🎤.
 - [x] ~~Comandos de voz~~ (hechos en la v40 con Vosk, gratis y sin internet).
-- [ ] **Voz, siguientes pasos**: más comandos si hacen falta (colores por nombre: "rojo", "azul"...; "más grueso", "más fino"); decir un número de fotograma.
+- [ ] **Voz, siguientes pasos**: ~~colores por nombre y más grueso / más fino~~ (hechos en la v42); falta decir un número de fotograma ("fotograma diez").
 - [ ] **Mini-tutorial predictivo** (el panelito de la voz ya da el primer paso: dice qué decir según lo que haces) (más adelante, idea de Juan Carlos), para reemplazar las letras de cómic: un cuadrito a la **izquierda** de la vista que se adelanta a lo que vas a hacer. Por ejemplo: al unir el pulgar con el medio izquierdos (modo nodos) sale una manito simulada mostrando cómo mover un nodo con el índice; si pasas el dedo sobre un nodo, muestra que también se pueden mover sus alas (asas), con un ejemplo animado. Para los nuevos que no saben qué sigue o se pierden. Ideas para cuando se haga: que salga solo las primeras veces de cada gesto (luego se calla), que se pueda esconder con la vista limpia, y que use las mismas animaciones cortas de los tutoriales.
 
 - [ ] **Profundidad con IA para tus propias fotos 360** (dentro del Quest, con Unity Inference Engine, gratis). Por ahora usan "piso real".
@@ -284,13 +312,13 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ## 2. Propuestas esperando tu decisión (escribe HY para hacerlas)
 
-- [ ] **Fondos "vivos" hechos por nosotros** (idea de Juan Carlos; no son fotos, los genera la app, así que son 100 % nuestros y gratis):
+- [x] **Fondos "vivos" hechos por nosotros** (hecho en la v42: Universo y Sobre las nubes; quedan como ideas el amanecer/atardecer y que el halo brille más en el universo) (idea de Juan Carlos; no son fotos, los genera la app, así que son 100 % nuestros y gratis):
   - **El universo**: miles de estrellas de verdad en 3D (cada ojo las ve distinto, con profundidad real), de colores y brillos distintos, una Vía Láctea y nebulosas suaves. Sin piso: flotas en medio del espacio. Opción **"Avanzar"**: las estrellas pasan despacio a tu lado (siempre la misma velocidad suave, para no marear).
   - **Sobre las nubes**: un mar de nubes abajo, el cielo degradado y un **sol** grande y cálido a lo lejos, con su brillo. Opción **"Volar"**: las nubes pasan despacio debajo de ti, como desde un avión.
   - Salen en la ventanita de fondos 360 con su miniatura; girar con las flechas también funciona. Pesan casi nada (no son fotos de 4K).
   - Ideas extra: amanecer o atardecer sobre las nubes; en el universo, que el halo de las líneas brille un poco más.
 
-- [ ] **Tutorial con voz** (idea de Juan Carlos): en cada paso de un gesto de la mano izquierda, la viñeta dice también «o di "dibuja"». Propuesta:
+- [x] **Tutorial con voz** (hecho en la v42; los idiomas siguen bajándose la primera vez hasta la versión definitiva) (idea de Juan Carlos): en cada paso de un gesto de la mano izquierda, la viñeta dice también «o di "dibuja"». Propuesta:
   - Al empezar el tutorial, elegir **"Solo manos"** o **"Manos + voz"** (el permiso del micrófono se pide ahí, no a mitad de un paso).
   - Con voz: paso 1 «dibuja», paso 3 «ya», paso 5 «borra», paso 7 «nodos» (y «ya» para soltar), paso 8 «deshaz». En otro color (verde azulado, como el micrófono).
   - Los pasos del dedo derecho (dibujar hasta la bandera, mover el muñeco, frotar, mover un nodo) y el de las dos manos se quedan solo con la mano: la voz reemplaza a la mano IZQUIERDA; el índice derecho siempre dibuja y toca.
@@ -328,6 +356,16 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [ ] Cuando ya no haga falta, quitar el botón **Tutorial** de Mis archivos (por ahora se queda; abre el mismo panel "?").
 
 ## 5. Para probar en el visor (desde la v21 casi nada se ha probado)
+
+**Nuevo en la v42 (antes de probar: TrazoVR → ★ Armar escena, para los fondos vivos):**
+- [ ] Etiquetas: ¿salen en todos los botones al acercar el dedo? ¿Estorban o salen sin querer? ¿Se lee el microfonito?
+- [ ] Voz nueva: colores, "más grueso", "universo", "zoom"... ¿Las entiende? Di "inglés" / "spanish": ¿cambia el idioma y la voz se vuelve a preparar?
+- [ ] Universo: ¿se ve bonito? ¿Las estrellas cercanas se sienten en 3D? "Avanzar": ¿marea o se siente bien?
+- [ ] Sobre las nubes: ¿las nubes se ven bien desde arriba? ¿El sol? "Volar": ¿la velocidad está bien? ¿El visor va fluido?
+- [ ] Flechitas de girar abajo: ¿se alcanzan? Toque = 30°; tocar y arrastrar = ¿sigue el dedo?
+- [ ] Mesa: con el dedo encima ya no dibuja ni borra (ni las pestañas). Barra sujeta: ¿nunca dibuja?
+- [ ] Tutorial con "Manos + voz": ¿salen las pistas en verde? ¿Pasa cada paso diciendo la palabra?
+- [ ] Lápiz: Sí / No en la tarjeta de capas.
 
 **Nuevo en la v41:**
 - [ ] Pellizcar una pastilla: ¿se agarra a la primera? ¿a veces se abre el panel en vez de moverse (o al revés)?

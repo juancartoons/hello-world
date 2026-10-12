@@ -18,8 +18,8 @@ public class BotonSonido : MonoBehaviour
     const string ClaveSilencio = "jcartoons_silencio";
     static readonly Color ColorActivo = new Color(0.16f, 0.68f, 0.64f);
     static readonly Color ColorApagado = new Color(0.22f, 0.22f, 0.24f);
-    // Dónde queda respecto a tu cabeza: a la derecha, arriba y adelante (metros).
-    static readonly Vector3 Lugar = new Vector3(0.26f, 0.13f, 0.45f);
+    // Dónde queda respecto a tu cabeza: a la derecha, arriba y adelante (metros). v42: un 10 % más a la derecha.
+    public static readonly Vector3 Lugar = new Vector3(0.286f, 0.13f, 0.45f);
     // El parlante: un poco más abajo, para que el carrusel se vea cómodo encima.
     static readonly Vector3 LugarParlante = new Vector3(0f, -0.042f, 0f);
     const float Escala = 0.82f;          // todo (parlante y carrusel) un 18 % más pequeño
@@ -365,6 +365,12 @@ public class BotonSonido : MonoBehaviour
         Vector3 local = transform.InverseTransformPoint(punta);
         DedoCerca = dedo && Mathf.Abs(local.x) < 0.085f && local.y > -0.075f && local.y < 0.05f && Mathf.Abs(local.z) < 0.07f;
         ActualizarCarrusel(dedo, local, Time.deltaTime);
+
+        // v42: su etiqueta (debajo, porque encima está el carrusel): "Silencio", la palabra que se dice.
+        float alParlante = Vector3.Distance(punta, parlante.position);
+        if (dedo && alParlante < RadioToque * Escala + 0.02f)
+            EtiquetasBotones.ProponerComando(parlante, alParlante, ControlManos.ComandoVoz.Silencio,
+                                             parlante.position - transform.up * 0.032f - transform.forward * 0.006f, transform.rotation);
 
         // Tocar el parlante con la punta del índice derecho.
         bool toca = dedo && Vector3.Distance(punta, parlante.position) < RadioToque * Escala;

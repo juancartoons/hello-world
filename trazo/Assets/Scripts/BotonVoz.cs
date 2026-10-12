@@ -15,8 +15,8 @@ public class BotonVoz : MonoBehaviour
     static readonly Color ColorEscucha = new Color(0.16f, 0.68f, 0.64f);
     static readonly Color ColorPrepara = new Color(0.95f, 0.6f, 0.2f);
     static readonly Color ColorApagado = new Color(0.22f, 0.22f, 0.24f);
-    // Dónde queda respecto a tu cabeza: en espejo del parlante (a la izquierda, arriba y adelante).
-    static readonly Vector3 Lugar = new Vector3(-0.26f, 0.13f, 0.45f);
+    // Dónde queda respecto a tu cabeza: a la izquierda, arriba y adelante. v42: un 13 % más hacia el centro.
+    public static readonly Vector3 Lugar = new Vector3(-0.226f, 0.13f, 0.45f);
     static readonly Vector3 LugarMicro = new Vector3(0f, -0.042f, 0f);
     const float Escala = 0.82f;
     const float TamanoMicro = 0.04f;
@@ -202,6 +202,11 @@ public class BotonVoz : MonoBehaviour
         Vector3 punta = control.Der.indice;
         Vector3 local = transform.InverseTransformPoint(punta);
         DedoCerca = dedo && Mathf.Abs(local.x) < 0.06f && local.y > -0.075f && local.y < -0.005f && Mathf.Abs(local.z) < 0.07f;
+        // v42: su etiqueta, debajo (como la del parlante). El micrófono no se prende con la voz: se toca.
+        float alMicro = Vector3.Distance(punta, micro.position);
+        if (dedo && alMicro < RadioToque * Escala + 0.02f)
+            EtiquetasBotones.Proponer(micro, alMicro, Idioma.T(Voz.Activa ? "Apagar la voz" : "Prender la voz"), false,
+                                      micro.position - transform.up * 0.032f - transform.forward * 0.006f, transform.rotation);
         bool toca = dedo && Vector3.Distance(punta, micro.position) < RadioToque * Escala;
         if (toca && !dedoEnMicro && Time.time >= bloqueadoHasta)
         {
@@ -390,6 +395,30 @@ public class BotonVoz : MonoBehaviour
     // Cada parte es un polígono convexo (se rellena en abanico), por los dos lados.
     Mesh Malla(List<Vector2[]> partes)
     {
+        var m = ArmarMalla(partes);
+        mallas.Add(m);
+        return m;
+    }
+
+    static Mesh mallaMicrofono;
+
+    // v42: el dibujito del micrófono, para las etiquetas de los botones que también se pueden decir.
+    // Mide unos 0.31 de ancho y 0.46 de alto (de y = -0.2 a 0.26).
+    public static Mesh MallaMicrofono()
+    {
+        if (mallaMicrofono != null)
+            return mallaMicrofono;
+        var forma = new List<Vector2[]>();
+        forma.Add(Capsula(0.09f, 0.05f, 0.17f));
+        ArcoU(forma, new Vector2(0f, 0.09f), 0.155f, 0.035f);
+        Barra(forma, new Vector2(0f, -0.065f), new Vector2(0f, -0.18f), 0.035f);
+        Barra(forma, new Vector2(-0.1f, -0.18f), new Vector2(0.1f, -0.18f), 0.04f);
+        mallaMicrofono = ArmarMalla(forma);
+        return mallaMicrofono;
+    }
+
+    static Mesh ArmarMalla(List<Vector2[]> partes)
+    {
         var v = new List<Vector3>();
         var t = new List<int>();
         foreach (var p in partes)
@@ -408,7 +437,6 @@ public class BotonVoz : MonoBehaviour
         m.SetTriangles(t, 0);
         m.RecalculateNormals();
         m.RecalculateBounds();
-        mallas.Add(m);
         return m;
     }
 

@@ -185,7 +185,7 @@ public class CapasProfundidad : MonoBehaviour
         btnMas = Boton(tarjeta, "+ Capa", new Vector3(Ancho * 0.5f - 0.055f, 0.016f, 0f), new Vector2(0.05f, 0.018f));
         btnCerrar = Boton(tarjeta, "X", new Vector3(Ancho * 0.5f - 0.015f, 0.018f, 0f), new Vector2(0.022f, 0.022f)); // v37: más grande
         btnVer = Boton(tarjeta, "Ver", new Vector3(-0.0965f, FilaBotones, 0f), new Vector2(0.045f, 0.017f));
-        btnBoceto = Boton(tarjeta, "Boceto: No", new Vector3(-0.035f, FilaBotones, 0f), new Vector2(0.062f, 0.017f));
+        btnBoceto = Boton(tarjeta, "Lápiz: No", new Vector3(-0.035f, FilaBotones, 0f), new Vector2(0.062f, 0.017f));
         btnPlano = Boton(tarjeta, "Plano: unido", new Vector3(0.035f, FilaBotones, 0f), new Vector2(0.062f, 0.017f));
         btnLiberar = Boton(tarjeta, "Liberar", new Vector3(0.0965f, FilaBotones, 0f), new Vector2(0.045f, 0.017f));
         btnVer.alTocar.AddListener(() => { dibujo.AlternarVerCapa(Actual); Tocado(); });
@@ -194,6 +194,13 @@ public class CapasProfundidad : MonoBehaviour
         btnLiberar.alTocar.AddListener(() => { dibujo.LiberarCapa(Actual); Tocado(); });
         btnMas.alTocar.AddListener(AgregarCapa);
         btnCerrar.alTocar.AddListener(Cerrar);
+        // v42: la etiqueta de cada botón es la palabra que se dice ("Capa nueva", "Lápiz", "Liberar"...).
+        btnMas.PonerTexto("Capa nueva");
+        BotonTocable.PonerVoz(btnMas, ControlManos.ComandoVoz.CapaNueva);
+        BotonTocable.PonerVoz(btnBoceto, ControlManos.ComandoVoz.Lapiz);
+        BotonTocable.PonerVoz(btnLiberar, ControlManos.ComandoVoz.Liberar);
+        BotonTocable.PonerNombre(btnPlano, "Plano de la capa: propio o unido");
+        BotonTocable.PonerNombre(btnCerrar, "Guardar las capas");
 
         // Una ayudita debajo (blanca con contorno, para que se lea sobre cualquier fondo).
         ayuda = Texto(raiz, "", new Vector3(0f, -Alto * 0.5f - 0.015f, -0.002f), new Vector2(Ancho, 0.02f), 0.11f, Color.white);
@@ -458,6 +465,7 @@ public class CapasProfundidad : MonoBehaviour
         persianaArriba.pose = PanelesFlexibles.PoseCapas;
         persianaArriba.arriba = () => PanelesFlexibles.CapasPastillaArriba;
         persianaArriba.alMoverA = MoverPastilla;
+        persianaArriba.comandoVoz = ControlManos.ComandoVoz.Capas;
         persianaArriba.visible = () => !Abierta && !Tutorial.EnCurso && !ExportadorVideo.Exportando;
         persianaArriba.texto = () => dibujo != null ? "Capa " + (Actual + 1) + " · de " + dibujo.capas.Count : "";
         persianaArriba.alAbrir = () => Abrir(true);
@@ -469,6 +477,7 @@ public class CapasProfundidad : MonoBehaviour
         tiradorArriba.sentido = 1;
         // Arriba se recogen subiéndolo; abajo (v41), bajándolo. ("arriba" = se jala hacia abajo.)
         tiradorArriba.arriba = () => abajoAhora;
+        tiradorArriba.comandoVoz = ControlManos.ComandoVoz.Capas;
         tiradorArriba.ancho = 0.05f;
         tiradorArriba.alto = 0.012f;
         tiradorArriba.pose = PoseTirador;
@@ -622,11 +631,13 @@ public class CapasProfundidad : MonoBehaviour
             return;
         var c = dibujo.capas[cur];
         Idioma.Poner(nombre, c.nombre);
-        btnVer.PonerTexto(c.visible ? "Ver" : "Oculta");
+        // v42: el botón dice lo que hace (y es su palabra de voz): "Oculta" la capa, o "Muestra" la que está oculta.
+        btnVer.PonerTexto(c.visible ? "Oculta" : "Muestra");
+        btnVer.comandoVoz = c.visible ? ControlManos.ComandoVoz.Oculta : ControlManos.ComandoVoz.Muestra;
         btnVer.Marcar(!c.visible);
-        int boceto = Mathf.Clamp(c.boceto, 0, 2);
-        btnBoceto.PonerTexto("Boceto: " + (boceto == 0 ? "No" : boceto == 1 ? "Gris" : "Azul"));
-        btnBoceto.Marcar(boceto > 0);
+        // v42: "Lápiz: Sí / No" (antes Boceto No / Gris / Azul).
+        btnBoceto.PonerTexto(c.boceto > 0 ? "Lápiz: Sí" : "Lápiz: No");
+        btnBoceto.Marcar(c.boceto > 0);
         btnPlano.PonerTexto(c.unido ? "Plano: unido" : "Plano: propio");
         btnPlano.Marcar(c.unido);
         bool liberar = dibujo.EncantadasEnCapa(cur) > 0 || (!c.unido && c.hayPlano);

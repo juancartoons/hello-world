@@ -110,6 +110,27 @@ public class PanelMuneca : MonoBehaviour
             Conectar(btnQuitarFigura, figuras.QuitarSeleccionada);
         }
 
+        // v42: la etiqueta de cada botón es la palabra que se dice (ver EtiquetasBotones y ControlManosVoz).
+        BotonTocable.PonerVoz(btnPlano, ControlManos.ComandoVoz.Plano);
+        BotonTocable.PonerVoz(btnFondo, ControlManos.ComandoVoz.Fondo);
+        BotonTocable.PonerVoz(btnGuardar, ControlManos.ComandoVoz.Guarda);
+        BotonTocable.PonerVoz(btnCargar, ControlManos.ComandoVoz.Archivos);
+        BotonTocable.PonerVoz(btnEsfera, ControlManos.ComandoVoz.Esfera);
+        BotonTocable.PonerVoz(btnCubo, ControlManos.ComandoVoz.Cubo);
+        BotonTocable.PonerVoz(btnCilindro, ControlManos.ComandoVoz.Cilindro);
+        BotonTocable.PonerVoz(btnALineas, ControlManos.ComandoVoz.ALineas);
+        BotonTocable.PonerVoz(btnCapas, ControlManos.ComandoVoz.Capas);
+        BotonTocable.PonerVoz(btnGirarIzq, ControlManos.ComandoVoz.GiraIzquierda);
+        BotonTocable.PonerVoz(btnGirarDer, ControlManos.ComandoVoz.GiraDerecha);
+        BotonTocable.PonerVoz(btnVistaLimpia, ControlManos.ComandoVoz.VistaLimpia);
+        BotonTocable.PonerVoz(btnMesa, ControlManos.ComandoVoz.Mesa);
+        BotonTocable.PonerVoz(btnAyuda, ControlManos.ComandoVoz.Ayuda);
+        BotonTocable.PonerVoz(btnColores, ControlManos.ComandoVoz.Paleta);
+        BotonTocable.PonerNombre(btnBorrar, "Borrar todo");      // (por seguridad, no va por voz)
+        BotonTocable.PonerNombre(btnCerrar, "Cerrar");
+        if (btnColores != null)
+            btnColores.PonerTexto("Paleta");                        // igual que su palabra de voz
+
         CrearIconoIman();
         grabador = FindFirstObjectByType<GrabadorProceso>();
         CrearFilaRec();
@@ -153,7 +174,7 @@ public class PanelMuneca : MonoBehaviour
             boton.alTocar.AddListener(accion);
     }
 
-    void SiguienteFondo()
+    public void SiguienteFondo()   // v42: también la voz ("fondo")
     {
         if (escenario == null)
             return;

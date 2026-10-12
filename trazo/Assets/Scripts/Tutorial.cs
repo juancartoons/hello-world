@@ -18,6 +18,9 @@ using UnityEngine;
 //  - Cada OK (cerrar o abrir) toca una nota del arpa del título. Si pasan 8 segundos sin que hagas nada,
 //    las manos guía lo repiten. "Skip" lo termina. El botón ? del menú de la mano lo repite.
 //  - Tu dibujo se aparta antes y vuelve igual al terminar.
+//  - v42: al empezar, dos botones: "Solo manos" o "Manos + voz". Con voz, en cada paso de la mano IZQUIERDA la viñeta
+//    dice también qué decir («o di "dibuja"», «"ya"», «"borra"», «"nodos"», «"deshaz"»). Los pasos del índice
+//    derecho (dibujar, mover el muñeco, frotar, mover un nodo) y el de las dos manos son solo con la mano.
 public class Tutorial : MonoBehaviour
 {
     public static Tutorial Instancia { get; private set; }
@@ -87,28 +90,42 @@ public class Tutorial : MonoBehaviour
 
     // ---------- Textos (English first) ----------
     static string Tx(string en, string es) { return Idioma.Ingles ? en : es; }
-    static string Texto1 => Tx("1. Make the OK sign with your LEFT hand (thumb + INDEX, the yellow finger) and HOLD it: the pencil turns on",
-                               "1. Haz el signo de OK con la mano IZQUIERDA (pulgar + ÍNDICE, el dedo amarillo) y MANTENLO: se activa el lápiz");
+    // v42: con "Manos + voz", la pista de qué decir (en verde azulado, como el micrófono).
+    static bool conVoz;
+    static string Pista(string texto, ControlManos.ComandoVoz c)
+    {
+        if (!conVoz || !Voz.Activa)
+            return texto;
+        return texto + "\n<color=#1F9E95>" + Tx("or say", "o di") + " \"" + ControlManos.NombreComando(c) + "\"</color>";
+    }
+
+    static string Texto1 => Pista(Tx("1. Make the OK sign with your LEFT hand (thumb + INDEX, the yellow finger) and HOLD it: the pencil turns on",
+                               "1. Haz el signo de OK con la mano IZQUIERDA (pulgar + ÍNDICE, el dedo amarillo) y MANTENLO: se activa el lápiz"),
+                                     ControlManos.ComandoVoz.Dibuja);
     static string Texto2 => Tx("2. Keep the OK, touch the blue dot with your RIGHT index finger and draw to the flag",
                                "2. Sin soltar el OK, toca el punto azul con el índice DERECHO y dibuja hasta la bandera");
-    static string Texto3 => Tx("3. You made it! Now OPEN your thumb and index finger: that stops the drawing",
-                               "3. ¡Llegaste! Ahora ABRE el pulgar y el índice: así dejas de dibujar");
+    static string Texto3 => Pista(Tx("3. You made it! Now OPEN your thumb and index finger: that stops the drawing",
+                               "3. ¡Llegaste! Ahora ABRE el pulgar y el índice: así dejas de dibujar"), ControlManos.ComandoVoz.Ya);
     static string TextoCasi => Tx("Almost! Keep the OK sign until you reach the flag", "¡Casi! Mantén el OK hasta llegar a la bandera");
     static string Texto4 => Tx("4. Move your hand: the stick figure runs along YOUR line. Flick up to jump! Tap NEXT when you're ready",
                                "4. Mueve tu mano: el muñeco corre por TU línea. ¡Golpe hacia arriba = saltar! Toca SIGUIENTE cuando quieras");
-    static string Texto5 => Tx("5. Make a FIST with your LEFT hand and twist your wrist sideways and back: that's the eraser",
-                               "5. Cierra el PUÑO IZQUIERDO y gira la muñeca de lado y de vuelta: ese es el borrador");
+    static string Texto5 => Pista(Tx("5. Make a FIST with your LEFT hand and twist your wrist sideways and back: that's the eraser",
+                               "5. Cierra el PUÑO IZQUIERDO y gira la muñeca de lado y de vuelta: ese es el borrador"),
+                                     ControlManos.ComandoVoz.Borra);
     static string Texto6 => Tx("6. Rub the line with your RIGHT index finger: the nodes pop!",
                                "6. Frota la línea con el índice DERECHO: ¡los nodos estallan!");
-    static string Texto7 => Tx("7. Join your thumb with the MIDDLE finger (the yellow one, next to the index) on your left hand and hold: the nodes appear",
-                               "7. Junta el pulgar con el dedo MEDIO (el amarillo, al lado del índice) de la mano izquierda y mantenlo: aparecen los nodos");
-    static string Texto7b => Tx("Now TOUCH a node with your RIGHT index finger: it sticks to your finger. Move it, and OPEN your left hand to let it go",
-                                "Ahora TOCA un nodo con el índice DERECHO: se pega a tu dedo. Muévelo, y para soltarlo ABRE la mano izquierda");
-    static string Texto7c => Tx("Great! Now OPEN your left hand to let the node go", "¡Muy bien! Ahora ABRE la mano izquierda para soltar el nodo");
+    static string Texto7 => Pista(Tx("7. Join your thumb with the MIDDLE finger (the yellow one, next to the index) on your left hand and hold: the nodes appear",
+                               "7. Junta el pulgar con el dedo MEDIO (el amarillo, al lado del índice) de la mano izquierda y mantenlo: aparecen los nodos"),
+                                     ControlManos.ComandoVoz.Nodos);
+    static string Texto7b => Pista(Tx("Now TOUCH a node with your RIGHT index finger: it sticks to your finger. Move it, and OPEN your left hand to let it go",
+                                "Ahora TOCA un nodo con el índice DERECHO: se pega a tu dedo. Muévelo, y para soltarlo ABRE la mano izquierda"), ControlManos.ComandoVoz.Ya);
+    static string Texto7c => Pista(Tx("Great! Now OPEN your left hand to let the node go", "¡Muy bien! Ahora ABRE la mano izquierda para soltar el nodo"),
+                                   ControlManos.ComandoVoz.Ya);
     static string Texto9 => Tx("9. Make the OK with BOTH hands: move them apart or together = size; turn them like a steering wheel = rotate",
                                "9. Haz el OK con las DOS manos: sepáralas o júntalas = tamaño; gíralas como un volante = rotar");
-    static string Texto8 => Tx("8. Changed your mind? LEFT fist with the THUMB pointing left, then touch the red target: undo!",
-                               "8. ¿Cambiaste de idea? Puño IZQUIERDO con el PULGAR hacia la izquierda y toca la diana roja: ¡deshacer!");
+    static string Texto8 => Pista(Tx("8. Changed your mind? LEFT fist with the THUMB pointing left, then touch the red target: undo!",
+                               "8. ¿Cambiaste de idea? Puño IZQUIERDO con el PULGAR hacia la izquierda y toca la diana roja: ¡deshacer!"),
+                                     ControlManos.ComandoVoz.Deshaz);
 
     // ---------- Título ----------
     Transform titulo;
@@ -137,6 +154,7 @@ public class Tutorial : MonoBehaviour
     ParticleSystem confeti, chispas;
     AudioSource fuente, fuentePasos;
     BotonTocable btnSaltar, btnSiguiente;
+    BotonTocable btnSoloManos, btnConVoz;   // v42: elegir al empezar
     bool siguientePedido;
 
     // Viñeta de cómic (relleno con trama, borde que tiembla y sombra de verdad, más atrás en 3D).
@@ -330,6 +348,12 @@ public class Tutorial : MonoBehaviour
     {
         bool bloqueaba = Bloquea(estado), ocultaba = Oculta(estado);
         estado = nuevo;
+        // v42: la elección de la voz es solo al principio (paso 1).
+        if (nuevo != Estado.Demo1 && nuevo != Estado.Paso1)
+        {
+            MostrarBoton(btnSoloManos, false);
+            MostrarBoton(btnConVoz, false);
+        }
         desde = Time.time;
         pistaDesde = -1f;
         ultimaActividad = Time.time;
@@ -658,6 +682,15 @@ public class Tutorial : MonoBehaviour
         btnSiguiente.alTocar.AddListener(() => siguientePedido = true);
         MostrarBoton(btnSiguiente, false);
 
+        // v42: "Solo manos" o "Manos + voz" (debajo de "¿Primera vez?"). Si la voz ya está prendida, es con voz.
+        conVoz = Voz.Activa;
+        btnSoloManos = CrearBoton(Tx("Hands only", "Solo manos"), new Vector3(-0.075f, 0.205f, 0.1f), new Vector2(0.12f, 0.03f));
+        btnSoloManos.alTocar.AddListener(() => ElegirVoz(false));
+        btnConVoz = CrearBoton(Tx("Hands + voice", "Manos + voz"), new Vector3(0.075f, 0.205f, 0.1f), new Vector2(0.12f, 0.03f));
+        btnConVoz.alTocar.AddListener(() => ElegirVoz(true));
+        MostrarBoton(btnSoloManos, !conVoz);
+        MostrarBoton(btnConVoz, !conVoz);
+
         // Punto A (azul) y bandera en B (aparecen después del paso 1).
         curvaDemo.Clear();
         for (int i = 0; i <= 60; i++)
@@ -775,6 +808,20 @@ public class Tutorial : MonoBehaviour
         numeros.Clear();
         encabezado = null;
         btnSaltar = btnSiguiente = null;
+        btnSoloManos = btnConVoz = null;
+    }
+
+    // v42: "Manos + voz" prende el micrófono (la primera vez pide el permiso y baja el idioma) y las viñetas dicen
+    // también qué decir. "Solo manos": como siempre.
+    void ElegirVoz(bool si)
+    {
+        conVoz = si;
+        if (si && Voz.Instancia != null && !Voz.Activa)
+            Voz.Instancia.Alternar();
+        MostrarBoton(btnSoloManos, false);
+        MostrarBoton(btnConVoz, false);
+        if (estado == Estado.Demo1 || estado == Estado.Paso1)
+            PonerVineta(Texto1, VinetaIzq, 1);
     }
 
     // ==================== Paso 1: el OK ====================
@@ -847,9 +894,11 @@ public class Tutorial : MonoBehaviour
         {
             PararPista();
             OcultarGuia(); // ¡hiciste el OK! ahora sí se va la mano guía
-            Exito(1, control.Izq.PuntoPellizco);
+            // (Con la voz la mano izquierda puede no verse: entonces, desde donde estaría.)
+            Vector3 ok = control.Izq.valida ? control.Izq.PuntoPellizco : raiz.TransformPoint(ManoIzqPecho);
+            Exito(1, ok);
             // Del OK cae una gota de tinta que se vuelve el punto A.
-            gotaDesde = control.Izq.PuntoPellizco;
+            gotaDesde = ok;
             if (gota != null)
             {
                 gota.gameObject.SetActive(true);
@@ -1488,7 +1537,7 @@ public class Tutorial : MonoBehaviour
         if (control.GestoIzq == ControlManos.Gesto.Borrar)
         {
             PararPista();
-            Exito(5, control.Izq.medio);
+            Exito(5, control.Izq.valida ? control.Izq.medio : raiz.TransformPoint(ManoIzqPecho));
             PonerVineta(Texto6, VinetaLinea, -1);
             nodosInicio = NodosTutorial();
             borrando = false;

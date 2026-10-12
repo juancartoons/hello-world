@@ -352,6 +352,10 @@ public partial class ControlManos : MonoBehaviour
         // v40: la voz y su micrófono (arriba a la izquierda, en espejo del parlante).
         Voz.Crear();
         BotonVoz.Crear(this, materialNodo);
+        // v42: las flechitas de girar el fondo 360 (fijas, en la fila de la pastillita de abajo).
+        FlechasGiro.Crear(this);
+        // v42: las etiquetas de todos los botones (con microfonito si también se pueden decir).
+        EtiquetasBotones.Crear(this);
         PrepararMusica();
     }
 
@@ -423,7 +427,6 @@ public partial class ControlManos : MonoBehaviour
         if (GestoIzq != Gesto.Nodos && figuras != null)
             figuras.OcultarNodos();
         ActualizarFlechas();
-        RevisarGiros();
         RevisarVistaLimpia();
         ActualizarMusica(true);
         if (Der.soltoPellizco)
@@ -838,8 +841,8 @@ public partial class ControlManos : MonoBehaviour
         Vector3 local = dibujo.transform.InverseTransformPoint(Der.indice);
         if (dibujo.UsaHoja)
         {
-            // Junto a las capas en profundidad el dedo queda libre (no pinta): el trazo se corta ahí.
-            if (CapasProfundidad.DedoCerca)
+            // Junto a las capas en profundidad el dedo queda libre (no pinta): el trazo se corta ahí. v42: y sobre la mesa.
+            if (CapasProfundidad.DedoCerca || PanelArriba.DedoEnMesa)
             {
                 if (dibujo.hojas != null)
                     dibujo.hojas.Terminar();
@@ -853,7 +856,8 @@ public partial class ControlManos : MonoBehaviour
         if (LapizLevantado(local))
             return;
         // v40: junto a la barra de la línea de tiempo el dedo es de la barra (pone claves): la línea que venía se termina.
-        if (trazoActual != null && PanelArriba.DedoEnBarra)
+        // v42: igual sobre toda la mesa (y con la barra sujeta).
+        if (trazoActual != null && PanelArriba.DedoEnMesa)
         {
             dibujo.TerminarTrazo(trazoActual);
             trazoActual = null;
@@ -863,7 +867,7 @@ public partial class ControlManos : MonoBehaviour
             return;
         // Con el dedo en el parlante, en el carrusel de instrumentos o junto a un botón de un menú no empieza una línea.
         if (trazoActual == null && (BotonSonido.DedoCerca || BotonVoz.DedoCerca || BotonTocable.DedoCerca || CapasProfundidad.DedoCerca
-                                    || PanelArriba.DedoEnBarra))
+                                    || PanelArriba.DedoEnMesa || FlechasGiro.DedoCerca))
             return;
         if (trazoActual == null)
         {
@@ -1502,7 +1506,7 @@ public partial class ControlManos : MonoBehaviour
         hoverTipo = Objetivo.Nada;
         // Con el dedo en el parlante, en el carrusel de instrumentos o junto a un botón de un menú no se borra nada.
         if (!Der.valida || BotonSonido.DedoCerca || BotonVoz.DedoCerca || BotonTocable.DedoCerca || CapasProfundidad.DedoCerca
-            || PanelArriba.DedoEnBarra)
+            || PanelArriba.DedoEnMesa || FlechasGiro.DedoCerca)
         {
             CancelarFrote();
             MostrarModoNodos(false, null);
@@ -2598,7 +2602,7 @@ public partial class ControlManos : MonoBehaviour
         // En el modo nodos tampoco (no estás dibujando: estás moviendo nodos), ni cerca de un botón de un menú.
         bool ver = Der.valida && GestoIzq != Gesto.Transformar && GestoIzq != Gesto.Nodos && !flechaDer.activa
                    && !BotonSonido.DedoCerca && !BotonVoz.DedoCerca && !BotonTocable.DedoCerca && !CapasProfundidad.DedoCerca
-                   && !LapizAtrapado;
+                   && !LapizAtrapado && !PanelArriba.DedoEnMesa && !FlechasGiro.DedoCerca;
         if (cursor.gameObject.activeSelf != ver)
             cursor.gameObject.SetActive(ver);
         if (!ver)

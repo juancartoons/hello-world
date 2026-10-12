@@ -16,6 +16,8 @@ using UnityEngine;
 // Sigue siendo 3D (cada ojo la ve un poquito distinto), pero como siempre la ves desde el centro, nada se estira
 // ni se tuerce al mover la cabeza. Tus dibujos sí se quedan en su lugar.
 // La PRIMERA vez la app empieza en Realidad (passthrough: dibujas sobre tu cuarto); después recuerda el último.
+// v42: FONDOS VIVOS (FondosVivos.cs): Universo y Sobre las nubes. No son fotos: los dibuja la app. Van después de los
+// fondos de la app y antes de tus fotos: 3.. fondos de la app, luego los vivos, luego tus fotos.
 public class Escenario : MonoBehaviour
 {
     [System.Serializable]
@@ -51,11 +53,14 @@ public class Escenario : MonoBehaviour
     public Material materialFondo360;
     [Tooltip("Los fondos 360 que vienen con la app (los llena el menú TrazoVR)")]
     public Foto360[] fondos360 = new Foto360[0];
+    [Tooltip("v42: los fondos vivos (Universo y Sobre las nubes). Los pone ★ Armar escena")]
+    public Material materialCielo, materialEstrellas, materialNubes;
 
     static readonly string[] NombresFijos = { "Cuadrícula", "Blanco", "Realidad" };
     const string NombreFotoPropia = "Mi foto 360";
 
     GameObject cuadricula, cascara;
+    FondosVivos vivos;
     bool sigueCabeza;   // v39: el fondo 360 de ahora va contigo
     MeshFilter cascaraFiltro;
     Mesh mallaCascara;
@@ -79,7 +84,29 @@ public class Escenario : MonoBehaviour
     static string RutaAntigua => Path.Combine(Application.persistentDataPath, "Dibujos", "Fondo360.jpg"); // v27
 
     int CantidadFijos => fondos360 != null ? fondos360.Length : 0;
-    public int CantidadModos => 3 + CantidadFijos + fotosPropias.Count;
+    int CantidadVivos => vivos != null && vivos.Listo ? FondosVivos.Cantidad : 0;
+    int InicioVivos => 3 + CantidadFijos;
+    int InicioPropias => InicioVivos + CantidadVivos;
+    public int CantidadModos => InicioPropias + fotosPropias.Count;
+    // v42: ¿ese fondo es vivo? (0 Universo, 1 Sobre las nubes; -1 = no)
+    public int VivoDe(int m) => m >= InicioVivos && m < InicioPropias ? m - InicioVivos : -1;
+    public int VivoPuesto => VivoDe(modo);
+    // v42: "Avanzar" (Universo) o "Volar" (nubes).
+    public bool Avanzando => vivos != null && vivos.Avanzando && VivoPuesto >= 0;
+    public void AlternarAvanzar()
+    {
+        if (vivos != null && VivoPuesto >= 0)
+            vivos.AlternarAvanzar();
+    }
+
+    // v42 (la voz: "universo", "nubes"): pone ese fondo vivo. false si no hay (falta ★ Armar escena).
+    public bool PonerVivo(int cual)
+    {
+        if (cual < 0 || cual >= CantidadVivos)
+            return false;
+        PonerModo(InicioVivos + cual);
+        return VivoPuesto == cual;
+    }
     public bool Hay360 => materialFondo360 != null;
     public string NombreModo => Nombre(modo);
 
@@ -91,6 +118,9 @@ public class Escenario : MonoBehaviour
         if (m < CantidadFijos)
             return fondos360[m] != null && !string.IsNullOrEmpty(fondos360[m].nombre) ? fondos360[m].nombre : "Fondo 360";
         m -= CantidadFijos;
+        if (m < CantidadVivos)
+            return FondosVivos.Nombre(m);
+        m -= CantidadVivos;
         return fotosPropias.Count > 1 ? NombreFotoPropia + " " + (m + 1) : NombreFotoPropia;
     }
 
@@ -104,6 +134,11 @@ public class Escenario : MonoBehaviour
         mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         mr.receiveShadows = false;
         mf.sharedMesh = CrearMallaCuadricula();
+        // v42: los fondos vivos.
+        vivos = GetComponent<FondosVivos>();
+        if (vivos == null)
+            vivos = gameObject.AddComponent<FondosVivos>();
+        vivos.Preparar(materialCielo, materialEstrellas, materialNubes);
         ListarFotosPropias();
         // El vidrio, mientras tanto: blanco esmerilado.
         Shader.SetGlobalFloat(idFondoHay, 0f);
@@ -135,7 +170,9 @@ public class Escenario : MonoBehaviour
         int k = m - 3;
         if (k < CantidadFijos)
             return fondos360[k] != null && fondos360[k].foto != null;
-        return k - CantidadFijos < fotosPropias.Count;
+        if (VivoDe(m) >= 0)
+            return true;
+        return m - InicioPropias < fotosPropias.Count;
     }
 
     // Cuadrícula → Blanco → Realidad → 360 (el último que elegiste) → Cuadrícula...
@@ -185,6 +222,8 @@ public class Escenario : MonoBehaviour
     {
         if (m < 3 || !Disponible(m))
             return null;
+        if (VivoDe(m) >= 0)
+            return FondosVivos.Miniatura(VivoDe(m));
         int k = m - 3;
         string clave;
         Texture fuente = null;
@@ -195,7 +234,7 @@ public class Escenario : MonoBehaviour
         }
         else
         {
-            clave = fotosPropias[k - CantidadFijos];
+            clave = fotosPropias[m - InicioPropias];
         }
         RenderTexture rt;
         if (miniaturas.TryGetValue(clave, out rt) && rt != null && rt.IsCreated())
@@ -248,9 +287,10 @@ public class Escenario : MonoBehaviour
     public void PonerModo(int nuevo)
     {
         modo = Mathf.Clamp(nuevo, 0, CantidadModos - 1);
-        if (modo >= 3 && !(Disponible(modo) && ArmarCascara(modo)))
+        if (modo >= 3 && VivoDe(modo) < 0 && !(Disponible(modo) && ArmarCascara(modo)))
             modo = 2; // ese fondo 360 no se pudo abrir: realidad
-        if (modo < 3 + CantidadFijos)
+        int vivo = VivoDe(modo);
+        if (modo < InicioPropias)
             LiberarPropia();
         PlayerPrefs.SetInt(ClaveFondo, modo);
         if (modo >= 3)
@@ -259,13 +299,17 @@ public class Escenario : MonoBehaviour
         if (cuadricula != null)
             cuadricula.SetActive(modo == 0);
         if (cascara != null)
-            cascara.SetActive(modo >= 3);
+            cascara.SetActive(modo >= 3 && vivo < 0);
+        if (vivo >= 0)
+            sigueCabeza = false;
+        if (vivos != null)
+            vivos.Poner(vivo, camara != null ? camara.transform : (Camera.main != null ? Camera.main.transform : null));
         if (passthrough != null)
             passthrough.enabled = realidad;
         if (camara != null)
         {
             camara.clearFlags = CameraClearFlags.SolidColor;
-            camara.backgroundColor = realidad ? new Color(0f, 0f, 0f, 0f) : fondo;
+            camara.backgroundColor = realidad ? new Color(0f, 0f, 0f, 0f) : vivo >= 0 ? FondosVivos.ColorFondo(vivo) : fondo;
         }
         ActualizarVidrio();
     }
@@ -288,8 +332,9 @@ public class Escenario : MonoBehaviour
             hay = fondoBorroso != null;
         }
         Shader.SetGlobalFloat(idFondoHay, hay ? 1f : 0f);
-        // Sin fondo 360: el color de detrás (en la realidad, un gris claro).
-        Shader.SetGlobalColor(idFondoColor, modo == 2 ? new Color(0.72f, 0.73f, 0.76f) : fondo);
+        // Sin fondo 360: el color de detrás (en la realidad, un gris claro; en un fondo vivo, su color).
+        int vivo = VivoDe(modo);
+        Shader.SetGlobalColor(idFondoColor, modo == 2 ? new Color(0.72f, 0.73f, 0.76f) : vivo >= 0 ? FondosVivos.ColorFondo(vivo) : fondo);
     }
 
     // La foto se achica a la mitad varias veces (cada vez promedia 4 pixeles) hasta 128 x 64: queda suave.
@@ -348,9 +393,11 @@ public class Escenario : MonoBehaviour
     // posición más nueva). Solo se mueve: no gira con tu cabeza (girarlo sigue siendo con el gesto o el reloj).
     void SeguirCabeza()
     {
+        Transform cab = camara != null ? camara.transform : (Camera.main != null ? Camera.main.transform : null);
+        if (vivos != null && cab != null)
+            vivos.Seguir(cab);   // v42: el cielo vivo va contigo
         if (!sigueCabeza || cascara == null || !cascara.activeSelf)
             return;
-        Transform cab = camara != null ? camara.transform : (Camera.main != null ? Camera.main.transform : null);
         if (cab != null)
             cascara.transform.position = cab.position;
     }
@@ -388,7 +435,7 @@ public class Escenario : MonoBehaviour
     // v38: ¿ese fondo es una foto tuya? (Solo esas se pueden borrar desde la ventanita.)
     public bool EsFotoPropia(int m)
     {
-        int k = m - 3 - CantidadFijos;
+        int k = m - InicioPropias;
         return k >= 0 && k < fotosPropias.Count;
     }
 
@@ -398,7 +445,7 @@ public class Escenario : MonoBehaviour
     {
         if (!EsFotoPropia(m))
             return false;
-        int k = m - 3 - CantidadFijos;
+        int k = m - InicioPropias;
         string ruta = fotosPropias[k];
         try
         {
@@ -465,7 +512,7 @@ public class Escenario : MonoBehaviour
             fotosPropias.RemoveAt(0);
         }
         int i = fotosPropias.IndexOf(ruta);
-        PonerModo(i >= 0 ? 3 + CantidadFijos + i : 3 + CantidadFijos + fotosPropias.Count - 1);
+        PonerModo(i >= 0 ? InicioPropias + i : InicioPropias + fotosPropias.Count - 1);
     }
 
     void LiberarPropia()
@@ -502,7 +549,7 @@ public class Escenario : MonoBehaviour
         }
         else
         {
-            int j = k - CantidadFijos;
+            int j = m - InicioPropias;
             if (j < 0 || j >= fotosPropias.Count)
                 return false;
             if (texturaPropia == null || texturaPropiaDe != j)
@@ -550,9 +597,11 @@ public class Escenario : MonoBehaviour
     // Devuelve false si no hay un fondo 360 puesto.
     public bool Girar(float grados)
     {
+        Transform cab = camara != null ? camara.transform : (Camera.main != null ? Camera.main.transform : null);
+        if (vivos != null && VivoPuesto >= 0)
+            return vivos.Girar(grados, cab != null ? cab.position : Vector3.up * 1.6f);   // v42: un fondo vivo
         if (cascara == null || !cascara.activeSelf)
             return false;
-        Transform cab = camara != null ? camara.transform : (Camera.main != null ? Camera.main.transform : null);
         Vector3 pivote = cab != null ? cab.position : cascara.transform.position;
         cascara.transform.RotateAround(pivote, Vector3.up, -grados);
         return true;

@@ -29,6 +29,7 @@ public class Persiana : MonoBehaviour
     public float ancho = 0.085f, alto = 0.022f;
     public System.Func<bool> arriba;       // v41: ¿está en la orilla de arriba? (null = usa "sentido" tal cual)
     public System.Action<bool> alMoverA;   // v41: se mueve con un pellizco; al soltarla: ¿quedó arriba? (null = fija)
+    public ControlManos.ComandoVoz comandoVoz;   // v42: su etiqueta al acercar el dedo (la palabra que se dice)
 
     const float Recorrido = 0.09f;         // cuánto hay que jalar (metros)
     const float CambiaOrilla = 0.08f;      // v41: llevarla así de arriba o de abajo la cambia de orilla (metros)
@@ -216,6 +217,11 @@ public class Persiana : MonoBehaviour
         bool cerca = dedoOk && Vector3.Distance(dedo, transform.position) < 0.12f;
         atencion = Mathf.MoveTowards(atencion, mira || cerca || agarrada || movida ? 1f : 0f, Time.deltaTime * 3f);
         PonerAtencion(atencion * ver);
+        // v42: su etiqueta, encima (la palabra que se dice: "Capas", "Mesa").
+        if (comandoVoz != ControlManos.ComandoVoz.Nada && dedoOk && !agarrada && !movida && ver > 0.9f && Cerca(dedo, 0.02f))
+            EtiquetasBotones.ProponerComando(transform, Vector3.Distance(dedo, transform.position), comandoVoz,
+                                             transform.position + transform.up * (alto * 0.5f + 0.013f) - transform.forward * 0.004f,
+                                             transform.rotation);
 
         // v41: moverla con un pellizco (pulgar + índice derechos sobre ella, sin jalarla).
         if (movida)

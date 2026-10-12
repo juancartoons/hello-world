@@ -2,12 +2,13 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Tutorial de NOVEDADES (sección 4 del panel "?"): lo nuevo de las últimas versiones, con una animación corta
-// de cada cosa. Se actualiza en cada versión (v36 "como de 2030", con los retoques de la v37 a la v41).
+// de cada cosa. Se actualiza en cada versión (v36 "como de 2030", con los retoques de la v37 a la v42).
 //  1 · Capas: la persiana de arriba.                 5 · Mover paneles y vista limpia.
 //  2 · Mesa de trabajo: la persiana de abajo.        6 · La voz (v40).
 //  3 · Líneas que cobran vida (destello, polvo...).  7 · Línea de tiempo con gestos (v40).
-//  4 · Vidrio, luz en tu dedo y etiquetas.           8 · Girar con las flechas (v40).
+//  4 · Vidrio, luz en tu dedo y etiquetas.           8 · Girar con las flechitas de abajo (v42).
 //                                                    9 · Paneles flexibles (v41).
+//                                                   10 · Fondos vivos: universo y nubes (v42).
 public class TutorialNovedades : TarjetaTutorial
 {
     static readonly Color Celeste = new Color(0.55f, 0.78f, 1f);
@@ -25,7 +26,7 @@ public class TutorialNovedades : TarjetaTutorial
     readonly List<Vector3> otra = new List<Vector3>();
     readonly List<Vector3> tramo = new List<Vector3>();
 
-    protected override int Paginas => 9;
+    protected override int Paginas => 10;
 
     protected override void ArmarExtra()
     {
@@ -56,7 +57,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 5: return Tx("6 · Voice", "6 · La voz");
             case 6: return Tx("7 · Timeline with gestures", "7 · Línea de tiempo con gestos");
             case 7: return Tx("8 · Turning with the arrows", "8 · Girar con las flechas");
-            default: return Tx("9 · Flexible panels", "9 · Paneles flexibles");
+            case 8: return Tx("9 · Flexible panels", "9 · Paneles flexibles");
+            default: return Tx("10 · Living backgrounds", "10 · Fondos vivos");
         }
     }
 
@@ -86,20 +88,24 @@ public class TutorialNovedades : TarjetaTutorial
                     "MUEVE CUALQUIER PANEL: pellizca una parte vacía (no un botón) y llévalo a donde quieras (Mis archivos, la ventanita de fondos 360, el buscador, la mesa); pellizcando también con la izquierda, separa las manos = tamaño. VISTA LIMPIA: haz un DOBLE PUÑO con la mano derecha (cerrar, abrir y cerrar rápido) o toca Vista limpia en el menú del reloj: se van las pastillas, el parlante y las letras de cómic. Lo mismo otra vez = vuelven.");
             case 5:
                 return Tx(
-                    "Touch the MICROPHONE (top left, mirroring the speaker) and talk; your gestures keep working too. Say \"draw\" and your right index draws until you say \"stop\"; \"erase\", \"nodes\" and \"straight\" work the same. Also \"undo\", \"redo\", \"turn left\", \"layers\", \"new layer\", \"desk\", \"play\", \"pause\", \"save\"... On the left, a little panel suggests what to say. The first time it downloads the language (about 40 MB); after that it works without internet.",
-                    "Toca el MICRÓFONO (arriba a la izquierda, en espejo del parlante) y habla; tus gestos siguen funcionando. Di \"dibuja\" y tu índice derecho dibuja hasta que digas \"ya\"; igual \"borra\", \"nodos\" y \"recta\". También \"deshaz\", \"rehaz\", \"gira izquierda\", \"capas\", \"capa nueva\", \"mesa\", \"play\", \"pausa\", \"guarda\"... A la izquierda, un panelito te sugiere qué decir. La primera vez baja el idioma (unos 40 MB); después funciona sin internet.");
+                    "Touch the MICROPHONE (top left) and talk; your gestures keep working too. Say \"draw\" and your right index draws until you say \"stop\"; \"erase\", \"nodes\" and \"straight\" work the same. EVERY BUTTON shows its word when you bring your finger close (with a little microphone): that is exactly what you say. Also colors (\"red\"), \"thicker\", \"universe\"... and \"spanish\" changes the language. The first time it downloads the language (about 40 MB); after that it works without internet.",
+                    "Toca el MICRÓFONO (arriba a la izquierda) y habla; tus gestos siguen funcionando. Di \"dibuja\" y tu índice derecho dibuja hasta que digas \"ya\"; igual \"borra\", \"nodos\" y \"recta\". CADA BOTÓN muestra su palabra al acercar el dedo (con un microfonito): esa es justo la que dices. También los colores (\"rojo\"), \"más grueso\", \"universo\"... y \"inglés\" cambia el idioma. La primera vez baja el idioma (unos 40 MB); después funciona sin internet.");
             case 6:
                 return Tx(
                     "On the timeline bar: with the ERASE gesture (left fist), touch a key (orange mark) = it's removed. With the DRAW gesture (left thumb + index), touch the bar = a new key there. LOCKED BAR: while you drag the playhead (or a key), double tap with your left thumb + index and the bar follows your finger only sideways, even if your finger drifts far away: you can just watch your animation. Double tap again = back to normal.",
                     "En la barra de la línea de tiempo: con el gesto de BORRAR (puño izquierdo), toca una clave (marca naranja) = se quita. Con el gesto de DIBUJAR (pulgar + índice izquierdos), toca la barra = una clave nueva ahí. BARRA SUJETA: mientras arrastras el cabezal (o una clave), haz doble toque con pulgar + índice izquierdos y la barra sigue tu dedo solo de lado, aunque el dedo se aleje: puedes mirar solo tu animación. Otro doble toque = vuelve a la normalidad.");
             case 7:
                 return Tx(
-                    "TURN a 360 background: turn your head well to one side and a little ARROW appears at that edge. Touch it with your index: turn mode is on. Now slide your index to either side and the background follows your finger (about 10 cm = 30°). It turns off when you keep your finger still for a moment. Without an arrow nothing turns. Also the watch arrows or the voice (\"turn right\").",
-                    "GIRA un fondo 360: gira la cabeza bastante hacia un lado y en esa orilla aparece una FLECHITA. Tócala con el índice: se prende el modo girar. Ahora desliza el índice hacia cualquier lado y el fondo sigue a tu dedo (unos 10 cm = 30°). Se apaga si dejas el dedo quieto un momento. Sin flecha no gira nada. También las flechas del reloj o la voz (\"gira derecha\").");
-            default:
+                    "TURN a 360 background: at the bottom of your view there are two little ARROWS, under the microphone and under the speaker. TAP one = the background turns 30°. TOUCH and SLIDE sideways = the background follows your finger (about 10 cm = 30°). They only show up with a 360 background. Also the watch arrows or the voice (\"turn right\").",
+                    "GIRA un fondo 360: abajo en tu vista hay dos FLECHITAS, debajo del micrófono y debajo del parlante. TOCA una = el fondo gira 30°. TOCA y DESLIZA de lado = el fondo sigue a tu dedo (unos 10 cm = 30°). Solo salen con un fondo 360. También las flechas del reloj o la voz (\"gira derecha\").");
+            case 8:
                 return Tx(
                     "FLEXIBLE PANELS: PINCH a pill (without pulling it) and carry it to the TOP or the BOTTOM of your view. At the top you pull it DOWN and its panel unfolds downward: the desk at the top puts its tabs and pages UNDER the player; the layers at the bottom are seen from above. Both pills on the same edge sit side by side. If you open both from the same edge, they arrange themselves one at the top and one at the bottom. It's remembered.",
                     "PANELES FLEXIBLES: PELLIZCA una pastillita (sin jalarla) y llévala ARRIBA o ABAJO de tu vista. Arriba se jala HACIA ABAJO y su panel se despliega hacia abajo: la mesa arriba deja sus pestañas y páginas DEBAJO del reproductor; las capas abajo se ven desde arriba. Las dos pastillas en la misma orilla se ponen lado a lado. Si abres las dos desde la misma orilla, se acomodan una arriba y otra abajo. Se recuerda.");
+            default:
+                return Tx(
+                    "LIVING BACKGROUNDS (not photos: the app draws them). UNIVERSE: thousands of stars around you, the closest ones truly in 3D, the Milky Way and colorful nebulae; there is no floor, you float in space. ABOVE THE CLOUDS: a sea of clouds below you and a warm sun far away. In the 360 window, \"Fly\" makes the stars or the clouds pass slowly by (always gently, so it doesn't make you dizzy). Also by voice: \"universe\", \"clouds\", \"fly\".",
+                    "FONDOS VIVOS (no son fotos: los dibuja la app). UNIVERSO: miles de estrellas a tu alrededor, las cercanas de verdad en 3D, la Vía Láctea y nebulosas de colores; no hay piso, flotas en el espacio. SOBRE LAS NUBES: un mar de nubes debajo de ti y un sol cálido a lo lejos. En la ventanita de fondos, \"Avanzar\" hace que las estrellas o las nubes pasen despacio (siempre suave, para no marear). También con la voz: \"universo\", \"nubes\", \"avanzar\".");
         }
     }
 
@@ -133,7 +139,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 5: AnimarVoz(t); break;
             case 6: AnimarBarra(t); break;
             case 7: AnimarGiro(t); break;
-            default: AnimarFlexibles(t); break;
+            case 8: AnimarFlexibles(t); break;
+            default: AnimarVivos(t); break;
         }
     }
 
@@ -474,37 +481,46 @@ public class TutorialNovedades : TarjetaTutorial
         }
     }
 
-    // Girar: miras a un lado y sale la flechita en la orilla; el dedo la toca (se pone celeste) y luego desliza: el
-    // fondo (una tira de fotos) sigue al dedo.
+    // Girar (v42): dos flechitas fijas abajo, a los lados. El dedo toca la de la derecha (el fondo, una tira de
+    // fotos, salta un paso) y luego toca y arrastra (la tira sigue al dedo).
     void AnimarGiro(float t)
     {
-        Vector3 ojo = new Vector3(-0.1f, -0.03f, 0f);
-        Mirada(ojo, t > 0.2f ? new Vector3(-0.072f, -0.012f, 0f) : new Vector3(-0.078f, -0.03f, 0f));
-        float corre = t > 1.4f ? Mathf.Sin((t - 1.4f) / 2.4f * Mathf.PI * 2f) * 0.03f : 0f;
+        float salto = Suave(Mathf.InverseLerp(0.9f, 1.2f, t)) * 0.04f;
+        float arrastre = t > 2.0f ? Mathf.Sin((t - 2.0f) / 2.2f * Mathf.PI * 2f) * 0.03f : 0f;
+        float corre = -salto + arrastre;
         for (int i = 0; i < 4; i++)
         {
-            Rectangulo(otra, -0.05f + i * 0.04f + corre, 0.03f, 0.036f, 0.024f, 0.002f);
+            float x = Mathf.Repeat(-0.07f + i * 0.04f + corre + 0.08f, 0.16f) - 0.08f;
+            Rectangulo(otra, x, 0.025f, 0.036f, 0.024f, 0.002f);
             PonerLinea(hijos[i], otra);
         }
-        if (t > 0.5f)
-        {
-            Rectangulo(puntos, 0.085f, -0.02f, 0.024f, 0.016f, -0.001f);
-            PonerLinea(lineaGris, puntos);
-            RellenarRect(0.085f, -0.02f, 0.024f, 0.016f, t > 1.2f ? Celeste : Color.white, 1f);
-            otra.Clear();
-            otra.Add(new Vector3(0.081f, -0.014f, -0.0015f));
-            otra.Add(new Vector3(0.089f, -0.02f, -0.0015f));
-            otra.Add(new Vector3(0.081f, -0.026f, -0.0015f));
-            PonerLinea(arco, otra);
-        }
-        if (t > 0.7f)
-        {
-            dedo.gameObject.SetActive(true);
-            if (t < 1.3f)
-                dedo.localPosition = new Vector3(Mathf.Lerp(0.05f, 0.085f, Suave(Mathf.InverseLerp(0.7f, 1.2f, t))), -0.02f, -0.004f);
-            else
-                dedo.localPosition = new Vector3(0.04f + corre, -0.04f, -0.004f);
-        }
+        // Las dos flechitas, abajo a los lados.
+        Rectangulo(puntos, -0.075f, -0.045f, 0.022f, 0.014f, -0.001f);
+        PonerLinea(lineaGris, puntos);
+        Rectangulo(otra, 0.075f, -0.045f, 0.022f, 0.014f, -0.001f);
+        PonerLinea(extra, otra);
+        bool activa = (t > 0.8f && t < 1.3f) || t > 1.9f;
+        RellenarRect(0.075f, -0.045f, 0.022f, 0.014f, activa ? Celeste : Color.white, 1f);
+        otra.Clear();
+        otra.Add(new Vector3(0.072f, -0.04f, -0.0015f));
+        otra.Add(new Vector3(0.079f, -0.045f, -0.0015f));
+        otra.Add(new Vector3(0.072f, -0.05f, -0.0015f));
+        PonerLinea(arco, otra);
+        otra.Clear();
+        otra.Add(new Vector3(-0.072f, -0.04f, -0.0015f));
+        otra.Add(new Vector3(-0.079f, -0.045f, -0.0015f));
+        otra.Add(new Vector3(-0.072f, -0.05f, -0.0015f));
+        PonerLinea(mirada, otra);
+        dedo.gameObject.SetActive(true);
+        Vector3 sobre = new Vector3(0.075f, -0.045f, -0.004f);
+        if (t < 0.8f)
+            dedo.localPosition = Vector3.Lerp(new Vector3(0.05f, -0.01f, -0.004f), sobre, Suave(t / 0.8f));
+        else if (t < 1.3f)
+            dedo.localPosition = sobre;
+        else if (t < 1.9f)
+            dedo.localPosition = sobre + new Vector3(-0.01f, 0.015f, 0f) * Mathf.Sin(Mathf.PI * Mathf.InverseLerp(1.3f, 1.9f, t));
+        else
+            dedo.localPosition = sobre + new Vector3(arrastre, 0f, 0f);
     }
 
     // Paneles flexibles: el dedo PELLIZCA la pastillita de la mesa (abajo) y la lleva arriba, junto a la de las capas
@@ -600,6 +616,43 @@ public class TutorialNovedades : TarjetaTutorial
             dedo.gameObject.SetActive(true);
             dedo.localPosition = Vector3.Lerp(new Vector3(x0 + tw * 0.5f + 0.03f, ty - 0.03f, -0.004f),
                                               new Vector3(x0 + tw * 0.5f, ty, -0.004f), Suave(Mathf.InverseLerp(3.0f, 3.35f, t)));
+        }
+    }
+
+    // Fondos vivos: primero el universo (las estrellas salen del centro y pasan a tu lado: avanzas); luego, sobre las
+    // nubes (un sol y nubes que pasan debajo).
+    void AnimarVivos(float t)
+    {
+        bool universo = t < 2.3f;
+        if (universo)
+        {
+            RellenarRect(0.02f, 0f, 0.2f, 0.11f, new Color(0.05f, 0.06f, 0.14f), 1f);
+            for (int i = 0; i < polvo.Length; i++)
+            {
+                float ang = Azar(i) * Mathf.PI * 2f;
+                float fase = Mathf.Repeat(t * 0.45f + Azar(i + 40), 1f);
+                float r = fase * fase * 0.07f;
+                var p = new Vector3(0.02f + Mathf.Cos(ang) * r * 1.4f, Mathf.Sin(ang) * r, -0.002f);
+                polvo[i].gameObject.SetActive(true);
+                polvo[i].localPosition = p;
+                polvo[i].localScale = Vector3.one * Mathf.Lerp(0.0015f, 0.0045f, fase);
+            }
+            return;
+        }
+        // Sobre las nubes: el cielo, el sol y tres nubes que pasan (vuelas).
+        RellenarRect(0.02f, 0.015f, 0.2f, 0.08f, new Color(0.62f, 0.78f, 0.95f), 1f);
+        Circulo(otra, 0.075f, 0.03f, 0.009f, -0.002f);
+        PonerLinea(luces[0], otra);
+        for (int i = 0; i < 3; i++)
+        {
+            float x = Mathf.Repeat(0.1f - (t - 2.3f) * 0.05f + i * 0.07f, 0.21f) - 0.085f;
+            otra.Clear();
+            for (int k = 0; k <= 12; k++)
+            {
+                float a = k / 12f * Mathf.PI;
+                otra.Add(new Vector3(x - 0.02f + k * (0.04f / 12f), -0.03f + Mathf.Abs(Mathf.Sin(a * 2f)) * 0.008f, -0.002f));
+            }
+            PonerLinea(hijos[i], otra);
         }
     }
 

@@ -7,6 +7,7 @@ using UnityEngine;
 //    varios; la ventanita sigue abierta hasta que tocas la X.
 //  - Arriba: Cuadrícula, Blanco y Realidad (ponen ese fondo y cierran la ventanita).
 //  - < y > si hay más de 16.
+//  - v42: con un fondo vivo puesto (Universo o Sobre las nubes), abajo a la izquierda: "Avanzar" / "Volar".
 public class SelectorFondos : MonoBehaviour
 {
     const int Columnas = 4, Filas = 4, PorPagina = Columnas * Filas;
@@ -26,7 +27,7 @@ public class SelectorFondos : MonoBehaviour
     readonly BotonTocable[] quitar = new BotonTocable[PorPagina];
     int quitarPendiente = -1;
     float quitarHasta;
-    BotonTocable btnAnterior, btnSiguiente;
+    BotonTocable btnAnterior, btnSiguiente, btnAvanzar;
     TMP_Text textoPagina;
     int pagina;
 
@@ -121,6 +122,14 @@ public class SelectorFondos : MonoBehaviour
             }
             celdas[i].Marcar(m == escenario.modo);
         }
+        // v42: Avanzar / Volar (solo con un fondo vivo).
+        int vivo = escenario.VivoPuesto;
+        Ver(btnAvanzar, vivo >= 0);
+        if (vivo >= 0 && btnAvanzar != null)
+        {
+            btnAvanzar.PonerTexto(FondosVivos.NombreAvanzar(vivo) + (escenario.Avanzando ? ": Sí" : ": No"));
+            btnAvanzar.Marcar(escenario.Avanzando);
+        }
         bool varias = Paginas > 1;
         Ver(btnAnterior, varias);
         Ver(btnSiguiente, varias);
@@ -173,6 +182,23 @@ public class SelectorFondos : MonoBehaviour
         if (dibujo != null)
             dibujo.Mensaje(hecho ? "Foto borrada" : "No se pudo borrar la foto");
         Refrescar();
+    }
+
+    // v42: el fondo vivo avanza (o vuela) despacio, o se queda quieto.
+    void AlternarAvanzar()
+    {
+        escenario.AlternarAvanzar();
+        int vivo = escenario.VivoPuesto;
+        if (dibujo != null && vivo >= 0)
+            dibujo.Mensaje(FondosVivos.NombreAvanzar(vivo) + (escenario.Avanzando ? ": Sí" : ": No"));
+        Refrescar();
+    }
+
+    // Para la voz ("avanza", "vuela"): refresca el botón si la ventanita está abierta.
+    public static void RefrescarSiAbierto()
+    {
+        if (Abierto)
+            instancia.Refrescar();
     }
 
     void PonerFijo(int m)
@@ -234,6 +260,9 @@ public class SelectorFondos : MonoBehaviour
         textoPagina = Texto(raiz, "1 / 1", new Vector3(0f, -0.13f, -0.002f), new Vector2(0.04f, 0.014f), 0.12f);
         btnSiguiente = Boton(raiz, ">", new Vector3(0.035f, -0.13f, 0f), new Vector2(0.024f, 0.018f));
         btnSiguiente.alTocar.AddListener(() => { pagina++; Refrescar(); });
+        btnAvanzar = Boton(raiz, "Avanzar: No", new Vector3(-0.115f, -0.13f, 0f), new Vector2(0.075f, 0.018f));
+        btnAvanzar.alTocar.AddListener(AlternarAvanzar);
+        BotonTocable.PonerVoz(btnAvanzar, ControlManos.ComandoVoz.Avanza);
     }
 
     BotonTocable Boton(Transform padre, string texto, Vector3 pos, Vector2 tam)
