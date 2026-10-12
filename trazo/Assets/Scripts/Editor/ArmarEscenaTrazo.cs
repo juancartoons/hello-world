@@ -555,18 +555,19 @@ public static class ArmarEscenaTrazo
         fondo.name = "Fondo";
         Object.DestroyImmediate(fondo.GetComponent<Collider>());
         fondo.transform.SetParent(contenido.transform, false);
-        fondo.transform.localPosition = new Vector3(0f, -0.01f, 0.004f);
-        fondo.transform.localScale = new Vector3(0.105f, 0.23f, 1f);
+        // v39: 2.7 cm más alto por abajo (una fila más: Vista limpia / Mesa).
+        fondo.transform.localPosition = new Vector3(0f, -0.0235f, 0.004f);
+        fondo.transform.localScale = new Vector3(0.105f, 0.257f, 1f);
         SinSombras(fondo.GetComponent<Renderer>(), matPanel);
 
         Texto(contenido.transform, "JCartoons", new Vector3(0f, 0.09f, -0.001f), new Vector2(0.09f, 0.014f), Color.black);
-        panel.textoEstado = Texto(contenido.transform, "", new Vector3(0f, -0.108f, -0.001f), new Vector2(0.098f, 0.018f), new Color(0.2f, 0.2f, 0.25f));
+        panel.textoEstado = Texto(contenido.transform, "", new Vector3(0f, -0.137f, -0.001f), new Vector2(0.098f, 0.022f), new Color(0.2f, 0.2f, 0.25f));
 
         // Dos columnas: Plano / Fondo · Guardar / Cargar · Borrar todo / Capas · Esfera / Cubo · Cilindro / A líneas
-        // · ← Girar / Girar →. El imán ahora está en la paleta (palma izquierda).
+        // · ← Girar / Girar → · Vista limpia / Mesa. El imán ahora está en la paleta (palma izquierda).
         // v38: los botones un poco más chicos y más separados (antes se tocaba sin querer el de al lado).
         string[] nombres = { "Libre (3D)", "Fondo: Cuadrícula", "Guardar", "Archivos", "Borrar todo", "Esfera", "Cubo", "Cilindro", "A líneas", "Capas: 1",
-                             "← Girar", "Girar →" };
+                             "← Girar", "Girar →", "Vista limpia", "Mesa" };
         const float columna = 0.026f;
         Vector2[] lugares =
         {
@@ -577,6 +578,7 @@ public static class ArmarEscenaTrazo
             new Vector2(-columna, -0.054f), new Vector2(columna, -0.054f),
             new Vector2(columna, 0.012f), // Capas (donde antes estaba el imán)
             new Vector2(-columna, -0.082f), new Vector2(columna, -0.082f), // girar el fondo 360
+            new Vector2(-columna, -0.110f), new Vector2(columna, -0.110f), // v39: vista limpia y la mesa
         };
         var botones = new BotonTocable[nombres.Length];
         for (int i = 0; i < nombres.Length; i++)
@@ -588,6 +590,8 @@ public static class ArmarEscenaTrazo
         }
         panel.btnGirarIzq = botones[10];
         panel.btnGirarDer = botones[11];
+        panel.btnVistaLimpia = botones[12];
+        panel.btnMesa = botones[13];
         panel.btnPlano = botones[0];
         panel.btnFondo = botones[1];
         panel.btnGuardar = botones[2];
@@ -615,7 +619,7 @@ public static class ArmarEscenaTrazo
             panel.btnCerrar.etiqueta.rectTransform.sizeDelta = new Vector2(0.014f, 0.014f);
         Texto(contenido.transform, "Figuras 3D", new Vector3(0f, -0.007f, -0.001f), new Vector2(0.09f, 0.01f), new Color(0.3f, 0.3f, 0.35f));
         // Botón pequeño debajo del menú: abre la paleta de colores (por si el gesto de la palma no la abre).
-        panel.btnColores = Boton(contenido.transform, "Colores", new Vector3(0f, -0.14f, 0f), matBoton, matBotonMarcado);
+        panel.btnColores = Boton(contenido.transform, "Colores", new Vector3(0f, -0.168f, 0f), matBoton, matBotonMarcado);
         panel.btnColores.transform.localScale = new Vector3(0.06f, 0.02f, 0.008f);
         if (panel.btnColores.etiqueta != null)
             panel.btnColores.etiqueta.rectTransform.sizeDelta = new Vector2(0.055f, 0.016f);

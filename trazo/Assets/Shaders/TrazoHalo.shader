@@ -86,11 +86,8 @@ Shader "TrazoVR/Halo"
                     // Medio grosor de la línea aquí (con el grosor vivo) y el halo alrededor.
                     float medioLinea = medio * TrazoGrosorVivo(original, v.uv2.x, v.vivoA, v.vivoB, fase);
                     float total = medioLinea + _Ancho + medioLinea * 0.6;
-                    // v38: el centro de las puntas redondas (uv.x = 0) no se mueve; la media vuelta avanza (uv.y).
-                    float lad = v.uv.x < 0 ? -1.0 : (v.uv.x > 0 ? 1.0 : 0.0);
-                    float avance = v.uv.y * 2.5;
-                    float abre = sqrt(saturate(1.0 - avance * avance));
-                    posWS += lado * (lad * total * abre) + dirWS * (abs(lad) * total * avance);
+                    float lad = v.uv.x < 0 ? -1.0 : 1.0;
+                    posWS += lado * (lad * total);
                     // Un poquito más atrás que la línea: así la línea siempre queda encima de su halo.
                     posWS -= haciaCamara * 0.003;
                     o.halo = float2(lad, medioLinea / max(total, 1e-6));

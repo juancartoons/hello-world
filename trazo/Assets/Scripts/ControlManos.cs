@@ -421,6 +421,7 @@ public partial class ControlManos : MonoBehaviour
             figuras.OcultarNodos();
         ActualizarFlechas();
         RevisarGiros();
+        RevisarVistaLimpia();
         ActualizarMusica(true);
         if (Der.soltoPellizco)
             finGestoDer = Time.time;

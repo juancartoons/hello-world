@@ -6,9 +6,9 @@ using UnityEngine;
 //  - ARRIBA: "Capa 2 · de 5". Tócala y BAJA la mano: se despliegan las capas.
 //  - ABAJO: "Fotograma 12 · 0:01" (y una rayita de cuánto va de la animación). Tócala y SUBE la mano: sale la mesa de
 //    trabajo (reproductor y línea de tiempo, con sus 3 pestañas guardadas).
-//  - Al lado, un circulito: LLENO = persiana (con la mano); HUECO = solo con la mirada (mirar arriba / abajo).
-//  - Sin texto ni circulito también sirve de "tirador" para cerrar: debajo de las capas (súbelo) y debajo de la mesa
-//    (bájalo).
+//  - Sin texto también sirve de "tirador" para cerrar: debajo de las capas (súbelo) y debajo de la mesa (bájalo).
+//  - v39: solo persiana (se quitó lo de mirar arriba / abajo y su circulito). En la VISTA LIMPIA las pastillas con
+//    "seEsconde" no se ven (ver VistaLimpia.cs).
 // Mientras la jalas, una lámina de vidrio sale de la pastillita siguiendo tu dedo. Si la sueltas a más de la mitad,
 // se abre; si no, vuelve.
 public class Persiana : MonoBehaviour
@@ -22,41 +22,18 @@ public class Persiana : MonoBehaviour
     public System.Action alAbrir;          // al jalarla lo suficiente
     public System.Func<bool> puedeJalar;   // si ahora se puede agarrar (null = siempre; por ejemplo, no mientras dibujas)
     public int sentido = -1;               // -1: se jala hacia abajo; +1: hacia arriba
-    public string clave;                   // dónde se guarda el circulito (null = sin circulito)
+    public bool seEsconde;                 // true = no se ve en la vista limpia (las pastillas fijas)
     public float ancho = 0.085f, alto = 0.022f;
 
     const float Recorrido = 0.09f;         // cuánto hay que jalar (metros)
 
-    static readonly Dictionary<string, bool> modos = new Dictionary<string, bool>();
-
-    // ¿Esa persiana está en modo "con la mano"? (Si no, se usa la mirada.) Al principio: con la mano.
-    public static bool Modo(string clave)
-    {
-        if (string.IsNullOrEmpty(clave))
-            return true;
-        bool m;
-        if (!modos.TryGetValue(clave, out m))
-        {
-            m = PlayerPrefs.GetInt(clave, 1) == 1;
-            modos[clave] = m;
-        }
-        return m;
-    }
-
-    static void PonerModo(string clave, bool m)
-    {
-        modos[clave] = m;
-        PlayerPrefs.SetInt(clave, m ? 1 : 0);
-        PlayerPrefs.Save();
-    }
-
-    Transform lamina, circulo, rellenoCirculo, barra;
+    Transform lamina, barra;
     Renderer rFondo, rLamina;
     TMP_Text etiqueta;
     MaterialPropertyBlock bloque;
     readonly List<Material> materiales = new List<Material>();
     readonly List<Mesh> mallas = new List<Mesh>();
-    bool armada, agarrada, esperarSalir, esperarCirculo;
+    bool armada, agarrada, esperarSalir;
     Vector3 inicio, eje;
     float avance, ver, atencion = 0.5f;
     string textoPuesto = "";
@@ -102,14 +79,6 @@ public class Persiana : MonoBehaviour
         if (progreso != null)
             barra = Pieza("Barra", ControlManos.MallaDisco(), MaterialColor(control, new Color(0.35f, 0.55f, 0.85f)),
                           new Vector3(0f, -alto * 0.3f, -0.0008f), new Vector3(0.001f, 0.0022f, 1f), out r);
-        if (!string.IsNullOrEmpty(clave))
-        {
-            Vector3 c = new Vector3(ancho * 0.5f + 0.013f, 0f, -0.0005f);
-            circulo = Pieza("Circulo", ControlManos.MallaAnillo(), MaterialColor(control, new Color(0.35f, 0.55f, 0.85f)), c,
-                            Vector3.one * 0.016f, out r);
-            rellenoCirculo = Pieza("Lleno", ControlManos.MallaDisco(), MaterialColor(control, new Color(0.62f, 0.8f, 1f)),
-                                   c + new Vector3(0f, 0f, 0.0003f), Vector3.one * 0.0105f, out r);
-        }
     }
 
     Material MaterialColor(ControlManos control, Color c)
@@ -144,7 +113,7 @@ public class Persiana : MonoBehaviour
     {
         var control = ControlManos.Instancia;
         var cab = control != null ? control.Cabeza : null;
-        bool quiere = cab != null && pose != null && (visible == null || visible());
+        bool quiere = cab != null && pose != null && (visible == null || visible()) && !(seEsconde && VistaLimpia.Activa);
         ver = Mathf.MoveTowards(ver, quiere ? 1f : 0f, Time.deltaTime * 5f);
         if (!quiere && ver <= 0.01f)
         {
@@ -181,10 +150,6 @@ public class Persiana : MonoBehaviour
             barra.localScale = new Vector3(Mathf.Max(0.001f, largo * k), 0.0022f, 1f);
             barra.localPosition = new Vector3(-largo * 0.5f + largo * k * 0.5f, -alto * 0.3f, -0.0008f);
         }
-        bool modo = Modo(clave);
-        if (rellenoCirculo != null && rellenoCirculo.gameObject.activeSelf != modo)
-            rellenoCirculo.gameObject.SetActive(modo);
-
         // Discreta si no la miras; firme si la miras o acercas el dedo.
         bool dedoOk = control.Der.valida && quiere;
         Vector3 dedo = control.Der.indice;
@@ -193,31 +158,13 @@ public class Persiana : MonoBehaviour
         atencion = Mathf.MoveTowards(atencion, mira || cerca || agarrada ? 1f : 0f, Time.deltaTime * 3f);
         PonerAtencion(atencion * ver);
 
-        // El circulito: tocarlo cambia entre persiana (lleno) y mirada (hueco).
-        if (circulo != null && dedoOk)
-        {
-            float d = Vector3.Distance(dedo, circulo.position);
-            if (!esperarCirculo && d < 0.011f)
-            {
-                esperarCirculo = true;
-                PonerModo(clave, !modo);
-                control.SonidoBurbuja(circulo.position);
-                if (control.dibujo != null)
-                    control.dibujo.Mensaje(!modo ? "Persiana: tócala y jálala con el dedo" : "Con la mirada: mira arriba o abajo");
-            }
-            else if (d > 0.022f)
-            {
-                esperarCirculo = false;
-            }
-        }
-
         // Jalar.
         if (!agarrada)
         {
             avance = Mathf.MoveTowards(avance, 0f, Time.deltaTime * 4f);
             if (esperarSalir && (!dedoOk || !Cerca(dedo, 0.04f)))
                 esperarSalir = false;
-            if (modo && dedoOk && !esperarSalir && (puedeJalar == null || puedeJalar()) && Sobre(dedo))
+            if (dedoOk && !esperarSalir && (puedeJalar == null || puedeJalar()) && Sobre(dedo))
             {
                 agarrada = true;
                 inicio = dedo;
@@ -294,18 +241,11 @@ public class Persiana : MonoBehaviour
             var c = transform.GetChild(i).gameObject;
             if (c == (lamina != null ? lamina.gameObject : null))
                 continue;
-            if (c == (rellenoCirculo != null ? rellenoCirculo.gameObject : null))
-                continue;
             if (c.activeSelf != si)
                 c.SetActive(si);
         }
-        if (!si)
-        {
-            if (lamina != null && lamina.gameObject.activeSelf)
-                lamina.gameObject.SetActive(false);
-            if (rellenoCirculo != null && rellenoCirculo.gameObject.activeSelf)
-                rellenoCirculo.gameObject.SetActive(false);
-        }
+        if (!si && lamina != null && lamina.gameObject.activeSelf)
+            lamina.gameObject.SetActive(false);
     }
 
     void PonerAtencion(float a)

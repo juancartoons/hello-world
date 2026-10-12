@@ -5,7 +5,8 @@ Shader "TrazoVR/Linea"
     //   hacia los lados mirando siempre a la cámara, así se ve como un trazo de tinta limpio.
     // - Tubo (uv.y = 1): la malla ya es un tubo 3D; se le da un brillo suave arriba para que se lea el volumen.
     // Compatible con URP, SRP Batcher y estéreo de Meta Quest (multiview / single-pass instanced).
-    // v38: la cinta termina en puntas redondas (Trazo.PuntaRedonda).
+    // v39: la cinta nunca es más fina que un pixel de la pantalla: así la punta fina se ve entera hasta el final
+    // (antes, con poco detalle, la puntita desaparecía y la línea se veía cortada).
     // v36: al terminarla, un destello la recorre de punta a punta (_JCDestello = cuándo empezó); y al deshacer se
     // "rebobina" (_JCCorte: lo que pasa de ahí no se dibuja). (v37: la luz del dedo ya no ilumina las líneas.)
     Properties
@@ -85,12 +86,13 @@ Shader "TrazoVR/Linea"
                     float escala = length(float3(m[0][0], m[1][0], m[2][0]));
                     float medio = abs(v.uv.x) * escala;
                     posWS += TrazoHebra(original, v.uv2.x, v.uv2.y, medio, v.vivoA, v.vivoB, fase);
-                    // v38: puntas redondas: en la media vuelta de cada punta, uv.y (hasta 0.4) dice cuánto avanza el
-                    // vértice más allá de la punta; en el resto de la cinta es 0 (solo se abre hacia los lados).
-                    float avance = v.uv.y * 2.5;
-                    float abre = sqrt(saturate(1.0 - avance * avance));
-                    float grosor = escala * TrazoGrosorVivo(original, v.uv2.x, v.vivoA, v.vivoB, fase);
-                    posWS += lado * (v.uv.x * abre * grosor) + dirWS * (abs(v.uv.x) * avance * grosor);
+                    float ancho = v.uv.x * escala * TrazoGrosorVivo(original, v.uv2.x, v.vivoA, v.vivoB, fase);
+                    // Lo que mide un pixel a esta distancia (con la cámara de cada ojo): mínimo 1.2 pixeles de ancho.
+                    float w = TransformWorldToHClip(posWS).w;
+                    float pixel = 2.0 * w / max(abs(UNITY_MATRIX_P[1][1]) * _ScreenParams.y, 1.0);
+                    if (ancho != 0.0)
+                        ancho = sign(ancho) * max(abs(ancho), 0.6 * pixel);
+                    posWS += lado * ancho;
                 }
                 else
                 {

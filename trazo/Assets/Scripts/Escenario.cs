@@ -12,6 +12,9 @@ using UnityEngine;
 //  - Los de la app traen sus distancias calculadas con IA (archivos *_profundidad.bytes).
 //  - Tus fotos usan "piso real": el piso de la foto queda en tu piso de verdad; lo demás, a unos metros.
 // La cáscara queda fija donde estabas al elegir el fondo (con la foto mirando hacia donde mirabas).
+// v39: algunos fondos VAN CONTIGO (por ahora solo la Sala de lujo): la cáscara se centra en tu cabeza cada cuadro.
+// Sigue siendo 3D (cada ojo la ve un poquito distinto), pero como siempre la ves desde el centro, nada se estira
+// ni se tuerce al mover la cabeza. Tus dibujos sí se quedan en su lugar.
 // La PRIMERA vez la app empieza en Realidad (passthrough: dibujas sobre tu cuarto); después recuerda el último.
 public class Escenario : MonoBehaviour
 {
@@ -31,6 +34,8 @@ public class Escenario : MonoBehaviour
     const float RadioPisoReal = 5f;    // tus fotos: a qué distancia queda todo lo que no es piso (metros)
     const int Columnas = 256, Filas = 128;
     const float DistMin = 0.05f, DistMax = 60f; // en alturas de cámara (como el archivo de profundidad)
+    // v39: los fondos de la app que van contigo (por el nombre de su foto en Plugins/Fondos).
+    static readonly string[] SiguenTuCabeza = { "sala_lujo360" };
 
     public Material materialCuadricula;
     [Tooltip("0 cuadrícula, 1 blanco, 2 realidad (passthrough), 3 en adelante: fondos 360")]
@@ -51,6 +56,7 @@ public class Escenario : MonoBehaviour
     const string NombreFotoPropia = "Mi foto 360";
 
     GameObject cuadricula, cascara;
+    bool sigueCabeza;   // v39: el fondo 360 de ahora va contigo
     MeshFilter cascaraFiltro;
     Mesh mallaCascara;
     Material materialCascara;
@@ -320,11 +326,33 @@ public class Escenario : MonoBehaviour
         Shader.SetGlobalTexture(idFondoBorroso, fondoBorroso);
     }
 
-    // El fondo 360 puede estar girado (el gesto del pulgar): el vidrio lo sabe cada cuadro.
+    // El fondo 360 puede estar girado (el barrido de la mano o el reloj): el vidrio lo sabe cada cuadro.
     void LateUpdate()
     {
+        SeguirCabeza();
         if (cascara != null && cascara.activeSelf)
             Shader.SetGlobalMatrix(idFondoRot, Matrix4x4.Rotate(Quaternion.Inverse(cascara.transform.rotation)));
+    }
+
+    void OnEnable()
+    {
+        Application.onBeforeRender += SeguirCabeza;
+    }
+
+    void OnDisable()
+    {
+        Application.onBeforeRender -= SeguirCabeza;
+    }
+
+    // v39: el fondo que va contigo se centra en tu cabeza (en LateUpdate y otra vez justo antes de dibujar, con la
+    // posición más nueva). Solo se mueve: no gira con tu cabeza (girarlo sigue siendo con el gesto o el reloj).
+    void SeguirCabeza()
+    {
+        if (!sigueCabeza || cascara == null || !cascara.activeSelf)
+            return;
+        Transform cab = camara != null ? camara.transform : (Camera.main != null ? Camera.main.transform : null);
+        if (cab != null)
+            cascara.transform.position = cab.position;
     }
 
     // ---------- Tus fotos 360 ----------
@@ -470,6 +498,7 @@ public class Escenario : MonoBehaviour
             foto = f.foto;
             if (f.profundidad != null)
                 dist = LeerProfundidad(f.profundidad.bytes, out dw, out dh);
+            sigueCabeza = System.Array.IndexOf(SiguenTuCabeza, f.foto.name) >= 0;
         }
         else
         {
@@ -485,6 +514,7 @@ public class Escenario : MonoBehaviour
             foto = texturaPropia;
             if (foto == null)
                 return false;
+            sigueCabeza = false;
         }
 
         if (cascara == null)
@@ -515,7 +545,7 @@ public class Escenario : MonoBehaviour
         if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", Color.white);
     }
 
-    // Girar el fondo 360 alrededor de ti, como si TÚ giraras (el gesto del pulgar sobre el puño).
+    // Girar el fondo 360 alrededor de ti, como si TÚ giraras (el barrido de la mano derecha o el reloj).
     // grados > 0 = giras a la derecha: lo que estaba a tu derecha queda delante. Tus dibujos no se mueven.
     // Devuelve false si no hay un fondo 360 puesto.
     public bool Girar(float grados)

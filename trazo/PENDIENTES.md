@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 12 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v38***
+*Actualizado: 12 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v39***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -17,6 +17,31 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ---
 
+## 0+. Hecho en la v39 (falta probarlo en el visor)
+
+**Puntas de las líneas**
+- [x] Vuelven a ser **finas como antes** (se quitaron las puntas redondas de la v38).
+- [x] La causa de que se vieran **cortadas** con fondo 360 y passthrough: con esos fondos el visor va más cargado, el **modo rendimiento** encendía la **foveación** (el borde de la vista con menos detalle) y la puntita fina desaparecía. Ahora el modo rendimiento **ya no usa la foveación** (solo pide más potencia al Quest) y la app la apaga al empezar.
+- [x] Además, la línea **nunca es más fina que un pixel** de la pantalla: la punta se ve entera hasta el final, sin cambiar su forma.
+- [x] En el menú del reloj (arriba, en letras grises) se ven los **cuadros por segundo** y, si se enciende, "modo rendimiento 1".
+
+**Solo persiana**
+- [x] Mirar arriba o abajo **ya no abre nada** (ni las capas ni la mesa). Se quitaron los circulitos. Las capas y la mesa salen **solo jalando sus pastillas** (o con los botones Capas y Mesa del reloj).
+
+**Vista limpia** (sin menús fijos)
+- [x] Esconde las **dos pastillas**, el **parlante con sus íconos** y las **letras de cómic** (nombres de los gestos y avisos; los avisos siguen saliendo en el menú del reloj, en letras pequeñas). Se recuerda al cerrar la app.
+- [x] Se pone y se quita con el botón **"Vista limpia"** del reloj o con un **doble puño derecho** (cerrar, abrir y cerrar rápido, en menos de un segundo). Un solo puño no hace nada (así descansar la mano no la cambia). No usa el meñique.
+- [x] Botón nuevo **"Mesa"** en el reloj (para sacar la mesa sin su pastilla). El menú del reloj creció 2.7 cm hacia abajo por esa fila (Vista limpia / Mesa).
+
+**Girar** (opción A)
+- [x] **"Pasar página"**: mano **derecha** abierta y plana, **de lado** (como un cuchillo), y un barrido rápido de unos **20 cm** a la izquierda o la derecha = 30°. El fondo sigue a tu mano. No usa la mano izquierda (no se abren la paleta ni el menú). Se quitó lo del antebrazo.
+- [x] Siguen las flechas **"← Girar" / "Girar →"** del reloj.
+
+**Fondos**
+- [x] **Sala de lujo**: vuelve la **foto de antes** (con las matas y todo) y **va contigo**: se centra en tu cabeza cada cuadro. Sigue siendo 3D (cada ojo la ve un poquito distinto), pero como siempre la ves desde el centro, nada se estira ni se tuerce. Solo este fondo. Mi versión ordenada (v38) quedó guardada en `Retoques/sala_lujo/sala_lujo360_v38_ordenada.jpg`.
+- [x] **Venecia**: sin la **ropa colgada** que flotaba al fondo del canal de la izquierda.
+- [x] **Parlante e íconos** más a la derecha (unos 25° de hacia donde miras; antes 20°).
+
 ## 0+. Hecho en la v38 (falta probarlo en el visor)
 
 **Borrador**
@@ -24,7 +49,7 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [x] En lugar del círculo rojo: una **esfera de vidrio** que brilla más al tocar: **oro rosa** para las líneas y **champaña** para los rellenos (el destello al borrar es del mismo color).
 
 **Líneas**
-- [x] **Puntas redondas** (una media luna en cada punta) y la punta más fina ya no se adelgaza casi a cero. Además la **foveación** (el borde de la vista en menor calidad) pasó de Alta a Media. Era lo que cortaba las puntas en los fondos 360 y el passthrough.
+- [x] ~~Puntas redondas~~ (se quitaron en la v39: no gustaron; ver v39) y la foveación de Alta a Media (en la v39 ya no se usa).
 - [x] **Polvo oscuro en los fondos blancos** (el claro no se notaba).
 
 **Persianas** (capas arriba, mesa abajo)
@@ -202,6 +227,9 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ## 1. Próxima tanda
 
+- [ ] **Comandos de voz** (próxima iteración, idea de Juan Carlos): Meta Voice SDK / Wit.ai (gratis) como atajos ("deshacer", "capa nueva", "vista limpia", "guardar"...).
+- [ ] **Mini-tutorial predictivo** (más adelante, idea de Juan Carlos), para reemplazar las letras de cómic: un cuadrito a la **izquierda** de la vista que se adelanta a lo que vas a hacer. Por ejemplo: al unir el pulgar con el medio izquierdos (modo nodos) sale una manito simulada mostrando cómo mover un nodo con el índice; si pasas el dedo sobre un nodo, muestra que también se pueden mover sus alas (asas), con un ejemplo animado. Para los nuevos que no saben qué sigue o se pierden. Ideas para cuando se haga: que salga solo las primeras veces de cada gesto (luego se calla), que se pueda esconder con la vista limpia, y que use las mismas animaciones cortas de los tutoriales.
+
 - [ ] **Profundidad con IA para tus propias fotos 360** (dentro del Quest, con Unity Inference Engine, gratis). Por ahora usan "piso real".
 - [ ] Más fondos 360 temáticos (café de París, mesita en el andén, terraza al atardecer, sala de lujo): bájalos gratis de polyhaven.com (JPG 4K) y ponlos en **Plugins/Fondos** o elígelos con **Mis archivos → Imágenes → Traer imagen → Fondo 360**. Para la profundidad IA y la nitidez 4K: `trazo/Herramientas/profundidad360.py` y `nitidez360.py`.
 
@@ -209,8 +237,8 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ## 2. Propuestas esperando tu decisión (escribe HY para hacerlas)
 
-- [ ] **Persiana o mirada**: las dos están en la v38 (el circulito de cada pastilla). Cuando las pruebes, dime cuál se queda como la de siempre.
-- [ ] **Fondo que sigue la cabeza**: pospuesto (marea más). Solo si los fondos se siguen viendo mal.
+- [x] **Persiana o mirada**: ganó la **persiana** (v39). Mirar arriba o abajo ya no abre nada.
+- [x] **Fondo que sigue la cabeza**: solo en la **Sala de lujo** (v39), para probarlo. Si gusta, se puede usar en otros.
 - [ ] **Burbujas o cristal**: por ahora se quedan las dos (burbujita secreta de la paleta).
 - [ ] **Botones redondos de la paleta** (Línea, Relleno, sus hijos y la tinta invisible): ¿también sin aro negro, como los colores?
 - [x] **Venecia, el puente curvo**: en la v38 la plaza de abajo baja poco a poco desde el puente (las escaleras ya no se tuercen).
@@ -225,7 +253,7 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 ## 3. Para el final, si sobra tiempo
 
 - [ ] **Pegado a tu cuarto** (anclajes espaciales de Meta): los dibujos se quedan pegados a tu pared o tu mesa y siguen ahí al volver a abrir la app.
-- [ ] **Comandos de voz** (Meta Voice SDK / Wit.ai, gratis) como atajos.
+- [ ] ~~Comandos de voz~~ (pasó a la próxima tanda).
 - [ ] **Muñequito acompañante** que te sigue mientras dibujas.
 - [ ] **Transparencia del marcador** en la paleta de colores.
 - [ ] **Violín real** como instrumento.
@@ -240,6 +268,14 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [ ] Cuando ya no haga falta, quitar el botón **Tutorial** de Mis archivos (por ahora se queda; abre el mismo panel "?").
 
 ## 5. Para probar en el visor (desde la v21 casi nada se ha probado)
+
+**Nuevo en la v39:**
+- [ ] Puntas de las líneas en los fondos 360 y en el passthrough: ¿ya no se cortan? ¿quedaron finas como antes? Mira en el reloj los cuadros por segundo: si dice "modo rendimiento 1", el visor iba cargado (pero ya no baja el detalle).
+- [ ] Persianas: ¿todo bien sin lo de mirar arriba o abajo?
+- [ ] Vista limpia: el doble puño derecho, ¿sale a la primera? ¿se dispara alguna vez sin querer? El botón del reloj y el botón Mesa.
+- [ ] Girar con la mano derecha plana: ¿sale fácil? ¿se dispara sin querer al mover la mano?
+- [ ] Sala de lujo que va contigo: ¿se ve recta? ¿marea?
+- [ ] Venecia sin la ropa colgada. El parlante más a la derecha (¿25° está bien?).
 
 **Nuevo en la v38:**
 - [ ] Borrador: ¿el puño agarra a la primera, justo al empezar a borrar? ¿borra algo sin querer al cerrar la mano?

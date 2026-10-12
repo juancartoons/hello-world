@@ -2,8 +2,8 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Tutorial de NOVEDADES (sección 4 del panel "?"): lo nuevo de las últimas versiones, con una animación corta
-// de cada cosa. Se actualiza en cada versión (v36 "como de 2030", con los retoques de la v37 y la v38).
-//  1 · Capas: la persiana de arriba.                 5 · Menús que respiran y se mueven.
+// de cada cosa. Se actualiza en cada versión (v36 "como de 2030", con los retoques de la v37, v38 y v39).
+//  1 · Capas: la persiana de arriba.                 5 · Mover paneles y vista limpia.
 //  2 · Mesa de trabajo: la persiana de abajo.        6 · Tela con pellizco.
 //  3 · Líneas que cobran vida (destello, polvo...).  7 · Capas: empujar y atraer.
 //  4 · Vidrio, luz en tu dedo y etiquetas.           8 · Fondos retocados y girar.
@@ -52,7 +52,7 @@ public class TutorialNovedades : TarjetaTutorial
             case 1: return Tx("2 · Work table: the bottom blind", "2 · Mesa de trabajo: la persiana de abajo");
             case 2: return Tx("3 · Lines that come alive", "3 · Líneas que cobran vida");
             case 3: return Tx("4 · Glass, finger light and labels", "4 · Vidrio, luz en tu dedo y etiquetas");
-            case 4: return Tx("5 · Menus that breathe and move", "5 · Menús que respiran y se mueven");
+            case 4: return Tx("5 · Move panels and clean view", "5 · Mover paneles y vista limpia");
             case 5: return Tx("6 · Cloth points", "6 · Puntos de tela");
             case 6: return Tx("7 · Layers: push and pull", "7 · Capas: empujar y atraer");
             default: return Tx("8 · Retouched backgrounds and turning", "8 · Fondos retocados y girar");
@@ -65,24 +65,24 @@ public class TutorialNovedades : TarjetaTutorial
         {
             case 0:
                 return Tx(
-                    "At the top of your view there is a tiny pill, \"Layer 2 · of 5\". It works like a BLIND: put your finger on it and PULL IT DOWN, and the layers unfold. To put them away, pull UP the little pill under the layers. The circle to the right of the pill switches modes: blind (pull) or look (look up and they come out by themselves). Hand menu > LAYERS also opens them.",
-                    "Arriba de tu vista hay una pastillita, \"Capa 2 · de 5\". Funciona como una PERSIANA: pon el dedo encima y JÁLALA HACIA ABAJO, y las capas se despliegan. Para guardarlas, jala HACIA ARRIBA la pastillita que queda debajo de las capas. El circulito a la derecha de la pastilla cambia el modo: persiana (jalar) o mirada (mirar arriba y salen solas). También se abren con el menú de la mano > CAPAS.");
+                    "At the top of your view there is a tiny pill, \"Layer 2 · of 5\". It works like a BLIND: put your finger on it and PULL IT DOWN, and the layers unfold. To put them away, pull UP the little pill under the layers (or tap their X). Looking up no longer opens anything, so nothing pops up by accident. Watch menu > LAYERS also opens them.",
+                    "Arriba de tu vista hay una pastillita, \"Capa 2 · de 5\". Funciona como una PERSIANA: pon el dedo encima y JÁLALA HACIA ABAJO, y las capas se despliegan. Para guardarlas, jala HACIA ARRIBA la pastillita que queda debajo de las capas (o toca su X). Mirar arriba ya no abre nada, así nada sale sin querer. También se abren con el menú del reloj > CAPAS.");
             case 1:
                 return Tx(
-                    "Down below there is another pill with the frame and the time, and a little bar that shows how far along the animation is. PULL IT UP and the WORK TABLE comes out: player and timeline, with the Animate, Mouths and Puppet tabs folded. To put it away, pull DOWN the little pill under it. Its circle switches between blind and look (look down). PINCH an empty part of the table to move it.",
-                    "Abajo hay otra pastillita con el fotograma y el tiempo, y una barrita que dice cuánto va de la animación. JÁLALA HACIA ARRIBA y sale la MESA DE TRABAJO: el reproductor y la línea de tiempo, con las pestañas Animar, Bocas y Títere replegadas. Para guardarla, jala HACIA ABAJO la pastillita de debajo. Su circulito cambia entre persiana y mirada (mirar abajo). PELLIZCA una parte vacía de la mesa para moverla.");
+                    "Down below there is another pill with the frame and the time, and a little bar that shows how far along the animation is. PULL IT UP and the WORK TABLE comes out: player and timeline, with the Animate, Mouths and Puppet tabs folded. To put it away, pull DOWN the little pill under it (or tap its X). Watch menu > DESK also brings it out. PINCH an empty part of the table to move it.",
+                    "Abajo hay otra pastillita con el fotograma y el tiempo, y una barrita que dice cuánto va de la animación. JÁLALA HACIA ARRIBA y sale la MESA DE TRABAJO: el reproductor y la línea de tiempo, con las pestañas Animar, Bocas y Títere replegadas. Para guardarla, jala HACIA ABAJO la pastillita de debajo (o toca su X). También la saca el menú del reloj > MESA. PELLIZCA una parte vacía de la mesa para moverla.");
             case 2:
                 return Tx(
-                    "When you FINISH a line, a flash of light runs along it. When you ERASE it, it dissolves into glowing dust (dark dust on white backgrounds, so you can see it). The eraser is a glass orb: ROSE GOLD for lines and CHAMPAGNE for fills. Line tips are now round. When you UNDO, the line rolls itself back, as if you rewound time.",
-                    "Al TERMINAR una línea, un destello de luz la recorre. Al BORRARLA, se deshace en polvo brillante (polvo oscuro en los fondos blancos, para que se note). El borrador es una esfera de vidrio: ORO ROSA para las líneas y CHAMPAÑA para los rellenos. Las puntas de las líneas ahora son redondas. Al DESHACER, la línea se recoge sola, como si rebobinaras el tiempo.");
+                    "When you FINISH a line, a flash of light runs along it. When you ERASE it, it dissolves into glowing dust (dark dust on white backgrounds, so you can see it). The eraser is a glass orb: ROSE GOLD for lines and CHAMPAGNE for fills. When you UNDO, the line rolls itself back, as if you rewound time.",
+                    "Al TERMINAR una línea, un destello de luz la recorre. Al BORRARLA, se deshace en polvo brillante (polvo oscuro en los fondos blancos, para que se note). El borrador es una esfera de vidrio: ORO ROSA para las líneas y CHAMPAÑA para los rellenos. Al DESHACER, la línea se recoge sola, como si rebobinaras el tiempo.");
             case 3:
                 return Tx(
                     "Menus and the palette are made of GLASS: your 360 background shows through, blurred. The palette's colors are pearls. LABELS: in the palette, leave your index finger close to a button or a color for a moment and a little glass label with its name appears. The tip of your index finger carries a LITTLE LIGHT that makes fills and glass glow a little.",
                     "Los menús y la paleta son de VIDRIO: a través se ve borroso tu fondo 360. Los colores de la paleta son perlas. ETIQUETAS: en la paleta, deja el índice cerquita de un botón o de un color un momento y sale una etiquetita de vidrio con su nombre. La punta de tu índice lleva una LUCECITA que ilumina un poquito los rellenos y el vidrio.");
             case 4:
                 return Tx(
-                    "The work table breathes with your attention: when you don't look at it, it becomes discreet so it doesn't get in the way. MOVE ANY PANEL: pinch an empty part of it (not a button) and carry it wherever you want: My files, the 360 window, the image search, the table. While carrying it, pinch with your left hand too and spread or bring your hands together = size.",
-                    "La mesa de trabajo respira con tu atención: si no la miras, se vuelve discreta para no estorbar. MUEVE CUALQUIER PANEL: pellizca una parte vacía (no un botón) y llévalo a donde quieras: Mis archivos, la ventanita de fondos 360, el buscador de imágenes, la mesa. Mientras lo llevas, pellizca también con la izquierda y separa o junta las manos = tamaño.");
+                    "MOVE ANY PANEL: pinch an empty part of it (not a button) and carry it wherever you want (My files, the 360 window, the image search, the table); pinching with your left hand too, spread your hands = size. CLEAN VIEW: make a DOUBLE FIST with your right hand (close, open, close quickly) or tap Clean view in the watch menu: the pills, the speaker and the comic letters disappear. Same again = they come back.",
+                    "MUEVE CUALQUIER PANEL: pellizca una parte vacía (no un botón) y llévalo a donde quieras (Mis archivos, la ventanita de fondos 360, el buscador, la mesa); pellizcando también con la izquierda, separa las manos = tamaño. VISTA LIMPIA: haz un DOBLE PUÑO con la mano derecha (cerrar, abrir y cerrar rápido) o toca Vista limpia en el menú del reloj: se van las pastillas, el parlante y las letras de cómic. Lo mismo otra vez = vuelven.");
             case 5:
                 return Tx(
                     "In node mode (left thumb + middle), PINCH a fill with your right hand (thumb + index) and pull it toward you or push it away; open the pinch and it stays. The cloth bends smoothly, like a bell, and the edge stays on the line. A purple diamond marks it: touch it with your index, like a node, to move it again. Leave it flat (or use the eraser) = it's removed.",
@@ -93,8 +93,8 @@ public class TutorialNovedades : TarjetaTutorial
                     "Con las capas abiertas, cuelgan como papeles cerca de ti (a unos 35 cm), a 7 cm una de otra. La actual se ve sólida; las de adelante se desvanecen al acercarse a tus ojos. EMPUJA la actual (unos 3 cm) = todo el montón se va al fondo y llega la de adelante; ATRÁELA hacia ti = llega la de atrás. \"+ Capa\" = una capa nueva adelante (hasta 12).");
             default:
                 return Tx(
-                    "RETOUCHED: Venice at sunset (orange sky reflected in the water, no chimneys or bent rail), New York rooftop without the fence and sharper, and the Luxury living room tidy (no near sofa, only books on the table). Your own 360 photos have an X to delete them (touch it twice). TURN the background: slide your right index across your left forearm, or the arrows in the watch menu.",
-                    "RETOCADOS: Venecia al atardecer (cielo naranja reflejado en el agua, sin chimeneas ni barandal torcido), la Azotea en Nueva York sin la reja y más nítida, y la Sala de lujo ordenada (sin el sofá cercano y con solo libros en la mesa). Tus fotos 360 tienen una X para borrarlas (tócala dos veces). GIRA el fondo: desliza el índice derecho sobre tu antebrazo izquierdo, o las flechas del menú del reloj.");
+                    "Venice at sunset (orange sky, without the hanging clothes), New York rooftop without the fence. The Luxury living room GOES WITH YOU: it stays 3D but moves with your head, so nothing stretches. TURN the background: right hand open and flat, sideways (like a knife), and a quick swipe of about 20 cm = 30° (it follows your hand). Or the arrows in the watch menu.",
+                    "Venecia al atardecer (cielo naranja, sin la ropa colgada) y la Azotea en Nueva York sin la reja. La Sala de lujo VA CONTIGO: sigue siendo 3D pero se mueve con tu cabeza, así nada se estira. GIRA el fondo: mano derecha abierta y plana, de lado (como un cuchillo), y un barrido rápido de unos 20 cm = 30° (el fondo sigue a tu mano). O las flechas del menú del reloj.");
         }
     }
 
@@ -210,7 +210,7 @@ public class TutorialNovedades : TarjetaTutorial
     // Capas al mirar arriba: la pastillita arriba; el ojo mira arriba y las capas se despliegan desde ella;
     // baja la mirada y se recogen otra vez en la pastillita.
     // Capas: el dedo jala hacia abajo la pastillita (como una persiana) y las capas se despliegan; al final se
-    // recogen. A la derecha de la pastilla, su circulito (persiana o mirada).
+    // recogen con la pastillita de abajo.
     void AnimarPersianaArriba(float t)
     {
         float abre = Suave(Mathf.InverseLerp(1.3f, 1.7f, t)) * (1f - Suave(Mathf.InverseLerp(3.5f, 3.9f, t)));
@@ -231,8 +231,6 @@ public class TutorialNovedades : TarjetaTutorial
             otra.Add(new Vector3(PastillaX - 0.015f, y, -0.0015f));
             otra.Add(new Vector3(PastillaX + 0.012f, y, -0.0015f));
             PonerLinea(hijos[3], otra);
-            Circulo(otra, PastillaX + PastillaW * 0.5f + 0.008f, y, 0.0045f, -0.0015f);
-            PonerLinea(hijos[2], otra);
             if (t < 1.4f)
             {
                 // El dedo llega a la pastilla y la jala hacia abajo.
@@ -286,8 +284,6 @@ public class TutorialNovedades : TarjetaTutorial
             otra.Add(new Vector3(px - pw * 0.42f, y - ph * 0.3f, -0.0015f));
             otra.Add(new Vector3(px, y - ph * 0.3f, -0.0015f));
             PonerLinea(hijos[3], otra);
-            Circulo(otra, px + pw * 0.5f + 0.008f, y, 0.0045f, -0.0015f);
-            PonerLinea(hijos[2], otra);
             float llega = Suave(Mathf.InverseLerp(0f, 0.3f, t));
             dedo.gameObject.SetActive(true);
             dedo.localPosition = Vector3.Lerp(new Vector3(px + 0.04f, -0.02f, -0.004f), new Vector3(px, y, -0.004f), llega);

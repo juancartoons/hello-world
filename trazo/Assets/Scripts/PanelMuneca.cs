@@ -24,6 +24,10 @@ public class PanelMuneca : MonoBehaviour
     public BotonTocable btnCerrar;
     [Tooltip("v38: girar el fondo 360 a la izquierda / a la derecha (30°)")]
     public BotonTocable btnGirarIzq, btnGirarDer;
+    [Tooltip("v39: vista limpia (sin las pastillitas, el parlante ni las letras de cómic)")]
+    public BotonTocable btnVistaLimpia;
+    [Tooltip("v39: saca la mesa de trabajo (para la vista limpia, donde no está su pastillita)")]
+    public BotonTocable btnMesa;
     Renderer[] iconoIman;
     Material imanEncendido, imanApagado;
     [Header("Figuras 3D")]
@@ -33,7 +37,7 @@ public class PanelMuneca : MonoBehaviour
     public TMP_Text textoAviso;
     public float suavizado = 20f;
 
-    const string textoAyuda = "Izq + pulgar: índice dibuja · índice+medio recta · medio nodos · anular grosor\nPuño: borrar · Pulgar izq/der: deshacer/rehacer · Doble toque: candado · Pastillitas: capas (arriba) y mesa (abajo)";
+    const string textoAyuda = "Izq + pulgar: índice dibuja · índice+medio recta · medio nodos · anular grosor\nPuño: borrar · Pulgar izq/der: deshacer/rehacer · Doble toque: candado · Pastillitas: capas (arriba) y mesa (abajo)\nMano der. plana de lado, barrido: girar · Doble puño der.: vista limpia";
 
     bool visible;
     float ultimaVezVisto;
@@ -74,6 +78,17 @@ public class PanelMuneca : MonoBehaviour
         if (control != null)
         {
             Conectar(btnGirarIzq, () => control.GirarFondoBoton(-1));
+            Conectar(btnVistaLimpia, () =>
+            {
+                VistaLimpia.Alternar();
+                Refrescar();
+            });
+            Conectar(btnMesa, () =>
+            {
+                control.CerrarMenu();
+                if (control.panelArriba != null)
+                    control.panelArriba.AbrirMesa();
+            });
             Conectar(btnGirarDer, () => control.GirarFondoBoton(1));
             Conectar(btnCerrar, control.CerrarMenu);
             Conectar(btnColores, control.AlternarPaleta);
@@ -180,7 +195,10 @@ public class PanelMuneca : MonoBehaviour
             if (contenido != null)
                 contenido.SetActive(ver);
             if (ver)
+            {
                 transform.SetPositionAndRotation(pos, rot);
+                Refrescar(); // por si cambió algo con un gesto (la vista limpia, por ejemplo)
+            }
         }
         if (pose)
         {
@@ -209,7 +227,7 @@ public class PanelMuneca : MonoBehaviour
         fondo.name = "FondoGrabando";
         Destroy(fondo.GetComponent<Collider>());
         fondo.transform.SetParent(filaRec.transform, false);
-        fondo.transform.localPosition = new Vector3(0f, -0.172f, 0.004f);
+        fondo.transform.localPosition = new Vector3(0f, -0.198f, 0.004f);
         fondo.transform.localScale = new Vector3(0.105f, 0.028f, 1f);
         var rf = fondo.GetComponent<Renderer>();
         var fondoMenu = contenido.transform.Find("Fondo");
@@ -217,11 +235,11 @@ public class PanelMuneca : MonoBehaviour
             rf.sharedMaterial = fondoMenu.GetComponent<Renderer>().sharedMaterial;
         rf.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         rf.receiveShadows = false;
-        textoRec = TextoRec(filaRec.transform, "● 00:00", new Vector3(-0.027f, -0.172f, -0.001f), new Vector2(0.046f, 0.016f));
+        textoRec = TextoRec(filaRec.transform, "● 00:00", new Vector3(-0.027f, -0.198f, -0.001f), new Vector2(0.046f, 0.016f));
         textoRec.color = new Color(0.85f, 0.1f, 0.1f);
-        btnPausaRec = BotonRec(filaRec.transform, "Pausa", new Vector3(0.017f, -0.172f, 0f), 0.03f);
+        btnPausaRec = BotonRec(filaRec.transform, "Pausa", new Vector3(0.017f, -0.198f, 0f), 0.03f);
         btnPausaRec.alTocar.AddListener(() => { if (grabador != null) grabador.AlternarPausa(); });
-        btnPararRec = BotonRec(filaRec.transform, "Parar", new Vector3(0.042f, -0.172f, 0f), 0.022f);
+        btnPararRec = BotonRec(filaRec.transform, "Parar", new Vector3(0.042f, -0.198f, 0f), 0.022f);
         btnPararRec.alTocar.AddListener(() =>
         {
             if (grabador != null && grabador.Grabando)
@@ -270,7 +288,7 @@ public class PanelMuneca : MonoBehaviour
         if (textoFps != null && Rendimiento.Instancia != null && Time.time >= proximoRec)
         {
             var r = Rendimiento.Instancia;
-            textoFps.text = Mathf.RoundToInt(r.Fps) + " fps" + (r.Nivel > 0 ? " · " + Idioma.T("modo rendimiento") : "");
+            textoFps.text = Mathf.RoundToInt(r.Fps) + " fps" + (r.Nivel > 0 ? " · " + Idioma.T("modo rendimiento") + " " + r.Nivel : "");
         }
         if (filaRec == null || Time.time < proximoRec)
             return;
@@ -320,6 +338,8 @@ public class PanelMuneca : MonoBehaviour
             btnCapas.PonerTexto("Capas: " + (dibujo.capaActual + 1));
             btnCapas.Marcar(CapasProfundidad.Abierta);
         }
+        if (btnVistaLimpia != null)
+            btnVistaLimpia.Marcar(VistaLimpia.Activa);
         if (btnIman != null && dibujo != null)
         {
             bool iman = dibujo.CapaActual.iman;

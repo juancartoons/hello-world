@@ -380,8 +380,8 @@ public static class Idioma
         "Borrador x", "Eraser x",
         " líneas elegidas", " lines selected",
         "1 línea elegida", "1 line selected",
-        "Izq + pulgar: índice dibuja · índice+medio recta · medio nodos · anular grosor\nPuño: borrar · Pulgar izq/der: deshacer/rehacer · Doble toque: candado · Pastillitas: capas (arriba) y mesa (abajo)",
-        "Left + thumb: index draws · index+middle straight · middle nodes · ring width\nFist: erase · Thumb left/right: undo/redo · Double tap: lock · Little pills: layers (top) and desk (bottom)",
+        "Izq + pulgar: índice dibuja · índice+medio recta · medio nodos · anular grosor\nPuño: borrar · Pulgar izq/der: deshacer/rehacer · Doble toque: candado · Pastillitas: capas (arriba) y mesa (abajo)\nMano der. plana de lado, barrido: girar · Doble puño der.: vista limpia",
+        "Left + thumb: index draws · index+middle straight · middle nodes · ring width\nFist: erase · Thumb left/right: undo/redo · Double tap: lock · Little pills: layers (top) and desk (bottom)\nRight hand flat sideways, swipe: turn · Double right fist: clean view",
 
         // ----- Mensajes -----
         "Guardado: ", "Saved: ",
@@ -416,10 +416,13 @@ public static class Idioma
         "Imagen: ", "Image: ",
         "Borde de la hoja del lápiz", "Edge of the pencil sheet",
         "Panel fijo. Pellizca el asa (arriba) para moverlo", "Panel pinned. Pinch the handle (top) to move it",
-        "La mesa aparece al mirar abajo", "The desk appears when you look down",
         "Jala hacia arriba la pastillita de abajo para sacar la mesa", "Pull the bottom pill up to bring the desk back",
-        "Persiana: tócala y jálala con el dedo", "Blind: touch it and pull it with your finger",
-        "Con la mirada: mira arriba o abajo", "With your gaze: look up or down",
+        "Para sacar la mesa: botón Mesa del reloj", "To bring the desk back: Desk button on the watch",
+        // v39: vista limpia
+        "Vista limpia (doble puño derecho para volver)", "Clean view (double right fist to go back)",
+        "Menús fijos de vuelta", "Fixed menus are back",
+        "Vista limpia", "Clean view",
+        "Mesa", "Desk",
         "Toca la X otra vez para borrar esta foto tuya", "Touch the X again to delete this photo of yours",
         "Foto borrada", "Photo deleted",
         "No se pudo borrar la foto", "Couldn't delete the photo",

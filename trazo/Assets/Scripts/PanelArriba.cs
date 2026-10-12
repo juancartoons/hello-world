@@ -3,15 +3,15 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 
-// Panel de arriba, que desde la v36 es la MESA DE TRABAJO: aparece al MIRAR HACIA ABAJO (medio segundo).
-// (Mirar arriba es para las capas.)
+// Panel de arriba, que desde la v36 es la MESA DE TRABAJO. v39: sale al JALAR HACIA ARRIBA la pastillita de abajo
+// ("Fotograma 12 · 0:01"), o con el botón Mesa del reloj. (Antes salía al mirar abajo.)
 //  - v37: va ABAJO en tu vista, como un espejo de las capas (que van arriba): unos 20° debajo de hacia donde miras.
 //    Te sigue con calma de lado y de arriba a abajo; mover un poco la cabeza no la mueve (así puedes mirarla), y
 //    con tu dedo encima se queda quieta. Las pestañas (Animar, Bocas, Títere) están ARRIBA del reproductor y sus
 //    páginas se despliegan hacia arriba.
 //  - No sale mientras dibujas ni justo después, ni mientras miras el menú de la muñeca o la paleta.
-//  - El reproductor y la línea de tiempo (página Animar, o las páginas guardadas) se QUEDAN a la vista y te
-//    siguen; las otras páginas (Bocas, Títere) solo mientras miras abajo. Su X (arriba a la derecha) la guarda.
+//  - Se QUEDA a la vista y te sigue hasta que la guardes: con el tirador de abajo (bájalo) o su X (arriba a la
+//    derecha).
 //  - Si no la miras, se vuelve discreta (Respira); al mirarla despierta.
 //  - ASA (barra de arriba): pellízcala con la derecha y arrastra el panel a donde quieras.
 //    Mientras lo arrastras, pellizca también con la izquierda y separa/junta las manos = tamaño.
@@ -91,7 +91,7 @@ public class PanelArriba : MonoBehaviour
     public BotonTocable btnPosar, btnCiclo, btnGuardarCiclo, btnBrazo1, btnBrazo2, btnPiso;
     public TMP_Text textoTitere;
 
-    [Tooltip("Sin uso desde la v36 (ahora es la mesa de trabajo, al mirar abajo)")]
+    [Tooltip("Sin uso desde la v36 (ahora es la mesa de trabajo)")]
     public float mirarArribaEntra = 0.35f;
     public float mirarArribaSale = 0.15f;
     public float distancia = 0.32f;
@@ -100,10 +100,8 @@ public class PanelArriba : MonoBehaviour
 
     bool visible;
     bool anclado;          // lo moviste: se queda fijo y siempre visible
-    // v36: la mesa de trabajo (al mirar abajo).
-    const float MirarAbajoEntra = 0.34f;  // cuánto hay que mirar abajo (y de la mirada; v38: unos 20°, antes 30°)
-    const float MirarAbajoSale = 0.12f;
-    const float EsperaMesa = 0.4f;
+    // v36: la mesa de trabajo. v39: sale SOLO con la persiana de abajo (o el botón Mesa del reloj); mirar abajo
+    // ya no la saca (salía sin querer mientras dibujabas o mirabas el fondo).
     // v37: la mesa abajo en tu vista (espejo de las capas) y las páginas arriba del reproductor.
     public const float SubirPaginas = 0.40f;   // cuánto suben las páginas (lo usa también ★ Armar escena)
     const float AbajoPanel = 0.09f;            // la orilla de abajo (bajo el reproductor)
@@ -120,13 +118,11 @@ public class PanelArriba : MonoBehaviour
     float inclinacion;                         // hacia dónde mira la mesa (grados; + arriba)
     bool siguiendoLado, siguiendoArriba;
     // v38: la persiana de abajo ("Fotograma 12 · 0:01"): tócala y sube la mano = sale la mesa. Un tirador debajo
-    // de la mesa la guarda (bájalo). Su circulito elige: lleno = persiana; hueco = con la mirada (mirar abajo).
-    public const string ClavePersianaMesa = "jcartoons_persiana_mesa";
+    // de la mesa la guarda (bájalo). v39: en la vista limpia la pastilla no se ve (queda el botón Mesa del reloj).
     const float BajoPastilla = 30f;            // grados debajo de hacia donde miras
     Persiana persianaAbajo, tiradorAbajo;
-    float abajoDesde = -1f, arribaDesde = -1f;
     Respira respira;
-    BotonTocable btnVolverArriba; // la X: guarda la mesa (vuelve a salir al mirar abajo)
+    BotonTocable btnVolverArriba; // la X: guarda la mesa (vuelve a salir con la pastillita de abajo)
     bool arrastrando;
     bool escalando;
     Vector3 desfaseAsa;
@@ -500,7 +496,7 @@ public class PanelArriba : MonoBehaviour
             dibujo.Mensaje(Ventanas[zoom] <= 0 ? "Barra: todos los fotogramas" : "Barra: " + Ventanas[zoom] + " fotogramas");
     }
 
-    // "Fijar aquí": el panel se queda donde está y siempre visible. "Seguirme": vuelve a ser la mesa (al mirar abajo).
+    // "Fijar aquí": el panel se queda donde está y siempre visible. "Seguirme": vuelve a ser la mesa.
     void AlternarFijo()
     {
         if (anclado)
@@ -513,7 +509,7 @@ public class PanelArriba : MonoBehaviour
             dibujo.Mensaje("Panel fijo. Pellizca el asa (arriba) para moverlo");
     }
 
-    // X arriba a la derecha: guarda la mesa (vuelve a salir al mirar abajo). Si estaba fija, también la suelta.
+    // X arriba a la derecha: guarda la mesa (vuelve a salir con la pastillita de abajo). Si estaba fija, también la suelta.
     void CrearX()
     {
         if (contenido == null || btnSeguir == null)
@@ -559,13 +555,12 @@ public class PanelArriba : MonoBehaviour
     void Seguirme()
     {
         anclado = false;
-        visible = false; // al volver a mirar abajo aparece frente a ti
-        abajoDesde = -1f;
+        visible = false; // al volver a sacarla aparece frente a ti
         if (contenido != null)
             contenido.SetActive(false);
         if (dibujo != null)
-            dibujo.Mensaje(Persiana.Modo(ClavePersianaMesa) ? "Jala hacia arriba la pastillita de abajo para sacar la mesa"
-                                                             : "La mesa aparece al mirar abajo");
+            dibujo.Mensaje(VistaLimpia.Activa ? "Para sacar la mesa: botón Mesa del reloj"
+                                              : "Jala hacia arriba la pastillita de abajo para sacar la mesa");
     }
 
     void SiguienteFondo()
@@ -630,48 +625,8 @@ public class PanelArriba : MonoBehaviour
         }
         AsegurarPersianas();
 
-        float abajo = -cabeza.forward.y;
-        float ahora = Time.time;
-        bool ver = visible;
-        if (anclado)
-        {
-            ver = true;
-        }
-        else if (!visible)
-        {
-            arribaDesde = -1f;
-            bool libre = control.SegundosSinEditar > 1f && !control.Ocupado && !control.PaletaAbierta && !PanelMuneca.Visible
-                         && !CapasProfundidad.Abierta;
-            if (abajo > MirarAbajoEntra && libre && !Persiana.Modo(ClavePersianaMesa))
-            {
-                if (abajoDesde < 0f)
-                    abajoDesde = ahora;
-                else if (ahora - abajoDesde > EsperaMesa)
-                    ver = true;
-            }
-            else
-            {
-                abajoDesde = -1f;
-            }
-        }
-        else
-        {
-            abajoDesde = -1f;
-            // El reproductor y la línea de tiempo se quedan; las otras páginas, solo mientras miras abajo.
-            bool queda = plegado || pagina == 0 || Persiana.Modo(ClavePersianaMesa); // con la persiana: hasta que la guardes
-            bool dedoEnMesa = control.Der.valida && Contiene(control.Der.indice);
-            if (!queda && abajo < MirarAbajoSale && !dedoEnMesa && !arrastrando)
-            {
-                if (arribaDesde < 0f)
-                    arribaDesde = ahora;
-                else if (ahora - arribaDesde > 0.4f)
-                    ver = false;
-            }
-            else
-            {
-                arribaDesde = -1f;
-            }
-        }
+        // Se queda hasta que la guardes (con el tirador de abajo o la X); movida con el asa, siempre visible.
+        bool ver = visible || anclado;
         if (ver != visible)
         {
             visible = ver;
@@ -727,7 +682,7 @@ public class PanelArriba : MonoBehaviour
             return;
         // En objetos aparte (no dentro del panel: la copia azul de la ayuda no los copia).
         persianaAbajo = new GameObject("PersianaMesa").AddComponent<Persiana>();
-        persianaAbajo.clave = ClavePersianaMesa;
+        persianaAbajo.seEsconde = true;    // en la vista limpia no se ve
         persianaAbajo.sentido = 1;
         persianaAbajo.pose = PosePastilla;
         persianaAbajo.visible = () => !visible && !Tutorial.EnCurso && !ExportadorVideo.Exportando;
@@ -741,7 +696,7 @@ public class PanelArriba : MonoBehaviour
         tiradorAbajo.ancho = 0.05f;
         tiradorAbajo.alto = 0.012f;
         tiradorAbajo.pose = PoseTirador;
-        tiradorAbajo.visible = () => visible && !anclado && Persiana.Modo(ClavePersianaMesa);
+        tiradorAbajo.visible = () => visible && !anclado;
         tiradorAbajo.alAbrir = Seguirme;
     }
 
@@ -780,6 +735,12 @@ public class PanelArriba : MonoBehaviour
     }
 
     // Jalaste la persiana: sale la mesa abajo en tu vista, con sus 3 pestañas guardadas.
+    // También la abre el botón Mesa del reloj (v39, para la vista limpia).
+    public void AbrirMesa()
+    {
+        AbrirDesdePersiana();
+    }
+
     void AbrirDesdePersiana()
     {
         var cabeza = control != null ? control.Cabeza : null;
@@ -1556,7 +1517,7 @@ public class PanelArriba : MonoBehaviour
         { "BOCAS (página)", "MOUTHS (page)\nLipsync: save mouth shapes (A, E, I, O, U, M...) and the app makes the keys from your voice or an audio." },
         { "TÍTERE (página)", "PUPPET (page)\nCharacters that walk, run and jump with your hand. Create, record, walk cycles and build your own characters." },
         { "ZOOM", "ZOOM\nHow many frames fit on the timeline: All, 400, 100 or 25. With fewer frames the keys (orange marks) are farther apart and easier to touch." },
-        { "FIJAR AQUÍ / SEGUIRME", "PIN HERE / FOLLOW ME\nThe pin: tap it and the panel stays in place and always visible (dark pin). Tap it again: it goes back to being the work desk (it appears when you look down).\nAlso: pinch the blue handle to move it; pinching with your left hand too, spread your hands = bigger." },
+        { "FIJAR AQUÍ / SEGUIRME", "PIN HERE / FOLLOW ME\nThe pin: tap it and the panel stays in place and always visible (dark pin). Tap it again: it goes back to being the work desk (pull up the little pill at the bottom to bring it out).\nAlso: pinch the blue handle to move it; pinching with your left hand too, spread your hands = bigger." },
         { "INICIO", "START\nGoes to frame 1." },
         { "< (ANTERIOR)", "< (PREVIOUS)\nGoes back one frame. You can also touch the timeline with your right index finger." },
         { "> (SIGUIENTE)", "> (NEXT)\nGoes forward one frame." },
@@ -1652,7 +1613,7 @@ public class PanelArriba : MonoBehaviour
             foreach (var b in btnPlanoCapa)
                 Poner(d, b, "PLANO (de esta capa)\nPropio: la capa tiene su propia hoja en Plano 2D. Unido: usa la misma hoja que las otras capas unidas (boceto atrás, tinta adelante).");
         Poner(d, btnZoom, "ZOOM\nCuántos fotogramas caben en la barra de tiempo: Todo, 400, 100 o 25. Con menos fotogramas ves las claves (marcas naranjas) más separadas y es más fácil tocarlas.");
-        Poner(d, btnSeguir, "FIJAR AQUÍ / SEGUIRME\nEl alfiler: tócalo y el panel se queda en ese lugar y siempre visible (alfiler oscuro). Tócalo otra vez: vuelve a ser la mesa de trabajo (aparece al mirar hacia abajo).\nTambién: pellizca el asa azul para moverlo; pellizcando además con la izquierda, separa las manos = más grande.");
+        Poner(d, btnSeguir, "FIJAR AQUÍ / SEGUIRME\nEl alfiler: tócalo y el panel se queda en ese lugar y siempre visible (alfiler oscuro). Tócalo otra vez: vuelve a ser la mesa de trabajo (sale al jalar hacia arriba la pastillita de abajo).\nTambién: pellizca el asa azul para moverlo; pellizcando además con la izquierda, separa las manos = más grande.");
 
         // Animar
         Poner(d, btnInicio, "INICIO\nVa al fotograma 1.");

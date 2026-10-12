@@ -11,13 +11,14 @@ using UnityEngine;
 //    En silencio el carrusel no se ve.
 // Mientras el dedo está cerca, la bolita de la tinta o del borrador se esconde (y no dibuja ni borra),
 // para que se vea bien lo que tocas.
+// v39: un poco más a la derecha (unos 25° de hacia donde miras; antes 20°). En la VISTA LIMPIA no se ve.
 public class BotonSonido : MonoBehaviour
 {
     const string ClaveSilencio = "jcartoons_silencio";
     static readonly Color ColorActivo = new Color(0.16f, 0.68f, 0.64f);
     static readonly Color ColorApagado = new Color(0.22f, 0.22f, 0.24f);
     // Dónde queda respecto a tu cabeza: a la derecha, arriba y adelante (metros).
-    static readonly Vector3 Lugar = new Vector3(0.16f, 0.13f, 0.45f);
+    static readonly Vector3 Lugar = new Vector3(0.21f, 0.13f, 0.45f);
     // El parlante: un poco más abajo, para que el carrusel se vea cómodo encima.
     static readonly Vector3 LugarParlante = new Vector3(0f, -0.042f, 0f);
     const float Escala = 0.82f;          // todo (parlante y carrusel) un 18 % más pequeño
@@ -321,6 +322,21 @@ public class BotonSonido : MonoBehaviour
             DedoCerca = false;
             return;
         }
+        // v39: en la vista limpia no se ve (ni se puede tocar).
+        if (VistaLimpia.Activa)
+        {
+            DedoCerca = false;
+            arrastrando = false;
+            if (parlante.gameObject.activeSelf)
+                parlante.gameObject.SetActive(false);
+            if (items != null)
+                foreach (var it in items)
+                    if (it.gameObject.activeSelf)
+                        it.gameObject.SetActive(false);
+            return;
+        }
+        if (!parlante.gameObject.activeSelf)
+            parlante.gameObject.SetActive(true);
         Transform cabeza = control.Cabeza;
         // Sigue tu mirada (solo hacia los lados y arriba/abajo, sin inclinarse), con calma.
         Vector3 adelante = cabeza.forward;

@@ -7,7 +7,7 @@ using UnityEngine;
 //    ya no). Los shaders leen _JCDedo y _JCDedo2, ver Shaders/TrazoLuz.hlsl.
 //  - MANOS DE VIDRIO: las manos de Meta se ven como vidrio, con el contorno iluminado y las yemas brillando.
 //    (Si no te gusta, deja vacío "materialManoVidrio" y vuelven las de siempre.)
-//  - Cuándo editaste por última vez: las capas (al mirar arriba) y la mesa de trabajo (al mirar abajo) no salen
+//  - Cuándo editaste por última vez: las persianas de las capas y de la mesa de trabajo no se dejan jalar
 //    mientras dibujas ni justo después.
 //  - La BURBUJITA SECRETA de la paleta (arriba a la derecha): con burbujas (el "plop" de siempre) o sin burbujas
 //    (un "tin" de cristal). Llena = con burbujas.

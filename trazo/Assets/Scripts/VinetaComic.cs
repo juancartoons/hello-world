@@ -269,7 +269,8 @@ public static class CartelArriba
     public static bool PuedeVerAviso(float desde)
     {
         // Mientras están abiertas las capas en profundidad (en este mismo lugar), el cartel no sale.
-        if (CapasProfundidad.Abierta)
+        // v39: tampoco en la vista limpia (salvo su propio aviso, un momento).
+        if (CapasProfundidad.Abierta || VistaLimpia.EsconderCartel)
             return false;
         desdeAviso = desde;
         cuadroAviso = Time.frameCount;
@@ -278,7 +279,7 @@ public static class CartelArriba
 
     public static bool PuedeVerGesto(float desde)
     {
-        if (CapasProfundidad.Abierta)
+        if (CapasProfundidad.Abierta || VistaLimpia.Activa)
             return false;
         desdeGesto = desde;
         cuadroGesto = Time.frameCount;

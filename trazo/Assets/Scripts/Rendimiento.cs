@@ -4,7 +4,8 @@ using UnityEngine;
 // MODO RENDIMIENTO automático (sin perder lo bonito): mide los cuadros por segundo y, si bajan (el visor
 // empieza a marear), primero le pide al Quest más potencia y después ahorra solo donde no se nota:
 //  1) Procesador y gráficos en "alto sostenido" (gasta un poco más de batería, no cambia nada de lo que ves).
-//  2) Foveación dinámica: el borde de la vista (donde casi no se ve) con menos detalle; el centro queda igual.
+// v39: ya NO usa la foveación (el borde de la vista con menos detalle): con los fondos 360 y el passthrough el
+// visor va más cargado, se encendía, y las puntas finas de las líneas se veían cortadas.
 // Nunca baja la resolución, ni apaga el halo, el temblor o el relleno vivo.
 // Se crea solo al abrir la app. Los ajustes del Meta XR SDK se ponen "por nombre": si una versión del SDK
 // no los tiene, simplemente no hace nada (no rompe el Build).
@@ -15,7 +16,7 @@ public class Rendimiento : MonoBehaviour
     const float Objetivo = 72f;        // cuadros por segundo del Quest 2 (mínimo cómodo)
     const float Margen = 4f;           // por debajo de 68: hay que ayudar
     const float Ventana = 2f;          // segundos que se promedian
-    const int NivelMaximo = 2;
+    const int NivelMaximo = 1;
 
     public float Fps { get; private set; } = Objetivo;
     public int Nivel { get; private set; }
@@ -33,6 +34,13 @@ public class Rendimiento : MonoBehaviour
         var go = new GameObject("Rendimiento");
         DontDestroyOnLoad(go);
         Instancia = go.AddComponent<Rendimiento>();
+    }
+
+    // v39: sin foveación (ver arriba), por si el proyecto o el visor la traen encendida.
+    void Start()
+    {
+        PonerBool("useDynamicFoveatedRendering", false);
+        PonerEnum("foveatedRenderingLevel", "Off");
     }
 
     void Update()
@@ -68,12 +76,6 @@ public class Rendimiento : MonoBehaviour
         {
             hecho |= PonerEnum("suggestedCpuPerfLevel", "SustainedHigh");
             hecho |= PonerEnum("suggestedGpuPerfLevel", "SustainedHigh");
-        }
-        else if (Nivel == 2)
-        {
-            hecho |= PonerBool("useDynamicFoveatedRendering", true);
-            // v38: "Medium" (antes "High"): baja menos el detalle; las puntas finas de las líneas ya no se pierden.
-            hecho |= PonerEnum("foveatedRenderingLevel", "Medium");
         }
         Debug.Log("TrazoVR: modo rendimiento nivel " + Nivel + " (" + Mathf.RoundToInt(Fps) + " fps)" + (hecho ? "" : " — el SDK no lo tiene"));
         var dibujo = FindFirstObjectByType<Dibujo>();

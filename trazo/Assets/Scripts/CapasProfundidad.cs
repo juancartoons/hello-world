@@ -16,13 +16,12 @@ using UnityEngine;
 //  - "+ Capa": una capa nueva adelante de todas (hasta 12); el montón se mueve hasta ella.
 //  - Se cierra sola si no la tocas en 20 segundos (o con su X). Cerca de ella, el dedo queda libre: sin la bolita
 //    de la tinta ni del borrador, y no dibuja.
-//  - v36: una PASTILLITA siempre visible, chiquita y de vidrio, un poco más arriba ("Capa 2 · de 5"). Al MIRAR
-//    ARRIBA (medio segundo) el montón de capas se despliega en su lugar de siempre; al BAJAR LA MIRADA (hacia lo que
-//    dibujas) se recoge solo. Nunca sale mientras dibujas ni justo después. Abierta con el botón Capas, funciona
-//    como antes (se cierra a los 20 s o con su X).
+//  - v36: una PASTILLITA siempre visible, chiquita y de vidrio, un poco más arriba ("Capa 2 · de 5"). Abierta con
+//    el botón Capas, funciona como antes (se cierra a los 20 s o con su X).
 //  - v38: la pastillita es una PERSIANA (ver Persiana.cs), más cerca, al alcance del dedo: tócala y baja la mano =
-//    se despliegan las capas (y se quedan hasta que subas el tirador de abajo o toques la X). Su circulito elige:
-//    lleno = persiana; hueco = con la mirada (mirar arriba, ahora basta con unos 12°).
+//    se despliegan las capas (y se quedan hasta que subas el tirador de abajo o toques la X).
+//  - v39: SOLO persiana: mirar arriba ya no abre nada (salía sin querer mientras dibujabas o mirabas el fondo).
+//    En la "vista limpia" la pastillita no se ve (las capas se abren con el botón Capas del reloj).
 public class CapasProfundidad : MonoBehaviour
 {
     const float Ancho = 0.26f, Alto = 0.065f;
@@ -37,14 +36,9 @@ public class CapasProfundidad : MonoBehaviour
     const float FilaBotones = -0.018f;                      // la fila de botones (abajo de la tarjeta)
     const float FinZonaNombre = 0.04f;                      // la zona para empujar llega hasta aquí (a la derecha: "+" y X)
     const string AyudaNormal = "Empuja: capa de adelante · Atrae hacia ti: capa de atrás · +: capa nueva";
-    // v36: la pastillita y la mirada.
+    // La pastillita (la persiana).
     const float AnchoPastilla = 0.085f, AltoPastilla = 0.022f;
     const float DistanciaPastilla = 0.45f, SubePastilla = 9f; // v38: al alcance del dedo; grados más arriba que las capas
-    public const string ClavePersiana = "jcartoons_persiana_capas";
-    const float MirarArriba = 0.21f;     // cuánto hay que mirar arriba (y de la mirada; v38: unos 12°, antes 20°)
-    const float MirarAbajo = -0.14f;     // al bajar la mirada (unos 8° hacia abajo) se recogen
-    const float EsperaMirada = 0.4f, EsperaRecoger = 0.6f;
-    const float SinEditarAntes = 1f;     // segundos sin dibujar antes de que puedan salir solas
     const string AvisoMaximo = "Ya no caben más capas (máximo 12)";
 
     static CapasProfundidad instancia;
@@ -74,8 +68,6 @@ public class CapasProfundidad : MonoBehaviour
     int capaMostrada = -1;
     bool empujando, esperarSalir;
     float zInicio, desdeEmpuje, sacudida;
-    bool porMirada;                       // abiertas al mirar arriba (se recogen al bajar la mirada)
-    float arribaDesde = -1f, abajoDesde = -1f;
     bool porPersiana;                     // v38: abiertas con la persiana (se quedan hasta que las recojas)
     Persiana persianaArriba, tiradorArriba;
 
@@ -109,7 +101,7 @@ public class CapasProfundidad : MonoBehaviour
             instancia.Cerrar();
     }
 
-    void Abrir(bool conMirada, bool conPersiana = false)
+    void Abrir(bool conPersiana)
     {
         if (dibujo == null)
             dibujo = FindFirstObjectByType<Dibujo>();
@@ -122,9 +114,7 @@ public class CapasProfundidad : MonoBehaviour
             Armar();
         }
         raiz.gameObject.SetActive(true);
-        porMirada = conMirada;
         porPersiana = conPersiana;
-        abajoDesde = -1f;
         aparece = 0f; // sale con un pequeño crecimiento
         if (control.Cabeza != null)
             control.SonidoBurbuja(control.Cabeza.position + control.Cabeza.forward * 0.4f);
@@ -142,9 +132,7 @@ public class CapasProfundidad : MonoBehaviour
     void Cerrar()
     {
         empujando = false;
-        porMirada = false;
         porPersiana = false;
-        arribaDesde = -1f;
         if (raiz != null)
             raiz.gameObject.SetActive(false);
     }
@@ -331,7 +319,6 @@ public class CapasProfundidad : MonoBehaviour
             return;
         }
         AsegurarPersianas();
-        RevisarMirada();
         if (!Abierta)
             return;
         float dt = Time.deltaTime;
@@ -423,67 +410,14 @@ public class CapasProfundidad : MonoBehaviour
             avisoHasta = 0f;
             Ayuda(AyudaNormal);
         }
-        // Abiertas con el botón: se cierran solas a los 20 s. Al mirar arriba: se recogen al bajar la mirada.
-        if (!porMirada && !porPersiana && Time.time - ultimoToque > CerrarSola)
+        // Abiertas con el botón: se cierran solas a los 20 s. Con la persiana: hasta que las recojas.
+        if (!porPersiana && Time.time - ultimoToque > CerrarSola)
             Cerrar();
     }
 
-    // ---------- v36: mirar arriba / bajar la mirada ----------
-
-    void RevisarMirada()
-    {
-        float y = control.Cabeza.forward.y;
-        float ahora = Time.time;
-        if (!Abierta)
-        {
-            abajoDesde = -1f;
-            // v38: con la persiana (circulito lleno), mirar arriba no las abre.
-            if (Persiana.Modo(ClavePersiana))
-            {
-                arribaDesde = -1f;
-                return;
-            }
-            bool libre = control.SegundosSinEditar > SinEditarAntes && !control.Ocupado && !control.PaletaAbierta
-                         && !Titere.Activo && !Tutorial.EnCurso && !ExportadorVideo.Exportando;
-            if (y > MirarArriba && libre)
-            {
-                if (arribaDesde < 0f)
-                    arribaDesde = ahora;
-                else if (ahora - arribaDesde > EsperaMirada)
-                {
-                    arribaDesde = -1f;
-                    Abrir(true);
-                }
-            }
-            else
-            {
-                arribaDesde = -1f;
-            }
-            return;
-        }
-        arribaDesde = -1f;
-        if (!porMirada)
-            return;
-        // Mientras la empujas o tienes el dedo cerca, no se recoge.
-        if (y < MirarAbajo && !empujando && !DedoCerca)
-        {
-            if (abajoDesde < 0f)
-                abajoDesde = ahora;
-            else if (ahora - abajoDesde > EsperaRecoger)
-            {
-                Cerrar();
-                control.SonidoBurbuja(control.Cabeza.position + control.Cabeza.forward * 0.4f);
-            }
-        }
-        else
-        {
-            abajoDesde = -1f;
-        }
-    }
-
     // ---------- v38: las persianas ----------
-    // Arriba, la pastillita "Capa 2 · de 5" (con su circulito: persiana o mirada). Tócala y baja la mano: se
-    // despliegan las capas. Abiertas así, un tirador debajo de la tarjeta las recoge (súbelo) o con su X.
+    // Arriba, la pastillita "Capa 2 · de 5". Tócala y baja la mano: se despliegan las capas. Abiertas, un tirador
+    // debajo de la tarjeta las recoge (súbelo), o su X.
 
     void AsegurarPersianas()
     {
@@ -492,14 +426,14 @@ public class CapasProfundidad : MonoBehaviour
         var go = new GameObject("PersianaCapas");
         go.transform.SetParent(transform, false);
         persianaArriba = go.AddComponent<Persiana>();
-        persianaArriba.clave = ClavePersiana;
+        persianaArriba.seEsconde = true;    // en la vista limpia no se ve
         persianaArriba.sentido = -1;
         persianaArriba.ancho = AnchoPastilla;
         persianaArriba.alto = AltoPastilla;
         persianaArriba.pose = PosePastilla;
         persianaArriba.visible = () => !Abierta && !Tutorial.EnCurso && !ExportadorVideo.Exportando;
         persianaArriba.texto = () => dibujo != null ? "Capa " + (Actual + 1) + " · de " + dibujo.capas.Count : "";
-        persianaArriba.alAbrir = () => Abrir(false, true);
+        persianaArriba.alAbrir = () => Abrir(true);
         persianaArriba.puedeJalar = () => control != null && control.SegundosSinEditar > 0.6f && !control.PaletaAbierta;
 
         var go2 = new GameObject("TiradorCapas");
@@ -509,7 +443,7 @@ public class CapasProfundidad : MonoBehaviour
         tiradorArriba.ancho = 0.05f;
         tiradorArriba.alto = 0.012f;
         tiradorArriba.pose = PoseTirador;
-        tiradorArriba.visible = () => Abierta && Persiana.Modo(ClavePersiana);
+        tiradorArriba.visible = () => Abierta;
         tiradorArriba.alAbrir = Cerrar;
     }
 

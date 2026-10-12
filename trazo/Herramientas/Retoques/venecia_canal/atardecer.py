@@ -1,5 +1,5 @@
 # Venecia al atardecer (v38), sobre la foto ya sin baranda, chimeneas ni antena (mascara_atardecer.py + LaMa):
-#  1) CIELO NUEVO: un atardecer (dorado en el horizonte, rosado, lila y azul arriba) con nubes suaves que dan la
+#  1) CIELO NUEVO (v39: también donde colgaba la ropa al fondo del canal): un atardecer (dorado en el horizonte, rosado, lila y azul arriba) con nubes suaves que dan la
 #     vuelta completa (360) y el resplandor del sol donde estaba el sol de la foto. La orilla de los edificios se
 #     recorta suave y sin el azul viejo pegado (se "descontamina" el borde).
 #  2) LUZ CÁLIDA: las partes iluminadas se vuelven doradas y las sombras un poco lilas; el agua refleja el naranja.
@@ -32,6 +32,10 @@ cerrado = cv2.morphologyEx(cielo.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((11,
 cerca = cv2.dilate(cielo.astype(np.uint8), np.ones((9, 9), np.uint8)) > 0
 cielo = (cerrado & cerca) | cielo
 cielo &= vv[:, None] < 0.53
+# v39: la ROPA COLGADA al fondo del canal de la izquierda (las cuerdas ya se habían vuelto cielo y la ropa quedaba
+# flotando): también es cielo. Sin tocar el techo de la casa de abajo (fila 925).
+for x0, y0, x1, y1 in [(1199, 903, 1241, 925), (1241, 903, 1302, 941)]:
+    cielo[y0:y1, x0:x1] = True
 
 def guiado(I, p, r, eps):
     # Filtro guiado (He et al.): la orilla de la máscara sigue los bordes de la foto.
