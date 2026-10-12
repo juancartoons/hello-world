@@ -267,6 +267,12 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 ## 1. Próxima tanda
 
 - [x] ~~**Pastillas que se mueven**~~ (hecho en la v41: paneles flexibles).
+- [ ] **Tooltips en todos los botones = las palabras de la voz** (aprobado por Juan Carlos para la próxima tanda; él avisa cuándo):
+  - Todos los botones con etiquetita de vidrio al dejar el índice quieto cerca, como en la paleta: los del reloj, los de la mesa, la tarjeta de capas, el micrófono, el parlante, las pastillas y la flecha de girar.
+  - Una sola lista de nombres: cada acción tiene UNA palabra (en el idioma de la app), la misma en el tooltip y en la voz.
+  - Un microfonito 🎤 en los tooltips que también se pueden decir ("🎤 Capa nueva").
+  - Igualar los textos de los botones a la palabra de voz ("+ Clave" → "Clave", "- Clave" → "Quita clave"...).
+  - Comandos de voz nuevos para los botones que no los tienen, si la palabra es fácil de decir y Vosk la conoce ("boceto", "plano", "liberar"...). Las que no conoce (como "fps") quedan sin 🎤.
 - [x] ~~Comandos de voz~~ (hechos en la v40 con Vosk, gratis y sin internet).
 - [ ] **Voz, siguientes pasos**: más comandos si hacen falta (colores por nombre: "rojo", "azul"...; "más grueso", "más fino"); decir un número de fotograma.
 - [ ] **Mini-tutorial predictivo** (el panelito de la voz ya da el primer paso: dice qué decir según lo que haces) (más adelante, idea de Juan Carlos), para reemplazar las letras de cómic: un cuadrito a la **izquierda** de la vista que se adelanta a lo que vas a hacer. Por ejemplo: al unir el pulgar con el medio izquierdos (modo nodos) sale una manito simulada mostrando cómo mover un nodo con el índice; si pasas el dedo sobre un nodo, muestra que también se pueden mover sus alas (asas), con un ejemplo animado. Para los nuevos que no saben qué sigue o se pierden. Ideas para cuando se haga: que salga solo las primeras veces de cada gesto (luego se calla), que se pueda esconder con la vista limpia, y que use las mismas animaciones cortas de los tutoriales.
@@ -277,6 +283,13 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [ ] **Fondo verde (croma)** para grabar videos (pospuesto: "todavía no es urgente"). Se graba en el Quest con fondo verde y luego, en un editor gratis (CapCut o DaVinci Resolve), se pone encima de un video real de tu cuarto.
 
 ## 2. Propuestas esperando tu decisión (escribe HY para hacerlas)
+
+- [ ] **Tutorial con voz** (idea de Juan Carlos): en cada paso de un gesto de la mano izquierda, la viñeta dice también «o di "dibuja"». Propuesta:
+  - Al empezar el tutorial, elegir **"Solo manos"** o **"Manos + voz"** (el permiso del micrófono se pide ahí, no a mitad de un paso).
+  - Con voz: paso 1 «dibuja», paso 3 «ya», paso 5 «borra», paso 7 «nodos» (y «ya» para soltar), paso 8 «deshaz». En otro color (verde azulado, como el micrófono).
+  - Los pasos del dedo derecho (dibujar hasta la bandera, mover el muñeco, frotar, mover un nodo) y el de las dos manos se quedan solo con la mano: la voz reemplaza a la mano IZQUIERDA; el índice derecho siempre dibuja y toca.
+  - El tutorial ya revisa los modos (GestoIzq), y la voz ya los pone: buena parte funciona casi sola.
+  - Mejor después de meter los idiomas dentro de la app (versión definitiva): así no hay que esperar la descarga en medio del tutorial.
 
 - [x] **Persiana o mirada**: ganó la **persiana** (v39). Mirar arriba o abajo ya no abre nada.
 - [x] **Fondo que sigue la cabeza**: solo en la **Sala de lujo** (v39), para probarlo. Si gusta, se puede usar en otros.
