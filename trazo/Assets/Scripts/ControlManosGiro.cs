@@ -1,93 +1,208 @@
-using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 
-// GIRAR (parte de ControlManos). v39: "PASAR PÁGINA" con la mano DERECHA: la mano abierta y plana, de lado (como
-// un cuchillo: la palma mira a tu izquierda o a tu derecha), y un barrido rápido de unos 20 cm hacia un lado = el
-// fondo gira 30°. Arrastras el fondo hacia donde va tu mano: barrer a la izquierda trae al frente lo que estaba a
-// tu derecha (como pasar la página de una tablet).
-// No usa la mano izquierda, así no se abren la paleta ni el menú del reloj. Para que no se dispare solo: tiene que
-// ser rápido, con la mano bien abierta y de lado, delante de ti a la altura del pecho o más arriba, y lejos de los
-// menús. (v38 era sobre el antebrazo izquierdo y se confundía con la paleta; v34, el pulgar sobre el índice.)
-// También están los botones "← Girar" y "Girar →" del menú del reloj.
-// Sirve para ver la parte de atrás de los fondos 360 sin darte la vuelta. Tus dibujos se quedan contigo, delante
-// de ti: lo que gira es el fondo (ver Escenario.Girar).
+// GIRAR EL FONDO 360 (parte de ControlManos). v40: FLECHAS A LOS LADOS + DESLIZAR EL ÍNDICE.
+//  - Con un fondo 360 puesto, si giras la cabeza bastante hacia un lado (unos 45° de hacia donde venías mirando),
+//    aparece una flechita en la orilla de ese lado, al alcance del dedo.
+//  - Tócala con el índice derecho y se prende el MODO GIRAR (la flecha se vuelve "<  >" y se pone azul). Desde ahí
+//    desliza el índice hacia cualquier lado (no importa qué flecha tocaste): el fondo sigue a tu dedo, suave y
+//    continuo (unos 10 cm = 30°).
+//  - Se apaga solo si dejas el dedo quieto 1.5 segundos, o si vuelves a tocar la flecha.
+//  - Sin flecha no gira nada: así no hay accidentes. También están los botones "← Girar" / "Girar →" del menú del
+//    reloj y la voz ("gira derecha", "gira izquierda", "gira atrás").
+// (Antes: v38 el antebrazo, v39 la mano plana de lado; se confundían con otros gestos o el visor no las veía bien.)
+// Tus dibujos se quedan contigo, delante de ti: lo que gira es el fondo (ver Escenario.Girar).
 public partial class ControlManos
 {
-    const float GiroPaso = 30f;            // grados por cada barrido
-    const float BarridoMinimo = 0.2f;      // metros que debe recorrer la mano de lado
-    const float BarridoTiempo = 0.4f;      // en menos de estos segundos
-    const float BarridoVertical = 0.1f;    // sin subir ni bajar más que esto mientras tanto
+    const float GiroPaso = 30f;               // los botones del reloj y la voz
+    const float GradosPorMetro = 300f;        // deslizando: 10 cm = 30°
+    const float AnguloFlecha = 45f;           // cuánto girar la cabeza para que salga la flecha
+    const float AnguloQuitaFlecha = 25f;      // y cuándo se va (al volver a mirar al frente)
+    const float FrenteSigue = 0.12f;          // qué tan rápido "tu frente" alcanza a tu cabeza (por segundo)
+    const float FlechaDura = 6f;              // si no la tocas, se va sola
+    const float QuietoApaga = 1.5f;           // el modo girar se apaga con el dedo quieto este tiempo
 
-    struct MuestraGiro
-    {
-        public float t, x, y;
-    }
-
-    readonly List<MuestraGiro> muestrasGiro = new List<MuestraGiro>();
-    float bloqueadoGiro;
     Escenario escenarioGiro;
     float avisoGiro = -10f;
+    float frenteYaw;
+    bool frenteListo;
+    int ladoFlecha;                            // -1 a la izquierda, 1 a la derecha, 0 = no hay flecha
+    float flechaDesde;
+    bool modoGirar, dedoEnFlecha, salioDeFlecha;
+    float quietoDesde;
+    Vector3 dedoAntes;
+    Transform flechaGiro;
+    TMP_Text textoFlecha;
+    Material materialFlecha;
 
-    // Cada cuadro. Solo con un fondo 360 puesto, sin gesto en la mano izquierda, sin pellizco y sin la paleta ni el
-    // menú abiertos (con los otros fondos no hay nada que girar: así tampoco sale el aviso sin querer).
+    // Cada cuadro.
     void RevisarGiros()
     {
         if (escenarioGiro == null)
             escenarioGiro = FindFirstObjectByType<Escenario>();
-        bool permitido = escenarioGiro != null && escenarioGiro.modo >= 3 && GestoIzq == Gesto.Ninguno
-                         && !flechaIzq.activa && !flechaDer.activa && !paletaAbierta && !menuAbierto && !Der.pellizco
-                         && !Ocupado && !Titere.ManoCerca && Cabeza != null;
-        Vector3 centro;
-        if (!permitido || !ManoPlanaDeLado(out centro))
+        bool hay360 = escenarioGiro != null && escenarioGiro.modo >= 3;
+        bool libre = hay360 && Cabeza != null && GestoIzq == Gesto.Ninguno && !paletaAbierta && !menuAbierto && !Ocupado
+                     && !flechaIzq.activa && !flechaDer.activa && !Titere.Activo && !Tutorial.EnCurso;
+        if (!libre)
         {
-            muestrasGiro.Clear();
+            ApagarModoGirar(false);
+            QuitarFlecha();
+            frenteListo = false;
             return;
         }
-        float ahora = Time.time;
-        Vector3 rel = centro - Cabeza.position;
-        var actual = new MuestraGiro { t = ahora, x = Vector3.Dot(rel, LadoHorizontal(1)), y = rel.y };
-        muestrasGiro.Add(actual);
-        while (muestrasGiro.Count > 0 && ahora - muestrasGiro[0].t > BarridoTiempo)
-            muestrasGiro.RemoveAt(0);
-        if (ahora < bloqueadoGiro)
-            return;
-        // ¿Desde alguna muestra de hace menos de 0.4 s la mano recorrió 20 cm de lado (sin subir ni bajar)?
-        foreach (var antes in muestrasGiro)
-        {
-            float dx = actual.x - antes.x;
-            if (Mathf.Abs(dx) >= BarridoMinimo && Mathf.Abs(actual.y - antes.y) < BarridoVertical)
-            {
-                bloqueadoGiro = ahora + 0.6f;
-                muestrasGiro.Clear();
-                // La mano va a la izquierda = lo que estaba a tu derecha viene al frente (giras a la derecha).
-                GirarFondo(dx < 0f ? 1 : -1, centro);
-                return;
-            }
-        }
-    }
 
-    // La derecha abierta y plana (índice, medio y anular estirados), de lado (la palma mira a un lado, no a ti ni
-    // al piso), delante de ti a la altura del pecho o más arriba, y no sobre un botón ni un panel.
-    bool ManoPlanaDeLado(out Vector3 centro)
-    {
-        centro = Vector3.zero;
+        // "Tu frente": sigue a tu cabeza despacio. Mientras hay flecha, se queda quieto (para que no se escape).
+        float yaw = Cabeza.eulerAngles.y;
+        if (!frenteListo)
+        {
+            frenteYaw = yaw;
+            frenteListo = true;
+        }
+        if (ladoFlecha == 0)
+            frenteYaw = Mathf.LerpAngle(frenteYaw, yaw, 1f - Mathf.Exp(-FrenteSigue * Time.deltaTime));
+        float diferencia = Mathf.DeltaAngle(frenteYaw, yaw);
+
+        if (ladoFlecha == 0)
+        {
+            if (Mathf.Abs(diferencia) > AnguloFlecha)
+                PonerFlecha(diferencia > 0f ? 1 : -1);
+        }
+        else if (!modoGirar && (Mathf.Abs(diferencia) < AnguloQuitaFlecha || Time.time - flechaDesde > FlechaDura))
+        {
+            QuitarFlecha();
+            frenteYaw = yaw; // ya te diste la vuelta: este es tu nuevo frente
+            return;
+        }
+        if (ladoFlecha == 0 || flechaGiro == null)
+            return;
+
+        // Tocar la flecha: prende (o apaga) el modo girar.
+        bool toca = Der.valida && Vector3.Distance(Der.indice, flechaGiro.position) < 0.03f;
+        if (toca && !dedoEnFlecha)
+        {
+            if (!modoGirar)
+                PrenderModoGirar();
+            else if (salioDeFlecha)
+                ApagarModoGirar(true);
+        }
+        dedoEnFlecha = toca;
+        if (!modoGirar)
+            return;
         if (!Der.valida)
-            return false;
-        if (Der.estiradoIndice < 1.6f || Der.estiradoMedio < 1.6f || Der.estiradoAnular < 1.5f)
-            return false;
-        var palma = ManosUtil.LeerPalma(Der.esqueleto, false);
-        if (!palma.valida || Mathf.Abs(Vector3.Dot(palma.normal, LadoHorizontal(1))) < 0.6f)
-            return false;
-        centro = palma.centro;
-        Vector3 rel = centro - Cabeza.position;
-        if (rel.y < -0.45f || Vector3.Dot(rel, Cabeza.forward) < 0.15f)
-            return false;
-        if (BotonTocable.DedoCerca || BotonSonido.DedoCerca || CapasProfundidad.DedoCerca || ArrastrePanel.Contiene(Der.indice))
-            return false;
-        return true;
+        {
+            ApagarModoGirar(true);
+            return;
+        }
+
+        // El fondo sigue al dedo, de lado.
+        Vector3 mov = Der.indice - dedoAntes;
+        dedoAntes = Der.indice;
+        if (Vector3.Distance(Der.indice, flechaGiro.position) > 0.05f)
+            salioDeFlecha = true;
+        float dx = Vector3.Dot(mov, LadoHorizontal(1));
+        if (Mathf.Abs(dx) > 0.0004f)
+            escenarioGiro.Girar(-dx * GradosPorMetro); // el dedo a la derecha = el fondo va a la derecha
+        if (mov.magnitude > 0.0025f)
+            quietoDesde = Time.time;
+        else if (Time.time - quietoDesde > QuietoApaga)
+            ApagarModoGirar(true);
+        flechaDesde = Time.time; // mientras giras, la flecha no se va
     }
 
-    // Los botones del menú del reloj (lado = 1: a la derecha; -1: a la izquierda).
+    void PonerFlecha(int lado)
+    {
+        ladoFlecha = lado;
+        flechaDesde = Time.time;
+        if (flechaGiro == null)
+            ArmarFlecha();
+        // En la orilla de ese lado de tu vista, un poco abajo, al alcance del dedo. Se queda fija ahí.
+        Vector3 adelante = Cabeza.forward;
+        adelante.y = 0f;
+        if (adelante.sqrMagnitude < 1e-4f)
+            adelante = Vector3.forward;
+        Vector3 dir = Quaternion.AngleAxis(lado * 25f, Vector3.up) * adelante.normalized;
+        dir = (dir - Vector3.up * 0.12f).normalized;
+        Vector3 pos = Cabeza.position + dir * 0.42f;
+        flechaGiro.SetPositionAndRotation(pos, Quaternion.LookRotation(pos - Cabeza.position, Vector3.up));
+        flechaGiro.gameObject.SetActive(true);
+        PintarFlecha();
+    }
+
+    void QuitarFlecha()
+    {
+        ladoFlecha = 0;
+        dedoEnFlecha = false;
+        if (flechaGiro != null && flechaGiro.gameObject.activeSelf)
+            flechaGiro.gameObject.SetActive(false);
+    }
+
+    void PrenderModoGirar()
+    {
+        modoGirar = true;
+        salioDeFlecha = false;
+        dedoAntes = Der.indice;
+        quietoDesde = Time.time;
+        Burbuja(flechaGiro.position, 1.15f);
+        dibujo.Mensaje("Modo girar: desliza el índice a un lado");
+        PintarFlecha();
+    }
+
+    void ApagarModoGirar(bool avisar)
+    {
+        if (!modoGirar)
+            return;
+        modoGirar = false;
+        if (avisar && flechaGiro != null)
+            Burbuja(flechaGiro.position, 0.95f);
+        PintarFlecha();
+    }
+
+    void ArmarFlecha()
+    {
+        flechaGiro = new GameObject("FlechaGirar").transform;
+        flechaGiro.SetParent(transform, false);
+        var fondo = new GameObject("Fondo");
+        fondo.transform.SetParent(flechaGiro, false);
+        fondo.AddComponent<MeshFilter>().sharedMesh = Persiana.CrearPastilla(0.05f, 0.034f);
+        var r = fondo.AddComponent<MeshRenderer>();
+        if (materialVidrio != null)
+        {
+            materialFlecha = new Material(materialVidrio);
+            if (materialFlecha.HasProperty("_Esmerilado"))
+                materialFlecha.SetFloat("_Esmerilado", 0.75f);
+            if (materialFlecha.HasProperty("_Opacidad"))
+                materialFlecha.SetFloat("_Opacidad", 0.9f);
+        }
+        else
+        {
+            materialFlecha = ColorMaterial(new Color(0.96f, 0.96f, 0.97f));
+        }
+        r.sharedMaterial = materialFlecha;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
+        var go = new GameObject("Texto", typeof(RectTransform));
+        go.transform.SetParent(flechaGiro, false);
+        go.transform.localPosition = new Vector3(0f, 0.001f, -0.001f);
+        var t = go.AddComponent<TextMeshPro>();
+        t.enableAutoSizing = true;
+        t.fontSizeMin = 0.01f;
+        t.fontSizeMax = 0.3f;
+        t.alignment = TextAlignmentOptions.Center;
+        t.fontStyle = FontStyles.Bold;
+        t.rectTransform.sizeDelta = new Vector2(0.044f, 0.028f);
+        textoFlecha = t;
+        flechaGiro.gameObject.SetActive(false);
+    }
+
+    void PintarFlecha()
+    {
+        if (textoFlecha == null)
+            return;
+        textoFlecha.text = modoGirar ? "<  >" : ladoFlecha < 0 ? "<" : ">";
+        textoFlecha.color = modoGirar ? new Color(0.15f, 0.45f, 0.9f) : new Color(0.12f, 0.12f, 0.16f);
+    }
+
+    // Los botones del menú del reloj (lado = 1: a la derecha; -1: a la izquierda) y la voz.
     public void GirarFondoBoton(int lado)
     {
         Vector3 donde = Cabeza != null ? Cabeza.position + Cabeza.forward * 0.4f : transform.position;

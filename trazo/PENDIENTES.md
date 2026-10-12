@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 12 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v39***
+*Actualizado: 12 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v40***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,6 +16,33 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 4. **Build And Run**.
 
 ---
+
+## 0+. Hecho en la v40 (falta probarlo en el visor)
+
+**La voz** (nueva, gratis y sin internet después de la primera vez)
+- [x] **Micrófono** arriba a la **izquierda**, en espejo del parlante y del mismo tamaño. Tócalo con el índice derecho para prenderla o apagarla (se recuerda). Verde azulado = escuchando (con un aro que salta cuando entiende algo); naranja = preparándose; gris con raya = apagada.
+- [x] Usa **Vosk** (código abierto): el visor entiende tus palabras **sin internet**. Solo la **primera vez** baja el idioma de la app (unos 40 MB, español o inglés, el que esté puesto, no los dos) y lo guarda. El Quest pide el **permiso del micrófono**.
+- [x] Los gestos **siguen funcionando** al mismo tiempo. Si la mano izquierda hace un gesto de verdad (pellizco o puño), la mano manda y el modo de voz se acaba.
+- [x] Sin pellizcar: **"dibuja"** y dibujas solo con el índice; **"ya"** para. Igual **"borra"**, **"nodos"**, **"recta"** (hasta decir "ya").
+- [x] Comandos (español / inglés): dibuja · borra · nodos · recta · ya (listo, para, alto, basta) · deshaz · rehaz · gira izquierda (gira a la izquierda) · gira derecha · gira atrás · capas · capa nueva · mesa · play · pausa · siguiente · anterior · clave · quita clave · paleta · guarda · vista limpia · silencio · halo. En inglés: draw · erase · nodes · straight · stop · undo · redo · turn left · turn right · turn around · layers · new layer · desk · play · pause · next · back · key · remove key · palette · save · clean view · mute · halo.
+- [x] Con la voz prendida **no salen las letras de cómic** de arriba: en su lugar, a la **izquierda y un poco más abajo**, un panelito: **"Sugerencia: di en voz alta:"** y debajo qué decir según lo que haces (sin hacer nada: «Dibuja»; en un modo de voz: «Ya»; recién editaste: «Nodos»; con la mesa: «Play»...). Ahí también salen los avisos y, en verde, lo que entendió. *(Es el primer paso del mini-tutorial predictivo.)*
+
+**Girar** (ideas 5 + 7 juntas)
+- [x] Con un fondo 360, gira la cabeza **bastante hacia un lado** (unos 45°) y en esa orilla sale una **flechita**. Tócala con el índice: se prende el **modo girar** (se pone azul, "<  >"). Desliza el índice a **cualquier lado** y el fondo sigue a tu dedo (10 cm = 30°). Se apaga con el dedo quieto 1.5 s o tocando otra vez la flecha. **Sin flecha no gira nada** (no hay accidentes). Se quitó lo de la mano plana.
+
+**Halo** (las puntas cortadas con fondo 360 o passthrough)
+- [x] La causa de verdad: el **halo** (solo existe con fondo 360 o la realidad) **terminaba recto** en la punta, y la línea se veía cortada. Ahora el halo **envuelve la punta**, redondo y suave. La línea **no cambia**: sigue fina como antes.
+
+**Línea de tiempo con gestos**
+- [x] Con el **gesto de borrar** (puño izquierdo) tocas una **clave** de la barra y se **quita**. Con el **gesto de dibujar** (pulgar + índice izquierdos) tocas la barra y se **pone una clave** ahí. (Haz el gesto primero y luego toca.) Junto a la barra el dedo no pinta ni borra líneas.
+- [x] **Barra sujeta**: mientras arrastras el cabezal con el índice (o una clave con el pellizco), un **doble toque izquierdo** (como el del candado) hace que la barra siga tu dedo **solo de lado**, aunque el dedo se salga de ella. El cabezal se ve más grande. Otro doble toque y vuelve a la normalidad.
+
+**Uniones**
+- [x] Al unir dos líneas o cerrar una figura, la unión queda en **esquina** (dos rectas siguen rectas). En la paleta → **LÍNEA → Uniones** (el ícono "V") cambias a **Suaves** (curva, como antes). Se recuerda.
+
+**Otros**
+- [x] **Parlante** a **30°** (antes 25°). El micrófono queda en espejo a la izquierda.
+- [x] Novedades (tutorial): páginas nuevas de la voz, de la línea de tiempo con gestos y de girar con las flechas.
 
 ## 0+. Hecho en la v39 (falta probarlo en el visor)
 
@@ -227,8 +254,10 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ## 1. Próxima tanda
 
-- [ ] **Comandos de voz** (próxima iteración, idea de Juan Carlos): Meta Voice SDK / Wit.ai (gratis) como atajos ("deshacer", "capa nueva", "vista limpia", "guardar"...).
-- [ ] **Mini-tutorial predictivo** (más adelante, idea de Juan Carlos), para reemplazar las letras de cómic: un cuadrito a la **izquierda** de la vista que se adelanta a lo que vas a hacer. Por ejemplo: al unir el pulgar con el medio izquierdos (modo nodos) sale una manito simulada mostrando cómo mover un nodo con el índice; si pasas el dedo sobre un nodo, muestra que también se pueden mover sus alas (asas), con un ejemplo animado. Para los nuevos que no saben qué sigue o se pierden. Ideas para cuando se haga: que salga solo las primeras veces de cada gesto (luego se calla), que se pueda esconder con la vista limpia, y que use las mismas animaciones cortas de los tutoriales.
+- [ ] **Pastillas que se mueven** (pospuesto de la v40, idea de Juan Carlos): pellizcar una pastilla (capas o mesa) y llevarla arriba o abajo; su panel se abre hacia ese lado.
+- [x] ~~Comandos de voz~~ (hechos en la v40 con Vosk, gratis y sin internet).
+- [ ] **Voz, siguientes pasos**: más comandos si hacen falta (colores por nombre: "rojo", "azul"...; "más grueso", "más fino"); decir un número de fotograma.
+- [ ] **Mini-tutorial predictivo** (el panelito de la voz ya da el primer paso: dice qué decir según lo que haces) (más adelante, idea de Juan Carlos), para reemplazar las letras de cómic: un cuadrito a la **izquierda** de la vista que se adelanta a lo que vas a hacer. Por ejemplo: al unir el pulgar con el medio izquierdos (modo nodos) sale una manito simulada mostrando cómo mover un nodo con el índice; si pasas el dedo sobre un nodo, muestra que también se pueden mover sus alas (asas), con un ejemplo animado. Para los nuevos que no saben qué sigue o se pierden. Ideas para cuando se haga: que salga solo las primeras veces de cada gesto (luego se calla), que se pueda esconder con la vista limpia, y que use las mismas animaciones cortas de los tutoriales.
 
 - [ ] **Profundidad con IA para tus propias fotos 360** (dentro del Quest, con Unity Inference Engine, gratis). Por ahora usan "piso real".
 - [ ] Más fondos 360 temáticos (café de París, mesita en el andén, terraza al atardecer, sala de lujo): bájalos gratis de polyhaven.com (JPG 4K) y ponlos en **Plugins/Fondos** o elígelos con **Mis archivos → Imágenes → Traer imagen → Fondo 360**. Para la profundidad IA y la nitidez 4K: `trazo/Herramientas/profundidad360.py` y `nitidez360.py`.
@@ -253,7 +282,7 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 ## 3. Para el final, si sobra tiempo
 
 - [ ] **Pegado a tu cuarto** (anclajes espaciales de Meta): los dibujos se quedan pegados a tu pared o tu mesa y siguen ahí al volver a abrir la app.
-- [ ] ~~Comandos de voz~~ (pasó a la próxima tanda).
+- [x] ~~Comandos de voz~~ (hechos en la v40).
 - [ ] **Muñequito acompañante** que te sigue mientras dibujas.
 - [ ] **Transparencia del marcador** en la paleta de colores.
 - [ ] **Violín real** como instrumento.
@@ -268,6 +297,15 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [ ] Cuando ya no haga falta, quitar el botón **Tutorial** de Mis archivos (por ahora se queda; abre el mismo panel "?").
 
 ## 5. Para probar en el visor (desde la v21 casi nada se ha probado)
+
+**Nuevo en la v40:**
+- [ ] **Voz**: la primera vez (con internet) ¿baja el idioma y dice "Te escucho"? ¿pide el permiso del micrófono? Después, sin internet, ¿sigue funcionando? ¿Entiende "dibuja", "ya", "borra", "deshaz", "gira izquierda"? ("gira izq" quizá no lo entienda: el modelo de Vosk no conoce "izq".) ¿Se equivoca y hace cosas sin que hables?
+- [ ] El panelito de sugerencias a la izquierda: ¿se lee bien? ¿Estorba? ¿Las sugerencias tienen sentido?
+- [ ] Girar con las flechas: ¿sale la flecha al girar la cabeza? ¿se alcanza? ¿el deslizar se siente natural (10 cm = 30°)? ¿sale alguna flecha sin querer?
+- [ ] Halo: ¿ya no se ven cortadas las puntas con fondo 360 y passthrough?
+- [ ] Línea de tiempo: puño + tocar una clave la quita; pellizco izquierdo + tocar la barra pone una clave. Barra sujeta con el doble toque: ¿se entiende? ¿se suelta bien?
+- [ ] Uniones en esquina: une dos rectas, ¿quedan rectas? Prueba "Suaves" en la paleta.
+- [ ] Parlante a 30° y micrófono a la izquierda: ¿se alcanzan bien?
 
 **Nuevo en la v39:**
 - [ ] Puntas de las líneas en los fondos 360 y en el passthrough: ¿ya no se cortan? ¿quedaron finas como antes? Mira en el reloj los cuadros por segundo: si dice "modo rendimiento 1", el visor iba cargado (pero ya no baja el detalle).

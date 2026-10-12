@@ -87,6 +87,9 @@ Shader "TrazoVR/Linea"
                     float medio = abs(v.uv.x) * escala;
                     posWS += TrazoHebra(original, v.uv2.x, v.uv2.y, medio, v.vivoA, v.vivoB, fase);
                     float ancho = v.uv.x * escala * TrazoGrosorVivo(original, v.uv2.x, v.vivoA, v.vivoB, fase);
+                    // v40: la tapa del halo en las puntas (uv.y de 0.2 a 0.4) es solo del halo: aquí no se abre.
+                    if (v.uv.y > 0.1)
+                        ancho = 0.0;
                     // Lo que mide un pixel a esta distancia (con la cámara de cada ojo): mínimo 1.2 pixeles de ancho.
                     float w = TransformWorldToHClip(posWS).w;
                     float pixel = 2.0 * w / max(abs(UNITY_MATRIX_P[1][1]) * _ScreenParams.y, 1.0);

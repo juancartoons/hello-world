@@ -31,6 +31,7 @@ public partial class ControlManos
             case "Linea6": return "Imán";
             case "Linea7": return "Halo";
             case "Linea8": return "Lápiz";
+            case "Linea9": return "Uniones";
             case "Relleno": return "Relleno";
             case "Relleno0": return "Textura";
             case "Relleno1": return "Cubeta";

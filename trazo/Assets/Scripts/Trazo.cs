@@ -430,6 +430,29 @@ public class Trazo : MonoBehaviour
 
     // ---------- Editar ----------
 
+    // v40: UNIONES. Al unir dos líneas (o cerrar una figura), ¿el nodo de la unión se suaviza (curva) o se queda en
+    // ESQUINA (cada lado conserva su propia dirección, así dos rectas siguen rectas)? Por defecto: esquina.
+    // Se cambia en la paleta > LÍNEA > Uniones, y se recuerda.
+    const string ClaveUniones = "jcartoons_uniones_suaves";
+    static int unionesSuaves = -1;
+
+    public static bool UnionesSuaves
+    {
+        get
+        {
+            if (unionesSuaves < 0)
+                unionesSuaves = PlayerPrefs.GetInt(ClaveUniones, 0) == 1 ? 1 : 0;
+            return unionesSuaves == 1;
+        }
+    }
+
+    public static void AlternarUniones()
+    {
+        unionesSuaves = UnionesSuaves ? 0 : 1;
+        PlayerPrefs.SetInt(ClaveUniones, unionesSuaves);
+        PlayerPrefs.Save();
+    }
+
     public void AsegurarAsas()
     {
         int n = nodos.Count;
@@ -619,6 +642,8 @@ public class Trazo : MonoBehaviour
         if (cerrado || nodos.Count < 4)
             return false;
         int q = quitarUltimo ? nodos.Count - 1 : 0;
+        // v40: con uniones en esquina, el nodo que queda se lleva el asa del que se quita (cada lado su dirección).
+        Vector3 asaQuitadaEntrada = asaEntrada[q], asaQuitadaSalida = asaSalida[q];
         nodos.RemoveAt(q);
         asaEntrada.RemoveAt(q);
         asaSalida.RemoveAt(q);
@@ -626,6 +651,20 @@ public class Trazo : MonoBehaviour
         grosorNodo.RemoveAt(q);
         asaManual[0] = false;
         asaManual[nodos.Count - 1] = false;
+        if (!UnionesSuaves)
+        {
+            if (quitarUltimo)
+            {
+                asaEntrada[0] = asaQuitadaEntrada;   // el nodo 0 es la unión: llega con la dirección del final
+                asaManual[0] = true;
+            }
+            else
+            {
+                int u = nodos.Count - 1;             // el último es la unión: sale con la dirección del principio
+                asaSalida[u] = asaQuitadaSalida;
+                asaManual[u] = true;
+            }
+        }
         cerrado = true;
         relleno = true;
         Reconstruir();
@@ -1007,6 +1046,55 @@ public class Trazo : MonoBehaviour
                     indices.Add(b + 1); indices.Add(b + 2); indices.Add(b + 3);
                 }
             }
+            // v40: la TAPA DEL HALO en cada punta. Solo la usa el halo (con fondo 360 o la realidad): su brillo ahora
+            // envuelve la punta, redondo y suave (antes terminaba recto y la línea se veía cortada). La línea la
+            // ignora y se queda fina como siempre. Las líneas cerradas no tienen puntas.
+            if (!CerradoAhora && muestras.Count >= 2)
+            {
+                TapaHalo(inicio, 0, -1f, total, delgada, hebra, nv, e);
+                TapaHalo(inicio, muestras.Count - 1, 1f, total, delgada, hebra, nv, e);
+            }
+        }
+    }
+
+    // Media vuelta de vértices alrededor de la punta "i" (todos en el mismo punto: el shader del halo los abre).
+    // uv.y = 0.3 + 0.1 x cuánto avanza más allá de la punta (de -1 a 1; negativo en el inicio); uv.x = medio grosor
+    // con el signo del lado (0 en el centro). El shader de la línea ve uv.y > 0.1 y no los mueve (no se ven).
+    // El vértice de más adelante va dos veces (uno de cada lado, en el mismo sitio): así ningún borde une un lado
+    // con el otro (si no, el brillo haría una rayita hacia adelante).
+    const int LadosTapa = 8;
+
+    void TapaHalo(int inicio, int i, float sentido, float total, float delgada, int hebra, float nv, EstiloVivo e)
+    {
+        Vector3 p = muestras[i];
+        Vector3 t = Tangente(i);
+        float h = MedioGrosor(i, total) * delgada;
+        float a = total > 0f ? largos[i] / total : 0f;
+        int centro = vertices.Count;
+        vertices.Add(p); normales.Add(t); uvs.Add(new Vector3(0f, 0.3f, nv)); uvs2.Add(new Vector2(hebra, a)); uvs3.Add(e.a); uvs4.Add(e.b);
+        int mitad = LadosTapa / 2;
+        for (int k = 1; k < LadosTapa; k++)
+        {
+            float ang = (-90f + 180f * k / LadosTapa) * Mathf.Deg2Rad;
+            float avance = Mathf.Cos(ang) * sentido;
+            if (k <= mitad)
+            {
+                vertices.Add(p); normales.Add(t); uvs.Add(new Vector3(-h, 0.3f + 0.1f * avance, nv)); uvs2.Add(new Vector2(hebra, a)); uvs3.Add(e.a); uvs4.Add(e.b);
+            }
+            if (k >= mitad)
+            {
+                vertices.Add(p); normales.Add(t); uvs.Add(new Vector3(h, 0.3f + 0.1f * avance, nv)); uvs2.Add(new Vector2(hebra, a)); uvs3.Add(e.a); uvs4.Add(e.b);
+            }
+        }
+        // Abanico: del vértice de la izquierda de la cinta, por la media vuelta, al de la derecha.
+        int izquierda = inicio + i * 2, derecha = izquierda + 1;
+        int ultimo = vertices.Count - 1;
+        int anterior = izquierda;
+        for (int v = centro + 1; v <= ultimo + 1; v++)
+        {
+            int siguiente = v <= ultimo ? v : derecha;
+            indices.Add(centro); indices.Add(anterior); indices.Add(siguiente);
+            anterior = siguiente;
         }
     }
 

@@ -287,6 +287,20 @@ public class Animacion : MonoBehaviour
         dibujo.Mensaje("Clave quitada (" + dibujo.CapaActual.nombre + ")");
     }
 
+    // v40: quita la clave del fotograma f (capa activa) sin moverse de donde estás (el borrador sobre la barra).
+    public bool QuitarClaveEn(int f)
+    {
+        var c = BuscarClave(f, CapaActiva);
+        if (c == null)
+            return false;
+        dibujo.GuardarParaDeshacer();
+        claves.Remove(c);
+        MostrarFotograma();
+        Avisar();
+        dibujo.Mensaje("Clave quitada (" + dibujo.CapaActual.nombre + ")");
+        return true;
+    }
+
     public void AlternarReproducir()
     {
         if (Reproduciendo)

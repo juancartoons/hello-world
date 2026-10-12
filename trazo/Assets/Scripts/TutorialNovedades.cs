@@ -2,14 +2,13 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Tutorial de NOVEDADES (sección 4 del panel "?"): lo nuevo de las últimas versiones, con una animación corta
-// de cada cosa. Se actualiza en cada versión (v36 "como de 2030", con los retoques de la v37, v38 y v39).
+// de cada cosa. Se actualiza en cada versión (v36 "como de 2030", con los retoques de la v37 a la v40).
 //  1 · Capas: la persiana de arriba.                 5 · Mover paneles y vista limpia.
-//  2 · Mesa de trabajo: la persiana de abajo.        6 · Tela con pellizco.
-//  3 · Líneas que cobran vida (destello, polvo...).  7 · Capas: empujar y atraer.
-//  4 · Vidrio, luz en tu dedo y etiquetas.           8 · Fondos retocados y girar.
+//  2 · Mesa de trabajo: la persiana de abajo.        6 · La voz (v40).
+//  3 · Líneas que cobran vida (destello, polvo...).  7 · Línea de tiempo con gestos (v40).
+//  4 · Vidrio, luz en tu dedo y etiquetas.           8 · Girar con las flechas (v40).
 public class TutorialNovedades : TarjetaTutorial
 {
-    static readonly Color Amarillo = new Color(1f, 0.85f, 0.35f);
     static readonly Color Celeste = new Color(0.55f, 0.78f, 1f);
     static readonly Color Vidrio = new Color(0.84f, 0.89f, 0.96f);
 
@@ -53,9 +52,9 @@ public class TutorialNovedades : TarjetaTutorial
             case 2: return Tx("3 · Lines that come alive", "3 · Líneas que cobran vida");
             case 3: return Tx("4 · Glass, finger light and labels", "4 · Vidrio, luz en tu dedo y etiquetas");
             case 4: return Tx("5 · Move panels and clean view", "5 · Mover paneles y vista limpia");
-            case 5: return Tx("6 · Cloth points", "6 · Puntos de tela");
-            case 6: return Tx("7 · Layers: push and pull", "7 · Capas: empujar y atraer");
-            default: return Tx("8 · Retouched backgrounds and turning", "8 · Fondos retocados y girar");
+            case 5: return Tx("6 · Voice", "6 · La voz");
+            case 6: return Tx("7 · Timeline with gestures", "7 · Línea de tiempo con gestos");
+            default: return Tx("8 · Turning with the arrows", "8 · Girar con las flechas");
         }
     }
 
@@ -73,8 +72,8 @@ public class TutorialNovedades : TarjetaTutorial
                     "Abajo hay otra pastillita con el fotograma y el tiempo, y una barrita que dice cuánto va de la animación. JÁLALA HACIA ARRIBA y sale la MESA DE TRABAJO: el reproductor y la línea de tiempo, con las pestañas Animar, Bocas y Títere replegadas. Para guardarla, jala HACIA ABAJO la pastillita de debajo (o toca su X). También la saca el menú del reloj > MESA. PELLIZCA una parte vacía de la mesa para moverla.");
             case 2:
                 return Tx(
-                    "When you FINISH a line, a flash of light runs along it. When you ERASE it, it dissolves into glowing dust (dark dust on white backgrounds, so you can see it). The eraser is a glass orb: ROSE GOLD for lines and CHAMPAGNE for fills. When you UNDO, the line rolls itself back, as if you rewound time.",
-                    "Al TERMINAR una línea, un destello de luz la recorre. Al BORRARLA, se deshace en polvo brillante (polvo oscuro en los fondos blancos, para que se note). El borrador es una esfera de vidrio: ORO ROSA para las líneas y CHAMPAÑA para los rellenos. Al DESHACER, la línea se recoge sola, como si rebobinaras el tiempo.");
+                    "When you FINISH a line, a flash of light runs along it. When you ERASE it, it dissolves into glowing dust (dark dust on white backgrounds, so you can see it). The eraser is a glass orb: ROSE GOLD for lines and CHAMPAGNE for fills. With a 360 background, the halo now wraps the line's tip (it no longer looks cut). When you UNDO, the line rolls itself back, as if you rewound time.",
+                    "Al TERMINAR una línea, un destello de luz la recorre. Al BORRARLA, se deshace en polvo brillante (polvo oscuro en los fondos blancos, para que se note). El borrador es una esfera de vidrio: ORO ROSA para las líneas y CHAMPAÑA para los rellenos. Con fondo 360, el halo ahora envuelve la punta de la línea (ya no se ve cortada). Al DESHACER, la línea se recoge sola, como si rebobinaras el tiempo.");
             case 3:
                 return Tx(
                     "Menus and the palette are made of GLASS: your 360 background shows through, blurred. The palette's colors are pearls. LABELS: in the palette, leave your index finger close to a button or a color for a moment and a little glass label with its name appears. The tip of your index finger carries a LITTLE LIGHT that makes fills and glass glow a little.",
@@ -85,16 +84,16 @@ public class TutorialNovedades : TarjetaTutorial
                     "MUEVE CUALQUIER PANEL: pellizca una parte vacía (no un botón) y llévalo a donde quieras (Mis archivos, la ventanita de fondos 360, el buscador, la mesa); pellizcando también con la izquierda, separa las manos = tamaño. VISTA LIMPIA: haz un DOBLE PUÑO con la mano derecha (cerrar, abrir y cerrar rápido) o toca Vista limpia en el menú del reloj: se van las pastillas, el parlante y las letras de cómic. Lo mismo otra vez = vuelven.");
             case 5:
                 return Tx(
-                    "In node mode (left thumb + middle), PINCH a fill with your right hand (thumb + index) and pull it toward you or push it away; open the pinch and it stays. The cloth bends smoothly, like a bell, and the edge stays on the line. A purple diamond marks it: touch it with your index, like a node, to move it again. Leave it flat (or use the eraser) = it's removed.",
-                    "En el modo nodos (izquierda pulgar + medio), PELLIZCA un relleno con la derecha (pulgar + índice) y jálalo hacia ti o empújalo al fondo; abre el pellizco y se queda así. La tela se dobla suave, como una campana, y el borde se queda en la línea. Un rombito morado lo marca: tócalo con el índice, como un nodo, para moverlo otra vez. Si lo dejas plano (o con el borrador), se quita.");
+                    "Touch the MICROPHONE (top left, mirroring the speaker) and talk; your gestures keep working too. Say \"draw\" and your right index draws until you say \"stop\"; \"erase\", \"nodes\" and \"straight\" work the same. Also \"undo\", \"redo\", \"turn left\", \"layers\", \"new layer\", \"desk\", \"play\", \"pause\", \"save\"... On the left, a little panel suggests what to say. The first time it downloads the language (about 40 MB); after that it works without internet.",
+                    "Toca el MICRÓFONO (arriba a la izquierda, en espejo del parlante) y habla; tus gestos siguen funcionando. Di \"dibuja\" y tu índice derecho dibuja hasta que digas \"ya\"; igual \"borra\", \"nodos\" y \"recta\". También \"deshaz\", \"rehaz\", \"gira izquierda\", \"capas\", \"capa nueva\", \"mesa\", \"play\", \"pausa\", \"guarda\"... A la izquierda, un panelito te sugiere qué decir. La primera vez baja el idioma (unos 40 MB); después funciona sin internet.");
             case 6:
                 return Tx(
-                    "With the layers open, they hang like sheets of paper close to you (about 35 cm), 7 cm apart. The current one is solid; the ones in front fade away as they get near your eyes. PUSH the current one (about 3 cm) = the whole stack moves back and the layer in front arrives; PULL it toward you = the one behind arrives. \"+ Layer\" = a new layer in front (up to 12).",
-                    "Con las capas abiertas, cuelgan como papeles cerca de ti (a unos 35 cm), a 7 cm una de otra. La actual se ve sólida; las de adelante se desvanecen al acercarse a tus ojos. EMPUJA la actual (unos 3 cm) = todo el montón se va al fondo y llega la de adelante; ATRÁELA hacia ti = llega la de atrás. \"+ Capa\" = una capa nueva adelante (hasta 12).");
+                    "On the timeline bar: with the ERASE gesture (left fist), touch a key (orange mark) = it's removed. With the DRAW gesture (left thumb + index), touch the bar = a new key there. LOCKED BAR: while you drag the playhead (or a key), double tap with your left thumb + index and the bar follows your finger only sideways, even if your finger drifts far away: you can just watch your animation. Double tap again = back to normal.",
+                    "En la barra de la línea de tiempo: con el gesto de BORRAR (puño izquierdo), toca una clave (marca naranja) = se quita. Con el gesto de DIBUJAR (pulgar + índice izquierdos), toca la barra = una clave nueva ahí. BARRA SUJETA: mientras arrastras el cabezal (o una clave), haz doble toque con pulgar + índice izquierdos y la barra sigue tu dedo solo de lado, aunque el dedo se aleje: puedes mirar solo tu animación. Otro doble toque = vuelve a la normalidad.");
             default:
                 return Tx(
-                    "Venice at sunset (orange sky, without the hanging clothes), New York rooftop without the fence. The Luxury living room GOES WITH YOU: it stays 3D but moves with your head, so nothing stretches. TURN the background: right hand open and flat, sideways (like a knife), and a quick swipe of about 20 cm = 30° (it follows your hand). Or the arrows in the watch menu.",
-                    "Venecia al atardecer (cielo naranja, sin la ropa colgada) y la Azotea en Nueva York sin la reja. La Sala de lujo VA CONTIGO: sigue siendo 3D pero se mueve con tu cabeza, así nada se estira. GIRA el fondo: mano derecha abierta y plana, de lado (como un cuchillo), y un barrido rápido de unos 20 cm = 30° (el fondo sigue a tu mano). O las flechas del menú del reloj.");
+                    "TURN a 360 background: turn your head well to one side and a little ARROW appears at that edge. Touch it with your index: turn mode is on. Now slide your index to either side and the background follows your finger (about 10 cm = 30°). It turns off when you keep your finger still for a moment. Without an arrow nothing turns. Also the watch arrows or the voice (\"turn right\").",
+                    "GIRA un fondo 360: gira la cabeza bastante hacia un lado y en esa orilla aparece una FLECHITA. Tócala con el índice: se prende el modo girar. Ahora desliza el índice hacia cualquier lado y el fondo sigue a tu dedo (unos 10 cm = 30°). Se apaga si dejas el dedo quieto un momento. Sin flecha no gira nada. También las flechas del reloj o la voz (\"gira derecha\").");
         }
     }
 
@@ -125,9 +124,9 @@ public class TutorialNovedades : TarjetaTutorial
             case 2: AnimarLineas(t); break;
             case 3: AnimarVidrio(t); break;
             case 4: AnimarRespira(t); break;
-            case 5: AnimarTela(t); break;
-            case 6: AnimarCapas(t); break;
-            default: AnimarFondos(t); break;
+            case 5: AnimarVoz(t); break;
+            case 6: AnimarBarra(t); break;
+            default: AnimarGiro(t); break;
         }
     }
 
@@ -468,83 +467,121 @@ public class TutorialNovedades : TarjetaTutorial
         }
     }
 
-    // La ventanita de fondos 360: seis fotos; las dos nuevas tienen marco de luz. El dedo toca una y luego la otra.
-    void AnimarFondos(float t)
+    // Girar: miras a un lado y sale la flechita en la orilla; el dedo la toca (se pone celeste) y luego desliza: el
+    // fondo (una tira de fotos) sigue al dedo.
+    void AnimarGiro(float t)
     {
-        const float w = 0.042f, h = 0.026f;
-        for (int i = 0; i < 6; i++)
+        Vector3 ojo = new Vector3(-0.1f, -0.03f, 0f);
+        Mirada(ojo, t > 0.2f ? new Vector3(-0.072f, -0.012f, 0f) : new Vector3(-0.078f, -0.03f, 0f));
+        float corre = t > 1.4f ? Mathf.Sin((t - 1.4f) / 2.4f * Mathf.PI * 2f) * 0.03f : 0f;
+        for (int i = 0; i < 4; i++)
         {
-            float cx = (i % 3 - 1) * 0.05f, cy = i < 3 ? 0.017f : -0.017f;
-            Rectangulo(otra, cx, cy, w, h, -0.001f);
-            PonerLinea(i < 4 ? hijos[i] : luces[i - 4], otra);
+            Rectangulo(otra, -0.05f + i * 0.04f + corre, 0.03f, 0.036f, 0.024f, 0.002f);
+            PonerLinea(hijos[i], otra);
         }
-        bool primera = t < 2.7f;
-        float desde = primera ? 0.9f : 2.7f;
-        float cxElegida = primera ? 0f : 0.05f;
-        if (t >= 0.9f)
-            RellenarRect(cxElegida, -0.017f, w, h, Amarillo, Suave((t - desde) / 0.3f));
-        bool toca = (t > 0.6f && t < 1.1f) || (t > 2.4f && t < 2.9f);
-        dedo.gameObject.SetActive(toca);
-        dedo.localPosition = new Vector3(t < 2f ? 0f : 0.05f, -0.017f, -0.004f);
-    }
-
-    // Capas en profundidad: la actual sólida, las de adelante más arriba y grandes, las de atrás más abajo.
-    // El dedo empuja la actual y todo el montón se corre un paso hacia el fondo.
-    void AnimarCapas(float t)
-    {
-        float paso = Suave(Mathf.InverseLerp(1.9f, 2.7f, t));
-        bool empuja = t > 1.0f && t < 2.0f;
-        int h = 0;
-        for (int k = 0; k < 4; k++)
+        if (t > 0.5f)
         {
-            float s = k - 1 - paso; // antes: la capa 2 (k = 1) es la actual
-            float ancho = 0.15f * (1f + 0.14f * s), alto = 0.03f * (1f + 0.14f * s);
-            float y = 0.012f + (s > 0f ? s * 0.02f : s * 0.016f);
-            if (Mathf.Abs(s) < 0.5f)
-            {
-                Rectangulo(puntos, 0f, y, ancho, alto, -0.001f);
-                PonerLinea(linea, puntos);
-                var lleno = new List<Vector3>(puntos);
-                lleno.RemoveAt(lleno.Count - 1);
-                Rellenar(lleno, Color.white, 1f);
-                dedo.gameObject.SetActive(t < 2.0f);
-                dedo.localPosition = new Vector3(-0.03f, y, -0.006f);
-                dedo.localScale = Vector3.one * (empuja ? Mathf.Lerp(0.011f, 0.006f, Mathf.InverseLerp(1.0f, 1.9f, t)) : 0.011f);
-            }
-            else if (h < hijos.Length)
-            {
-                Rectangulo(otra, 0f, y, ancho, alto, s > 0f ? -0.002f : 0.002f);
-                PonerLinea(hijos[h++], otra);
-            }
-        }
-        lineaGris.positionCount = 0;
-    }
-
-    // Tela: tres hilos que cruzan el relleno se abomban suave alrededor del punto morado (el dedo) que sube y baja.
-    void AnimarTela(float t)
-    {
-        Circulo(puntos, 0f, 0f, 0.045f);
-        var lleno = new List<Vector3>(puntos);
-        lleno.RemoveAt(lleno.Count - 1);
-        Rellenar(lleno, Celeste, 1f);
-        PonerLinea(linea, puntos);
-        float alto = Mathf.Sin(t / Ciclo * Mathf.PI * 2f) * 0.014f;
-        var hilos = new[] { extra, arco, hijos[0] };
-        for (int h = 0; h < hilos.Length; h++)
-        {
-            float y0 = (h - 1) * 0.018f;
+            Rectangulo(puntos, 0.085f, -0.02f, 0.024f, 0.016f, -0.001f);
+            PonerLinea(lineaGris, puntos);
+            RellenarRect(0.085f, -0.02f, 0.024f, 0.016f, t > 1.2f ? Celeste : Color.white, 1f);
             otra.Clear();
-            float medio = Mathf.Sqrt(Mathf.Max(0f, 0.045f * 0.045f - y0 * y0));
-            for (int k = 0; k <= 20; k++)
-            {
-                float x = Mathf.Lerp(-medio, medio, k / 20f);
-                float r2 = (x * x + y0 * y0) / (0.04f * 0.04f);
-                float campana = r2 < 1f ? (1f - r2) * (1f - r2) : 0f;
-                otra.Add(new Vector3(x, y0 + alto * campana, -0.001f));
-            }
-            PonerLinea(hilos[h], otra);
+            otra.Add(new Vector3(0.081f, -0.014f, -0.0015f));
+            otra.Add(new Vector3(0.089f, -0.02f, -0.0015f));
+            otra.Add(new Vector3(0.081f, -0.026f, -0.0015f));
+            PonerLinea(arco, otra);
         }
+        if (t > 0.7f)
+        {
+            dedo.gameObject.SetActive(true);
+            if (t < 1.3f)
+                dedo.localPosition = new Vector3(Mathf.Lerp(0.05f, 0.085f, Suave(Mathf.InverseLerp(0.7f, 1.2f, t))), -0.02f, -0.004f);
+            else
+                dedo.localPosition = new Vector3(0.04f + corre, -0.04f, -0.004f);
+        }
+    }
+
+    // La voz: el micrófono "habla" (ondas) y, después de "dibuja", una línea se dibuja sola con el dedo hasta "ya".
+    void AnimarVoz(float t)
+    {
+        Vector3 micro = new Vector3(-0.1f, 0.04f, 0f);
+        Circulo(otra, micro.x, micro.y, 0.011f, -0.001f);
+        PonerLinea(arco, otra);
+        otra.Clear();
+        otra.Add(new Vector3(micro.x, micro.y - 0.011f, -0.001f));
+        otra.Add(new Vector3(micro.x, micro.y - 0.02f, -0.001f));
+        PonerLinea(hijos[2], otra);
+        bool habla = (t > 0.2f && t < 0.9f) || (t > 2.6f && t < 3.1f);
+        if (habla)
+        {
+            float f = Mathf.Repeat(t * 2.5f, 1f);
+            for (int i = 0; i < 2; i++)
+                ArcoVoz(hijos[i], micro, 0.016f + Mathf.Repeat(f + i * 0.5f, 1f) * 0.02f);
+        }
+        if (t > 1.0f)
+        {
+            float dibuja = Mathf.InverseLerp(1.0f, 2.6f, t);
+            Onda(otra, false, 0f, dibuja, -0.001f);
+            PonerLinea(linea, otra);
+            if (t < 2.75f)
+            {
+                dedo.gameObject.SetActive(true);
+                dedo.localPosition = OndaAbajo(dibuja) + new Vector3(0f, 0f, -0.003f);
+            }
+        }
+    }
+
+    void ArcoVoz(LineRenderer l, Vector3 c, float r)
+    {
+        otra.Clear();
+        for (int k = 0; k <= 10; k++)
+        {
+            float a = Mathf.Lerp(-50f, 50f, k / 10f) * Mathf.Deg2Rad;
+            otra.Add(new Vector3(c.x + Mathf.Cos(a) * r, c.y + Mathf.Sin(a) * r, -0.001f));
+        }
+        PonerLinea(l, otra);
+    }
+
+    // La línea de tiempo: el dedo arrastra el cabezal; luego (barra sujeta) se aleja hacia arriba y el cabezal lo sigue
+    // de lado igual; al final, con el gesto de dibujar, tocar la barra pone una clave nueva.
+    void AnimarBarra(float t)
+    {
+        const float y = -0.02f, x0 = -0.09f, x1 = 0.09f;
+        otra.Clear();
+        otra.Add(new Vector3(x0, y, -0.001f));
+        otra.Add(new Vector3(x1, y, -0.001f));
+        PonerLinea(linea, otra);
+        float[] claves = { -0.06f, 0.0f, 0.05f };
+        for (int i = 0; i < claves.Length; i++)
+            Marca(hijos[i], claves[i], y, 0.006f);
+        float x;
+        float dy = 0f;
+        if (t < 1.4f)
+        {
+            x = Mathf.Lerp(-0.07f, 0.03f, Suave(Mathf.InverseLerp(0.1f, 1.3f, t)));
+        }
+        else if (t < 3.0f)
+        {
+            x = Mathf.Lerp(0.03f, -0.04f, Suave(Mathf.InverseLerp(1.6f, 2.9f, t)));
+            dy = Mathf.Lerp(0f, 0.045f, Suave(Mathf.InverseLerp(1.4f, 1.8f, t)));
+        }
+        else
+        {
+            x = Mathf.Lerp(-0.04f, 0.075f, Suave(Mathf.InverseLerp(3.0f, 3.5f, t)));
+            dy = Mathf.Lerp(0.045f, 0f, Suave(Mathf.InverseLerp(3.0f, 3.5f, t)));
+            if (t > 3.6f)
+                Marca(hijos[3], 0.075f, y, 0.006f);   // la clave nueva
+        }
+        Marca(extra, x, y, 0.012f);                   // el cabezal
         dedo.gameObject.SetActive(true);
-        dedo.localPosition = new Vector3(0f, alto, -0.004f);
+        dedo.localPosition = new Vector3(x, y + dy, -0.004f);
+    }
+
+    // Una rayita vertical en la barra (las claves y el cabezal).
+    void Marca(LineRenderer l, float x, float y, float alto)
+    {
+        otra.Clear();
+        otra.Add(new Vector3(x, y - alto, -0.0015f));
+        otra.Add(new Vector3(x, y + alto, -0.0015f));
+        PonerLinea(l, otra);
     }
 }

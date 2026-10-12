@@ -629,6 +629,19 @@ public partial class ControlManos
         hijo.alTocar = SiguienteModoLapiz;
         hijo.texto = () => "Lápiz: " + NombresModoLapiz[ModoLapiz];
         hijo.tono = 1f;
+        // v40: Uniones (al unir líneas o cerrar figuras): en ESQUINA (por defecto) o suaves. Una "V" de dos rectas.
+        hijo = HijoLinea(9, null, negro);
+        var ve = new List<Vector2[]>();
+        LineaIcono(ve, new[] { new Vector2(-0.22f, 0.2f), new Vector2(0f, -0.2f), new Vector2(0.22f, 0.2f) }, 0.08f);
+        IconoPaleta(hijo.t, ve, negro);
+        hijo.amarillo = () => !Trazo.UnionesSuaves;
+        hijo.alTocar = () =>
+        {
+            Trazo.AlternarUniones();
+            MostrarEtiqueta(Trazo.UnionesSuaves ? "Uniones: Suaves" : "Uniones: Rectas");
+        };
+        hijo.texto = () => Trazo.UnionesSuaves ? "Uniones: Suaves" : "Uniones: Rectas";
+        hijo.tono = 0.95f;
 
         // ---- RELLENO (a las 2): 3 facetas verdes.
         ramaRelleno = CrearRama("Relleno", AnguloRelleno, negro);

@@ -349,6 +349,9 @@ public partial class ControlManos : MonoBehaviour
 
         // Parlante de silencio con el carrusel de instrumentos encima (arriba a la derecha de lo que miras).
         BotonSonido.Crear(this, materialNodo, materialIconos);
+        // v40: la voz y su micrófono (arriba a la izquierda, en espejo del parlante).
+        Voz.Crear();
+        BotonVoz.Crear(this, materialNodo);
         PrepararMusica();
     }
 
@@ -435,7 +438,7 @@ public partial class ControlManos : MonoBehaviour
     {
         if (simbolos == null)
             return;
-        bool borrador = GestoIzq == Gesto.Borrar && poseValida && !Ocupado;
+        bool borrador = GestoIzq == Gesto.Borrar && poseValida && !Ocupado && gestoVoz != Gesto.Borrar; // por voz no hay puño
         Quaternion giroBorrador = Quaternion.identity;
         if (borrador && dirDedosIzq.sqrMagnitude > 1e-6f && palmaIzq.normal.sqrMagnitude > 1e-6f)
             giroBorrador = Quaternion.LookRotation(dirDedosIzq, -palmaIzq.normal);
@@ -545,6 +548,27 @@ public partial class ControlManos : MonoBehaviour
             {
                 SalirDeGesto();
                 esperarSoltarIzq = true;
+            }
+            return;
+        }
+        // v40: un modo puesto con la VOZ ("dibuja", "borra", "nodos", "recta") vale como si la mano izquierda lo
+        // sostuviera, hasta decir "ya" (ver ControlManosVoz.cs). La izquierda queda libre: puede descansar.
+        // Pero si la mano izquierda hace un gesto de verdad (un pellizco o el puño), la mano manda: el modo de voz se
+        // acaba y sigue el gesto de la mano, como siempre.
+        if (gestoVoz != Gesto.Ninguno && Izq.valida
+            && (Vector3.Distance(Izq.pulgar, Izq.indice) < pellizcoEntra || Vector3.Distance(Izq.pulgar, Izq.medio) < pellizcoEntra
+                || PunoApretado()))
+        {
+            QuitarGestoVoz();
+            esperarSoltarIzq = false;
+        }
+        if (gestoVoz != Gesto.Ninguno)
+        {
+            if (GestoIzq != gestoVoz)
+            {
+                if (GestoIzq != Gesto.Ninguno)
+                    SalirDeGesto();
+                EntrarEnGesto(gestoVoz);
             }
             return;
         }
@@ -828,10 +852,18 @@ public partial class ControlManos : MonoBehaviour
         }
         if (LapizLevantado(local))
             return;
+        // v40: junto a la barra de la línea de tiempo el dedo es de la barra (pone claves): la línea que venía se termina.
+        if (trazoActual != null && PanelArriba.DedoEnBarra)
+        {
+            dibujo.TerminarTrazo(trazoActual);
+            trazoActual = null;
+            return;
+        }
         if (trazoActual == null && permitirEmpezarLinea != null && !permitirEmpezarLinea(Der.indice))
             return;
         // Con el dedo en el parlante, en el carrusel de instrumentos o junto a un botón de un menú no empieza una línea.
-        if (trazoActual == null && (BotonSonido.DedoCerca || BotonTocable.DedoCerca || CapasProfundidad.DedoCerca))
+        if (trazoActual == null && (BotonSonido.DedoCerca || BotonVoz.DedoCerca || BotonTocable.DedoCerca || CapasProfundidad.DedoCerca
+                                    || PanelArriba.DedoEnBarra))
             return;
         if (trazoActual == null)
         {
@@ -1469,7 +1501,8 @@ public partial class ControlManos : MonoBehaviour
     {
         hoverTipo = Objetivo.Nada;
         // Con el dedo en el parlante, en el carrusel de instrumentos o junto a un botón de un menú no se borra nada.
-        if (!Der.valida || BotonSonido.DedoCerca || BotonTocable.DedoCerca || CapasProfundidad.DedoCerca)
+        if (!Der.valida || BotonSonido.DedoCerca || BotonVoz.DedoCerca || BotonTocable.DedoCerca || CapasProfundidad.DedoCerca
+            || PanelArriba.DedoEnBarra)
         {
             CancelarFrote();
             MostrarModoNodos(false, null);
@@ -2094,7 +2127,12 @@ public partial class ControlManos : MonoBehaviour
                 if (toques >= 2)
                 {
                     toques = 0;
-                    AlternarBloqueo();
+                    // v40: mientras usas la línea de tiempo (el cabezal o una clave), el doble toque SUJETA la barra
+                    // (sigue tu dedo solo de lado) en vez de poner el candado.
+                    if (panelArriba != null && panelArriba.QuiereSujetar)
+                        panelArriba.AlternarSujeta();
+                    else
+                        AlternarBloqueo();
                 }
             }
             else
@@ -2557,7 +2595,8 @@ public partial class ControlManos : MonoBehaviour
         // Cerca del parlante o del carrusel de instrumentos la bolita se esconde (se ve bien lo que tocas).
         // En el modo nodos tampoco (no estás dibujando: estás moviendo nodos), ni cerca de un botón de un menú.
         bool ver = Der.valida && GestoIzq != Gesto.Transformar && GestoIzq != Gesto.Nodos && !flechaDer.activa
-                   && !BotonSonido.DedoCerca && !BotonTocable.DedoCerca && !CapasProfundidad.DedoCerca && !LapizAtrapado;
+                   && !BotonSonido.DedoCerca && !BotonVoz.DedoCerca && !BotonTocable.DedoCerca && !CapasProfundidad.DedoCerca
+                   && !LapizAtrapado;
         if (cursor.gameObject.activeSelf != ver)
             cursor.gameObject.SetActive(ver);
         if (!ver)

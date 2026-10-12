@@ -1167,7 +1167,9 @@ public class Dibujo : MonoBehaviour
         int u = a.nodos.Count - 1;
         a.nodos[u] = b.nodos[0];
         a.asaSalida[u] = b.asaSalida[0];
-        a.asaManual[u] = false;
+        // v40: por defecto la unión queda en ESQUINA (cada lado conserva su dirección: dos rectas siguen rectas);
+        // con "Uniones: Suaves" en la paleta, se curva suave como antes.
+        a.asaManual[u] = !Trazo.UnionesSuaves;
         a.grosorNodo[u] = Mathf.Max(a.grosorNodo[u], b.grosorNodo[0]);
         for (int i = 1; i < b.nodos.Count; i++)
         {

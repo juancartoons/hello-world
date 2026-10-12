@@ -5,6 +5,8 @@ Shader "TrazoVR/Halo"
     // - Cinta (uv.y = 0): se abre hacia los lados igual que la línea, más ancha, y se desvanece hacia afuera.
     // - Tubo (uv.y = 1): se infla un poco y solo se ve la parte de atrás (un borde suave alrededor del tubo).
     // Solo lo dibuja la cámara de tus ojos (Dibujo.LateUpdate): no sale en fotos, videos ni SVG.
+    // v40: en cada punta de la línea, una media vuelta (la "tapa", uv.y de 0.2 a 0.4) hace que el brillo envuelva
+    // la punta, redondo y suave. Antes terminaba recto, y la línea se veía cortada con fondo 360 o la realidad.
     Properties
     {
         _BaseColor ("Color del halo", Color) = (1, 1, 1, 0.85)
@@ -87,7 +89,18 @@ Shader "TrazoVR/Halo"
                     float medioLinea = medio * TrazoGrosorVivo(original, v.uv2.x, v.vivoA, v.vivoB, fase);
                     float total = medioLinea + _Ancho + medioLinea * 0.6;
                     float lad = v.uv.x < 0 ? -1.0 : 1.0;
-                    posWS += lado * (lad * total);
+                    if (v.uv.y > 0.1)
+                    {
+                        // La tapa: el centro (uv.x = 0) se queda en la punta; la media vuelta avanza más allá de ella.
+                        lad = v.uv.x < 0 ? -1.0 : (v.uv.x > 0 ? 1.0 : 0.0);
+                        float avance = (v.uv.y - 0.3) * 10.0;
+                        float abre = sqrt(saturate(1.0 - avance * avance));
+                        posWS += lado * (lad * total * abre) + dirWS * (abs(lad) * total * avance);
+                    }
+                    else
+                    {
+                        posWS += lado * (lad * total);
+                    }
                     // Un poquito más atrás que la línea: así la línea siempre queda encima de su halo.
                     posWS -= haciaCamara * 0.003;
                     o.halo = float2(lad, medioLinea / max(total, 1e-6));

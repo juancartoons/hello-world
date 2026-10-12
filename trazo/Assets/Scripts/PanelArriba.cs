@@ -132,6 +132,15 @@ public class PanelArriba : MonoBehaviour
     Quaternion giro = Quaternion.identity;
     readonly List<Transform> marcas = new List<Transform>();
     int claveArrastrada = -1;
+    // v40: la línea de tiempo con gestos. Con el gesto de BORRAR (puño izquierdo) tocar una clave la quita; con el de
+    // DIBUJAR (pulgar + índice izquierdos) tocar la barra pone una clave ahí. Y la BARRA SUJETA: mientras arrastras
+    // el cabezal (o una clave), un doble toque izquierdo hace que la barra siga tu dedo solo de lado, aunque el dedo se
+    // salga lejos de la barra (así puedes mirar solo tu animación). Otro doble toque y vuelve a la normalidad.
+    static int barraCuadro = -10;
+    public static bool DedoEnBarra => Time.frameCount - barraCuadro <= 1;
+    bool barraSujeta, encimaAntes;
+    float ultimoEnBarra = -10f;
+    Vector3 escalaCabezal;
     int destinoClave;
     int zoom = 2;          // índice en Ventanas
     int inicioVentana;
@@ -644,6 +653,11 @@ public class PanelArriba : MonoBehaviour
         {
             if (arrastrando)
                 SoltarAsa();
+            if (barraSujeta)
+            {
+                barraSujeta = false;
+                PintarSujeta();
+            }
             return;
         }
 
@@ -739,6 +753,17 @@ public class PanelArriba : MonoBehaviour
     public void AbrirMesa()
     {
         AbrirDesdePersiana();
+    }
+
+    // v40: ¿la mesa se ve? (y la voz: "mesa" la saca o la guarda)
+    public bool MesaVisible => visible;
+
+    public void AlternarMesa()
+    {
+        if (visible && !anclado)
+            Seguirme();
+        else
+            AbrirDesdePersiana();
     }
 
     void AbrirDesdePersiana()
@@ -902,13 +927,16 @@ public class PanelArriba : MonoBehaviour
 
         if (claveArrastrada >= 0)
         {
-            if (!der.valida || !der.pellizco)
+            if (barraSujeta)
+                barraCuadro = Time.frameCount;
+            if (!barraSujeta && (!der.valida || !der.pellizco))
             {
                 animacion.MoverClave(claveArrastrada, destinoClave);
                 claveArrastrada = -1;
                 return;
             }
-            destinoClave = FotogramaEn(barra.InverseTransformPoint(der.PuntoPellizco).x);
+            if (der.valida)
+                destinoClave = FotogramaEn(barra.InverseTransformPoint(der.pellizco ? der.PuntoPellizco : der.indice).x);
             return;
         }
         if (!der.valida)
@@ -948,11 +976,87 @@ public class PanelArriba : MonoBehaviour
 
         Vector3 local = barra.InverseTransformPoint(der.indice);
         bool encima = Mathf.Abs(local.y) < 1.2f && Mathf.Abs(local.z) < 2.5f && local.x > -0.55f && local.x < 0.55f;
-        if (!encima)
+        // Cerca de la barra el dedo no dibuja ni borra líneas (es de la barra). Con la barra sujeta, siempre.
+        if (barraSujeta || (Mathf.Abs(local.y) < 2f && Mathf.Abs(local.z) < 4f && local.x > -0.6f && local.x < 0.6f))
+            barraCuadro = Time.frameCount;
+        bool nuevoToque = encima && !encimaAntes;
+        encimaAntes = encima;
+        if (encima)
+            ultimoEnBarra = Time.time;
+
+        // Con el gesto de borrar o de dibujar (ya hecho antes de tocar): un toque nuevo quita o pone una clave.
+        var gesto = control.GestoIzq;
+        if (!barraSujeta && (gesto == ControlManos.Gesto.Borrar || gesto == ControlManos.Gesto.Dibujar))
+        {
+            if (nuevoToque && control.SegundosEnGesto > 0.25f)
+            {
+                int f = FotogramaEn(local.x);
+                if (gesto == ControlManos.Gesto.Borrar)
+                {
+                    int clave = ClaveCerca(f);
+                    if (clave >= 0)
+                        animacion.QuitarClaveEn(clave);
+                    else if (dibujo != null)
+                        dibujo.Mensaje("Toca una clave (marca naranja) para quitarla");
+                }
+                else
+                {
+                    animacion.IrA(f);
+                    animacion.AgregarClave();
+                }
+                control.SonidoBurbuja(barra.TransformPoint(local));
+            }
             return;
-        int fotograma = FotogramaEn(local.x);
+        }
+
+        if (!encima && !barraSujeta)
+            return;
+        // Con la barra sujeta vale solo lo de lado (x), aunque el dedo esté lejos de la barra.
+        int fotograma = FotogramaEn(Mathf.Clamp(local.x, -0.5f, 0.5f));
         if (fotograma != animacion.Fotograma)
             animacion.IrA(fotograma);
+    }
+
+    // La clave de la capa activa más cerca del fotograma f (unos 1.3 cm de barra), o -1.
+    int ClaveCerca(int f)
+    {
+        int mejor = -1;
+        int tolerancia = Mathf.Max(1, Mathf.RoundToInt(0.03f * Ventana));
+        foreach (var c in animacion.ClavesDe(dibujo != null ? dibujo.capaActual : 0))
+        {
+            if (!EnVentana(c.fotograma))
+                continue;
+            int d = Mathf.Abs(c.fotograma - f);
+            if (d <= tolerancia)
+            {
+                tolerancia = d;
+                mejor = c.fotograma;
+            }
+        }
+        return mejor;
+    }
+
+    // ¿El doble toque izquierdo es para la barra? (si la estás usando ahora, o si ya está sujeta: para soltarla)
+    public bool QuiereSujetar => visible && !esAyuda && (barraSujeta || claveArrastrada >= 0 || Time.time - ultimoEnBarra < 0.8f);
+
+    public void AlternarSujeta()
+    {
+        barraSujeta = !barraSujeta;
+        if (control != null && control.Cabeza != null)
+            control.SonidoBurbuja(control.Cabeza.position + control.Cabeza.forward * 0.4f);
+        if (dibujo != null)
+            dibujo.Mensaje(barraSujeta ? "Barra sujeta: mueve el dedo de lado (doble toque para soltarla)" : "Barra suelta");
+        PintarSujeta();
+    }
+
+    // El cabezal más alto mientras la barra está sujeta (para que se note).
+    void PintarSujeta()
+    {
+        if (cabezal == null)
+            return;
+        if (escalaCabezal == Vector3.zero)
+            escalaCabezal = cabezal.localScale;
+        cabezal.localScale = barraSujeta ? new Vector3(escalaCabezal.x * 1.4f, escalaCabezal.y * 1.7f, escalaCabezal.z) : escalaCabezal;
     }
 
     // La ventana sigue al cabezal: si se sale, se vuelve a centrar.

@@ -95,6 +95,15 @@ public class CapasProfundidad : MonoBehaviour
         instancia.Abrir(false);
     }
 
+    // v40 (voz: "capa nueva"): abre las capas si hace falta y agrega una nueva adelante, como el botón "+ Capa".
+    public static void CapaNueva()
+    {
+        if (!Abierta)
+            Alternar();
+        if (Abierta)
+            instancia.AgregarCapa();
+    }
+
     public static void CerrarSiAbierta()
     {
         if (Abierta)
