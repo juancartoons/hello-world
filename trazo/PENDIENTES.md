@@ -284,6 +284,12 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ## 2. Propuestas esperando tu decisión (escribe HY para hacerlas)
 
+- [ ] **Fondos "vivos" hechos por nosotros** (idea de Juan Carlos; no son fotos, los genera la app, así que son 100 % nuestros y gratis):
+  - **El universo**: miles de estrellas de verdad en 3D (cada ojo las ve distinto, con profundidad real), de colores y brillos distintos, una Vía Láctea y nebulosas suaves. Sin piso: flotas en medio del espacio. Opción **"Avanzar"**: las estrellas pasan despacio a tu lado (siempre la misma velocidad suave, para no marear).
+  - **Sobre las nubes**: un mar de nubes abajo, el cielo degradado y un **sol** grande y cálido a lo lejos, con su brillo. Opción **"Volar"**: las nubes pasan despacio debajo de ti, como desde un avión.
+  - Salen en la ventanita de fondos 360 con su miniatura; girar con las flechas también funciona. Pesan casi nada (no son fotos de 4K).
+  - Ideas extra: amanecer o atardecer sobre las nubes; en el universo, que el halo de las líneas brille un poco más.
+
 - [ ] **Tutorial con voz** (idea de Juan Carlos): en cada paso de un gesto de la mano izquierda, la viñeta dice también «o di "dibuja"». Propuesta:
   - Al empezar el tutorial, elegir **"Solo manos"** o **"Manos + voz"** (el permiso del micrófono se pide ahí, no a mitad de un paso).
   - Con voz: paso 1 «dibuja», paso 3 «ya», paso 5 «borra», paso 7 «nodos» (y «ya» para soltar), paso 8 «deshaz». En otro color (verde azulado, como el micrófono).
