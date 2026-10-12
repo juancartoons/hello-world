@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 12 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v40***
+*Actualizado: 12 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v41***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,6 +16,18 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 4. **Build And Run**.
 
 ---
+
+## 0+. Hecho en la v41 (falta probarlo en el visor)
+
+**Paneles flexibles** (el experimento de las pastillas)
+- [x] **Pellizca** una pastillita (pulgar + índice derechos, sin jalarla) y llévala **arriba o abajo** de tu vista. Al soltarla vuela suave a su sitio nuevo. Basta con llevarla unos 8 cm hacia arriba o hacia abajo. Se recuerda al cerrar la app.
+- [x] **Arriba** se jala **hacia abajo** y su panel se despliega hacia abajo. **Abajo** se jala **hacia arriba** y se despliega hacia arriba.
+- [x] **Mesa arriba**: sale encima de tu mirada (unos 20°), en **espejo**: las pestañas (Animar, Bocas, Títere) quedan **debajo del reproductor** y sus páginas se despliegan hacia abajo. El tirador para guardarla queda encima (súbelo). La copia azul de la ayuda sale debajo.
+- [x] **Capas abajo**: salen debajo de tu mirada, inclinadas hacia ti (las ves desde arriba). En espejo: las de adelante bajan y las de atrás suben. El tirador queda encima de la tarjeta (bájalo).
+- [x] Las dos pastillas en la **misma orilla** se ponen **lado a lado** (capas a la izquierda, mesa a la derecha).
+- [x] Si abres las dos desde la misma orilla, se acomodan **una arriba y otra abajo**: mientras una está abierta, la pastilla de la otra salta a la orilla libre (y su panel sale ahí).
+- [x] Con las capas o la mesa abiertas **abajo**, las letras de cómic de arriba sí pueden salir (antes se escondían con las capas abiertas).
+- [x] Novedades (tutorial): página 9, "Paneles flexibles", con su animación.
 
 ## 0+. Hecho en la v40 (falta probarlo en el visor)
 
@@ -254,7 +266,7 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ## 1. Próxima tanda
 
-- [ ] **Pastillas que se mueven** (pospuesto de la v40, idea de Juan Carlos): pellizcar una pastilla (capas o mesa) y llevarla arriba o abajo; su panel se abre hacia ese lado.
+- [x] ~~**Pastillas que se mueven**~~ (hecho en la v41: paneles flexibles).
 - [x] ~~Comandos de voz~~ (hechos en la v40 con Vosk, gratis y sin internet).
 - [ ] **Voz, siguientes pasos**: más comandos si hacen falta (colores por nombre: "rojo", "azul"...; "más grueso", "más fino"); decir un número de fotograma.
 - [ ] **Mini-tutorial predictivo** (el panelito de la voz ya da el primer paso: dice qué decir según lo que haces) (más adelante, idea de Juan Carlos), para reemplazar las letras de cómic: un cuadrito a la **izquierda** de la vista que se adelanta a lo que vas a hacer. Por ejemplo: al unir el pulgar con el medio izquierdos (modo nodos) sale una manito simulada mostrando cómo mover un nodo con el índice; si pasas el dedo sobre un nodo, muestra que también se pueden mover sus alas (asas), con un ejemplo animado. Para los nuevos que no saben qué sigue o se pierden. Ideas para cuando se haga: que salga solo las primeras veces de cada gesto (luego se calla), que se pueda esconder con la vista limpia, y que use las mismas animaciones cortas de los tutoriales.
@@ -297,6 +309,13 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [ ] Cuando ya no haga falta, quitar el botón **Tutorial** de Mis archivos (por ahora se queda; abre el mismo panel "?").
 
 ## 5. Para probar en el visor (desde la v21 casi nada se ha probado)
+
+**Nuevo en la v41:**
+- [ ] Pellizcar una pastilla: ¿se agarra a la primera? ¿a veces se abre el panel en vez de moverse (o al revés)?
+- [ ] Llevarla arriba o abajo: ¿vuela bien a su sitio? ¿8 cm es la distancia justa para cambiar de orilla?
+- [ ] Mesa arriba: ¿se ve bien con las pestañas y la página debajo? ¿20° encima de la mirada es cómodo? ¿el tirador de arriba se alcanza?
+- [ ] Capas abajo: ¿se leen bien desde arriba? ¿los fantasmas en espejo se entienden?
+- [ ] Las dos en la misma orilla: ¿lado a lado se ven bien? Abrir una y luego la otra: ¿se entiende que la segunda salte a la otra orilla?
 
 **Nuevo en la v40:**
 - [ ] **Voz**: la primera vez (con internet) ¿baja el idioma y dice "Te escucho"? ¿pide el permiso del micrófono? Después, sin internet, ¿sigue funcionando? ¿Entiende "dibuja", "ya", "borra", "deshaz", "gira izquierda"? ("gira izq" quizá no lo entienda: el modelo de Vosk no conoce "izq".) ¿Se equivoca y hace cosas sin que hables?

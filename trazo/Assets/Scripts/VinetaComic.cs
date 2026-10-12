@@ -266,12 +266,16 @@ public static class CartelArriba
     }
 
     // Se llaman cada cuadro mientras cada uno quiere verse. Devuelven si le toca verse (el más nuevo).
+    // v41: las capas o la mesa abiertas ARRIBA ocupan el lugar del cartel (abajo no estorban).
+    static bool ArribaOcupado => CapasProfundidad.OrillaAbierta == 1
+                                 || (PanelArriba.Principal != null && PanelArriba.Principal.OrillaAbierta == 1);
+
     public static bool PuedeVerAviso(float desde)
     {
         // Mientras están abiertas las capas en profundidad (en este mismo lugar), el cartel no sale.
         // v39: tampoco en la vista limpia (salvo su propio aviso, un momento).
         // v40: ni con la voz prendida (los avisos salen en el panelito de la izquierda, ver BotonVoz).
-        if (CapasProfundidad.Abierta || VistaLimpia.EsconderCartel || Voz.Activa)
+        if (ArribaOcupado || VistaLimpia.EsconderCartel || Voz.Activa)
             return false;
         desdeAviso = desde;
         cuadroAviso = Time.frameCount;
@@ -280,7 +284,7 @@ public static class CartelArriba
 
     public static bool PuedeVerGesto(float desde)
     {
-        if (CapasProfundidad.Abierta || VistaLimpia.Activa || Voz.Activa)
+        if (ArribaOcupado || VistaLimpia.Activa || Voz.Activa)
             return false;
         desdeGesto = desde;
         cuadroGesto = Time.frameCount;

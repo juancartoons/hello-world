@@ -21,6 +21,9 @@ using UnityEngine.Events;
 //    Pellizca una clave (marca naranja) y arrástrala para moverla a otro fotograma.
 //  - Páginas: Animar (controles, capas, menú, exportar), Medios (videos, grabar el proceso, imágenes)
 //    Bocas (lipsync) y Títere (caminar con los dedos).
+//  - v41: PANELES FLEXIBLES (ver PanelesFlexibles.cs). Pellizca la pastillita "Fotograma" y llévala ARRIBA: ahí se
+//    jala hacia abajo y la mesa sale ARRIBA de tu mirada, en espejo: las pestañas (Animar, Bocas, Títere) quedan
+//    DEBAJO del reproductor y sus páginas se despliegan hacia abajo. El tirador para guardarla queda encima (súbelo).
 public class PanelArriba : MonoBehaviour
 {
     public static readonly int[] Ventanas = { 0, 400, 100, 25 }; // 0 = todo
@@ -114,12 +117,24 @@ public class PanelArriba : MonoBehaviour
     const float ZonaQuietaArriba = 22f;        // grados que puedes subir o bajar la cabeza sin que la mesa se mueva
     const float ZonaQuietaLado = 20f;          // y girarla de lado
     const float MasAltaMesa = -12f, MasBajaMesa = -75f;  // grados respecto al horizonte
+    // v41: la mesa ARRIBA (en espejo): pestañas y páginas debajo del reproductor.
+    const float SobreLaMirada = 20f;           // grados encima de hacia donde miras (el centro del reproductor y tiempo)
+    const float MasBajaArriba = 12f, MasAltaArriba = 75f; // grados respecto al horizonte
+    const float PestanasNormal = 0.232f, PestanasEspejo = 0.072f;   // la fila de las pestañas
+    const float PaginasEspejo = -0.036f;       // las páginas cuelgan debajo de las pestañas
+    const float AsaPaginas = 0.08f, AsaPaginasEspejo = -0.14f;      // el asa de las páginas (en su orilla de afuera)
+    const float ArribaEspejo = 0.24f;          // la orilla de arriba (el asa, la X y el tirador)
+    const float AbajoEspejoPlegado = 0.055f, AbajoEspejoDesplegado = -0.19f;
+    const float TiradorEspejo = 0.228f;        // el tirador, encima de la mesa
+    public static PanelArriba Principal { get; private set; }   // la mesa de verdad (no la copia azul)
+    bool arribaAhora;                          // abierta arriba (en espejo)
+    bool espejoPuesto;                         // las piezas ya están acomodadas en espejo
     const float SeguirMesa = 2f;               // qué tan rápido te alcanza cuando ya te sigue
     float inclinacion;                         // hacia dónde mira la mesa (grados; + arriba)
     bool siguiendoLado, siguiendoArriba;
     // v38: la persiana de abajo ("Fotograma 12 · 0:01"): tócala y sube la mano = sale la mesa. Un tirador debajo
     // de la mesa la guarda (bájalo). v39: en la vista limpia la pastilla no se ve (queda el botón Mesa del reloj).
-    const float BajoPastilla = 30f;            // grados debajo de hacia donde miras
+    // v41: la pastilla puede ir arriba o abajo (PanelesFlexibles.cs).
     Persiana persianaAbajo, tiradorAbajo;
     Respira respira;
     BotonTocable btnVolverArriba; // la X: guarda la mesa (vuelve a salir con la pastillita de abajo)
@@ -164,6 +179,8 @@ public class PanelArriba : MonoBehaviour
     {
         if (creandoAyuda)
             esAyuda = true;
+        else
+            Principal = this;
     }
 
     void Start()
@@ -569,7 +586,7 @@ public class PanelArriba : MonoBehaviour
             contenido.SetActive(false);
         if (dibujo != null)
             dibujo.Mensaje(VistaLimpia.Activa ? "Para sacar la mesa: botón Mesa del reloj"
-                                              : "Jala hacia arriba la pastillita de abajo para sacar la mesa");
+                                              : "Jala la pastillita del fotograma para sacar la mesa");
     }
 
     void SiguienteFondo()
@@ -610,6 +627,12 @@ public class PanelArriba : MonoBehaviour
         Vector3 l = transform.InverseTransformPoint(mundo);
         float abajo = listaArchivos != null && listaArchivos.activeSelf ? -0.33f : esAyuda ? AbajoAyuda : AbajoPanel;
         float arriba = capasAbiertas ? filaCapasY + Dibujo.NumeroDeCapas * pasoCapasY : plegado ? ArribaPlegado : ArribaDesplegado;
+        if (espejoPuesto)
+        {
+            // v41: en espejo (la mesa arriba), las pestañas y las páginas van debajo del reproductor.
+            abajo = plegado ? AbajoEspejoPlegado : AbajoEspejoDesplegado;
+            arriba = ArribaEspejo;
+        }
         float lado = capasAbiertas ? 0.43f : 0.27f; // con Capas abiertas: Boceto, Plano y Liberar llegan hasta x = 0.42
         return Mathf.Abs(l.x) < lado && l.y > abajo && l.y < arriba && Mathf.Abs(l.z) < 0.06f;
     }
@@ -698,7 +721,10 @@ public class PanelArriba : MonoBehaviour
         persianaAbajo = new GameObject("PersianaMesa").AddComponent<Persiana>();
         persianaAbajo.seEsconde = true;    // en la vista limpia no se ve
         persianaAbajo.sentido = 1;
-        persianaAbajo.pose = PosePastilla;
+        // v41: arriba o abajo (se mueve con un pellizco; ver PanelesFlexibles.cs).
+        persianaAbajo.pose = PanelesFlexibles.PoseMesa;
+        persianaAbajo.arriba = () => PanelesFlexibles.MesaPastillaArriba;
+        persianaAbajo.alMoverA = MoverPastilla;
         persianaAbajo.visible = () => !visible && !Tutorial.EnCurso && !ExportadorVideo.Exportando;
         persianaAbajo.puedeJalar = () => control != null && control.SegundosSinEditar > 0.6f && !control.PaletaAbierta;
         persianaAbajo.texto = TextoPastilla;
@@ -712,6 +738,61 @@ public class PanelArriba : MonoBehaviour
         tiradorAbajo.pose = PoseTirador;
         tiradorAbajo.visible = () => visible && !anclado;
         tiradorAbajo.alAbrir = Seguirme;
+        // Abajo se guarda bajándolo; arriba (v41), subiéndolo. ("arriba" = se jala hacia abajo.)
+        tiradorAbajo.arriba = () => !arribaAhora;
+    }
+
+    // v41: llevaste la pastillita arriba o abajo con un pellizco.
+    void MoverPastilla(bool arriba)
+    {
+        PanelesFlexibles.PonerMesaArriba(arriba);
+        if (dibujo == null)
+            return;
+        if (PanelesFlexibles.MesaPastillaArriba != arriba)
+            dibujo.Mensaje("Las capas ocupan esa orilla: mientras estén abiertas, la mesa sale en la otra");
+        else
+            dibujo.Mensaje(arriba ? "Mesa arriba: jala la pastillita hacia abajo" : "Mesa abajo: jala la pastillita hacia arriba");
+    }
+
+    // v41: dónde está abierta la mesa: 1 = arriba, -1 = abajo, 0 = guardada (o fija en el aire, con el alfiler).
+    public int OrillaAbierta => visible && !anclado ? (arribaAhora ? 1 : -1) : 0;
+
+    // v41: acomoda las piezas: normal (pestañas y páginas ARRIBA del reproductor) o en espejo (DEBAJO).
+    void AplicarEspejo(bool si)
+    {
+        espejoPuesto = si;
+        float y = si ? PestanasEspejo : PestanasNormal;
+        PonerAltura(btnPaginaAnimar, y);
+        PonerAltura(btnPaginaMedios, y);
+        PonerAltura(btnPaginaBocas, y);
+        PonerAltura(btnPaginaTitere, y);
+        if (paginas != null)
+        {
+            Vector3 p = paginas.transform.localPosition;
+            p.y = si ? PaginasEspejo : SubirPaginas;
+            paginas.transform.localPosition = p;
+        }
+        if (asaAbajo != null)
+        {
+            Vector3 a = asaAbajo.localPosition;
+            a.y = si ? AsaPaginasEspejo : AsaPaginas;
+            asaAbajo.localPosition = a;
+        }
+    }
+
+    static void PonerAltura(BotonTocable b, float y)
+    {
+        if (b == null)
+            return;
+        Vector3 p = b.transform.localPosition;
+        p.y = y;
+        b.transform.localPosition = p;
+        if (b.etiqueta != null)
+        {
+            Vector3 e = b.etiqueta.transform.localPosition;
+            e.y = y;
+            b.etiqueta.transform.localPosition = e;
+        }
     }
 
     // "Fotograma 12 · 0:01": en qué fotograma vas y a qué tiempo.
@@ -725,26 +806,10 @@ public class PanelArriba : MonoBehaviour
         return "Fotograma " + (f + 1) + " · " + (s / 60) + ":" + (s % 60).ToString("00");
     }
 
-    // La pastillita de abajo: como un espejo de la de las capas, debajo de hacia donde miras, al alcance del dedo.
-    void PosePastilla(Transform cabeza, out Vector3 pos, out Quaternion rot)
-    {
-        Vector3 p;
-        Quaternion q;
-        CartelArriba.Pose(cabeza, out p, out q);
-        Vector3 ojos = cabeza.position;
-        Vector3 dir = p - ojos;
-        if (dir.sqrMagnitude < 1e-6f)
-            dir = cabeza.forward;
-        float arribaCartel = Mathf.Atan2(0.165f, 0.6f) * Mathf.Rad2Deg; // el cartel va un poco arriba de tu vista
-        dir = Quaternion.AngleAxis(arribaCartel + BajoPastilla, q * Vector3.right) * dir.normalized;
-        pos = ojos + dir * 0.45f;
-        rot = Quaternion.LookRotation(pos - ojos, Vector3.up);
-    }
-
-    // El tirador: debajo de la mesa, al centro.
+    // El tirador: debajo de la mesa, al centro. v41: con la mesa arriba, encima de ella.
     void PoseTirador(Transform cabeza, out Vector3 pos, out Quaternion rot)
     {
-        pos = transform.TransformPoint(new Vector3(0f, AbajoPanel - 0.022f, 0f));
+        pos = transform.TransformPoint(new Vector3(0f, arribaAhora ? TiradorEspejo : AbajoPanel - 0.022f, 0f));
         rot = transform.rotation;
     }
 
@@ -772,6 +837,9 @@ public class PanelArriba : MonoBehaviour
         if (cabeza == null || contenido == null || visible)
             return;
         visible = true;
+        // v41: sale en la orilla donde está su pastilla (arriba en espejo; abajo como siempre).
+        arribaAhora = PanelesFlexibles.MesaPastillaArriba;
+        AplicarEspejo(arribaAhora);
         contenido.SetActive(true);
         Plegar(true, true);
         if (!anclado)
@@ -814,9 +882,11 @@ public class PanelArriba : MonoBehaviour
     }
 
     // La mesa: abajo en tu vista (BajoLaMirada grados debajo de hacia donde mira la mesa), mirando hacia tus ojos.
+    // v41: o arriba (SobreLaMirada grados encima).
     void Colocar(Transform cabeza, float a)
     {
-        float elevacion = Mathf.Clamp(inclinacion - BajoLaMirada, MasBajaMesa, MasAltaMesa);
+        float elevacion = arribaAhora ? Mathf.Clamp(inclinacion + SobreLaMirada, MasBajaArriba, MasAltaArriba)
+                                      : Mathf.Clamp(inclinacion - BajoLaMirada, MasBajaMesa, MasAltaMesa);
         Vector3 hacia = giro * (Quaternion.Euler(-elevacion, 0f, 0f) * Vector3.forward);
         Quaternion rot = Quaternion.LookRotation(hacia, Vector3.up);
         // Lo que siempre se ve queda centrado en esa dirección (el panel crece desde más abajo).
@@ -1491,12 +1561,17 @@ public class PanelArriba : MonoBehaviour
         transform.localScale = o.localScale;
         // v36: la mesa está abajo, así que la copia azul va ENCIMA de ella (v37: también encima de las páginas abiertas).
         float sube = (original.plegado ? ArribaPlegado : ArribaDesplegado) - AbajoAyuda + 0.01f;
+        // v41: con la mesa arriba (en espejo), la copia va DEBAJO de ella (la copia siempre va normal, desplegada).
+        if (original.espejoPuesto)
+            sube = -(ArribaDesplegado - (original.plegado ? AbajoEspejoPlegado : AbajoEspejoDesplegado) + 0.01f);
         transform.SetPositionAndRotation(o.position + o.up * (sube * o.lossyScale.y), o.rotation);
     }
 
     void PrepararAyuda()
     {
         Idioma.alCambiar += AlCambiarIdioma;
+        // v41: la copia azul siempre va normal (aunque la mesa de verdad esté arriba, en espejo).
+        AplicarEspejo(false);
         // La X de "volver arriba" no va en la copia azul.
         if (contenido != null)
         {
@@ -1608,20 +1683,22 @@ public class PanelArriba : MonoBehaviour
     void OnDestroy()
     {
         Idioma.alCambiar -= AlCambiarIdioma;
+        if (Principal == this)
+            Principal = null;
     }
 
     // La ayuda en inglés (la clave es el título, la primera línea en español).
     static readonly Dictionary<string, string> AyudaIngles = new Dictionary<string, string>
     {
         { "AYUDA", "HELP\nThis blue panel is a copy of the one above. Tap any button here and I'll explain what it does and how to use it. Here the buttons don't change your drawing.\nTap \"?\" to close help." },
-        { "ANIMAR (página)", "ANIMATE (page)\nThe tabs peek out at the top of the panel, like in a filing cabinet: tap one to open its page (upward) and tap it again to put it away.\nAnim video: your animation as an MP4 (also in My files → Share). Onion skin and frame by frame will come here." },
+        { "ANIMAR (página)", "ANIMATE (page)\nThe tabs peek out at the top of the panel, like in a filing cabinet (below it, if the desk is at the top): tap one to open its page and tap it again to put it away.\nAnim video: your animation as an MP4 (also in My files → Share). Onion skin and frame by frame will come here." },
         { "LIBERAR (de esta capa)", "RELEASE (this layer)\nWhat you draw in Plane 2D stays enchanted on its layer's sheet: nodes, handles, lasso and moving it stay inside that sheet.\nRelease removes the spell: if you have selected (blue) lines of this layer, only those; otherwise the whole layer. Then they move freely in 3D. Can be undone." },
         { "BOCETO (de esta capa)", "SKETCH (this layer)\nNo = normal ink. Gray or Blue = sketch pencil: it does not appear in photos or videos (to draw on top in another layer)." },
         { "PLANO (de esta capa)", "PLANE (this layer)\nOwn: the layer has its own sheet in Plane 2D. Joined: it uses the same sheet as the other joined layers (sketch behind, ink in front)." },
         { "BOCAS (página)", "MOUTHS (page)\nLipsync: save mouth shapes (A, E, I, O, U, M...) and the app makes the keys from your voice or an audio." },
         { "TÍTERE (página)", "PUPPET (page)\nCharacters that walk, run and jump with your hand. Create, record, walk cycles and build your own characters." },
         { "ZOOM", "ZOOM\nHow many frames fit on the timeline: All, 400, 100 or 25. With fewer frames the keys (orange marks) are farther apart and easier to touch." },
-        { "FIJAR AQUÍ / SEGUIRME", "PIN HERE / FOLLOW ME\nThe pin: tap it and the panel stays in place and always visible (dark pin). Tap it again: it goes back to being the work desk (pull up the little pill at the bottom to bring it out).\nAlso: pinch the blue handle to move it; pinching with your left hand too, spread your hands = bigger." },
+        { "FIJAR AQUÍ / SEGUIRME", "PIN HERE / FOLLOW ME\nThe pin: tap it and the panel stays in place and always visible (dark pin). Tap it again: it goes back to being the work desk (pull the frame pill to bring it out).\nAlso: pinch the blue handle to move it; pinching with your left hand too, spread your hands = bigger." },
         { "INICIO", "START\nGoes to frame 1." },
         { "< (ANTERIOR)", "< (PREVIOUS)\nGoes back one frame. You can also touch the timeline with your right index finger." },
         { "> (SIGUIENTE)", "> (NEXT)\nGoes forward one frame." },
@@ -1703,7 +1780,7 @@ public class PanelArriba : MonoBehaviour
     {
         var d = new Dictionary<BotonTocable, string>();
         // Pestañas y barra de arriba
-        Poner(d, btnPaginaAnimar, "ANIMAR (página)\nLas pestañas se asoman arriba del panel, como en un archivador: toca una para abrir su página (hacia arriba) y tócala otra vez para guardarla.\nVideo anim: tu animación en MP4 (también en Mis archivos → Compartir). Aquí vendrán papel cebolla y cuadro a cuadro.");
+        Poner(d, btnPaginaAnimar, "ANIMAR (página)\nLas pestañas se asoman arriba del panel, como en un archivador (debajo, si la mesa está arriba): toca una para abrir su página y tócala otra vez para guardarla.\nVideo anim: tu animación en MP4 (también en Mis archivos → Compartir). Aquí vendrán papel cebolla y cuadro a cuadro.");
         if (btnLiberarCapa != null)
             foreach (var b in btnLiberarCapa)
                 Poner(d, b, "LIBERAR (de esta capa)\nLo que dibujas en Plano 2D queda encantado en la hoja de su capa: nodos, tiradores, lazo y moverlo se quedan dentro de esa hoja.\nLiberar quita el encantamiento: si tienes líneas elegidas (azules) de esta capa, solo esas; si no, toda la capa. Después se mueven libres en 3D. Se puede deshacer.");
@@ -1717,7 +1794,7 @@ public class PanelArriba : MonoBehaviour
             foreach (var b in btnPlanoCapa)
                 Poner(d, b, "PLANO (de esta capa)\nPropio: la capa tiene su propia hoja en Plano 2D. Unido: usa la misma hoja que las otras capas unidas (boceto atrás, tinta adelante).");
         Poner(d, btnZoom, "ZOOM\nCuántos fotogramas caben en la barra de tiempo: Todo, 400, 100 o 25. Con menos fotogramas ves las claves (marcas naranjas) más separadas y es más fácil tocarlas.");
-        Poner(d, btnSeguir, "FIJAR AQUÍ / SEGUIRME\nEl alfiler: tócalo y el panel se queda en ese lugar y siempre visible (alfiler oscuro). Tócalo otra vez: vuelve a ser la mesa de trabajo (sale al jalar hacia arriba la pastillita de abajo).\nTambién: pellizca el asa azul para moverlo; pellizcando además con la izquierda, separa las manos = más grande.");
+        Poner(d, btnSeguir, "FIJAR AQUÍ / SEGUIRME\nEl alfiler: tócalo y el panel se queda en ese lugar y siempre visible (alfiler oscuro). Tócalo otra vez: vuelve a ser la mesa de trabajo (sale al jalar la pastillita del fotograma).\nTambién: pellizca el asa azul para moverlo; pellizcando además con la izquierda, separa las manos = más grande.");
 
         // Animar
         Poner(d, btnInicio, "INICIO\nVa al fotograma 1.");

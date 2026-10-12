@@ -2400,6 +2400,8 @@ public partial class ControlManos : MonoBehaviour
             return;
         if (ArrastrePanel.Contiene(Der.PuntoPellizco)) // v38: Mis archivos y la ventanita de fondos
             return;
+        if (Persiana.Contiene(Der.PuntoPellizco))      // v41: pellizcar una pastillita la mueve (ver Persiana.cs)
+            return;
         var t = LineaBajo(Der.PuntoPellizco, Der.indice);
         seleccionPrevia.Clear();
         seleccionPrevia.AddRange(dibujo.Seleccionadas());

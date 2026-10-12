@@ -418,6 +418,14 @@ public static class Idioma
         "Panel fijo. Pellizca el asa (arriba) para moverlo", "Panel pinned. Pinch the handle (top) to move it",
         "Jala hacia arriba la pastillita de abajo para sacar la mesa", "Pull the bottom pill up to bring the desk back",
         "Para sacar la mesa: botón Mesa del reloj", "To bring the desk back: Desk button on the watch",
+        // v41: paneles flexibles
+        "Capas arriba: jala la pastillita hacia abajo", "Layers at the top: pull the pill down",
+        "Capas abajo: jala la pastillita hacia arriba", "Layers at the bottom: pull the pill up",
+        "La mesa ocupa esa orilla: mientras esté abierta, las capas salen en la otra", "The desk is using that edge: while it's open, the layers come out on the other one",
+        "Mesa arriba: jala la pastillita hacia abajo", "Desk at the top: pull the pill down",
+        "Mesa abajo: jala la pastillita hacia arriba", "Desk at the bottom: pull the pill up",
+        "Las capas ocupan esa orilla: mientras estén abiertas, la mesa sale en la otra", "The layers are using that edge: while they're open, the desk comes out on the other one",
+        "Jala la pastillita del fotograma para sacar la mesa", "Pull the frame pill to bring the desk back",
         // v40: la voz, girar con las flechas, la línea de tiempo y las uniones
         "La voz funciona en el visor (no en el editor)", "Voice works on the headset (not in the editor)",
         "La voz funciona en el visor", "Voice works on the headset",

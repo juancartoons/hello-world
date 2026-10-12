@@ -2,11 +2,12 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Tutorial de NOVEDADES (sección 4 del panel "?"): lo nuevo de las últimas versiones, con una animación corta
-// de cada cosa. Se actualiza en cada versión (v36 "como de 2030", con los retoques de la v37 a la v40).
+// de cada cosa. Se actualiza en cada versión (v36 "como de 2030", con los retoques de la v37 a la v41).
 //  1 · Capas: la persiana de arriba.                 5 · Mover paneles y vista limpia.
 //  2 · Mesa de trabajo: la persiana de abajo.        6 · La voz (v40).
 //  3 · Líneas que cobran vida (destello, polvo...).  7 · Línea de tiempo con gestos (v40).
 //  4 · Vidrio, luz en tu dedo y etiquetas.           8 · Girar con las flechas (v40).
+//                                                    9 · Paneles flexibles (v41).
 public class TutorialNovedades : TarjetaTutorial
 {
     static readonly Color Celeste = new Color(0.55f, 0.78f, 1f);
@@ -24,7 +25,7 @@ public class TutorialNovedades : TarjetaTutorial
     readonly List<Vector3> otra = new List<Vector3>();
     readonly List<Vector3> tramo = new List<Vector3>();
 
-    protected override int Paginas => 8;
+    protected override int Paginas => 9;
 
     protected override void ArmarExtra()
     {
@@ -54,7 +55,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 4: return Tx("5 · Move panels and clean view", "5 · Mover paneles y vista limpia");
             case 5: return Tx("6 · Voice", "6 · La voz");
             case 6: return Tx("7 · Timeline with gestures", "7 · Línea de tiempo con gestos");
-            default: return Tx("8 · Turning with the arrows", "8 · Girar con las flechas");
+            case 7: return Tx("8 · Turning with the arrows", "8 · Girar con las flechas");
+            default: return Tx("9 · Flexible panels", "9 · Paneles flexibles");
         }
     }
 
@@ -90,10 +92,14 @@ public class TutorialNovedades : TarjetaTutorial
                 return Tx(
                     "On the timeline bar: with the ERASE gesture (left fist), touch a key (orange mark) = it's removed. With the DRAW gesture (left thumb + index), touch the bar = a new key there. LOCKED BAR: while you drag the playhead (or a key), double tap with your left thumb + index and the bar follows your finger only sideways, even if your finger drifts far away: you can just watch your animation. Double tap again = back to normal.",
                     "En la barra de la línea de tiempo: con el gesto de BORRAR (puño izquierdo), toca una clave (marca naranja) = se quita. Con el gesto de DIBUJAR (pulgar + índice izquierdos), toca la barra = una clave nueva ahí. BARRA SUJETA: mientras arrastras el cabezal (o una clave), haz doble toque con pulgar + índice izquierdos y la barra sigue tu dedo solo de lado, aunque el dedo se aleje: puedes mirar solo tu animación. Otro doble toque = vuelve a la normalidad.");
-            default:
+            case 7:
                 return Tx(
                     "TURN a 360 background: turn your head well to one side and a little ARROW appears at that edge. Touch it with your index: turn mode is on. Now slide your index to either side and the background follows your finger (about 10 cm = 30°). It turns off when you keep your finger still for a moment. Without an arrow nothing turns. Also the watch arrows or the voice (\"turn right\").",
                     "GIRA un fondo 360: gira la cabeza bastante hacia un lado y en esa orilla aparece una FLECHITA. Tócala con el índice: se prende el modo girar. Ahora desliza el índice hacia cualquier lado y el fondo sigue a tu dedo (unos 10 cm = 30°). Se apaga si dejas el dedo quieto un momento. Sin flecha no gira nada. También las flechas del reloj o la voz (\"gira derecha\").");
+            default:
+                return Tx(
+                    "FLEXIBLE PANELS: PINCH a pill (without pulling it) and carry it to the TOP or the BOTTOM of your view. At the top you pull it DOWN and its panel unfolds downward: the desk at the top puts its tabs and pages UNDER the player; the layers at the bottom are seen from above. Both pills on the same edge sit side by side. If you open both from the same edge, they arrange themselves one at the top and one at the bottom. It's remembered.",
+                    "PANELES FLEXIBLES: PELLIZCA una pastillita (sin jalarla) y llévala ARRIBA o ABAJO de tu vista. Arriba se jala HACIA ABAJO y su panel se despliega hacia abajo: la mesa arriba deja sus pestañas y páginas DEBAJO del reproductor; las capas abajo se ven desde arriba. Las dos pastillas en la misma orilla se ponen lado a lado. Si abres las dos desde la misma orilla, se acomodan una arriba y otra abajo. Se recuerda.");
         }
     }
 
@@ -126,7 +132,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 4: AnimarRespira(t); break;
             case 5: AnimarVoz(t); break;
             case 6: AnimarBarra(t); break;
-            default: AnimarGiro(t); break;
+            case 7: AnimarGiro(t); break;
+            default: AnimarFlexibles(t); break;
         }
     }
 
@@ -497,6 +504,102 @@ public class TutorialNovedades : TarjetaTutorial
                 dedo.localPosition = new Vector3(Mathf.Lerp(0.05f, 0.085f, Suave(Mathf.InverseLerp(0.7f, 1.2f, t))), -0.02f, -0.004f);
             else
                 dedo.localPosition = new Vector3(0.04f + corre, -0.04f, -0.004f);
+        }
+    }
+
+    // Paneles flexibles: el dedo PELLIZCA la pastillita de la mesa (abajo) y la lleva arriba, junto a la de las capas
+    // (las dos se ponen lado a lado); luego la jala hacia abajo y la mesa sale ARRIBA, con sus pestañas DEBAJO del
+    // reproductor, y su página se despliega hacia abajo. La pastillita de las capas hace espacio: se va abajo.
+    void AnimarFlexibles(float t)
+    {
+        const float pw = 0.05f, ph = 0.011f, arribaY = 0.046f, abajoY = -0.056f;
+        float lleva = Suave(Mathf.InverseLerp(0.4f, 1.4f, t));
+        float aparta = Suave(Mathf.InverseLerp(1.1f, 1.5f, t));
+        float tiron = Suave(Mathf.InverseLerp(2.0f, 2.45f, t));
+        float bajaCapas = Suave(Mathf.InverseLerp(2.7f, 3.2f, t));
+
+        // La pastillita de las capas: arriba; se aparta a la izquierda y, con la mesa abierta arriba, se va abajo.
+        float cx = Mathf.Lerp(Mathf.Lerp(0.02f, -0.012f, aparta), 0.02f, bajaCapas);
+        float cy = Mathf.Lerp(arribaY, abajoY, bajaCapas);
+        Rectangulo(otra, cx, cy, pw, ph, -0.001f);
+        PonerLinea(hijos[0], otra);
+
+        float mx = Mathf.Lerp(0.02f, 0.052f, aparta);
+        if (t < 2.5f)
+        {
+            // La pastillita de la mesa: sube con el pellizco y luego se jala hacia abajo.
+            float my = Mathf.Lerp(abajoY, arribaY, lleva) - 0.03f * tiron;
+            if (tiron > 0.01f)
+            {
+                Rectangulo(otra, mx, (arribaY + my) * 0.5f, pw * 0.9f, arribaY - my + ph, 0.001f);
+                PonerLinea(arco, otra);
+            }
+            bool llevada = t > 0.4f && t < 1.5f;
+            float g = llevada ? 1.12f : 1f;   // agarrada: un poquito más grande
+            Rectangulo(puntos, mx, my, pw * g, ph * g, -0.001f);
+            PonerLinea(lineaGris, puntos);
+            RellenarRect(mx, my, pw * g, ph * g, Color.white, 1f);
+            otra.Clear();
+            otra.Add(new Vector3(mx - pw * 0.3f, my, -0.0015f));
+            otra.Add(new Vector3(mx + pw * 0.2f, my, -0.0015f));
+            PonerLinea(hijos[3], otra);
+            dedo.gameObject.SetActive(true);
+            Vector3 sobre = new Vector3(mx, my, -0.004f);
+            if (t < 0.4f)
+                dedo.localPosition = Vector3.Lerp(new Vector3(mx + 0.04f, abajoY + 0.03f, -0.004f), sobre, Suave(t / 0.4f));
+            else if (t < 1.5f || t >= 2f)
+                dedo.localPosition = sobre;
+            else
+                dedo.localPosition = sobre + new Vector3(0.015f, -0.015f, 0f) * Mathf.Sin(Mathf.PI * Mathf.InverseLerp(1.5f, 2f, t));
+            if (t > 0.3f && t < 1.5f)
+            {
+                // El pulgar junto al índice: es un pellizco (no un jalón).
+                Circulo(otra, mx - 0.006f, my - 0.008f, 0.0045f, -0.004f);
+                PonerLinea(arco, otra);
+            }
+            return;
+        }
+
+        // La mesa ARRIBA: reproductor y línea de tiempo...
+        float s = Resorte(t - 2.5f);
+        const float x = 0.025f, y = 0.036f;
+        float w = 0.13f * s, h = 0.026f * s;
+        Rectangulo(otra, x, y, w, h, 0f);
+        PonerLinea(linea, otra);
+        RellenarRect(x, y, w, h, Vidrio, 1f);
+        otra.Clear();
+        otra.Add(new Vector3(x - w * 0.42f, y + h * 0.15f, -0.0015f));
+        otra.Add(new Vector3(x + w * 0.42f, y + h * 0.15f, -0.0015f));
+        PonerLinea(extra, otra);
+        // ... y DEBAJO del reproductor, sus tres pestañas (Animar, Bocas, Títere).
+        float tw = 0.03f * s, th = 0.009f * s;
+        float ty = y - h * 0.5f - 0.007f * s;
+        float x0 = x - tw * 1.5f, x1 = x0 + tw, x2 = x1 + tw, x3 = x2 + tw;
+        float abajo = ty - th * 0.5f, encima = ty + th * 0.5f;
+        otra.Clear();
+        otra.Add(new Vector3(x0, abajo, 0f));
+        otra.Add(new Vector3(x3, abajo, 0f));
+        otra.Add(new Vector3(x3, encima, 0f));
+        otra.Add(new Vector3(x0, encima, 0f));
+        otra.Add(new Vector3(x0, abajo, 0f));
+        otra.Add(new Vector3(x1, abajo, 0f));
+        otra.Add(new Vector3(x1, encima, 0f));
+        otra.Add(new Vector3(x2, encima, 0f));
+        otra.Add(new Vector3(x2, abajo, 0f));
+        PonerLinea(hijos[1], otra);
+        // Tocas una pestaña y su página se despliega HACIA ABAJO.
+        float despliega = Suave(Mathf.InverseLerp(3.4f, 3.9f, t));
+        if (despliega > 0.01f)
+        {
+            float alto = 0.05f * despliega;
+            Rectangulo(otra, x, abajo - alto * 0.5f, 0.12f, alto, 0.001f);
+            PonerLinea(hijos[2], otra);
+        }
+        if (t > 3.0f && t < 3.6f)
+        {
+            dedo.gameObject.SetActive(true);
+            dedo.localPosition = Vector3.Lerp(new Vector3(x0 + tw * 0.5f + 0.03f, ty - 0.03f, -0.004f),
+                                              new Vector3(x0 + tw * 0.5f, ty, -0.004f), Suave(Mathf.InverseLerp(3.0f, 3.35f, t)));
         }
     }
 

@@ -22,6 +22,9 @@ using UnityEngine;
 //    se despliegan las capas (y se quedan hasta que subas el tirador de abajo o toques la X).
 //  - v39: SOLO persiana: mirar arriba ya no abre nada (salía sin querer mientras dibujabas o mirabas el fondo).
 //    En la "vista limpia" la pastillita no se ve (las capas se abren con el botón Capas del reloj).
+//  - v41: PANELES FLEXIBLES (ver PanelesFlexibles.cs). Pellizca la pastillita y llévala ABAJO: ahí se jala hacia
+//    arriba y las capas salen DEBAJO de tu mirada, inclinadas hacia ti (las ves desde arriba). En espejo: las de
+//    adelante bajan y las de atrás suben; el tirador para guardarlas queda encima de la tarjeta (jálalo hacia abajo).
 public class CapasProfundidad : MonoBehaviour
 {
     const float Ancho = 0.26f, Alto = 0.065f;
@@ -38,13 +41,15 @@ public class CapasProfundidad : MonoBehaviour
     const string AyudaNormal = "Empuja: capa de adelante · Atrae hacia ti: capa de atrás · +: capa nueva";
     // La pastillita (la persiana).
     const float AnchoPastilla = 0.085f, AltoPastilla = 0.022f;
-    const float DistanciaPastilla = 0.45f, SubePastilla = 9f; // v38: al alcance del dedo; grados más arriba que las capas
+    const float BajoCapas = 18f;            // v41: abajo, grados debajo de hacia donde miras
     const string AvisoMaximo = "Ya no caben más capas (máximo 12)";
 
     static CapasProfundidad instancia;
     static int cercaCuadro = -10;
 
     public static bool Abierta => instancia != null && instancia.raiz != null && instancia.raiz.gameObject.activeSelf;
+    // v41: dónde están abiertas: 1 = arriba, -1 = abajo, 0 = cerradas.
+    public static int OrillaAbierta => Abierta ? (instancia.abajoAhora ? -1 : 1) : 0;
     // El dedo índice derecho está cerca de las capas (ControlManos esconde su bolita y no dibuja).
     public static bool DedoCerca => Time.frameCount - cercaCuadro <= 1;
 
@@ -69,6 +74,7 @@ public class CapasProfundidad : MonoBehaviour
     bool empujando, esperarSalir;
     float zInicio, desdeEmpuje, sacudida;
     bool porPersiana;                     // v38: abiertas con la persiana (se quedan hasta que las recojas)
+    bool abajoAhora;                      // v41: abiertas ABAJO de tu mirada (la pastilla estaba abajo)
     Persiana persianaArriba, tiradorArriba;
 
     // La pastillita tiene que existir desde el principio (ControlManos lo llama cada cuadro).
@@ -122,6 +128,8 @@ public class CapasProfundidad : MonoBehaviour
             BuscarMateriales();
             Armar();
         }
+        // v41: salen en la orilla donde está su pastilla (abajo si la llevaste abajo, o si la mesa ya ocupa arriba).
+        abajoAhora = !PanelesFlexibles.CapasPastillaArriba;
         raiz.gameObject.SetActive(true);
         porPersiana = conPersiana;
         aparece = 0f; // sale con un pequeño crecimiento
@@ -332,13 +340,20 @@ public class CapasProfundidad : MonoBehaviour
             return;
         float dt = Time.deltaTime;
         // El lugar de la capa actual: hacia el cartel de cómic, pero cerca de ti (al alcance del dedo).
+        // v41: abajo, otro tanto DEBAJO de hacia donde miras, inclinada para mirarte.
         Vector3 pos;
         Quaternion rot;
         CartelArriba.Pose(control.Cabeza, out pos, out rot);
         Vector3 ojos = control.Cabeza.position;
         Vector3 rayo = pos - ojos;
+        if (abajoAhora)
+            rayo = Quaternion.AngleAxis(PanelesFlexibles.ArribaCartel + BajoCapas, rot * Vector3.right) * rayo;
         if (rayo.sqrMagnitude > 1e-6f)
+        {
             pos = ojos + rayo.normalized * DistanciaActual;
+            if (abajoAhora)
+                rot = Quaternion.LookRotation(rayo, Vector3.up);
+        }
         raiz.SetPositionAndRotation(pos, rot);
         Vector3 adelante = rot * Vector3.forward;
 
@@ -439,7 +454,10 @@ public class CapasProfundidad : MonoBehaviour
         persianaArriba.sentido = -1;
         persianaArriba.ancho = AnchoPastilla;
         persianaArriba.alto = AltoPastilla;
-        persianaArriba.pose = PosePastilla;
+        // v41: arriba o abajo (se mueve con un pellizco; ver PanelesFlexibles.cs).
+        persianaArriba.pose = PanelesFlexibles.PoseCapas;
+        persianaArriba.arriba = () => PanelesFlexibles.CapasPastillaArriba;
+        persianaArriba.alMoverA = MoverPastilla;
         persianaArriba.visible = () => !Abierta && !Tutorial.EnCurso && !ExportadorVideo.Exportando;
         persianaArriba.texto = () => dibujo != null ? "Capa " + (Actual + 1) + " · de " + dibujo.capas.Count : "";
         persianaArriba.alAbrir = () => Abrir(true);
@@ -449,6 +467,8 @@ public class CapasProfundidad : MonoBehaviour
         go2.transform.SetParent(transform, false);
         tiradorArriba = go2.AddComponent<Persiana>();
         tiradorArriba.sentido = 1;
+        // Arriba se recogen subiéndolo; abajo (v41), bajándolo. ("arriba" = se jala hacia abajo.)
+        tiradorArriba.arriba = () => abajoAhora;
         tiradorArriba.ancho = 0.05f;
         tiradorArriba.alto = 0.012f;
         tiradorArriba.pose = PoseTirador;
@@ -456,22 +476,19 @@ public class CapasProfundidad : MonoBehaviour
         tiradorArriba.alAbrir = Cerrar;
     }
 
-    // La pastillita: hacia el cartel de cómic, un poco más arriba, y al alcance de tu dedo.
-    void PosePastilla(Transform cabeza, out Vector3 pos, out Quaternion rot)
+    // v41: llevaste la pastillita arriba o abajo con un pellizco.
+    void MoverPastilla(bool arriba)
     {
-        Vector3 p;
-        Quaternion q;
-        CartelArriba.Pose(cabeza, out p, out q);
-        Vector3 ojos = cabeza.position;
-        Vector3 dir = p - ojos;
-        if (dir.sqrMagnitude < 1e-6f)
-            dir = cabeza.forward;
-        dir = Quaternion.AngleAxis(-SubePastilla, q * Vector3.right) * dir.normalized;
-        pos = ojos + dir * DistanciaPastilla;
-        rot = Quaternion.LookRotation(pos - ojos, Vector3.up);
+        PanelesFlexibles.PonerCapasArriba(arriba);
+        if (dibujo == null)
+            return;
+        if (PanelesFlexibles.CapasPastillaArriba != arriba)
+            dibujo.Mensaje("La mesa ocupa esa orilla: mientras esté abierta, las capas salen en la otra");
+        else
+            dibujo.Mensaje(arriba ? "Capas arriba: jala la pastillita hacia abajo" : "Capas abajo: jala la pastillita hacia arriba");
     }
 
-    // El tirador: debajo de la tarjeta (y de su ayudita).
+    // El tirador: debajo de la tarjeta (y de su ayudita). v41: con las capas abajo, encima de la tarjeta.
     void PoseTirador(Transform cabeza, out Vector3 pos, out Quaternion rot)
     {
         if (raiz == null)
@@ -480,14 +497,17 @@ public class CapasProfundidad : MonoBehaviour
             rot = cabeza.rotation;
             return;
         }
-        pos = raiz.TransformPoint(new Vector3(0f, -Alto * 0.5f - 0.04f, 0f));
+        pos = raiz.TransformPoint(new Vector3(0f, abajoAhora ? Alto * 0.5f + 0.025f : -Alto * 0.5f - 0.04f, 0f));
         rot = raiz.rotation;
     }
 
     // Dónde cuelga una capa que está "s" pasos adelante (+) o atrás (-) de la actual (local de la raíz).
-    static Vector3 Lugar(float s)
+    // v41: abajo, en espejo (las de adelante bajan, para no taparte la vista; las de atrás suben un poco).
+    Vector3 Lugar(float s)
     {
         float y = s > 0f ? s * SubeAdelante + s * s * SubeMas : s * BajaAtras;
+        if (abajoAhora)
+            y = -y;
         return new Vector3(0f, y, -s * PasoFondo);
     }
 

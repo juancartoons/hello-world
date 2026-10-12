@@ -9,6 +9,9 @@ using UnityEngine;
 //  - Sin texto también sirve de "tirador" para cerrar: debajo de las capas (súbelo) y debajo de la mesa (bájalo).
 //  - v39: solo persiana (se quitó lo de mirar arriba / abajo y su circulito). En la VISTA LIMPIA las pastillas con
 //    "seEsconde" no se ven (ver VistaLimpia.cs).
+//  - v41: PANELES FLEXIBLES. Las pastillas con "alMoverA" se llevan con un PELLIZCO (sin jalarlas) a la orilla de
+//    arriba o de abajo (ver PanelesFlexibles.cs); al soltarlas vuelan suave a su sitio. Con "arriba", la pastilla
+//    sabe en qué orilla está: arriba se jala hacia abajo; abajo, hacia arriba.
 // Mientras la jalas, una lámina de vidrio sale de la pastillita siguiendo tu dedo. Si la sueltas a más de la mitad,
 // se abre; si no, vuelve.
 public class Persiana : MonoBehaviour
@@ -24,8 +27,14 @@ public class Persiana : MonoBehaviour
     public int sentido = -1;               // -1: se jala hacia abajo; +1: hacia arriba
     public bool seEsconde;                 // true = no se ve en la vista limpia (las pastillas fijas)
     public float ancho = 0.085f, alto = 0.022f;
+    public System.Func<bool> arriba;       // v41: ¿está en la orilla de arriba? (null = usa "sentido" tal cual)
+    public System.Action<bool> alMoverA;   // v41: se mueve con un pellizco; al soltarla: ¿quedó arriba? (null = fija)
 
     const float Recorrido = 0.09f;         // cuánto hay que jalar (metros)
+    const float CambiaOrilla = 0.08f;      // v41: llevarla así de arriba o de abajo la cambia de orilla (metros)
+    const float Vuelo = 0.3f;              // segundos que tarda en volar a su sitio
+
+    static readonly List<Persiana> todas = new List<Persiana>();
 
     Transform lamina, barra;
     Renderer rFondo, rLamina;
@@ -37,6 +46,32 @@ public class Persiana : MonoBehaviour
     Vector3 inicio, eje;
     float avance, ver, atencion = 0.5f;
     string textoPuesto = "";
+    bool movida, tieneObjetivo;            // v41: la llevas con un pellizco
+    Vector3 desfaseMovida, inicioMovida, objetivoAntes, vueloDesde;
+    Quaternion vueloGiroDesde;
+    float vuelo;
+
+    void OnEnable()
+    {
+        if (!todas.Contains(this))
+            todas.Add(this);
+    }
+
+    void OnDisable()
+    {
+        todas.Remove(this);
+        if (movida)
+            TerminarMovida(ControlManos.Instancia, false);
+    }
+
+    // v41: ¿este punto está sobre una pastilla que se puede mover? (así ese pellizco no elige líneas)
+    public static bool Contiene(Vector3 punto)
+    {
+        foreach (var p in todas)
+            if (p != null && p.alMoverA != null && p.armada && p.ver > 0.5f && p.Cerca(punto, 0.02f))
+                return true;
+        return false;
+    }
 
     void Armar(ControlManos control)
     {
@@ -114,25 +149,49 @@ public class Persiana : MonoBehaviour
         var control = ControlManos.Instancia;
         var cab = control != null ? control.Cabeza : null;
         bool quiere = cab != null && pose != null && (visible == null || visible()) && !(seEsconde && VistaLimpia.Activa);
+        if (movida && !quiere)
+            TerminarMovida(control, false);
         ver = Mathf.MoveTowards(ver, quiere ? 1f : 0f, Time.deltaTime * 5f);
         if (!quiere && ver <= 0.01f)
         {
             agarrada = false;
             avance = 0f;
+            tieneObjetivo = false;
+            vuelo = 0f;
             Mostrar(false);
             return;
         }
         if (!armada)
             Armar(control);
         Mostrar(true);
-        if (!agarrada)
+        if (arriba != null && !agarrada)
+            sentido = arriba() ? -1 : 1;
+        Vector3 p;
+        Quaternion q;
+        pose(cab, out p, out q);
+        // v41: si su sitio salta (cambió de orilla o se apartó para la otra pastilla), vuela suave hasta allá.
+        if (tieneObjetivo && !movida && (p - objetivoAntes).sqrMagnitude > 0.06f * 0.06f)
+            EmpezarVuelo();
+        objetivoAntes = p;
+        tieneObjetivo = true;
+        if (movida)
         {
-            Vector3 p;
-            Quaternion q;
-            pose(cab, out p, out q);
+            Vector3 m = control.Der.PuntoPellizco + desfaseMovida;
+            Vector3 haciaOjos = m - cab.position;
+            transform.SetPositionAndRotation(m, haciaOjos.sqrMagnitude > 1e-6f ? Quaternion.LookRotation(haciaOjos, Vector3.up) : q);
+        }
+        else if (!agarrada)
+        {
+            if (vuelo > 0f)
+            {
+                vuelo = Mathf.MoveTowards(vuelo, 0f, Time.deltaTime / Vuelo);
+                float k = vuelo * vuelo * (3f - 2f * vuelo);
+                p = Vector3.Lerp(p, vueloDesde, k);
+                q = Quaternion.Slerp(q, vueloGiroDesde, k);
+            }
             transform.SetPositionAndRotation(p, q);
         }
-        transform.localScale = Vector3.one * Mathf.Lerp(0.85f, 1f, ver);
+        transform.localScale = Vector3.one * Mathf.Lerp(0.85f, 1f, ver) * (movida ? 1.12f : 1f);
 
         if (etiqueta != null)
         {
@@ -155,16 +214,33 @@ public class Persiana : MonoBehaviour
         Vector3 dedo = control.Der.indice;
         bool mira = Vector3.Angle(cab.forward, transform.position - cab.position) < 14f;
         bool cerca = dedoOk && Vector3.Distance(dedo, transform.position) < 0.12f;
-        atencion = Mathf.MoveTowards(atencion, mira || cerca || agarrada ? 1f : 0f, Time.deltaTime * 3f);
+        atencion = Mathf.MoveTowards(atencion, mira || cerca || agarrada || movida ? 1f : 0f, Time.deltaTime * 3f);
         PonerAtencion(atencion * ver);
 
+        // v41: moverla con un pellizco (pulgar + índice derechos sobre ella, sin jalarla).
+        if (movida)
+        {
+            if (!control.Der.valida || !control.Der.pellizco)
+                TerminarMovida(control, true);
+        }
+        else if (alMoverA != null && dedoOk && control.Der.empezoPellizco && !control.Ocupado
+                 && control.GestoIzq == ControlManos.Gesto.Ninguno && (puedeJalar == null || puedeJalar())
+                 && Cerca(control.Der.PuntoPellizco, 0.02f))
+        {
+            EmpezarMovida(control);
+        }
+
         // Jalar.
-        if (!agarrada)
+        if (movida)
+        {
+            avance = 0f;
+        }
+        else if (!agarrada)
         {
             avance = Mathf.MoveTowards(avance, 0f, Time.deltaTime * 4f);
             if (esperarSalir && (!dedoOk || !Cerca(dedo, 0.04f)))
                 esperarSalir = false;
-            if (dedoOk && !esperarSalir && (puedeJalar == null || puedeJalar()) && Sobre(dedo))
+            if (dedoOk && !esperarSalir && !control.Ocupado && (puedeJalar == null || puedeJalar()) && Sobre(dedo))
             {
                 agarrada = true;
                 inicio = dedo;
@@ -195,6 +271,49 @@ public class Persiana : MonoBehaviour
             lamina.localScale = new Vector3(1f, 1f + extra / alto, 1f);
             lamina.localPosition = new Vector3(0f, sentido * extra * 0.5f, 0.0004f);
         }
+    }
+
+    void EmpezarMovida(ControlManos control)
+    {
+        movida = true;
+        agarrada = false;
+        avance = 0f;
+        vuelo = 0f;
+        desfaseMovida = transform.position - control.Der.PuntoPellizco;
+        inicioMovida = transform.position;
+        control.Ocupado = true;
+        control.SonidoBurbuja(transform.position);
+    }
+
+    // Al soltarla: si la llevaste bastante arriba o abajo, cambia de orilla. Siempre vuela suave a su sitio.
+    void TerminarMovida(ControlManos control, bool decidir)
+    {
+        if (!movida)
+            return;
+        movida = false;
+        esperarSalir = true;
+        if (control != null)
+            control.Ocupado = false;
+        EmpezarVuelo();
+        if (!decidir || alMoverA == null)
+            return;
+        float dy = transform.position.y - inicioMovida.y;
+        bool estabaArriba = sentido < 0;
+        bool quedaArriba = estabaArriba;
+        if (dy > CambiaOrilla)
+            quedaArriba = true;
+        else if (dy < -CambiaOrilla)
+            quedaArriba = false;
+        if (control != null)
+            control.SonidoBurbuja(transform.position);
+        alMoverA(quedaArriba);
+    }
+
+    void EmpezarVuelo()
+    {
+        vuelo = 1f;
+        vueloDesde = transform.position;
+        vueloGiroDesde = transform.rotation;
     }
 
     void Soltar()
