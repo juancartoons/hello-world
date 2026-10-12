@@ -447,6 +447,9 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [ ] Grabar el video del concurso.
 - [ ] Enviar la app.
 
+**Para la versión definitiva (antes de enviarla):**
+- [ ] **Voz dentro de la app**: meter los dos idiomas de Vosk (español e inglés, unos 40 MB cada uno) dentro de la app, para que la voz funcione desde el primer toque, sin internet y sin depender de la página de Vosk. *(Decidido: no ahora, porque mientras probamos haría cada Build más lento. Se hace al final.)*
+
 **Cómo grabar con el Quest 2** (las grabaciones del Quest no capturan el passthrough):
 1. **Foto 360 de tu cuarto** como fondo (ya está en la v27): toma una foto 360 de tu cuarto (con una app gratis de fotos 360 en el celular; tiene que ser el doble de ancha que de alta), pásala al Quest y elígela en **Mis archivos → Imágenes → Traer imagen → Fondo 360**.
 2. **Fondo verde + video real de tu cuarto**: lo más realista, para tomas en primera persona.
