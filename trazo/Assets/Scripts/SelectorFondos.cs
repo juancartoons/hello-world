@@ -22,6 +22,10 @@ public class SelectorFondos : MonoBehaviour
     readonly Renderer[] vistas = new Renderer[PorPagina];
     readonly Material[] materiales = new Material[PorPagina];
     readonly TMP_Text[] nombres = new TMP_Text[PorPagina];
+    // v38: la X de las fotos tuyas (dos toques para borrarla).
+    readonly BotonTocable[] quitar = new BotonTocable[PorPagina];
+    int quitarPendiente = -1;
+    float quitarHasta;
     BotonTocable btnAnterior, btnSiguiente;
     TMP_Text textoPagina;
     int pagina;
@@ -99,6 +103,9 @@ public class SelectorFondos : MonoBehaviour
             int m = 3 + pagina * PorPagina + i;
             bool hay = m < escenario.CantidadModos && escenario.Disponible(m);
             Ver(celdas[i], hay);
+            Ver(quitar[i], hay && escenario.EsFotoPropia(m));
+            if (quitar[i] != null)
+                quitar[i].Marcar(quitarPendiente == m && Time.time < quitarHasta);
             nombres[i].gameObject.SetActive(hay);
             vistas[i].gameObject.SetActive(false);
             if (!hay)
@@ -132,12 +139,39 @@ public class SelectorFondos : MonoBehaviour
 
     void Elegir(int i)
     {
+        // Si el dedo está en la X (borrar la foto), no se elige el fondo.
+        var control = ControlManos.Instancia;
+        if (quitar[i] != null && quitar[i].gameObject.activeSelf && control != null && control.Der.valida
+            && Vector3.Distance(control.Der.indice, quitar[i].transform.position) < 0.016f)
+            return;
         int m = 3 + pagina * PorPagina + i;
         if (m >= escenario.CantidadModos)
             return;
         escenario.PonerModo(m);
         if (dibujo != null)
             dibujo.Mensaje(escenario.MensajeFondo);
+        Refrescar();
+    }
+
+    // v38: la X de una foto tuya: el primer toque pregunta; el segundo (en 3 segundos) la borra.
+    void Quitar(int i)
+    {
+        int m = 3 + pagina * PorPagina + i;
+        if (!escenario.EsFotoPropia(m))
+            return;
+        if (quitarPendiente != m || Time.time > quitarHasta)
+        {
+            quitarPendiente = m;
+            quitarHasta = Time.time + 3f;
+            if (dibujo != null)
+                dibujo.Mensaje("Toca la X otra vez para borrar esta foto tuya");
+            Refrescar();
+            return;
+        }
+        quitarPendiente = -1;
+        bool hecho = escenario.BorrarFotoPropia(m);
+        if (dibujo != null)
+            dibujo.Mensaje(hecho ? "Foto borrada" : "No se pudo borrar la foto");
         Refrescar();
     }
 
@@ -161,6 +195,10 @@ public class SelectorFondos : MonoBehaviour
         fondo.transform.localPosition = new Vector3(0f, -0.005f, 0.006f);
         fondo.transform.localScale = new Vector3(0.34f, 0.285f, 1f);
         Pintar(fondo.GetComponent<Renderer>(), materialPanel);
+        // v38: pellizca una parte vacía de la ventanita para moverla (con la otra mano también: tamaño).
+        var mover = raiz.gameObject.AddComponent<ArrastrePanel>();
+        mover.centro = new Vector2(0f, -0.005f);
+        mover.medio = new Vector2(0.17f, 0.1425f);
 
         Texto(raiz, "Fondos 360", new Vector3(-0.125f, 0.118f, -0.002f), new Vector2(0.08f, 0.016f), 0.15f).fontStyle = FontStyles.Bold;
         Boton(raiz, "Cuadrícula", new Vector3(-0.035f, 0.118f, 0f), new Vector2(0.07f, 0.022f)).alTocar.AddListener(() => PonerFijo(0));
@@ -186,6 +224,9 @@ public class SelectorFondos : MonoBehaviour
             vistas[i] = vista.GetComponent<Renderer>();
             Pintar(vistas[i], materiales[i]);
             nombres[i] = Texto(raiz, "", new Vector3(x, y - 0.0185f, -0.005f), new Vector2(AnchoMini, 0.009f), 0.08f);
+            // v38: en las fotos tuyas, una X chiquita en la esquina (tócala dos veces para borrar la foto).
+            quitar[i] = Boton(raiz, "X", new Vector3(x + AnchoMini * 0.5f - 0.004f, y + 0.021f, -0.004f), new Vector2(0.014f, 0.014f));
+            quitar[i].alTocar.AddListener(() => Quitar(indice));
         }
 
         btnAnterior = Boton(raiz, "<", new Vector3(-0.035f, -0.13f, 0f), new Vector2(0.024f, 0.018f));

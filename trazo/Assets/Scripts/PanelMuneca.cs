@@ -22,6 +22,8 @@ public class PanelMuneca : MonoBehaviour
     public BotonTocable btnAyuda;
     [Tooltip("X para cerrar el menú")]
     public BotonTocable btnCerrar;
+    [Tooltip("v38: girar el fondo 360 a la izquierda / a la derecha (30°)")]
+    public BotonTocable btnGirarIzq, btnGirarDer;
     Renderer[] iconoIman;
     Material imanEncendido, imanApagado;
     [Header("Figuras 3D")]
@@ -31,7 +33,7 @@ public class PanelMuneca : MonoBehaviour
     public TMP_Text textoAviso;
     public float suavizado = 20f;
 
-    const string textoAyuda = "Izq + pulgar: índice dibuja · índice+medio recta · medio nodos · anular grosor\nPuño: borrar · Pulgar izq/der: deshacer/rehacer · Doble toque: candado · Mira arriba: capas · Mira abajo: mesa";
+    const string textoAyuda = "Izq + pulgar: índice dibuja · índice+medio recta · medio nodos · anular grosor\nPuño: borrar · Pulgar izq/der: deshacer/rehacer · Doble toque: candado · Pastillitas: capas (arriba) y mesa (abajo)";
 
     bool visible;
     float ultimaVezVisto;
@@ -71,6 +73,8 @@ public class PanelMuneca : MonoBehaviour
         });
         if (control != null)
         {
+            Conectar(btnGirarIzq, () => control.GirarFondoBoton(-1));
+            Conectar(btnGirarDer, () => control.GirarFondoBoton(1));
             Conectar(btnCerrar, control.CerrarMenu);
             Conectar(btnColores, control.AlternarPaleta);
             Conectar(btnAyuda, () =>

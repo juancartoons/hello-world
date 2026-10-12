@@ -44,6 +44,8 @@ public partial class ControlManos : MonoBehaviour
     public Material materialIman;
     public Material materialCursor;
     public Material materialCursorBorrar;
+    [Tooltip("v38: el borrador sobre un relleno (champaña). Vacío = el mismo de las líneas")]
+    public Material materialCursorBorrarRelleno;
     [Tooltip("Color con el que destella la mano al deshacer")]
     public Material materialDestelloMano;
     [Tooltip("Color de la mano izquierda mientras está en modo borrador")]
@@ -175,6 +177,8 @@ public partial class ControlManos : MonoBehaviour
     // Borrador
     bool armadoBorrar;
     Vector3 posUltimoBorrado;
+    float borradorDesde = -10f;   // v38: cuándo empezó el borrador (borra al instante, tras un suspiro)
+    float sinPunoDesde = -1f;     // v38: desde cuándo la mano dejó de verse como puño (para no soltarlo por un salto)
     Trazo froteTrazo;
     float froteRecorrido;
     Vector3 froteAncla;
@@ -482,6 +486,8 @@ public partial class ControlManos : MonoBehaviour
 
     // Puño (de frente o de lado, sin importar la muñeca): dedos doblados y el pulgar
     // sobre los dedos o pegado al índice. Si el pulgar se estira lejos, ya es "deshacer".
+    // v38: más fácil de reconocer al empezar: basta con que 2 de los 3 dedos (índice, medio, anular) estén bien
+    // doblados (el visor a veces lee mal uno, sobre todo en un puño, donde los dedos se tapan).
     bool EsPuno(bool yaEnPuno)
     {
         if (!poseValida)
@@ -489,8 +495,16 @@ public partial class ControlManos : MonoBehaviour
         float promedio = (curvaIndice + curvaMedio + curvaAnular) / 3f;
         float maximo = Mathf.Max(curvaIndice, Mathf.Max(curvaMedio, curvaAnular));
         if (yaEnPuno)
-            return promedio < 1.3f && maximo < 1.45f && pulgarANudillo < 0.075f;
-        return promedio < 1.15f && maximo < 1.3f && pulgarANudillo < 0.065f;
+            return promedio < 1.3f && maximo < 1.5f && pulgarANudillo < 0.08f;
+        int doblados = (curvaIndice < 1.2f ? 1 : 0) + (curvaMedio < 1.2f ? 1 : 0) + (curvaAnular < 1.2f ? 1 : 0);
+        return doblados >= 2 && promedio < 1.22f && maximo < 1.45f && pulgarANudillo < 0.075f;
+    }
+
+    // v38: un puño bien apretado (los tres dedos muy doblados) gana aunque el pulgar quede cerca de la punta del
+    // índice (antes eso parecía el pellizco de dibujar y el borrador no salía).
+    bool PunoApretado()
+    {
+        return poseValida && Mathf.Max(curvaIndice, Mathf.Max(curvaMedio, curvaAnular)) < 1.05f && pulgarANudillo < 0.075f;
     }
 
     // La flecha de deshacer tiene prioridad sobre el borrador.
@@ -511,7 +525,7 @@ public partial class ControlManos : MonoBehaviour
         Vector3 aCabeza = Cabeza.position - palmaIzq.centro;
         if (aCabeza.sqrMagnitude < 1e-6f)
             return true;
-        return Vector3.Dot(palmaIzq.normal, aCabeza.normalized) < 0.35f;
+        return Vector3.Dot(palmaIzq.normal, aCabeza.normalized) < 0.55f; // v38: acepta la mano un poco más de frente
     }
 
     bool DedosAbiertos()
@@ -555,9 +569,24 @@ public partial class ControlManos : MonoBehaviour
 
         if (GestoIzq == Gesto.Borrar)
         {
-            // Se sale del borrador al abrir la mano o sacar el pulgar (la flecha de deshacer gana).
-            if (poseValida && (!EsPuno(true) || PoseDeshacer()))
+            // Se sale del borrador al abrir la mano o sacar el pulgar (la flecha de deshacer gana al instante).
+            // v38: abrir la mano tiene que durar un momento (un salto del seguimiento no suelta el borrador).
+            if (poseValida && PoseDeshacer())
+            {
                 SalirDeGesto();
+                return;
+            }
+            if (poseValida && !EsPuno(true))
+            {
+                if (sinPunoDesde < 0f)
+                    sinPunoDesde = Time.time;
+                else if (Time.time - sinPunoDesde > 0.15f)
+                    SalirDeGesto();
+            }
+            else
+            {
+                sinPunoDesde = -1f;
+            }
             return;
         }
         // Recta con tres dedos: pulgar + índice + medio juntos (más fácil de ver que el meñique).
@@ -595,7 +624,11 @@ public partial class ControlManos : MonoBehaviour
 
         // Prioridad: pellizco de índice (dibujar) > puño (borrar) > pellizco de medio/anular.
         Gesto nuevo = Gesto.Ninguno;
-        if (dIndice < pellizcoEntra * 1.3f && dMedio < pellizcoEntra * 1.25f)
+        if (PunoApretado() && BorradorPermitido())
+        {
+            nuevo = Gesto.Borrar; // v38: un puño bien cerrado nunca se confunde con un pellizco
+        }
+        else if (dIndice < pellizcoEntra * 1.3f && dMedio < pellizcoEntra * 1.25f)
         {
             nuevo = Gesto.Recta;
         }
@@ -625,7 +658,7 @@ public partial class ControlManos : MonoBehaviour
         }
         // Con el menú abierto se pide sostener más, para no cerrarlo por un salto del seguimiento.
         // El borrador espera un poquito más: así, si era la flecha de deshacer, no aparece antes.
-        float confirmar = menuAbierto ? 0.25f : nuevo == Gesto.Borrar ? 0.18f : confirmarGesto;
+        float confirmar = menuAbierto ? 0.25f : nuevo == Gesto.Borrar ? 0.14f : confirmarGesto;
         if (nuevo == Gesto.Ninguno || Time.time - candidatoDesde < confirmar)
             return;
 
@@ -712,7 +745,10 @@ public partial class ControlManos : MonoBehaviour
         }
         else if (g == Gesto.Borrar)
         {
-            armadoBorrar = false; // no borra lo que ya estaba tocando al cerrar el puño
+            // v38: borra al instante (antes había que mover el dedo si ya tocaba algo al cerrar el puño).
+            armadoBorrar = true;
+            borradorDesde = Time.time;
+            sinPunoDesde = -1f;
             posUltimoBorrado = Der.indice;
             froteTrazo = null;
             // La mano se esconde y en su lugar aparece un borrador (solo es un símbolo).
@@ -1540,7 +1576,7 @@ public partial class ControlManos : MonoBehaviour
             CancelarFrote();
             // Para borrar otro nodo sin sacar el dedo, hay que moverlo un poquito.
             bool movido = Vector3.Distance(punta, posUltimoBorrado) > 0.012f;
-            if (armadoBorrar || movido)
+            if ((armadoBorrar || movido) && Time.time - borradorDesde > 0.12f)
             {
                 dibujo.GuardarParaDeshacer();
                 if (tipo == Objetivo.Nodo)
@@ -1561,7 +1597,7 @@ public partial class ControlManos : MonoBehaviour
                 }
                 else
                 {
-                    dibujo.Destello(punta, 0.04f);
+                    dibujo.Destello(punta, 0.04f, dibujo.materialBorradoRelleno); // v38: champaña
                     Burbuja(punta, 0.8f);
                     dibujo.QuitarRelleno(t);
                 }
@@ -1590,8 +1626,10 @@ public partial class ControlManos : MonoBehaviour
             froteRecorrido += paso;
             froteAncla = punta;
         }
-        if (froteRecorrido > 0.012f && dibujo.materialBorrado != null)
-            t.PonerMaterialLinea(dibujo.materialBorrado);
+        // v38: mientras la frotas, la línea se pone oro rosa (antes, rojo fuerte).
+        var frotada = dibujo.materialBorradoLinea != null ? dibujo.materialBorradoLinea : dibujo.materialBorrado;
+        if (froteRecorrido > 0.012f && frotada != null)
+            t.PonerMaterialLinea(frotada);
         if (froteRecorrido < distanciaFrote)
             return;
         dibujo.RestaurarMaterial(t);
@@ -2321,6 +2359,8 @@ public partial class ControlManos : MonoBehaviour
             return;
         if (BuscadorImagenes.Contiene(Der.PuntoPellizco))
             return;
+        if (ArrastrePanel.Contiene(Der.PuntoPellizco)) // v38: Mis archivos y la ventanita de fondos
+            return;
         var t = LineaBajo(Der.PuntoPellizco, Der.indice);
         seleccionPrevia.Clear();
         seleccionPrevia.AddRange(dibujo.Seleccionadas());
@@ -2527,13 +2567,33 @@ public partial class ControlManos : MonoBehaviour
         Vector3 enPlano, haciaTi;
         cursor.position = borrando && Der.pellizco ? Der.PuntoPellizco
                         : !borrando && DedoTrasPlano(out enPlano, out haciaTi) ? enPlano : Der.indice;
-        var mat = borrando && materialCursorBorrar != null ? materialCursorBorrar
+        var mat = borrando && materialCursorBorrar != null ? MaterialBorrador()
                 : dibujo.ColorNuevo != Color.black && dibujo.ColorNuevo.a > 0.01f ? MaterialCursorColor() : materialCursor;
         if (mat == null)
             mat = materialCursor;
         if (mat != null && cursorRender.sharedMaterial != mat)
             cursorRender.sharedMaterial = mat;
         cursor.localScale = Vector3.one * (borrando ? RadioBorrador * 2f : Mathf.Max(0.003f, dibujo.AnchoNuevoMundo));
+    }
+
+    // v38: el borrador es un orbe de vidrio: oro rosa sobre líneas y nodos, champaña sobre rellenos; se enciende un
+    // poco cuando toca algo que se puede borrar.
+    readonly Material[] orbesBorrador = new Material[4];
+
+    Material MaterialBorrador()
+    {
+        bool relleno = hoverTipo == Objetivo.Relleno && materialCursorBorrarRelleno != null;
+        bool tocando = hoverTipo != Objetivo.Nada;
+        int k = (relleno ? 2 : 0) + (tocando ? 1 : 0);
+        if (orbesBorrador[k] == null)
+        {
+            var m = new Material(relleno ? materialCursorBorrarRelleno : materialCursorBorrar);
+            if (tocando && m.HasProperty("_Brillo"))
+                m.SetFloat("_Brillo", 1f);
+            materialesPaleta.Add(m); // se libera junto con los de la paleta
+            orbesBorrador[k] = m;
+        }
+        return orbesBorrador[k];
     }
 
     // Menú: como mirar la hora (el dorso de la muñeca izquierda hacia tu cara, y la miras).

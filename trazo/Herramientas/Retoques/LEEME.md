@@ -15,3 +15,8 @@ Herramientas: `Herramientas/nitidez360.py` (4K) y `Herramientas/profundidad360.p
 
 **Ya montado en la app (v36):** `nueva_york360` ("Azotea en Nueva York", hecha con ChatGPT, 4K + profundidad)
 reemplaza a `grafitis360` ("Refugio con grafitis"). Vista previa: `nueva_york_vista.jpg`.
+
+**Ya montado en la app (v38):**
+- `venecia_canal/`: cielo de atardecer, sin barandal torcido ni chimeneas, escaleras derechas (`atardecer.py`, `mascara_atardecer.py`). Vista: `vista_atardecer.jpg` y `antes_despues_atardecer.jpg`.
+- `nueva_york/`: sin la reja de vidrio ni los arbolitos, más nítido, la ciudad de abajo lejos (`mascara.py`, `profundidad.py`). Vista: `antes_despues.jpg`.
+- `sala_lujo/`: sin el sofá cercano ni la mesita oscura, la mesa de centro con solo los libros, profundidad arreglada (`mascara.py` → LaMa → `ajustar_color.py` → `mesa.py`, y `profundidad.py`). Vista: `antes_despues_v38.jpg` y `vista_profundidad_v38.png`.

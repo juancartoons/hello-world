@@ -162,12 +162,16 @@ public partial class ControlManos
             }
         }
         if (!paletaAbierta || paleta == null)
+        {
+            ActualizarEtiquetaHover(false);
             return;
+        }
 
         ColocarPaleta();
         RefrescarBotonesPaleta();
         ActualizarCentroPaleta();
         ActualizarDatosPaleta();
+        ActualizarEtiquetaHover(true); // v38: el nombre del botón o del color bajo tu dedo
 
         if (!Der.valida)
         {

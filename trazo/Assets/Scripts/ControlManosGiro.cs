@@ -1,102 +1,95 @@
 using UnityEngine;
 
-// GIRAR (parte de ControlManos), como el gesto de Meta para girar: con cualquiera de las dos manos en puño suelto,
-// desliza el PULGAR sobre el costado del índice hacia la izquierda o la derecha = giras 30° hacia ese lado.
+// GIRAR (parte de ControlManos). v38: como un PANEL TÁCTIL EN TU ANTEBRAZO IZQUIERDO: desliza la punta del índice
+// derecho sobre el antebrazo (la "manga") hacia la izquierda o la derecha, unos 5 cm = giras 30° hacia ese lado.
+// (Antes era el pulgar sobre el índice y se disparaba solo mientras dibujabas. La palma hacia arriba no sirve: ahí
+// se abre la paleta.) También están los botones "← Girar" y "Girar →" del menú del reloj.
 // Sirve para ver la parte de atrás de los fondos 360 sin darte la vuelta. Tus dibujos se quedan contigo, delante
 // de ti: lo que gira es el fondo (ver Escenario.Girar).
-// No choca con deshacer / rehacer: esos son el pulgar ESTIRADO y quieto; este es el pulgar apoyado, deslizándose.
 public partial class ControlManos
 {
     const float GiroPaso = 30f;           // grados por cada deslizada
-    const float DeslizarMinimo = 0.02f;   // metros que debe recorrer el pulgar
-    const float DeslizarTiempo = 0.45f;   // en menos de estos segundos (si es más lento no cuenta)
+    const float DeslizarMinimo = 0.05f;   // metros que debe recorrer el dedo sobre el antebrazo
+    const float DeslizarTiempo = 0.7f;    // en menos de estos segundos (si es más lento no cuenta)
+    const float LargoAntebrazo = 0.24f;   // de la muñeca hacia el codo (metros)
 
-    class EstadoGiro
-    {
-        public bool enPose;
-        public float inicio, desde, bloqueadoHasta;
-    }
-
-    readonly EstadoGiro giroIzq = new EstadoGiro(), giroDer = new EstadoGiro();
+    bool dedoEnAntebrazo;
+    float inicioGiro, desdeGiro, bloqueadoGiro;
     Escenario escenarioGiro;
     float avisoGiro = -10f;
 
-    // Cada cuadro (sin gesto izquierdo, o con el borrador: el puño izquierdo).
+    // Cada cuadro. Solo con la mano izquierda libre (sin gesto), sin la paleta ni el menú abiertos.
     void RevisarGiros()
     {
-        bool permitido = (GestoIzq == Gesto.Ninguno || GestoIzq == Gesto.Borrar) && !flechaIzq.activa && !flechaDer.activa;
-        RevisarGiroPulgar(Izq, true, giroIzq, permitido);
-        RevisarGiroPulgar(Der, false, giroDer, permitido);
-    }
-
-    void RevisarGiroPulgar(ManoSeguida mano, bool izquierda, EstadoGiro e, bool permitido)
-    {
+        bool permitido = GestoIzq == Gesto.Ninguno && !flechaIzq.activa && !flechaDer.activa && !paletaAbierta
+                         && !menuAbierto && !Der.pellizco && !Ocupado;
         float lado;
-        if (!permitido || !PosePulgarSobreIndice(mano, izquierda, out lado))
+        if (!permitido || !DedoEnAntebrazo(out lado))
         {
-            e.enPose = false;
+            dedoEnAntebrazo = false;
             return;
         }
         float ahora = Time.time;
-        if (!e.enPose || ahora - e.desde > DeslizarTiempo)
+        if (!dedoEnAntebrazo || ahora - desdeGiro > DeslizarTiempo)
         {
             // Empieza (o fue muy lento): desde aquí se mide.
-            e.enPose = true;
-            e.inicio = lado;
-            e.desde = ahora;
+            dedoEnAntebrazo = true;
+            inicioGiro = lado;
+            desdeGiro = ahora;
             return;
         }
-        float recorrido = lado - e.inicio;
-        if (Mathf.Abs(recorrido) < DeslizarMinimo || ahora < e.bloqueadoHasta)
+        float recorrido = lado - inicioGiro;
+        if (Mathf.Abs(recorrido) < DeslizarMinimo || ahora < bloqueadoGiro)
             return;
-        e.bloqueadoHasta = ahora + 0.5f;
-        e.inicio = lado;
-        e.desde = ahora;
-        GirarFondo(recorrido > 0f ? 1 : -1, mano);
+        bloqueadoGiro = ahora + 0.5f;
+        inicioGiro = lado;
+        desdeGiro = ahora;
+        GirarFondo(recorrido > 0f ? 1 : -1, Der.indice);
     }
 
-    // Puño suelto (índice, medio y anular doblados) con la yema del pulgar apoyada en el costado del índice.
-    // lado: dónde está el pulgar a lo ancho de tu vista (para saber si se desliza a la izquierda o a la derecha).
-    bool PosePulgarSobreIndice(ManoSeguida mano, bool izquierda, out float lado)
+    // ¿La punta del índice derecho está sobre el antebrazo izquierdo? lado: dónde está a lo ancho de tu vista.
+    bool DedoEnAntebrazo(out float lado)
     {
         lado = 0f;
-        if (!mano.valida || Cabeza == null)
+        if (!Izq.valida || !Der.valida || !poseValida || Cabeza == null)
             return false;
-        var esq = mano.esqueleto;
-        var palma = ManosUtil.LeerPalma(esq, izquierda);
-        Transform i1 = ManosUtil.Hueso(esq, "Index1", "IndexProximal");
-        Transform i2 = ManosUtil.Hueso(esq, "Index2", "IndexIntermediate");
-        Transform i3 = ManosUtil.Hueso(esq, "Index3", "IndexDistal");
-        if (!palma.valida || i1 == null || i2 == null || palma.tamano < 1e-4f)
+        Transform muneca = ManosUtil.Hueso(Izq.esqueleto, "WristRoot", "Wrist");
+        if (muneca == null || dirDedosIzq.sqrMagnitude < 1e-6f)
             return false;
-        float tam = palma.tamano;
-        if (Vector3.Distance(mano.indice, palma.centro) / tam > 1.45f
-            || Vector3.Distance(mano.medio, palma.centro) / tam > 1.45f
-            || Vector3.Distance(mano.anular, palma.centro) / tam > 1.5f)
-            return false;
-        float d = DistanciaASegmento(mano.pulgar, i1.position, i2.position);
-        if (i3 != null)
-            d = Mathf.Min(d, DistanciaASegmento(mano.pulgar, i2.position, i3.position));
-        if (d > 0.03f)
-            return false;
-        lado = Vector3.Dot(mano.pulgar - palma.centro, LadoHorizontal(1));
+        // El antebrazo sigue la línea de la mano, de la muñeca hacia el codo.
+        Vector3 eje = dirDedosIzq.normalized;
+        Vector3 codo = muneca.position - eje * LargoAntebrazo;
+        Vector3 p = Der.indice;
+        float t = Vector3.Dot(p - codo, eje);
+        if (t < 0.03f || t > LargoAntebrazo - 0.02f)
+            return false;                                  // ni sobre la mano ni más allá del codo
+        if (Vector3.Distance(p, codo + eje * t) > 0.07f)
+            return false;                                  // sobre la "manga" (el brazo mide unos 3-4 cm de radio)
+        lado = Vector3.Dot(p, LadoHorizontal(1));
         return true;
     }
 
+    // Los botones del menú del reloj (lado = 1: a la derecha; -1: a la izquierda).
+    public void GirarFondoBoton(int lado)
+    {
+        Vector3 donde = Cabeza != null ? Cabeza.position + Cabeza.forward * 0.4f : transform.position;
+        GirarFondo(lado, donde);
+    }
+
     // lado = 1: giras a la derecha; -1: a la izquierda.
-    void GirarFondo(int lado, ManoSeguida mano)
+    void GirarFondo(int lado, Vector3 donde)
     {
         if (escenarioGiro == null)
             escenarioGiro = FindFirstObjectByType<Escenario>();
         if (escenarioGiro != null && escenarioGiro.Girar(lado * GiroPaso))
         {
-            Burbuja(mano.pulgar, lado > 0 ? 1.15f : 0.95f);
+            Burbuja(donde, lado > 0 ? 1.15f : 0.95f);
             MostrarEtiqueta(lado > 0 ? "Girar →" : "← Girar");
         }
         else if (Time.time - avisoGiro > 3f)
         {
             avisoGiro = Time.time;
-            dibujo.Mensaje("El giro con el pulgar es para los fondos 360");
+            dibujo.Mensaje("Girar es para los fondos 360");
         }
     }
 }

@@ -796,6 +796,10 @@ public class NavegadorArchivos : MonoBehaviour
         fondo.transform.localPosition = new Vector3(0f, -0.005f, 0.006f);
         fondo.transform.localScale = new Vector3(0.64f, 0.48f, 1f);
         Pintar(fondo.GetComponent<Renderer>(), materialPanel);
+        // v38: pellizca una parte vacía del panel para moverlo (con la otra mano también: tamaño).
+        var mover = raiz.gameObject.AddComponent<ArrastrePanel>();
+        mover.centro = new Vector2(0f, -0.005f);
+        mover.medio = new Vector2(0.32f, 0.24f);
 
         // ----- Arriba: tu dibujo actual -----
         var goMini = GameObject.CreatePrimitive(PrimitiveType.Quad);

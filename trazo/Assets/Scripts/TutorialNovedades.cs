@@ -2,11 +2,11 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Tutorial de NOVEDADES (sección 4 del panel "?"): lo nuevo de las últimas versiones, con una animación corta
-// de cada cosa. Se actualiza en cada versión (v36 "como de 2030", con los retoques de la v37).
-//  1 · Capas: mira arriba (la pastillita).           5 · Menús que respiran.
-//  2 · Mesa de trabajo: mira abajo.                  6 · Tela con pellizco.
+// de cada cosa. Se actualiza en cada versión (v36 "como de 2030", con los retoques de la v37 y la v38).
+//  1 · Capas: la persiana de arriba.                 5 · Menús que respiran y se mueven.
+//  2 · Mesa de trabajo: la persiana de abajo.        6 · Tela con pellizco.
 //  3 · Líneas que cobran vida (destello, polvo...).  7 · Capas: empujar y atraer.
-//  4 · Vidrio vivo y luz en tu dedo.                 8 · Fondos nuevos y retocados.
+//  4 · Vidrio, luz en tu dedo y etiquetas.           8 · Fondos retocados y girar.
 public class TutorialNovedades : TarjetaTutorial
 {
     static readonly Color Amarillo = new Color(1f, 0.85f, 0.35f);
@@ -48,14 +48,14 @@ public class TutorialNovedades : TarjetaTutorial
     {
         switch (p)
         {
-            case 0: return Tx("1 · Layers: look up", "1 · Capas: mira arriba");
-            case 1: return Tx("2 · Work table: look down", "2 · Mesa de trabajo: mira abajo");
+            case 0: return Tx("1 · Layers: the top blind", "1 · Capas: la persiana de arriba");
+            case 1: return Tx("2 · Work table: the bottom blind", "2 · Mesa de trabajo: la persiana de abajo");
             case 2: return Tx("3 · Lines that come alive", "3 · Líneas que cobran vida");
-            case 3: return Tx("4 · Living glass, light on your finger", "4 · Vidrio vivo y luz en tu dedo");
-            case 4: return Tx("5 · Menus that breathe", "5 · Menús que respiran");
+            case 3: return Tx("4 · Glass, finger light and labels", "4 · Vidrio, luz en tu dedo y etiquetas");
+            case 4: return Tx("5 · Menus that breathe and move", "5 · Menús que respiran y se mueven");
             case 5: return Tx("6 · Cloth points", "6 · Puntos de tela");
             case 6: return Tx("7 · Layers: push and pull", "7 · Capas: empujar y atraer");
-            default: return Tx("8 · New and retouched backgrounds", "8 · Fondos nuevos y retocados");
+            default: return Tx("8 · Retouched backgrounds and turning", "8 · Fondos retocados y girar");
         }
     }
 
@@ -65,24 +65,24 @@ public class TutorialNovedades : TarjetaTutorial
         {
             case 0:
                 return Tx(
-                    "At the top of your view there is a tiny pill, \"Layer 2 · of 5\": the layer you are on and how many there are. LOOK UP for half a second and the layers unfold, in the same spot as always. LOOK DOWN and they fold away by themselves. They don't appear while you draw or right after, or with the palette open. Hand menu > LAYERS also opens them (those close by themselves after 20 seconds).",
-                    "Arriba de tu vista hay una pastillita chiquita, \"Capa 2 · de 5\": en qué capa estás y cuántas hay. MIRA ARRIBA medio segundo y las capas se despliegan, en el mismo lugar de siempre. BAJA la mirada y se recogen solas. No salen mientras dibujas ni justo después, ni con la paleta abierta. También se abren con el menú de la mano > CAPAS (esas se cierran solas a los 20 segundos).");
+                    "At the top of your view there is a tiny pill, \"Layer 2 · of 5\". It works like a BLIND: put your finger on it and PULL IT DOWN, and the layers unfold. To put them away, pull UP the little pill under the layers. The circle to the right of the pill switches modes: blind (pull) or look (look up and they come out by themselves). Hand menu > LAYERS also opens them.",
+                    "Arriba de tu vista hay una pastillita, \"Capa 2 · de 5\". Funciona como una PERSIANA: pon el dedo encima y JÁLALA HACIA ABAJO, y las capas se despliegan. Para guardarlas, jala HACIA ARRIBA la pastillita que queda debajo de las capas. El circulito a la derecha de la pastilla cambia el modo: persiana (jalar) o mirada (mirar arriba y salen solas). También se abren con el menú de la mano > CAPAS.");
             case 1:
                 return Tx(
-                    "The top menu is now a WORK TABLE: LOOK DOWN for half a second (while not drawing) and it appears at the bottom of your view, like a mirror of the layers. The player and the timeline STAY and follow you calmly; with your finger on it, it stays still. The Animate, Mouths and Puppet tabs are on top and their pages open upward. The X (top right) puts it away.",
-                    "El menú de arriba ahora es una MESA DE TRABAJO: MIRA ABAJO medio segundo (sin estar dibujando) y aparece abajo en tu vista, como un espejo de las capas. El reproductor y la línea de tiempo se QUEDAN y te siguen con calma; con tu dedo encima se queda quieta. Las pestañas Animar, Bocas y Títere están arriba y sus páginas se abren hacia arriba. La X (arriba a la derecha) la guarda.");
+                    "Down below there is another pill with the frame and the time, and a little bar that shows how far along the animation is. PULL IT UP and the WORK TABLE comes out: player and timeline, with the Animate, Mouths and Puppet tabs folded. To put it away, pull DOWN the little pill under it. Its circle switches between blind and look (look down). PINCH an empty part of the table to move it.",
+                    "Abajo hay otra pastillita con el fotograma y el tiempo, y una barrita que dice cuánto va de la animación. JÁLALA HACIA ARRIBA y sale la MESA DE TRABAJO: el reproductor y la línea de tiempo, con las pestañas Animar, Bocas y Títere replegadas. Para guardarla, jala HACIA ABAJO la pastillita de debajo. Su circulito cambia entre persiana y mirada (mirar abajo). PELLIZCA una parte vacía de la mesa para moverla.");
             case 2:
                 return Tx(
-                    "When you FINISH a line, a flash of light runs along it from end to end. When you ERASE it, it dissolves into glowing dust that falls slowly (and when you erase a node, so do the pieces of line that held it). When you UNDO, the line rolls itself back, from its end to its start, as if you rewound time.",
-                    "Al TERMINAR una línea, un destello de luz la recorre de punta a punta. Al BORRARLA, se deshace en polvo brillante que cae despacio (y al borrar un nodo, los tramos de línea que lo sostenían). Al DESHACER, la línea se recoge sola, desde su final hasta su inicio, como si rebobinaras el tiempo.");
+                    "When you FINISH a line, a flash of light runs along it. When you ERASE it, it dissolves into glowing dust (dark dust on white backgrounds, so you can see it). The eraser is a glass orb: ROSE GOLD for lines and CHAMPAGNE for fills. Line tips are now round. When you UNDO, the line rolls itself back, as if you rewound time.",
+                    "Al TERMINAR una línea, un destello de luz la recorre. Al BORRARLA, se deshace en polvo brillante (polvo oscuro en los fondos blancos, para que se note). El borrador es una esfera de vidrio: ORO ROSA para las líneas y CHAMPAÑA para los rellenos. Las puntas de las líneas ahora son redondas. Al DESHACER, la línea se recoge sola, como si rebobinaras el tiempo.");
             case 3:
                 return Tx(
-                    "Menus and the palette are made of GLASS: your 360 background shows through, blurred, with a fine glint on the edge. The palette has no black rings anymore: its colors are pearls. The tip of your index finger carries a LITTLE LIGHT that makes fills and glass glow a little when your finger comes close. And your hands look like glass, with a glowing outline.",
-                    "Los menús y la paleta son de VIDRIO: a través se ve borroso tu fondo 360, con un brillo fino en la orilla. La paleta ya no tiene aros negros: sus colores son perlas. La punta de tu índice lleva una LUCECITA que ilumina un poquito los rellenos y el vidrio cuando acercas el dedo. Y tus manos se ven de vidrio, con el contorno iluminado.");
+                    "Menus and the palette are made of GLASS: your 360 background shows through, blurred. The palette's colors are pearls. LABELS: in the palette, leave your index finger close to a button or a color for a moment and a little glass label with its name appears. The tip of your index finger carries a LITTLE LIGHT that makes fills and glass glow a little.",
+                    "Los menús y la paleta son de VIDRIO: a través se ve borroso tu fondo 360. Los colores de la paleta son perlas. ETIQUETAS: en la paleta, deja el índice cerquita de un botón o de un color un momento y sale una etiquetita de vidrio con su nombre. La punta de tu índice lleva una LUCECITA que ilumina un poquito los rellenos y el vidrio.");
             case 4:
                 return Tx(
-                    "The work table breathes with your attention: when you don't look at it, it becomes discreet (more transparent, softer letters) so it doesn't get in the way of your drawing. Look at it or bring your finger close and it wakes up. When it appears it comes out with a small bounce, like a spring, and a soft little sound.",
-                    "La mesa de trabajo respira con tu atención: si no la miras, se vuelve discreta (más transparente y con letras suaves) para no estorbar tu dibujo. Al mirarla o acercar el dedo, despierta. Al aparecer sale con un pequeño rebote, como un resorte, y un sonidito fino.");
+                    "The work table breathes with your attention: when you don't look at it, it becomes discreet so it doesn't get in the way. MOVE ANY PANEL: pinch an empty part of it (not a button) and carry it wherever you want: My files, the 360 window, the image search, the table. While carrying it, pinch with your left hand too and spread or bring your hands together = size.",
+                    "La mesa de trabajo respira con tu atención: si no la miras, se vuelve discreta para no estorbar. MUEVE CUALQUIER PANEL: pellizca una parte vacía (no un botón) y llévalo a donde quieras: Mis archivos, la ventanita de fondos 360, el buscador de imágenes, la mesa. Mientras lo llevas, pellizca también con la izquierda y separa o junta las manos = tamaño.");
             case 5:
                 return Tx(
                     "In node mode (left thumb + middle), PINCH a fill with your right hand (thumb + index) and pull it toward you or push it away; open the pinch and it stays. The cloth bends smoothly, like a bell, and the edge stays on the line. A purple diamond marks it: touch it with your index, like a node, to move it again. Leave it flat (or use the eraser) = it's removed.",
@@ -93,8 +93,8 @@ public class TutorialNovedades : TarjetaTutorial
                     "Con las capas abiertas, cuelgan como papeles cerca de ti (a unos 35 cm), a 7 cm una de otra. La actual se ve sólida; las de adelante se desvanecen al acercarse a tus ojos. EMPUJA la actual (unos 3 cm) = todo el montón se va al fondo y llega la de adelante; ATRÁELA hacia ti = llega la de atrás. \"+ Capa\" = una capa nueva adelante (hasta 12).");
             default:
                 return Tx(
-                    "Background button > 360, in the little window. NEW: New York rooftop and Luxury living room. RETOUCHED: Shanghai at night (no people, no haze and sharper), Sunset by the sea without the railing and Venice canal without the fence and with the water lower down (you feel you are on the bridge). The graffiti shelter and the Shanghai riverside by day are gone.",
-                    "Botón Fondo > 360, en la ventanita. NUEVOS: Azotea en Nueva York y Sala de lujo. RETOCADOS: Shanghai de noche (sin gente, sin neblina y más nítido), Atardecer en el mar sin la baranda y Canal de Venecia sin la reja y con el agua más abajo (te sientes sobre el puente). Se fueron el refugio de grafitis y la orilla de Shanghai de día.");
+                    "RETOUCHED: Venice at sunset (orange sky reflected in the water, no chimneys or bent rail), New York rooftop without the fence and sharper, and the Luxury living room tidy (no near sofa, only books on the table). Your own 360 photos have an X to delete them (touch it twice). TURN the background: slide your right index across your left forearm, or the arrows in the watch menu.",
+                    "RETOCADOS: Venecia al atardecer (cielo naranja reflejado en el agua, sin chimeneas ni barandal torcido), la Azotea en Nueva York sin la reja y más nítida, y la Sala de lujo ordenada (sin el sofá cercano y con solo libros en la mesa). Tus fotos 360 tienen una X para borrarlas (tócala dos veces). GIRA el fondo: desliza el índice derecho sobre tu antebrazo izquierdo, o las flechas del menú del reloj.");
         }
     }
 
@@ -120,7 +120,7 @@ public class TutorialNovedades : TarjetaTutorial
         dedo.localScale = Vector3.one * 0.009f;
         switch (p)
         {
-            case 0: AnimarMirarArriba(t); break;
+            case 0: AnimarPersianaArriba(t); break;
             case 1: AnimarMesa(t); break;
             case 2: AnimarLineas(t); break;
             case 3: AnimarVidrio(t); break;
@@ -209,29 +209,54 @@ public class TutorialNovedades : TarjetaTutorial
 
     // Capas al mirar arriba: la pastillita arriba; el ojo mira arriba y las capas se despliegan desde ella;
     // baja la mirada y se recogen otra vez en la pastillita.
-    void AnimarMirarArriba(float t)
+    // Capas: el dedo jala hacia abajo la pastillita (como una persiana) y las capas se despliegan; al final se
+    // recogen. A la derecha de la pastilla, su circulito (persiana o mirada).
+    void AnimarPersianaArriba(float t)
     {
-        Vector3 ojo = new Vector3(-0.105f, -0.018f, 0f);
-        bool arriba = t > 0.4f && t < 1.3f;
-        bool abajo = t > 2.8f && t < 3.5f;
-        Mirada(ojo, arriba ? new Vector3(-0.092f, 0.02f, 0f) : abajo ? new Vector3(-0.092f, -0.05f, 0f) : new Vector3(-0.07f, -0.018f, 0f));
-        float abre = Suave(Mathf.InverseLerp(1.0f, 1.4f, t)) * (1f - Suave(Mathf.InverseLerp(3.3f, 3.7f, t)));
+        float abre = Suave(Mathf.InverseLerp(1.3f, 1.7f, t)) * (1f - Suave(Mathf.InverseLerp(3.5f, 3.9f, t)));
         if (abre < 0.02f)
         {
-            // La pastillita, con su "texto" (una rayita).
-            Rectangulo(puntos, PastillaX, PastillaY, PastillaW, PastillaH, -0.001f);
+            float tiron = t < 2f ? Suave(Mathf.InverseLerp(0.5f, 1.3f, t)) : 0f;
+            float y = PastillaY - 0.035f * tiron;
+            // La lámina que se estira detrás, de donde estaba la pastilla hasta donde va.
+            if (tiron > 0.01f)
+            {
+                Rectangulo(otra, PastillaX, (PastillaY + y) * 0.5f, PastillaW * 0.9f, PastillaY - y + PastillaH, 0.001f);
+                PonerLinea(arco, otra);
+            }
+            Rectangulo(puntos, PastillaX, y, PastillaW, PastillaH, -0.001f);
             PonerLinea(lineaGris, puntos);
-            RellenarRect(PastillaX, PastillaY, PastillaW, PastillaH, Color.white, 1f);
+            RellenarRect(PastillaX, y, PastillaW, PastillaH, Color.white, 1f);
             otra.Clear();
-            otra.Add(new Vector3(PastillaX - 0.015f, PastillaY, -0.0015f));
-            otra.Add(new Vector3(PastillaX + 0.015f, PastillaY, -0.0015f));
+            otra.Add(new Vector3(PastillaX - 0.015f, y, -0.0015f));
+            otra.Add(new Vector3(PastillaX + 0.012f, y, -0.0015f));
             PonerLinea(hijos[3], otra);
+            Circulo(otra, PastillaX + PastillaW * 0.5f + 0.008f, y, 0.0045f, -0.0015f);
+            PonerLinea(hijos[2], otra);
+            if (t < 1.4f)
+            {
+                // El dedo llega a la pastilla y la jala hacia abajo.
+                float llega = Suave(Mathf.InverseLerp(0f, 0.5f, t));
+                dedo.gameObject.SetActive(true);
+                dedo.localPosition = Vector3.Lerp(new Vector3(PastillaX + 0.04f, PastillaY - 0.04f, -0.004f),
+                                                  new Vector3(PastillaX, y, -0.004f), llega);
+            }
             return;
         }
         // Las capas salen de la pastillita: la de atrás (abajo, chica), la actual (sólida) y la de adelante (arriba).
         CapaQueSale(hijos[1], PastillaX, -0.018f, 0.095f, 0.021f, abre, 0.002f, false);
         CapaQueSale(linea, PastillaX, 0.002f, 0.11f, 0.024f, abre, -0.001f, true);
         CapaQueSale(hijos[0], PastillaX, 0.024f, 0.125f, 0.027f, abre, -0.002f, false);
+        // La pastillita de abajo (para guardarlas), que el dedo jala hacia arriba al final.
+        float sube = Suave(Mathf.InverseLerp(2.9f, 3.5f, t));
+        float yb = -0.042f + 0.012f * sube;
+        Rectangulo(otra, PastillaX, yb, 0.03f, 0.007f, -0.0015f);
+        PonerLinea(hijos[2], otra);
+        if (t > 2.5f && t < 3.6f)
+        {
+            dedo.gameObject.SetActive(true);
+            dedo.localPosition = new Vector3(PastillaX, yb, -0.004f);
+        }
     }
 
     // Un rectángulo que va de la pastillita (abre = 0) a su lugar (abre = 1).
@@ -245,15 +270,29 @@ public class TutorialNovedades : TarjetaTutorial
             RellenarRect(cx, cy, cw, ch, Color.white, 1f);
     }
 
-    // La mesa de trabajo: el ojo mira abajo y la mesa aparece con un rebote; al volver a mirar al frente se
-    // QUEDA (con su reproductor y la línea de tiempo andando).
+    // La mesa de trabajo: el dedo jala hacia arriba la pastillita de abajo (con su barrita de avance) y la mesa
+    // aparece con un rebote, y se QUEDA (con su reproductor y la línea de tiempo andando).
     void AnimarMesa(float t)
     {
-        Vector3 ojo = new Vector3(-0.105f, 0.02f, 0f);
-        bool abajo = t > 0.3f && t < 2.6f;
-        Mirada(ojo, abajo ? new Vector3(-0.088f, -0.012f, 0f) : new Vector3(-0.07f, 0.02f, 0f));
         if (t < 0.9f)
+        {
+            float tiron = Suave(Mathf.InverseLerp(0.3f, 0.85f, t));
+            float y = -0.062f + 0.03f * tiron;
+            const float px = 0.02f, pw = 0.05f, ph = 0.011f;
+            Rectangulo(puntos, px, y, pw, ph, -0.001f);
+            PonerLinea(lineaGris, puntos);
+            RellenarRect(px, y, pw, ph, Color.white, 1f);
+            otra.Clear();
+            otra.Add(new Vector3(px - pw * 0.42f, y - ph * 0.3f, -0.0015f));
+            otra.Add(new Vector3(px, y - ph * 0.3f, -0.0015f));
+            PonerLinea(hijos[3], otra);
+            Circulo(otra, px + pw * 0.5f + 0.008f, y, 0.0045f, -0.0015f);
+            PonerLinea(hijos[2], otra);
+            float llega = Suave(Mathf.InverseLerp(0f, 0.3f, t));
+            dedo.gameObject.SetActive(true);
+            dedo.localPosition = Vector3.Lerp(new Vector3(px + 0.04f, -0.02f, -0.004f), new Vector3(px, y, -0.004f), llega);
             return;
+        }
         float s = Resorte(t - 0.9f);
         Vector3 c = new Vector3(0.02f, -0.03f, 0f);
         // La mesa, inclinada: un trapecio de vidrio.

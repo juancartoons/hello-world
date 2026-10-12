@@ -101,8 +101,15 @@ public static class ArmarEscenaTrazo
         Material matManoVidrio = shaderManoVidrio != null ? Mat("ManoVidrio", shaderManoVidrio, new Color(0.72f, 0.86f, 1f)) : null;
         var matBoton = Mat("Boton", unlit, new Color(0.86f, 0.87f, 0.9f));
         var matBotonMarcado = Mat("BotonMarcado", unlit, new Color(0.08f, 0.08f, 0.1f));
-        var matBorrado = Mat("Borrado", unlit, new Color(0.95f, 0.15f, 0.15f));
-        var matCursorBorrar = Mat("CursorBorrar", unlit, new Color(0.95f, 0.2f, 0.2f));
+        // v38: el borrador en tonos finos: oro rosa (líneas) y champaña (rellenos), en vez del rojo fuerte.
+        var colorOroRosa = new Color(0.86f, 0.56f, 0.5f);
+        var colorChampana = new Color(0.93f, 0.82f, 0.62f);
+        var matBorrado = Mat("Borrado", unlit, colorOroRosa);
+        var matBorradoLinea = Mat("BorradoLinea", shaderLinea, colorOroRosa);
+        var matBorradoRelleno = Mat("BorradoRelleno", unlit, colorChampana);
+        var shaderOrbe = Shader.Find("TrazoVR/Orbe");
+        var matCursorBorrar = Mat("CursorBorrar", shaderOrbe != null ? shaderOrbe : unlit, colorOroRosa);
+        var matCursorBorrarRelleno = Mat("CursorBorrarRelleno", shaderOrbe != null ? shaderOrbe : unlit, colorChampana);
         var matDestelloMano = Mat("DestelloMano", unlit, new Color(0.35f, 0.7f, 1f));
         var matBorrarMano = Mat("BorrarMano", unlit, new Color(1f, 0.35f, 0.35f));
         var matSeleccion = Mat("LineaSeleccion", shaderLinea, new Color(0.1f, 0.35f, 0.95f));
@@ -228,6 +235,8 @@ public static class ArmarEscenaTrazo
         animacion.dibujo = dibujo;
         dibujo.animacion = animacion;
         dibujo.materialBorrado = matBorrado;
+        dibujo.materialBorradoLinea = matBorradoLinea;
+        dibujo.materialBorradoRelleno = matBorradoRelleno;
         dibujo.materialSeleccion = matSeleccion;
         dibujo.materialLinea = matLinea;
         dibujo.materialHalo = matHalo;
@@ -252,6 +261,7 @@ public static class ArmarEscenaTrazo
         control.materialAsa = matAsa;
         control.materialIman = matIman;
         control.materialCursorBorrar = matCursorBorrar;
+        control.materialCursorBorrarRelleno = matCursorBorrarRelleno;
         control.materialDestelloMano = matDestelloMano;
         control.materialBorrarMano = matBorrarMano;
         caja.dibujo = dibujo;
@@ -550,23 +560,34 @@ public static class ArmarEscenaTrazo
         SinSombras(fondo.GetComponent<Renderer>(), matPanel);
 
         Texto(contenido.transform, "JCartoons", new Vector3(0f, 0.09f, -0.001f), new Vector2(0.09f, 0.014f), Color.black);
-        panel.textoEstado = Texto(contenido.transform, "", new Vector3(0f, -0.105f, -0.001f), new Vector2(0.098f, 0.02f), new Color(0.2f, 0.2f, 0.25f));
+        panel.textoEstado = Texto(contenido.transform, "", new Vector3(0f, -0.108f, -0.001f), new Vector2(0.098f, 0.018f), new Color(0.2f, 0.2f, 0.25f));
 
         // Dos columnas: Plano / Fondo · Guardar / Cargar · Borrar todo / Capas · Esfera / Cubo · Cilindro / A líneas
-        // El imán ahora está en la paleta (palma izquierda).
-        string[] nombres = { "Libre (3D)", "Fondo: Cuadrícula", "Guardar", "Archivos", "Borrar todo", "Esfera", "Cubo", "Cilindro", "A líneas", "Capas: 1" };
+        // · ← Girar / Girar →. El imán ahora está en la paleta (palma izquierda).
+        // v38: los botones un poco más chicos y más separados (antes se tocaba sin querer el de al lado).
+        string[] nombres = { "Libre (3D)", "Fondo: Cuadrícula", "Guardar", "Archivos", "Borrar todo", "Esfera", "Cubo", "Cilindro", "A líneas", "Capas: 1",
+                             "← Girar", "Girar →" };
+        const float columna = 0.026f;
         Vector2[] lugares =
         {
-            new Vector2(-0.025f, 0.064f), new Vector2(0.025f, 0.064f),
-            new Vector2(-0.025f, 0.038f), new Vector2(0.025f, 0.038f),
-            new Vector2(-0.025f, 0.012f),
-            new Vector2(-0.025f, -0.022f), new Vector2(0.025f, -0.022f),
-            new Vector2(-0.025f, -0.048f), new Vector2(0.025f, -0.048f),
-            new Vector2(0.025f, 0.012f), // Capas (donde antes estaba el imán)
+            new Vector2(-columna, 0.068f), new Vector2(columna, 0.068f),
+            new Vector2(-columna, 0.040f), new Vector2(columna, 0.040f),
+            new Vector2(-columna, 0.012f),
+            new Vector2(-columna, -0.026f), new Vector2(columna, -0.026f),
+            new Vector2(-columna, -0.054f), new Vector2(columna, -0.054f),
+            new Vector2(columna, 0.012f), // Capas (donde antes estaba el imán)
+            new Vector2(-columna, -0.082f), new Vector2(columna, -0.082f), // girar el fondo 360
         };
         var botones = new BotonTocable[nombres.Length];
         for (int i = 0; i < nombres.Length; i++)
+        {
             botones[i] = Boton(contenido.transform, nombres[i], new Vector3(lugares[i].x, lugares[i].y, 0f), matBoton, matBotonMarcado);
+            botones[i].transform.localScale = new Vector3(0.043f, 0.02f, 0.008f);
+            if (botones[i].etiqueta != null)
+                botones[i].etiqueta.rectTransform.sizeDelta = new Vector2(0.039f, 0.016f);
+        }
+        panel.btnGirarIzq = botones[10];
+        panel.btnGirarDer = botones[11];
         panel.btnPlano = botones[0];
         panel.btnFondo = botones[1];
         panel.btnGuardar = botones[2];
@@ -592,7 +613,7 @@ public static class ArmarEscenaTrazo
         panel.btnCerrar.transform.localScale = new Vector3(0.016f, 0.016f, 0.008f);
         if (panel.btnCerrar.etiqueta != null)
             panel.btnCerrar.etiqueta.rectTransform.sizeDelta = new Vector2(0.014f, 0.014f);
-        Texto(contenido.transform, "Figuras 3D", new Vector3(0f, -0.004f, -0.001f), new Vector2(0.09f, 0.01f), new Color(0.3f, 0.3f, 0.35f));
+        Texto(contenido.transform, "Figuras 3D", new Vector3(0f, -0.007f, -0.001f), new Vector2(0.09f, 0.01f), new Color(0.3f, 0.3f, 0.35f));
         // Botón pequeño debajo del menú: abre la paleta de colores (por si el gesto de la palma no la abre).
         panel.btnColores = Boton(contenido.transform, "Colores", new Vector3(0f, -0.14f, 0f), matBoton, matBotonMarcado);
         panel.btnColores.transform.localScale = new Vector3(0.06f, 0.02f, 0.008f);

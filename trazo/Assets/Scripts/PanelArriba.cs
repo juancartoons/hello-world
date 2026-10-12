@@ -101,9 +101,9 @@ public class PanelArriba : MonoBehaviour
     bool visible;
     bool anclado;          // lo moviste: se queda fijo y siempre visible
     // v36: la mesa de trabajo (al mirar abajo).
-    const float MirarAbajoEntra = 0.5f;   // cuánto hay que mirar abajo (y de la mirada, unos 30°)
+    const float MirarAbajoEntra = 0.34f;  // cuánto hay que mirar abajo (y de la mirada; v38: unos 20°, antes 30°)
     const float MirarAbajoSale = 0.12f;
-    const float EsperaMesa = 0.5f;
+    const float EsperaMesa = 0.4f;
     // v37: la mesa abajo en tu vista (espejo de las capas) y las páginas arriba del reproductor.
     public const float SubirPaginas = 0.40f;   // cuánto suben las páginas (lo usa también ★ Armar escena)
     const float AbajoPanel = 0.09f;            // la orilla de abajo (bajo el reproductor)
@@ -111,7 +111,7 @@ public class PanelArriba : MonoBehaviour
     const float ArribaDesplegado = 0.50f;      // y con una página abierta
     const float AbajoAyuda = -0.06f;           // (la copia azul) la orilla de abajo del cuadro de explicación
     const float DistanciaMesa = 0.55f;         // de tus ojos al centro de la mesa (metros)
-    const float BajoLaMirada = 20f;            // grados debajo de hacia donde miras
+    const float BajoLaMirada = 26f;            // grados debajo de hacia donde miras (v38: un poquito más abajo)
     const float CentroMesa = 0.165f;           // el centro de lo que siempre se ve (reproductor, tiempo y pestañas)
     const float ZonaQuietaArriba = 22f;        // grados que puedes subir o bajar la cabeza sin que la mesa se mueva
     const float ZonaQuietaLado = 20f;          // y girarla de lado
@@ -119,6 +119,11 @@ public class PanelArriba : MonoBehaviour
     const float SeguirMesa = 2f;               // qué tan rápido te alcanza cuando ya te sigue
     float inclinacion;                         // hacia dónde mira la mesa (grados; + arriba)
     bool siguiendoLado, siguiendoArriba;
+    // v38: la persiana de abajo ("Fotograma 12 · 0:01"): tócala y sube la mano = sale la mesa. Un tirador debajo
+    // de la mesa la guarda (bájalo). Su circulito elige: lleno = persiana; hueco = con la mirada (mirar abajo).
+    public const string ClavePersianaMesa = "jcartoons_persiana_mesa";
+    const float BajoPastilla = 30f;            // grados debajo de hacia donde miras
+    Persiana persianaAbajo, tiradorAbajo;
     float abajoDesde = -1f, arribaDesde = -1f;
     Respira respira;
     BotonTocable btnVolverArriba; // la X: guarda la mesa (vuelve a salir al mirar abajo)
@@ -559,7 +564,8 @@ public class PanelArriba : MonoBehaviour
         if (contenido != null)
             contenido.SetActive(false);
         if (dibujo != null)
-            dibujo.Mensaje("La mesa aparece al mirar abajo");
+            dibujo.Mensaje(Persiana.Modo(ClavePersianaMesa) ? "Jala hacia arriba la pastillita de abajo para sacar la mesa"
+                                                             : "La mesa aparece al mirar abajo");
     }
 
     void SiguienteFondo()
@@ -622,6 +628,7 @@ public class PanelArriba : MonoBehaviour
             respira.contenido = contenido.transform;
             respira.centro = new Vector3(0f, CentroMesa, 0f);
         }
+        AsegurarPersianas();
 
         float abajo = -cabeza.forward.y;
         float ahora = Time.time;
@@ -635,7 +642,7 @@ public class PanelArriba : MonoBehaviour
             arribaDesde = -1f;
             bool libre = control.SegundosSinEditar > 1f && !control.Ocupado && !control.PaletaAbierta && !PanelMuneca.Visible
                          && !CapasProfundidad.Abierta;
-            if (abajo > MirarAbajoEntra && libre)
+            if (abajo > MirarAbajoEntra && libre && !Persiana.Modo(ClavePersianaMesa))
             {
                 if (abajoDesde < 0f)
                     abajoDesde = ahora;
@@ -651,7 +658,7 @@ public class PanelArriba : MonoBehaviour
         {
             abajoDesde = -1f;
             // El reproductor y la línea de tiempo se quedan; las otras páginas, solo mientras miras abajo.
-            bool queda = plegado || pagina == 0;
+            bool queda = plegado || pagina == 0 || Persiana.Modo(ClavePersianaMesa); // con la persiana: hasta que la guardes
             bool dedoEnMesa = control.Der.valida && Contiene(control.Der.indice);
             if (!queda && abajo < MirarAbajoSale && !dedoEnMesa && !arrastrando)
             {
@@ -710,6 +717,84 @@ public class PanelArriba : MonoBehaviour
             adelante.y = 0f;
         }
         return Quaternion.LookRotation(adelante.sqrMagnitude > 1e-6f ? adelante.normalized : Vector3.forward, Vector3.up);
+    }
+
+    // ---------- v38: la persiana de abajo y su tirador ----------
+
+    void AsegurarPersianas()
+    {
+        if (persianaAbajo != null)
+            return;
+        // En objetos aparte (no dentro del panel: la copia azul de la ayuda no los copia).
+        persianaAbajo = new GameObject("PersianaMesa").AddComponent<Persiana>();
+        persianaAbajo.clave = ClavePersianaMesa;
+        persianaAbajo.sentido = 1;
+        persianaAbajo.pose = PosePastilla;
+        persianaAbajo.visible = () => !visible && !Tutorial.EnCurso && !ExportadorVideo.Exportando;
+        persianaAbajo.puedeJalar = () => control != null && control.SegundosSinEditar > 0.6f && !control.PaletaAbierta;
+        persianaAbajo.texto = TextoPastilla;
+        persianaAbajo.progreso = () => animacion != null ? animacion.Fotograma / (float)Mathf.Max(1, animacion.UltimoFotograma()) : 0f;
+        persianaAbajo.alAbrir = AbrirDesdePersiana;
+
+        tiradorAbajo = new GameObject("TiradorMesa").AddComponent<Persiana>();
+        tiradorAbajo.sentido = -1;
+        tiradorAbajo.ancho = 0.05f;
+        tiradorAbajo.alto = 0.012f;
+        tiradorAbajo.pose = PoseTirador;
+        tiradorAbajo.visible = () => visible && !anclado && Persiana.Modo(ClavePersianaMesa);
+        tiradorAbajo.alAbrir = Seguirme;
+    }
+
+    // "Fotograma 12 · 0:01": en qué fotograma vas y a qué tiempo.
+    string TextoPastilla()
+    {
+        if (animacion == null)
+            return "Fotograma 1";
+        int f = animacion.Fotograma;
+        float seg = f / Mathf.Max(1f, animacion.fotogramasPorSegundo);
+        int s = Mathf.FloorToInt(seg);
+        return "Fotograma " + (f + 1) + " · " + (s / 60) + ":" + (s % 60).ToString("00");
+    }
+
+    // La pastillita de abajo: como un espejo de la de las capas, debajo de hacia donde miras, al alcance del dedo.
+    void PosePastilla(Transform cabeza, out Vector3 pos, out Quaternion rot)
+    {
+        Vector3 p;
+        Quaternion q;
+        CartelArriba.Pose(cabeza, out p, out q);
+        Vector3 ojos = cabeza.position;
+        Vector3 dir = p - ojos;
+        if (dir.sqrMagnitude < 1e-6f)
+            dir = cabeza.forward;
+        float arribaCartel = Mathf.Atan2(0.165f, 0.6f) * Mathf.Rad2Deg; // el cartel va un poco arriba de tu vista
+        dir = Quaternion.AngleAxis(arribaCartel + BajoPastilla, q * Vector3.right) * dir.normalized;
+        pos = ojos + dir * 0.45f;
+        rot = Quaternion.LookRotation(pos - ojos, Vector3.up);
+    }
+
+    // El tirador: debajo de la mesa, al centro.
+    void PoseTirador(Transform cabeza, out Vector3 pos, out Quaternion rot)
+    {
+        pos = transform.TransformPoint(new Vector3(0f, AbajoPanel - 0.022f, 0f));
+        rot = transform.rotation;
+    }
+
+    // Jalaste la persiana: sale la mesa abajo en tu vista, con sus 3 pestañas guardadas.
+    void AbrirDesdePersiana()
+    {
+        var cabeza = control != null ? control.Cabeza : null;
+        if (cabeza == null || contenido == null || visible)
+            return;
+        visible = true;
+        contenido.SetActive(true);
+        Plegar(true, true);
+        if (!anclado)
+        {
+            giro = GiroDeLado(cabeza);
+            inclinacion = Inclinacion(cabeza);
+            siguiendoLado = siguiendoArriba = false;
+            Colocar(cabeza, 1f);
+        }
     }
 
     // Hacia dónde miras de arriba a abajo (grados; + arriba).
@@ -799,7 +884,20 @@ public class PanelArriba : MonoBehaviour
         if (!der.valida || !der.empezoPellizco)
             return;
         Vector3 l = transform.InverseTransformPoint(der.PuntoPellizco);
-        if (!EnAsa(asa, l) && !EnAsa(asaAbajo, l))
+        bool enAsa = EnAsa(asa, l) || EnAsa(asaAbajo, l);
+        // v38: también pellizcando una parte vacía de la mesa (no un botón ni la línea de tiempo, donde se mueven claves).
+        bool enCuerpo = false;
+        if (!enAsa && Contiene(der.PuntoPellizco) && !BotonTocable.DedoCerca && control.GestoIzq == ControlManos.Gesto.Ninguno)
+        {
+            bool enBarra = false;
+            if (barra != null)
+            {
+                Vector3 lp = barra.InverseTransformPoint(der.PuntoPellizco);
+                enBarra = Mathf.Abs(lp.y) < 3f && Mathf.Abs(lp.z) < 4f && lp.x > -0.56f && lp.x < 0.56f;
+            }
+            enCuerpo = !enBarra;
+        }
+        if (!enAsa && !enCuerpo)
             return;
         arrastrando = true;
         escalando = false;

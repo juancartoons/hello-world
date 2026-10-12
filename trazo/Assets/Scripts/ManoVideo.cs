@@ -374,7 +374,7 @@ public sealed class ManoVideo
         render.sharedMaterials = new[] { materialBase, rayas != null ? rayas : materialBase, materialBase };
     }
 
-    public const float EscalaGuante = 0.93f;
+    public const float EscalaGuante = 0.84f; // v38: 10 % más pequeño (antes 0.93)
     readonly Vector3[] guanteA = new Vector3[21];
 
     public void PonerGuante(Vector3[] entrada, bool izquierda)
@@ -385,7 +385,7 @@ public sealed class ManoVideo
         if (!ver)
             return;
         ArmarEsferaFina();
-        // Un poquito más pequeño que tu mano (7%), alrededor del centro del dorso.
+        // Más pequeño que tu mano (v38: 16 %), alrededor del centro del dorso.
         Vector3 c0 = Vector3.Lerp(entrada[0], entrada[9], 0.5f);
         for (int i = 0; i < 21; i++)
             guanteA[i] = c0 + (entrada[i] - c0) * EscalaGuante;

@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 11 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v37***
+*Actualizado: 12 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v38***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,6 +16,44 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 4. **Build And Run**.
 
 ---
+
+## 0+. Hecho en la v38 (falta probarlo en el visor)
+
+**Borrador**
+- [x] **Puño más fácil justo al empezar a borrar**: basta con 2 de los 3 dedos bien doblados; un puño apretado le gana al pellizco; acepta la mano un poco más de frente; un temblor de la mano (0.15 s) ya no lo suelta; y espera un instante (0.12 s) antes de borrar, para no llevarse nada sin querer al cerrar la mano. *(Sin el plan B de "voltear el lápiz", como pediste.)*
+- [x] En lugar del círculo rojo: una **esfera de vidrio** que brilla más al tocar: **oro rosa** para las líneas y **champaña** para los rellenos (el destello al borrar es del mismo color).
+
+**Líneas**
+- [x] **Puntas redondas** (una media luna en cada punta) y la punta más fina ya no se adelgaza casi a cero. Además la **foveación** (el borde de la vista en menor calidad) pasó de Alta a Media. Era lo que cortaba las puntas en los fondos 360 y el passthrough.
+- [x] **Polvo oscuro en los fondos blancos** (el claro no se notaba).
+
+**Persianas** (capas arriba, mesa abajo)
+- [x] **Arriba**: la pastillita "Capa N · de M" se **jala hacia abajo** con el dedo y salen las capas. Debajo de las capas queda otra pastillita: **jálala hacia arriba** para guardarlas.
+- [x] **Abajo**: una pastillita nueva con **"Fotograma N · m:ss"** y una barrita de avance de la animación. **Jálala hacia arriba** y sale la mesa de trabajo (reproductor y línea de tiempo, con sus 3 pestañas replegadas). Debajo de la mesa queda otra pastillita: **jálala hacia abajo** para guardarla.
+- [x] Cada pastilla tiene a la derecha un **circulito** que cambia el modo: **persiana** (jalar) o **mirada** (mirar arriba / abajo). Se recuerda. *(Por ahora las dos empiezan en persiana; decide tú cuál se queda.)*
+- [x] Mirar arriba o abajo ahora pide menos: **12° arriba** y **20° abajo** (antes casi 30°).
+- [x] La mesa sale **un poquito más abajo** (26° debajo de hacia donde miras; antes 20°).
+
+**Paneles y paleta**
+- [x] **Mover cualquier panel con el pellizco**: pellizca una parte vacía (no un botón) de **Mis archivos**, la **ventanita de fondos 360**, el **buscador de imágenes** o la **mesa** (su cuerpo) y llévalo a donde quieras; se queda mirándote. Pellizcando también con la izquierda: separar o juntar las manos = tamaño.
+- [x] **Etiquetas al pasar el dedo** en la paleta: deja el índice cerquita de un botón o de un color (un cuarto de segundo) y sale una etiquetita de vidrio con su nombre.
+- [x] **Menú del reloj**: los botones más separados (el panel quedó del mismo tamaño) y una fila nueva con **"← Girar"** y **"Girar →"**.
+
+**Girar el fondo 360** (B y C)
+- [x] **B: panel táctil en el antebrazo izquierdo**: desliza la punta del índice derecho unos 5 cm sobre tu antebrazo izquierdo (la "manga"), a la izquierda o a la derecha = 30°. *Cambio respecto a la propuesta:* iba a ser sobre la **palma hacia arriba**, pero esa es la pose que abre la paleta, así que se pasó al antebrazo. Solo funciona con la mano izquierda libre y sin la paleta ni el menú abiertos.
+- [x] **C: flechas en el menú del reloj** ("← Girar" y "Girar →").
+- [x] Se quitó el gesto del pulgar sobre el índice (se disparaba solo mientras dibujabas).
+
+**Fondos 360**
+- [x] **Canal de Venecia al atardecer**: cielo nuevo con naranjas, el sol bajo y un reflejo cálido en el agua; sin el barandal torcido, sin las chimeneas de la casa roja (ni la antena); las escaleras del puente ya no se tuercen (la plaza de abajo baja poco a poco desde el puente). Herramientas: `Retoques/venecia_canal/atardecer.py` y `mascara_atardecer.py`.
+- [x] **Azotea en Nueva York**: sin la reja de vidrio ni los dos arbolitos que se mezclaban con los edificios; edificios más nítidos (como Shanghai); la ciudad que se ve por debajo del borde ya no queda "pintada" en el piso de la azotea (era lo que torcía el techito del bar). Herramientas: `Retoques/nueva_york/`.
+- [x] **Sala de lujo** (la que viene con la app): sin el **sofá cercano** que pasaba por debajo de ti ni la **mesita oscura** (el sofá grande quedó entero); en la mesa de centro **solo los libros**, limpios y rectos; la **mesa** con su tapa y su frente planos (la esquina ya no se ve rota); la **ciudad** ya no se ve "después de un terremoto" (estaba pegada al piso); las **orillas** del sillón, las mesitas y las tablillas del techo se estiran mucho menos (sin alas ni rayas barridas). Herramientas: `Retoques/sala_lujo/`.
+- [x] La **otra "Sala de lujo"** que veías es **tu propia foto** ("Mi foto 360"). Ahora tus fotos 360 tienen una **X** en la esquina de su miniatura: tócala **dos veces** (en 3 segundos) para borrarla.
+
+**Otros**
+- [x] La **mano de cómic** (el guante) un **10 % más pequeña**.
+- [x] Tutorial Novedades y ayudas al día.
+- [ ] **Fondo que sigue la cabeza** (para que no se estire nada): **pospuesto**, porque tiende a marear más. Solo si los fondos se siguen viendo mal después de estos arreglos.
 
 ## 0+. Hecho en la v37 (falta probarlo en el visor)
 
@@ -171,10 +209,11 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ## 2. Propuestas esperando tu decisión (escribe HY para hacerlas)
 
-- [ ] **Persiana** (plan B de la mesa de trabajo): si la mesa al mirar abajo no te convence, el menú de arriba baja como una persiana desde arriba de tu vista.
+- [ ] **Persiana o mirada**: las dos están en la v38 (el circulito de cada pastilla). Cuando las pruebes, dime cuál se queda como la de siempre.
+- [ ] **Fondo que sigue la cabeza**: pospuesto (marea más). Solo si los fondos se siguen viendo mal.
 - [ ] **Burbujas o cristal**: por ahora se quedan las dos (burbujita secreta de la paleta).
 - [ ] **Botones redondos de la paleta** (Línea, Relleno, sus hijos y la tinta invisible): ¿también sin aro negro, como los colores?
-- [ ] **Venecia, el puente curvo**: que el piso del puente baje un poco hacia las escaleras (ahora es plano). Hay que dibujar a mano dónde está cada parte del puente.
+- [x] **Venecia, el puente curvo**: en la v38 la plaza de abajo baja poco a poco desde el puente (las escaleras ya no se tuercen).
 - [ ] **Dar vida (con un soplo)**: se pasó a la **sección 8 → C. Movimiento automático** (con todos sus detalles).
 - [ ] **Tutorial: tu primer personaje cobra vida**: al final del tutorial el usuario dibuja un círculo, dos puntos y una sonrisa, y la app le da vida. Como el tutorial pide el orden (cara, ojos, boca), nunca falla.
 - [ ] **Tutorial: el logo se dibuja en tu cuarto**: al empezar, en passthrough, una línea mágica dibuja el logo JCartoons en el aire, al ritmo de la música, y el muñequito sale caminando.
@@ -201,6 +240,21 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [ ] Cuando ya no haga falta, quitar el botón **Tutorial** de Mis archivos (por ahora se queda; abre el mismo panel "?").
 
 ## 5. Para probar en el visor (desde la v21 casi nada se ha probado)
+
+**Nuevo en la v38:**
+- [ ] Borrador: ¿el puño agarra a la primera, justo al empezar a borrar? ¿borra algo sin querer al cerrar la mano?
+- [ ] La esfera de vidrio del borrador: ¿se ve bien el oro rosa (líneas) y la champaña (rellenos)?
+- [ ] Puntas de las líneas en los fondos 360 y en el passthrough: ¿ya no se cortan? ¿te gustan redondas?
+- [ ] Polvo oscuro en los fondos blancos: ¿se nota bonito?
+- [ ] Persianas: ¿se jalan fácil? ¿la de abajo se alcanza bien? ¿la barrita de avance se entiende? Prueba el circulito: ¿cuál modo te gusta más?
+- [ ] Mirar arriba (12°) y abajo (20°): ¿ahora es cómodo? ¿se abre algo sin querer?
+- [ ] La mesa: ¿la altura ya está bien?
+- [ ] Mover paneles con el pellizco: Mis archivos, la ventanita de fondos, el buscador y la mesa. ¿Algún pellizco que querías para otra cosa se lo come el panel?
+- [ ] Etiquetas de la paleta: ¿salen a tiempo? ¿estorban?
+- [ ] Girar: el antebrazo y las flechas del reloj. ¿El antebrazo se dispara solo alguna vez?
+- [ ] Venecia, Nueva York y la Sala de lujo: ¿se ven bien de cerca y al mover la cabeza?
+- [ ] La X de tus fotos 360.
+- [ ] La mano de cómic más pequeña.
 
 **Nuevo en la v37:**
 - [ ] Paleta: ¿se ve "de lujo" sin los aros negros? ¿se distingue el centro del disco grande? ¿se ven bien las perlas (sobre todo el blanco y el gris claro)?

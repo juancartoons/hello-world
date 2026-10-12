@@ -35,7 +35,8 @@ public class EfectosLinea : MonoBehaviour
     readonly List<Destello> destellos = new List<Destello>();
     readonly List<Fantasma> fantasmas = new List<Fantasma>();
     MaterialPropertyBlock bloque;
-    ParticleSystem polvo;
+    ParticleSystem polvo, polvoOscuro;
+    Material materialOscuro;
 
     static EfectosLinea Instancia
     {
@@ -80,10 +81,7 @@ public class EfectosLinea : MonoBehaviour
     {
         if (!SePuedeVer(t) || t.curva.Count < 2)
             return false;
-        var e = Instancia;
-        if (!e.PrepararPolvo())
-            return false;
-        return e.Emitir(t, t.curva) > 0;
+        return Instancia.Emitir(t, t.curva) > 0;
     }
 
     // v37: al borrar un nodo, se deshacen en polvo los dos tramos de línea que lo sostenían.
@@ -91,13 +89,11 @@ public class EfectosLinea : MonoBehaviour
     {
         if (!SePuedeVer(t) || !t.CurvaAlrededorDeNodo(nodo, tramo))
             return false;
-        var e = Instancia;
-        if (!e.PrepararPolvo())
-            return false;
-        return e.Emitir(t, tramo) > 0;
+        return Instancia.Emitir(t, tramo) > 0;
     }
 
     static readonly List<Vector3> tramo = new List<Vector3>();
+    Escenario escenario;
 
     static bool SePuedeVer(Trazo t)
     {
@@ -107,10 +103,23 @@ public class EfectosLinea : MonoBehaviour
         return r != null && !r.forceRenderingOff; // tinta invisible u oculta: sin polvo
     }
 
+    // v38: con el fondo Blanco o la Cuadrícula, el polvo brillante casi no se ve: ahí sale del color de la línea
+    // (oscuro con las líneas negras), mezclado normal en vez de sumar luz.
+    bool FondoClaro()
+    {
+        if (escenario == null)
+            escenario = FindFirstObjectByType<Escenario>();
+        return escenario != null && escenario.modo < 2;
+    }
+
     // Puntitos de polvo a lo largo de unos puntos de la línea (en sus coordenadas): devuelve cuántos salieron.
     int Emitir(Trazo t, List<Vector3> puntos)
     {
-        Color c = Color.Lerp(t.color, Color.white, 0.55f);
+        bool claro = FondoClaro();
+        var ps = claro ? PrepararPolvo(ref polvoOscuro, "PolvoOscuro", true) : PrepararPolvo(ref polvo, "Polvo", false);
+        if (ps == null)
+            return 0;
+        Color c = claro ? Color.Lerp(t.color, Color.black, 0.15f) : Color.Lerp(t.color, Color.white, 0.55f);
         c.a = 1f;
         var tr = t.transform;
         float escala = Mathf.Max(1e-4f, tr.lossyScale.x);
@@ -135,7 +144,7 @@ public class EfectosLinea : MonoBehaviour
                     ep.startColor = c;
                     ep.startSize = Random.Range(0.003f, 0.007f);
                     ep.startLifetime = Random.Range(0.8f, 1.5f);
-                    polvo.Emit(ep, 1);
+                    ps.Emit(ep, 1);
                     emitidos++;
                 }
                 siguiente += paso;
@@ -145,19 +154,27 @@ public class EfectosLinea : MonoBehaviour
         return emitidos;
     }
 
-    bool PrepararPolvo()
+    // El sistema de partículas del polvo (se crea la primera vez). "normal" = mezcla normal (para fondos claros).
+    ParticleSystem PrepararPolvo(ref ParticleSystem ps, string nombre, bool normal)
     {
-        if (polvo != null)
-            return true;
+        if (ps != null)
+            return ps;
         var control = ControlManos.Instancia;
         var mat = control != null ? control.materialPolvo : null;
         if (mat == null)
-            return false;
-        var go = new GameObject("Polvo");
+            return null;
+        if (normal)
+        {
+            mat = new Material(mat) { name = "PolvoOscuro" };
+            mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            materialOscuro = mat;
+        }
+        var go = new GameObject(nombre);
         go.transform.SetParent(transform, false);
-        polvo = go.AddComponent<ParticleSystem>();
-        polvo.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-        var main = polvo.main;
+        ps = go.AddComponent<ParticleSystem>();
+        ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        var main = ps.main;
         main.loop = true;
         main.duration = 5f;
         main.playOnAwake = false;
@@ -165,20 +182,20 @@ public class EfectosLinea : MonoBehaviour
         main.maxParticles = 5000;
         main.startSpeed = 0f;
         main.gravityModifier = 0.02f;
-        var emision = polvo.emission;
+        var emision = ps.emission;
         emision.enabled = false;
-        var forma = polvo.shape;
+        var forma = ps.shape;
         forma.enabled = false;
-        var color = polvo.colorOverLifetime;
+        var color = ps.colorOverLifetime;
         color.enabled = true;
         var grad = new Gradient();
         grad.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
                      new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.08f), new GradientAlphaKey(0.7f, 0.5f), new GradientAlphaKey(0f, 1f) });
         color.color = new ParticleSystem.MinMaxGradient(grad);
-        var tam = polvo.sizeOverLifetime;
+        var tam = ps.sizeOverLifetime;
         tam.enabled = true;
         tam.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 1f, 1f, 0.35f));
-        var ruido = polvo.noise;
+        var ruido = ps.noise;
         ruido.enabled = true;
         ruido.strength = 0.015f;
         ruido.frequency = 2f;
@@ -187,8 +204,8 @@ public class EfectosLinea : MonoBehaviour
         rend.renderMode = ParticleSystemRenderMode.Billboard;
         rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         rend.receiveShadows = false;
-        polvo.Play();
-        return true;
+        ps.Play();
+        return ps;
     }
 
     // ---------- Se rebobina ----------
@@ -280,6 +297,8 @@ public class EfectosLinea : MonoBehaviour
                 Destroy(f.malla);
         }
         fantasmas.Clear();
+        if (materialOscuro != null)
+            Destroy(materialOscuro);
         if (instancia == this)
             instancia = null;
     }

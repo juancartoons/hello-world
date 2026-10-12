@@ -7,6 +7,9 @@ Shader "TrazoVR/Polvo"
     Properties
     {
         _BaseColor ("Tinte", Color) = (1, 1, 1, 1)
+        // v38: cómo se mezcla. Normal: suma luz (SrcAlpha, One). Con fondo claro: mezcla normal (SrcAlpha, OneMinusSrcAlpha).
+        [HideInInspector] _SrcBlend ("_SrcBlend", Float) = 5
+        [HideInInspector] _DstBlend ("_DstBlend", Float) = 1
     }
 
     SubShader
@@ -17,7 +20,7 @@ Shader "TrazoVR/Polvo"
         {
             Name "Polvo"
             Tags { "LightMode" = "UniversalForward" }
-            Blend SrcAlpha One
+            Blend [_SrcBlend] [_DstBlend]
             ZWrite Off
             Cull Off
 

@@ -20,6 +20,9 @@ using UnityEngine;
 //    ARRIBA (medio segundo) el montón de capas se despliega en su lugar de siempre; al BAJAR LA MIRADA (hacia lo que
 //    dibujas) se recoge solo. Nunca sale mientras dibujas ni justo después. Abierta con el botón Capas, funciona
 //    como antes (se cierra a los 20 s o con su X).
+//  - v38: la pastillita es una PERSIANA (ver Persiana.cs), más cerca, al alcance del dedo: tócala y baja la mano =
+//    se despliegan las capas (y se quedan hasta que subas el tirador de abajo o toques la X). Su circulito elige:
+//    lleno = persiana; hueco = con la mirada (mirar arriba, ahora basta con unos 12°).
 public class CapasProfundidad : MonoBehaviour
 {
     const float Ancho = 0.26f, Alto = 0.065f;
@@ -36,10 +39,11 @@ public class CapasProfundidad : MonoBehaviour
     const string AyudaNormal = "Empuja: capa de adelante · Atrae hacia ti: capa de atrás · +: capa nueva";
     // v36: la pastillita y la mirada.
     const float AnchoPastilla = 0.085f, AltoPastilla = 0.022f;
-    const float DistanciaPastilla = 0.8f, SubePastilla = 9f;  // metros de tus ojos; grados más arriba que las capas
-    const float MirarArriba = 0.34f;     // cuánto hay que mirar arriba (y de la mirada, unos 20°) para desplegarlas
+    const float DistanciaPastilla = 0.45f, SubePastilla = 9f; // v38: al alcance del dedo; grados más arriba que las capas
+    public const string ClavePersiana = "jcartoons_persiana_capas";
+    const float MirarArriba = 0.21f;     // cuánto hay que mirar arriba (y de la mirada; v38: unos 12°, antes 20°)
     const float MirarAbajo = -0.14f;     // al bajar la mirada (unos 8° hacia abajo) se recogen
-    const float EsperaMirada = 0.5f, EsperaRecoger = 0.6f;
+    const float EsperaMirada = 0.4f, EsperaRecoger = 0.6f;
     const float SinEditarAntes = 1f;     // segundos sin dibujar antes de que puedan salir solas
     const string AvisoMaximo = "Ya no caben más capas (máximo 12)";
 
@@ -72,13 +76,8 @@ public class CapasProfundidad : MonoBehaviour
     float zInicio, desdeEmpuje, sacudida;
     bool porMirada;                       // abiertas al mirar arriba (se recogen al bajar la mirada)
     float arribaDesde = -1f, abajoDesde = -1f;
-    Transform pastilla;
-    TMP_Text textoPastilla;
-    Renderer fondoPastilla;
-    MaterialPropertyBlock bloquePastilla;
-    string textoPastillaPuesto = "";
-    float atencionPastilla = 0.4f, verPastilla;
-    static Mesh mallaPastilla;
+    bool porPersiana;                     // v38: abiertas con la persiana (se quedan hasta que las recojas)
+    Persiana persianaArriba, tiradorArriba;
 
     // La pastillita tiene que existir desde el principio (ControlManos lo llama cada cuadro).
     public static void Asegurar()
@@ -110,7 +109,7 @@ public class CapasProfundidad : MonoBehaviour
             instancia.Cerrar();
     }
 
-    void Abrir(bool conMirada)
+    void Abrir(bool conMirada, bool conPersiana = false)
     {
         if (dibujo == null)
             dibujo = FindFirstObjectByType<Dibujo>();
@@ -124,6 +123,7 @@ public class CapasProfundidad : MonoBehaviour
         }
         raiz.gameObject.SetActive(true);
         porMirada = conMirada;
+        porPersiana = conPersiana;
         abajoDesde = -1f;
         aparece = 0f; // sale con un pequeño crecimiento
         if (control.Cabeza != null)
@@ -143,6 +143,7 @@ public class CapasProfundidad : MonoBehaviour
     {
         empujando = false;
         porMirada = false;
+        porPersiana = false;
         arribaDesde = -1f;
         if (raiz != null)
             raiz.gameObject.SetActive(false);
@@ -327,12 +328,10 @@ public class CapasProfundidad : MonoBehaviour
         {
             if (Abierta)
                 Cerrar();
-            if (pastilla != null && pastilla.gameObject.activeSelf)
-                pastilla.gameObject.SetActive(false);
             return;
         }
+        AsegurarPersianas();
         RevisarMirada();
-        ActualizarPastilla();
         if (!Abierta)
             return;
         float dt = Time.deltaTime;
@@ -425,7 +424,7 @@ public class CapasProfundidad : MonoBehaviour
             Ayuda(AyudaNormal);
         }
         // Abiertas con el botón: se cierran solas a los 20 s. Al mirar arriba: se recogen al bajar la mirada.
-        if (!porMirada && Time.time - ultimoToque > CerrarSola)
+        if (!porMirada && !porPersiana && Time.time - ultimoToque > CerrarSola)
             Cerrar();
     }
 
@@ -438,6 +437,12 @@ public class CapasProfundidad : MonoBehaviour
         if (!Abierta)
         {
             abajoDesde = -1f;
+            // v38: con la persiana (circulito lleno), mirar arriba no las abre.
+            if (Persiana.Modo(ClavePersiana))
+            {
+                arribaDesde = -1f;
+                return;
+            }
             bool libre = control.SegundosSinEditar > SinEditarAntes && !control.Ocupado && !control.PaletaAbierta
                          && !Titere.Activo && !Tutorial.EnCurso && !ExportadorVideo.Exportando;
             if (y > MirarArriba && libre)
@@ -476,135 +481,64 @@ public class CapasProfundidad : MonoBehaviour
         }
     }
 
-    // La pastillita: siempre visible (menos con las capas abiertas), chiquita, de vidrio, un poco más arriba que
-    // las capas. Más firme si la miras.
-    void ActualizarPastilla()
+    // ---------- v38: las persianas ----------
+    // Arriba, la pastillita "Capa 2 · de 5" (con su circulito: persiana o mirada). Tócala y baja la mano: se
+    // despliegan las capas. Abiertas así, un tirador debajo de la tarjeta las recoge (súbelo) o con su X.
+
+    void AsegurarPersianas()
     {
-        if (pastilla == null)
-        {
-            if (materialPanel == null)
-                BuscarMateriales();
-            ArmarPastilla();
-        }
-        float dt = Time.deltaTime;
-        // Escondida con las capas abiertas, durante el tutorial y mientras se exporta un video.
-        bool quiere = !Abierta && !Tutorial.EnCurso && !ExportadorVideo.Exportando;
-        verPastilla = Mathf.MoveTowards(verPastilla, quiere ? 1f : 0f, dt * 4f);
-        bool ver = verPastilla > 0.01f;
-        if (pastilla.gameObject.activeSelf != ver)
-            pastilla.gameObject.SetActive(ver);
-        if (!ver)
+        if (persianaArriba != null)
             return;
-        Vector3 pos;
-        Quaternion rot;
-        CartelArriba.Pose(control.Cabeza, out pos, out rot);
-        Vector3 ojos = control.Cabeza.position;
-        Vector3 dir = pos - ojos;
+        var go = new GameObject("PersianaCapas");
+        go.transform.SetParent(transform, false);
+        persianaArriba = go.AddComponent<Persiana>();
+        persianaArriba.clave = ClavePersiana;
+        persianaArriba.sentido = -1;
+        persianaArriba.ancho = AnchoPastilla;
+        persianaArriba.alto = AltoPastilla;
+        persianaArriba.pose = PosePastilla;
+        persianaArriba.visible = () => !Abierta && !Tutorial.EnCurso && !ExportadorVideo.Exportando;
+        persianaArriba.texto = () => dibujo != null ? "Capa " + (Actual + 1) + " · de " + dibujo.capas.Count : "";
+        persianaArriba.alAbrir = () => Abrir(false, true);
+        persianaArriba.puedeJalar = () => control != null && control.SegundosSinEditar > 0.6f && !control.PaletaAbierta;
+
+        var go2 = new GameObject("TiradorCapas");
+        go2.transform.SetParent(transform, false);
+        tiradorArriba = go2.AddComponent<Persiana>();
+        tiradorArriba.sentido = 1;
+        tiradorArriba.ancho = 0.05f;
+        tiradorArriba.alto = 0.012f;
+        tiradorArriba.pose = PoseTirador;
+        tiradorArriba.visible = () => Abierta && Persiana.Modo(ClavePersiana);
+        tiradorArriba.alAbrir = Cerrar;
+    }
+
+    // La pastillita: hacia el cartel de cómic, un poco más arriba, y al alcance de tu dedo.
+    void PosePastilla(Transform cabeza, out Vector3 pos, out Quaternion rot)
+    {
+        Vector3 p;
+        Quaternion q;
+        CartelArriba.Pose(cabeza, out p, out q);
+        Vector3 ojos = cabeza.position;
+        Vector3 dir = p - ojos;
         if (dir.sqrMagnitude < 1e-6f)
+            dir = cabeza.forward;
+        dir = Quaternion.AngleAxis(-SubePastilla, q * Vector3.right) * dir.normalized;
+        pos = ojos + dir * DistanciaPastilla;
+        rot = Quaternion.LookRotation(pos - ojos, Vector3.up);
+    }
+
+    // El tirador: debajo de la tarjeta (y de su ayudita).
+    void PoseTirador(Transform cabeza, out Vector3 pos, out Quaternion rot)
+    {
+        if (raiz == null)
+        {
+            pos = cabeza.position + cabeza.forward * 0.35f;
+            rot = cabeza.rotation;
             return;
-        dir = Quaternion.AngleAxis(-SubePastilla, rot * Vector3.right) * dir.normalized; // un poco más arriba
-        Vector3 p = ojos + dir * DistanciaPastilla;
-        pastilla.SetPositionAndRotation(p, Quaternion.LookRotation(p - ojos, Vector3.up));
-        pastilla.localScale = Vector3.one * Mathf.Lerp(0.85f, 1f, verPastilla);
-
-        int cur = Actual;
-        string texto = "Capa " + (cur + 1) + " · de " + dibujo.capas.Count;
-        if (texto != textoPastillaPuesto)
-        {
-            textoPastillaPuesto = texto;
-            Idioma.Poner(textoPastilla, texto);
         }
-        // Discreta si no la miras; firme si la miras.
-        bool mira = Vector3.Angle(control.Cabeza.forward, dir) < 12f;
-        atencionPastilla = Mathf.MoveTowards(atencionPastilla, mira ? 1f : 0f, dt * (mira ? 4f : 1.5f));
-        if (fondoPastilla != null)
-        {
-            if (bloquePastilla == null)
-                bloquePastilla = new MaterialPropertyBlock();
-            fondoPastilla.GetPropertyBlock(bloquePastilla);
-            bloquePastilla.SetFloat("_Atencion", atencionPastilla * verPastilla);
-            fondoPastilla.SetPropertyBlock(bloquePastilla);
-        }
-        if (textoPastilla != null)
-        {
-            float a = Mathf.Lerp(0.5f, 1f, atencionPastilla) * verPastilla;
-            if (Mathf.Abs(textoPastilla.alpha - a) > 0.01f)
-                textoPastilla.alpha = a;
-        }
-    }
-
-    void ArmarPastilla()
-    {
-        pastilla = new GameObject("PastillaCapas").transform;
-        pastilla.SetParent(transform, false);
-        var go = new GameObject("Fondo");
-        go.transform.SetParent(pastilla, false);
-        go.AddComponent<MeshFilter>().sharedMesh = MallaPastilla();
-        var r = go.AddComponent<MeshRenderer>();
-        Material m = null;
-        if (control != null && control.materialVidrio != null)
-        {
-            m = new Material(control.materialVidrio);
-            if (m.HasProperty("_Esmerilado"))
-                m.SetFloat("_Esmerilado", 0.7f);
-            if (m.HasProperty("_Opacidad"))
-                m.SetFloat("_Opacidad", 0.8f);
-            materiales.Add(m);
-        }
-        r.sharedMaterial = m != null ? m : materialPanel;
-        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        r.receiveShadows = false;
-        fondoPastilla = r;
-        textoPastilla = Texto(pastilla, "", new Vector3(0f, 0f, -0.001f), new Vector2(AnchoPastilla * 0.86f, AltoPastilla * 0.7f), 0.2f,
-                              new Color(0.12f, 0.12f, 0.16f));
-        textoPastilla.fontStyle = FontStyles.Bold;
-        pastilla.gameObject.SetActive(false);
-    }
-
-    // Una pastilla (rectángulo con las puntas redondas), con UV de 0 a 1 (para el borde del vidrio).
-    static Mesh MallaPastilla()
-    {
-        if (mallaPastilla != null)
-            return mallaPastilla;
-        const int pasos = 10;
-        float r = AltoPastilla * 0.5f, medio = AnchoPastilla * 0.5f - r;
-        var puntos = new List<Vector3>();
-        for (int k = 0; k <= pasos; k++)            // punta derecha (de abajo hacia arriba)
-        {
-            float a = -Mathf.PI * 0.5f + Mathf.PI * k / pasos;
-            puntos.Add(new Vector3(medio + Mathf.Cos(a) * r, Mathf.Sin(a) * r, 0f));
-        }
-        for (int k = 0; k <= pasos; k++)            // punta izquierda (de arriba hacia abajo)
-        {
-            float a = Mathf.PI * 0.5f + Mathf.PI * k / pasos;
-            puntos.Add(new Vector3(-medio + Mathf.Cos(a) * r, Mathf.Sin(a) * r, 0f));
-        }
-        var v = new Vector3[puntos.Count + 1];
-        var uv = new Vector2[v.Length];
-        var n = new Vector3[v.Length];
-        v[0] = Vector3.zero;
-        uv[0] = new Vector2(0.5f, 0.5f);
-        for (int i = 0; i < puntos.Count; i++)
-        {
-            v[i + 1] = puntos[i];
-            uv[i + 1] = new Vector2(puntos[i].x / AnchoPastilla + 0.5f, puntos[i].y / AltoPastilla + 0.5f);
-        }
-        for (int i = 0; i < n.Length; i++)
-            n[i] = new Vector3(0f, 0f, -1f);
-        var tri = new int[puntos.Count * 3];
-        for (int i = 0; i < puntos.Count; i++)
-        {
-            tri[i * 3] = 0;
-            tri[i * 3 + 1] = 1 + (i + 1) % puntos.Count;
-            tri[i * 3 + 2] = 1 + i;
-        }
-        mallaPastilla = new Mesh { name = "Pastilla" };
-        mallaPastilla.vertices = v;
-        mallaPastilla.uv = uv;
-        mallaPastilla.normals = n;
-        mallaPastilla.triangles = tri;
-        mallaPastilla.RecalculateBounds();
-        return mallaPastilla;
+        pos = raiz.TransformPoint(new Vector3(0f, -Alto * 0.5f - 0.04f, 0f));
+        rot = raiz.rotation;
     }
 
     // Dónde cuelga una capa que está "s" pasos adelante (+) o atrás (-) de la actual (local de la raíz).

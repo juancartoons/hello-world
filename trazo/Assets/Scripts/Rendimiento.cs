@@ -72,7 +72,8 @@ public class Rendimiento : MonoBehaviour
         else if (Nivel == 2)
         {
             hecho |= PonerBool("useDynamicFoveatedRendering", true);
-            hecho |= PonerEnum("foveatedRenderingLevel", "High");
+            // v38: "Medium" (antes "High"): baja menos el detalle; las puntas finas de las líneas ya no se pierden.
+            hecho |= PonerEnum("foveatedRenderingLevel", "Medium");
         }
         Debug.Log("TrazoVR: modo rendimiento nivel " + Nivel + " (" + Mathf.RoundToInt(Fps) + " fps)" + (hecho ? "" : " — el SDK no lo tiene"));
         var dibujo = FindFirstObjectByType<Dibujo>();

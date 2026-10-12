@@ -162,8 +162,12 @@ public class Dibujo : MonoBehaviour
     public Material materialGuia;
     [Tooltip("Color de la línea seleccionada")]
     public Material materialSeleccion;
-    [Tooltip("Rojo del borrador")]
+    [Tooltip("Color del borrador (v38: oro rosa)")]
     public Material materialBorrado;
+    [Tooltip("v38: la línea mientras la frotas para borrarla (shader de línea, oro rosa)")]
+    public Material materialBorradoLinea;
+    [Tooltip("v38: el destello al quitar un relleno (champaña)")]
+    public Material materialBorradoRelleno;
     [Tooltip("Líneas de una capa de boceto: gris lápiz")]
     public Material materialBocetoGris;
     [Tooltip("Líneas de una capa de boceto: azul")]
@@ -1051,7 +1055,9 @@ public class Dibujo : MonoBehaviour
         for (int i = 0; i < renderers.Length; i++)
         {
             originales[i] = renderers[i].sharedMaterial;
-            renderers[i].sharedMaterial = materialBorrado;
+            // La línea necesita un material de línea (si no, se aplana); el relleno, el de siempre.
+            bool esLinea = renderers[i].gameObject == t.gameObject && materialBorradoLinea != null;
+            renderers[i].sharedMaterial = esLinea ? materialBorradoLinea : materialBorrado;
         }
         yield return new WaitForSeconds(0.12f);
         if (t == null)
@@ -1070,7 +1076,15 @@ public class Dibujo : MonoBehaviour
     // Pequeño destello rojo (al borrar un nodo o un relleno).
     public void Destello(Vector3 mundo, float tamano)
     {
-        if (materialBorrado == null)
+        Destello(mundo, tamano, null);
+    }
+
+    // v38: con un material propio (por ejemplo, champaña al quitar un relleno). Null = el del borrador.
+    public void Destello(Vector3 mundo, float tamano, Material material)
+    {
+        if (material == null)
+            material = materialBorrado;
+        if (material == null)
             return;
         int libre = -1;
         for (int i = 0; i < destellos.Count; i++)
@@ -1094,6 +1108,9 @@ public class Dibujo : MonoBehaviour
             libre = destellos.Count - 1;
         }
         var d = destellos[libre];
+        var rd = d.GetComponent<Renderer>();
+        if (rd != null && rd.sharedMaterial != material)
+            rd.sharedMaterial = material;
         d.gameObject.SetActive(true);
         d.position = mundo;
         d.localScale = Vector3.one * tamano;

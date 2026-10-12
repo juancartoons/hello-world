@@ -357,6 +357,61 @@ public class Escenario : MonoBehaviour
         fotosPropias.Sort(System.StringComparer.Ordinal);
     }
 
+    // v38: ¿ese fondo es una foto tuya? (Solo esas se pueden borrar desde la ventanita.)
+    public bool EsFotoPropia(int m)
+    {
+        int k = m - 3 - CantidadFijos;
+        return k >= 0 && k < fotosPropias.Count;
+    }
+
+    // v38: borra una foto 360 tuya (la X de la ventanita, con dos toques). Si era la que estaba puesta, pasa a la
+    // realidad.
+    public bool BorrarFotoPropia(int m)
+    {
+        if (!EsFotoPropia(m))
+            return false;
+        int k = m - 3 - CantidadFijos;
+        string ruta = fotosPropias[k];
+        try
+        {
+            if (File.Exists(ruta))
+                File.Delete(ruta);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("TrazoVR: no se pudo borrar la foto 360: " + e.Message);
+            return false;
+        }
+        RenderTexture rt;
+        if (miniaturas.TryGetValue(ruta, out rt))
+        {
+            if (rt != null)
+                rt.Release();
+            miniaturas.Remove(ruta);
+        }
+        bool estaba = modo == m;
+        bool despues = modo > m;
+        ListarFotosPropias();
+        int ultimo = PlayerPrefs.GetInt(ClaveUltimo360, 3);
+        if (ultimo == m)
+            PlayerPrefs.SetInt(ClaveUltimo360, 3);
+        else if (ultimo > m)
+            PlayerPrefs.SetInt(ClaveUltimo360, ultimo - 1);
+        if (estaba)
+        {
+            PonerModo(2);
+        }
+        else if (despues)
+        {
+            // Las fotos que venían después se corren un lugar (la que está puesta sigue igual).
+            modo--;
+            if (texturaPropiaDe > k)
+                texturaPropiaDe--;
+            PlayerPrefs.SetInt(ClaveFondo, modo);
+        }
+        return true;
+    }
+
     // Dónde copiar una foto 360 nueva (la llama el buscador de imágenes).
     public static string NuevaRutaFoto360()
     {

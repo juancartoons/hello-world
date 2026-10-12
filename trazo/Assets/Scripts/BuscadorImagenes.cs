@@ -841,6 +841,10 @@ public class BuscadorImagenes : MonoBehaviour
         fondo.transform.localPosition = new Vector3(0f, 0f, 0.006f);
         fondo.transform.localScale = new Vector3(0.64f, 0.48f, 1f);
         Pintar(fondo.GetComponent<Renderer>(), materialPanel);
+        // v38: pellizca una parte vacía del panel para moverlo (pellizcar una imagen la sigue sacando del panel).
+        var mover = raiz.gameObject.AddComponent<ArrastrePanel>();
+        mover.medio = new Vector2(0.32f, 0.24f);
+        mover.puede = () => arrastrada == null;
 
         Texto(raiz, "Imágenes del Quest", new Vector3(-0.235f, 0.205f, -0.002f), new Vector2(0.15f, 0.02f), 0.2f);
         for (int i = 0; i < MaxFiltros; i++)

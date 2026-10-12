@@ -163,7 +163,7 @@ public class Trazo : MonoBehaviour
     const float toleranciaSimplificar = 0.003f;  // cuánto puede alejarse la curva al simplificar
     const float pasoMuestras = 0.004f;           // detalle de la curva final
     const int ladosTubo = 8;
-    const float puntaMinima = 0.06f;             // grosor de las puntas (fracción del centro)
+    const float puntaMinima = 0.35f;             // grosor de las puntas (fracción del centro; v38: antes 0.06, con punta redonda)
     const int maxPuntosRelleno = 200;            // el relleno sigue la curva de cerca (así no se sale de la línea)
     const int maxPuntosRellenoDibujando = 64;    // mientras dibujas con la cubeta, menos (va más rápido)
 
@@ -1007,6 +1007,43 @@ public class Trazo : MonoBehaviour
                     indices.Add(b + 1); indices.Add(b + 2); indices.Add(b + 3);
                 }
             }
+            // v38: puntas redondas (bien terminadas sobre cualquier fondo). Las líneas cerradas no tienen puntas.
+            if (!CerradoAhora && muestras.Count >= 2)
+            {
+                PuntaRedonda(inicio, 0, -1f, total, delgada, hebra, nv, e);
+                PuntaRedonda(inicio, muestras.Count - 1, 1f, total, delgada, hebra, nv, e);
+            }
+        }
+    }
+
+    // Media vuelta de vértices alrededor de la punta "i" (todos en el mismo punto: el shader los abre).
+    // uv.x = medio grosor con el signo del lado; uv.y = 0.4 x cuánto avanza más allá de la punta (de -1 a 1,
+    // negativo en el inicio). El vértice del centro (uv.x = 0) no se mueve. Ver TrazoLinea y TrazoHalo.
+    const int LadosPunta = 8;
+
+    void PuntaRedonda(int inicio, int i, float sentido, float total, float delgada, int hebra, float nv, EstiloVivo e)
+    {
+        Vector3 p = muestras[i];
+        Vector3 t = Tangente(i);
+        float h = MedioGrosor(i, total) * delgada;
+        float a = total > 0f ? largos[i] / total : 0f;
+        int centro = vertices.Count;
+        vertices.Add(p); normales.Add(t); uvs.Add(new Vector3(0f, 0f, nv)); uvs2.Add(new Vector2(hebra, a)); uvs3.Add(e.a); uvs4.Add(e.b);
+        for (int k = 1; k < LadosPunta; k++)
+        {
+            float ang = (-90f + 180f * k / LadosPunta) * Mathf.Deg2Rad;
+            float lado = Mathf.Sin(ang) >= 0f ? h : -h;
+            float avance = Mathf.Cos(ang) * sentido;
+            vertices.Add(p); normales.Add(t); uvs.Add(new Vector3(lado, 0.4f * avance, nv)); uvs2.Add(new Vector2(hebra, a)); uvs3.Add(e.a); uvs4.Add(e.b);
+        }
+        // Abanico: del vértice de la izquierda de la cinta, por la media vuelta, al de la derecha.
+        int izquierda = inicio + i * 2, derecha = izquierda + 1;
+        int anterior = izquierda;
+        for (int k = 1; k <= LadosPunta; k++)
+        {
+            int siguiente = k < LadosPunta ? centro + k : derecha;
+            indices.Add(centro); indices.Add(anterior); indices.Add(siguiente);
+            anterior = siguiente;
         }
     }
 
