@@ -294,6 +294,15 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ## 1. Próxima tanda
 
+- [ ] **Voz y fondos**: "siguiente fondo" (sin abrir el panel) y el nombre de cada fondo ("Venecia", "Roma", "Nueva York"...).
+- [ ] **"Lápiz" por voz = capa de lápiz + 2D de una vez** (en la capa actual); antes se veía la hoja pero seguía dibujando en 3D.
+- [ ] **2D / 3D en cada capa**: dos botones redondos en la tarjeta de capas (uno activo por capa); se quita el botón Libre/Plano del reloj.
+- [ ] **Borrar capas** (botón en la tarjeta).
+- [ ] **Capas nuevas al hacer algo** (maniquí, bocas...): sin capas predeterminadas; se crea una nueva después de la actual.
+- [ ] **Renombrar capas** (el número se mantiene).
+- [ ] **Instrumento por voz**: "arpa", "piano", "drum and bass"...
+- [ ] **Que al pasar entre capas no se toquen sus botones sin querer** (ver propuesta).
+
 - [x] ~~**Pastillas que se mueven**~~ (hecho en la v41: paneles flexibles).
 - [x] **Tooltips en todos los botones = las palabras de la voz** (hecho en la v42):
   - Todos los botones con etiquetita de vidrio al dejar el índice quieto cerca, como en la paleta: los del reloj, los de la mesa, la tarjeta de capas, el micrófono, el parlante, las pastillas y la flecha de girar.
