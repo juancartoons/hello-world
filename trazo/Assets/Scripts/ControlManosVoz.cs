@@ -164,14 +164,14 @@ public partial class ControlManos
     });
 
     // v44: lo que se arma solo: "línea roja" / "relleno rojo" (los 12 colores), "capa uno" ... "capa doce", y la mirada.
-    static readonly string[] ColorMasc = { "negro", "blanco", "gris", "amarillo", "naranja", "rojo", "rosado", "morado", "azul", "verde", "café", "piel" };
-    static readonly string[] ColorFem = { "negra", "blanca", "gris", "amarilla", "naranja", "roja", "rosada", "morada", "azul", "verde", "café", "piel" };
-    static readonly string[] ColorIngles = { "black", "white", "gray", "yellow", "orange", "red", "pink", "purple", "blue", "green", "brown", "skin" };
-    static readonly string[] NumerosEs = { "uno", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez", "once", "doce" };
-    static readonly string[] NumerosEn = { "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve" };
-
+    // (Las listas van DENTRO: "Comandos" se arma antes que cualquier campo escrito más abajo en el archivo.)
     static FrasesComando[] ConExtras(FrasesComando[] base0)
     {
+        string[] ColorMasc = { "negro", "blanco", "gris", "amarillo", "naranja", "rojo", "rosado", "morado", "azul", "verde", "café", "piel" };
+        string[] ColorFem = { "negra", "blanca", "gris", "amarilla", "naranja", "roja", "rosada", "morada", "azul", "verde", "café", "piel" };
+        string[] ColorIngles = { "black", "white", "gray", "yellow", "orange", "red", "pink", "purple", "blue", "green", "brown", "skin" };
+        string[] NumerosEs = { "uno", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez", "once", "doce" };
+        string[] NumerosEn = { "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve" };
         var l = new List<FrasesComando>(base0);
         l.Add(C(ComandoVoz.Hola, "Hola", "Hello", new[] { "hola" }, new[] { "hello", "hi" }));
         l.Add(C(ComandoVoz.Mirada, "Mirada", "Gaze", new[] { "mirada", "la mirada", "ojo" }, new[] { "gaze", "eye" }));
