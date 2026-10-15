@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 15 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v44***
+*Actualizado: 15 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v45***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,6 +16,18 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 4. **Build And Run**.
 
 ---
+
+## 0+. Hecho en la v45 (falta probarlo en el visor)
+
+- [x] **Dedo jeringa de verdad**: ahora se pinta **el mismo dedo índice** de la mano (desde la yema hacia el nudillo), con la orilla del "líquido" más clara. Se quitó la cápsula aparte que se salía del dedo.
+- [x] **Mano izquierda**: con el índice estirado (señalando, para tocar el micrófono o el ojo) **ya no sale el borrador**. Y después de una pausa ya no hay que abrir toda la mano: basta separar pulgar de índice y medio (o esperar medio segundo).
+- [x] **Alt con pellizco**: si tocas un tirador con el índice y luego pellizcas (aunque sea un instante después), pasa a Alt: el otro tirador vuelve a su lugar y solo se mueve ese lado. El pellizco manda siempre.
+- [x] **Voz**: **"copiar"** / **"pegar"** = las líneas seleccionadas (o la que miras), con sus rellenos; se pegan 5 cm a tu derecha. **"copiar color"** / **"pegar color"** = el color.
+- [x] Flechas de girar **más al centro**. La **mesa arriba 10 cm más cerca**.
+- [x] **Miniatura** de la capa **dentro** de la tarjeta (la tarjeta crece a la izquierda).
+- [x] **Cara nueva** (bocas y tutorial): cabeza rosada redonda cerrada abajo, ojos grandes medio cerrados mirando de lado, boca ancha con dientes (sin lengua). Dice **"hola, ¿cómo estás?"** / **"hello, how are you?"** (dos veces, con tiempo para verla).
+- [x] Fondo **Estudio de animación** reemplazado por **Atardecer en el desierto** (fondo vivo: dunas con luz dorada y sombras violeta, cielo del atardecer con cirros, primeras estrellas y polvo del viento). Voz: "desierto".
+- [ ] Si la mano izquierda sigue lenta, revisar con una prueba: ¿pasa solo después de tocar botones o siempre?
 
 ## 0+. Hecho en la v44 (falta probarlo en el visor)
 

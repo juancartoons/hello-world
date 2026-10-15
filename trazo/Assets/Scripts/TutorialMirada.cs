@@ -51,8 +51,8 @@ public class TutorialMirada : TarjetaTutorial
                     "Mira un relleno y di \"rojo\": se vuelve rojo. Di \"línea roja\" o \"relleno rojo\" para elegir justo el contorno o el interior. Si NADA brilla, el color es para lo que dibujes después (como siempre). También: \"borra esto\", \"oculta esto\", \"esta capa\", \"selecciona\".");
             case 2:
                 return Tx(
-                    "Look at something and say \"copy\": its color goes into your index finger (like the syringe). Look at something else and say \"paste\": it gets that color. Touching a color of the palette also fills your finger: then touch a line or the inside of a shape and it gets painted.",
-                    "Mira algo y di \"copiar\": su color se carga en tu índice (como la jeringa). Mira otra cosa y di \"pegar\": se pinta de ese color. Tocar un color de la paleta también llena tu dedo: luego toca una línea o el interior de una forma y se pinta.");
+                    "Look at something and say \"copy color\": its color goes into your index finger (like the syringe). Look at something else and say \"paste color\": it gets that color. (\"Copy\" and \"paste\" alone copy the LINES themselves.) Touching a color of the palette also fills your finger: then touch a line or the inside of a shape and it gets painted.",
+                    "Mira algo y di \"copiar color\": su color se carga en tu índice (como la jeringa). Mira otra cosa y di \"pegar color\": se pinta de ese color. (\"Copiar\" y \"pegar\" solos copian las LÍNEAS mismas.) Tocar un color de la paleta también llena tu dedo: luego toca una línea o el interior de una forma y se pinta.");
             default:
                 return Tx(
                     "In Nodes, look at a node and say \"corner\" (or \"wings\", \"handles\"...): now when you move one of its handles with your index, only that side moves. Say \"smooth\" and both handles line up again (a smooth curve).",

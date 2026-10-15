@@ -91,6 +91,7 @@ public partial class ControlManos : MonoBehaviour
     Gesto candidato;
     float candidatoDesde;
     bool esperarSoltarIzq;
+    float esperarSoltarDesde = -1f;   // v45: la espera dura poco (antes había que abrir TODA la mano)
     Trazo trazoActual;
     float trazandoHasta = -10f;   // v44: cuándo fue la última vez que la derecha trazaba una línea
     float inicioTrazo;
@@ -392,6 +393,7 @@ public partial class ControlManos : MonoBehaviour
             menuAbierto = false;
             CerrarPaleta();
             esperarSoltarIzq = true;
+            esperarSoltarDesde = -1f;
             OcultarModoNodos();
             ActualizarMusica(false);
             ActualizarCursor();
@@ -521,8 +523,12 @@ public partial class ControlManos : MonoBehaviour
             return false;
         float promedio = (curvaIndice + curvaMedio + curvaAnular) / 3f;
         float maximo = Mathf.Max(curvaIndice, Mathf.Max(curvaMedio, curvaAnular));
+        // v45: con el ÍNDICE estirado (señalando, por ejemplo para tocar un botón) nunca es puño: antes, con el índice
+        // a medio estirar y los otros doblados, salía el borrador.
         if (yaEnPuno)
-            return promedio < 1.3f && maximo < 1.5f && pulgarANudillo < 0.08f;
+            return curvaIndice < 1.35f && promedio < 1.3f && maximo < 1.5f && pulgarANudillo < 0.08f;
+        if (curvaIndice >= 1.2f)
+            return false;
         int doblados = (curvaIndice < 1.2f ? 1 : 0) + (curvaMedio < 1.2f ? 1 : 0) + (curvaAnular < 1.2f ? 1 : 0);
         return doblados >= 2 && promedio < 1.22f && maximo < 1.45f && pulgarANudillo < 0.075f;
     }
@@ -665,9 +671,17 @@ public partial class ControlManos : MonoBehaviour
 
         if (esperarSoltarIzq)
         {
-            if (dIndice > pellizcoSale && dMedio > pellizcoSale && dAnular > pellizcoSale && dMenique > pellizcoSale)
-                esperarSoltarIzq = false;
-            return;
+            // v45: basta con separar el pulgar del índice y del medio (el anular y el meñique quedan cerca del pulgar
+            // con la mano relajada), o esperar medio segundo con la mano quieta en otra pose.
+            if (esperarSoltarDesde < 0f)
+                esperarSoltarDesde = Time.time;
+            bool suelta = dIndice > pellizcoSale && dMedio > pellizcoSale && !EsPuno(false);
+            if (!suelta && Time.time - esperarSoltarDesde < 0.5f)
+                return;
+            esperarSoltarIzq = false;
+            esperarSoltarDesde = -1f;
+            if (!suelta)
+                return;
         }
 
         // Prioridad: pellizco de índice (dibujar) > puño (borrar) > pellizco de medio/anular.
@@ -1180,6 +1194,24 @@ public partial class ControlManos : MonoBehaviour
     // Con la V (índice y medio estirados) se mueve SOLO el tirador que tocaste (el nodo queda como esquina).
     bool asaSola, asaEnCero;
     bool asaPorPellizco;   // v43: el tirador se agarró con un pellizco (se suelta al abrir el pellizco)
+    Vector3 asaOpuestaInicio;
+
+    // v45: arrastrando un tirador con el índice, si PELLIZCAS (aunque sea un instante después de tocarlo), pasa a "Alt":
+    // el otro tirador vuelve a donde estaba y solo se mueve este. Así el pellizco manda siempre.
+    void PasarAAlt()
+    {
+        if (arrastre != Objetivo.Asa || asaSola || arrTrazo == null || arrIndice < 0 || arrIndice >= arrTrazo.nodos.Count)
+            return;
+        arrTrazo.AsegurarAsas();
+        if (arrSalida)
+            arrTrazo.asaEntrada[arrIndice] = asaOpuestaInicio;
+        else
+            arrTrazo.asaSalida[arrIndice] = asaOpuestaInicio;
+        arrTrazo.asaManual[arrIndice] = true;
+        asaSola = true;
+        asaPorPellizco = true;
+        dibujo.Mensaje("Pellizco: solo este tirador (esquina)");
+    }
     // Llevar la bolita de un tirador hasta su nodo (más cerca que esto, en metros) = tirador en cero (recto).
     const float RadioAsaEnCero = 0.012f;
 
@@ -1254,6 +1286,12 @@ public partial class ControlManos : MonoBehaviour
         factorAsaArrastre = Mathf.Max(1f, factor);
         // v43: solo este tirador si lo PELLIZCAS (como Alt) o si el nodo ya es una esquina (respeta lo que hiciste).
         asaSola = tipo == Objetivo.Asa && (asaPorPellizco || t.EsEsquina(i) || EsquinaPorVoz(t, i));
+        // v45: el otro tirador, como estaba (si a mitad del arrastre pellizcas, vuelve a su lugar y solo se mueve este).
+        if (tipo == Objetivo.Asa)
+        {
+            t.AsegurarAsas();
+            asaOpuestaInicio = salida ? t.asaEntrada[i] : t.asaSalida[i];
+        }
         asaEnCero = false;
         if (asaSola && asaPorPellizco)
             dibujo.Mensaje("Pellizco: solo este tirador (esquina)");

@@ -411,11 +411,11 @@ public class Mirada : MonoBehaviour
         if (control.GestoIzq == ControlManos.Gesto.Nodos && Nodo >= 0)
             t = en ? "say: corner · smooth" : "di: esquina · suave";
         else if (Objetivo != null && control.HayJeringa)
-            t = en ? "say: paste · copy" : "di: pegar · copiar";
+            t = en ? "say: paste color · copy color" : "di: pegar color · copiar color";
         else if (Objetivo != null && EsRelleno)
-            t = en ? "say: red · copy · delete this" : "di: rojo · copiar · borra esto";
+            t = en ? "say: red · copy color · delete this" : "di: rojo · copiar color · borra esto";
         else if (Objetivo != null)
-            t = en ? "say: blue line · copy · select" : "di: línea azul · copiar · selecciona";
+            t = en ? "say: blue line · copy · select" : "di: línea azul · copiar (la línea) · selecciona";
         if (!Voz.Activa && t.Length > 0)
             t = en ? "turn on the microphone to talk" : "prende el micrófono para hablar";
         if (sugerencia.text != t)

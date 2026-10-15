@@ -108,6 +108,26 @@ public class Lipsync : MonoBehaviour
         }
     }
 
+    // v45: la cara de muestra (y la del tutorial), al estilo de un personaje de caricatura: una cabeza rosada redonda
+    // (cerrada abajo, en curva), dos ojos grandes medio cerrados que se juntan, mirando de lado, y una boca ancha con
+    // los dientes de arriba (sin lengua). La boca y los dientes cambian juntos en las 7 bocas.
+    static readonly Color Rosado = new Color(0.97f, 0.73f, 0.8f);
+    static readonly Color ColorBoca = new Color(0.55f, 0.08f, 0.13f);
+
+    // Las 7 bocas: ancho, abertura (de la boca, en metros).
+    static readonly Vector2[] FormaBoca =
+    {
+        new Vector2(0.15f, 0.008f),   // Reposo (una sonrisa cerrada)
+        new Vector2(0.15f, 0.07f),    // A
+        new Vector2(0.17f, 0.042f),   // E
+        new Vector2(0.17f, 0.026f),   // I
+        new Vector2(0.095f, 0.062f),  // O
+        new Vector2(0.065f, 0.036f),  // U
+        new Vector2(0.13f, 0.003f),   // M
+    };
+
+    Vector3 caraCentro, caraDerecha;
+
     public void CrearMuestra(Transform cabeza)
     {
         if (dibujo == null || cabeza == null)
@@ -115,38 +135,147 @@ public class Lipsync : MonoBehaviour
         Vector3 frente = cabeza.forward;
         frente.y = 0f;
         frente = frente.sqrMagnitude > 1e-4f ? frente.normalized : Vector3.forward;
-        Vector3 derecha = Vector3.Cross(Vector3.up, frente).normalized;
-        Vector3 centro = cabeza.position + frente * 0.5f - Vector3.up * 0.05f;
+        caraDerecha = Vector3.Cross(Vector3.up, frente).normalized;
+        caraCentro = cabeza.position + frente * 0.55f - Vector3.up * 0.04f;
 
         dibujo.GuardarParaDeshacer();
         // v43: la cara de muestra va en una capa nueva ("Bocas"), adelante de todas (si ya hay 12, en la que estás).
         dibujo.AgregarCapa("Bocas", false);
-        // Cara, ojos y boca.
-        var cara = Linea(Ovalo(centro, derecha, 0.11f, 0.14f, 12, 0f), true, 0, 1f);
-        Linea(Ovalo(centro + derecha * -0.04f + Vector3.up * 0.035f, derecha, 0.009f, 0.013f, 8, 0f), true, 7, 0.7f);
-        Linea(Ovalo(centro + derecha * 0.04f + Vector3.up * 0.035f, derecha, 0.009f, 0.013f, 8, 0f), true, 7, 0.7f);
-        Vector3 centroBoca = centro - Vector3.up * 0.06f;
-        var boca = Linea(Boca(centroBoca, derecha, 0), true, 7, 0.8f);
-        if (cara == null || boca == null)
+        // La cabeza: redondeada (casi un cuadrado muy suave), cerrada abajo en curva.
+        var puntos = new List<Vector2>();
+        for (int k = 0; k < 28; k++)
+        {
+            float t = k * Mathf.PI * 2f / 28f;
+            float c = Mathf.Cos(t), sn = Mathf.Sin(t);
+            puntos.Add(new Vector2(Mathf.Sign(c) * Mathf.Pow(Mathf.Abs(c), 0.75f) * 0.13f,
+                                   Mathf.Sign(sn) * Mathf.Pow(Mathf.Abs(sn), 0.8f) * (sn > 0f ? 0.11f : 0.125f)));
+        }
+        var cara = LineaColor(Plano(puntos), Color.black, Rosado, 1.3f);
+        // La boca y los dientes de arriba (en reposo).
+        var boca = LineaColor(Plano(PuntosBoca(0)), Color.black, ColorBoca, 1.1f);
+        var dientes = LineaColor(Plano(PuntosDientes(0)), Color.black, Color.white, 0.6f);
+        // Los ojos: grandes, ovalados, juntos y salidos por arriba de la cabeza, con el párpado a media altura
+        // (mirada de "medio dormido") y las pupilas mirando de lado.
+        for (int lado = -1; lado <= 1; lado += 2)
+        {
+            Vector2 c = new Vector2(lado * 0.047f, 0.1f + (lado > 0 ? 0.004f : 0f));
+            var ojo = new List<Vector2>();
+            for (int k = 0; k < 22; k++)
+            {
+                float t = k * Mathf.PI * 2f / 22f;
+                ojo.Add(new Vector2(c.x + Mathf.Cos(t) * 0.055f, c.y + Mathf.Sin(t) * 0.043f));
+            }
+            LineaColor(Plano(ojo), Color.black, Color.white, 1.1f);
+            // El párpado: una línea casi recta un poquito arriba de la mitad del ojo.
+            var parpado = new List<Vector2>();
+            for (int k = 0; k <= 6; k++)
+            {
+                float u = k / 6f * 2f - 1f;
+                parpado.Add(new Vector2(c.x + u * 0.052f, c.y + 0.012f + 0.004f * (1f - u * u)));
+            }
+            LineaAbierta(Plano(parpado), 1.1f);
+            // La pupila, mirando de lado (a la derecha), justo bajo el párpado.
+            var pupila = new List<Vector2>();
+            for (int k = 0; k < 10; k++)
+            {
+                float t = k * Mathf.PI * 2f / 10f;
+                pupila.Add(new Vector2(c.x + 0.024f + Mathf.Cos(t) * 0.012f, c.y + 0.0f + Mathf.Sin(t) * 0.012f));
+            }
+            LineaColor(Plano(pupila), Color.black, Color.black, 0.6f);
+        }
+        if (cara == null || boca == null || dientes == null)
             return;
-        // Guarda las 7 bocas (misma línea, mismos nodos, distinta forma: así el morph sale suave).
-        var baseDatos = boca.CrearDatos();
+        // Las 7 bocas: la boca y los dientes juntos (mismos nodos, distinta forma: el morph sale suave).
+        var baseBoca = boca.CrearDatos();
+        var baseDientes = dientes.CrearDatos();
         for (int i = 0; i < poses.Length; i++)
         {
-            var d = JsonUtility.FromJson<DatosTrazo>(JsonUtility.ToJson(baseDatos));
-            d.nodos.Clear();
-            foreach (var w in Boca(centroBoca, derecha, i))
-                d.nodos.Add(w);
-            d.asaEntrada.Clear();
-            d.asaSalida.Clear();
-            d.asaManual.Clear();
             poses[i] = new PoseBoca { nombre = Nombres[i] };
-            poses[i].trazos.Add(d);
+            poses[i].trazos.Add(ConNodos(baseBoca, Plano(PuntosBoca(i))));
+            poses[i].trazos.Add(ConNodos(baseDientes, Plano(PuntosDientes(i))));
         }
         PonerBoca(0);
         modoGuardar = false;
         Avisar();
         Mensaje("Muestra de bocas lista (capa Bocas). Di \"hola\", o toca Voz, habla, Voz otra vez, luego Lipsync y Play");
+    }
+
+    static DatosTrazo ConNodos(DatosTrazo plantilla, List<Vector3> nodos)
+    {
+        var d = JsonUtility.FromJson<DatosTrazo>(JsonUtility.ToJson(plantilla));
+        d.nodos.Clear();
+        d.nodos.AddRange(nodos);
+        d.asaEntrada.Clear();
+        d.asaSalida.Clear();
+        d.asaManual.Clear();
+        return d;
+    }
+
+    // De la cara (x a la derecha, y arriba, en metros) a los nodos del dibujo.
+    List<Vector3> Plano(List<Vector2> puntos)
+    {
+        var l = new List<Vector3>(puntos.Count);
+        foreach (var p in puntos)
+        {
+            Vector3 mundo = caraCentro + caraDerecha * p.x + Vector3.up * p.y;
+            l.Add(dibujo.ProyectarEnPlano(dibujo.transform.InverseTransformPoint(mundo)));
+        }
+        return l;
+    }
+
+    // La boca i: 9 nodos (siempre los mismos): el borde de arriba casi recto (las comisuras suben) y el de abajo en U.
+    static List<Vector2> PuntosBoca(int i)
+    {
+        var f = FormaBoca[Mathf.Clamp(i, 0, FormaBoca.Length - 1)];
+        float medio = f.x * 0.5f, y0 = -0.03f;
+        var l = new List<Vector2>(9);
+        foreach (float u in new[] { -1f, -0.5f, 0f, 0.5f, 1f })
+            l.Add(new Vector2(u * medio, y0 + 0.012f * u * u));
+        foreach (float u in new[] { 0.72f, 0.25f, -0.25f, -0.72f })
+            l.Add(new Vector2(u * medio, y0 + 0.012f * u * u - f.y * Mathf.Pow(1f - u * u, 0.7f)));
+        return l;
+    }
+
+    // Los dientes de arriba: una tira blanca pegada al borde de arriba de la boca, con 4 dientes cuadraditos y su
+    // separación (16 nodos). Con la boca cerrada casi no se ven.
+    static List<Vector2> PuntosDientes(int i)
+    {
+        var f = FormaBoca[Mathf.Clamp(i, 0, FormaBoca.Length - 1)];
+        float medio = f.x * 0.5f * 0.84f, y0 = -0.031f;
+        float alto = Mathf.Clamp(f.y * 0.42f, 0.0015f, 0.02f);
+        var l = new List<Vector2>(16);
+        foreach (float u in new[] { -1f, -0.5f, 0f, 0.5f, 1f })
+            l.Add(new Vector2(u * medio, y0 + 0.012f * u * u * 0.7f));
+        // De derecha a izquierda: cada diente con sus dos esquinas de abajo, y entre diente y diente un hueco.
+        float[] us = { 0.92f, 0.56f, 0.5f, 0.44f, 0.08f, 0f, -0.08f, -0.44f, -0.5f, -0.56f, -0.92f };
+        for (int k = 0; k < us.Length; k++)
+        {
+            float u = us[k];
+            bool hueco = k == 2 || k == 5 || k == 8;
+            l.Add(new Vector2(u * medio, y0 + 0.012f * u * u * 0.6f - alto * (hueco ? 0.3f : 1f)));
+        }
+        return l;
+    }
+
+    Trazo LineaAbierta(List<Vector3> local, float grosor)
+    {
+        var d = new DatosTrazo { ancho = dibujo.AnchoNuevoLocal() * grosor, cerrado = false, relleno = false, color = Color.black };
+        d.nodos.AddRange(local);
+        return dibujo.AgregarTrazo(d);
+    }
+
+    Trazo LineaColor(List<Vector3> local, Color linea, Color relleno, float grosor)
+    {
+        var d = new DatosTrazo
+        {
+            ancho = dibujo.AnchoNuevoLocal() * grosor,
+            cerrado = true,
+            relleno = true,
+            color = linea,
+            colorFondo = new Color(relleno.r, relleno.g, relleno.b, 1f),
+        };
+        d.nodos.AddRange(local);
+        return dibujo.AgregarTrazo(d);
     }
 
     Trazo Linea(List<Vector3> local, bool cerrada, int color, float grosor)
@@ -562,12 +691,14 @@ public class Lipsync : MonoBehaviour
 
     // v44: bocas para una PALABRA (sin grabar audio): "hola" = O, L, A. Cada letra su boca, y al final descansa. Luego
     // se reproduce. Lo usa la voz ("hola") y el final del tutorial.
-    public bool GenerarDePalabra(string palabra)
+    // Devuelve cuántos segundos dura (0 = no se pudo). v45: frases enteras ("hola, ¿cómo estás?"): los espacios y las
+    // comas son una pausita con la boca cerrada.
+    public float GenerarDePalabra(string palabra)
     {
         if (dibujo == null || animacion == null || Elegir(Reposo) < 0)
         {
             Mensaje("Primero hacen falta las bocas (página Bocas de la mesa)");
-            return false;
+            return 0f;
         }
         var visemas = new List<int> { Reposo };
         foreach (char ch in (palabra ?? "").ToLowerInvariant())
@@ -582,6 +713,7 @@ public class Lipsync : MonoBehaviour
                 case 'u': case 'ú': case 'w': v = U; break;
                 case 'm': case 'b': case 'p': v = M; break;
                 case 'l': case 'n': case 'd': case 't': case 's': case 'r': case 'c': case 'z': v = E; break;
+                case ' ': case ',': case '.': v = Reposo; break;
             }
             if (v >= 0)
                 visemas.Add(v);
@@ -614,7 +746,7 @@ public class Lipsync : MonoBehaviour
         animacion.MostrarFotograma();
         if (!animacion.Reproduciendo)
             animacion.AlternarReproducir();
-        return true;
+        return f / fps;
     }
 
     void Clavar(int f, int boca)

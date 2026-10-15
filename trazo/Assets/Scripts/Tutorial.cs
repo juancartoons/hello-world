@@ -320,8 +320,8 @@ public class Tutorial : MonoBehaviour
                 }
                 break;
             case Estado.Hola:
-                // Después de decir "hola", un momento para verla hablar (otra vez = vuelve a hablar), y el final.
-                if (holaHora > 0f && Time.time - holaHora > 4f)
+                // Después de decir "hola", que se alcance a ver: la frase dos veces y un respiro, y luego el final.
+                if (holaHora > 0f && Time.time > holaHora)
                 {
                     holaHora = -1f;
                     MostrarBoton(btnHola, false);
@@ -2106,11 +2106,13 @@ public class Tutorial : MonoBehaviour
         if (estado != Estado.Hola)
             return;
         var lip = FindFirstObjectByType<Lipsync>();
-        if (lip != null && lip.GenerarDePalabra(Idioma.Ingles ? "hello" : "hola"))
+        float dura = lip != null ? lip.GenerarDePalabra(Idioma.Ingles ? "hello, how are you?" : "hola, ¿cómo estás?") : 0f;
+        if (dura > 0f)
         {
             if (fuente != null)
                 fuente.PlayOneShot(Sonidos.Magia, 0.7f);
-            holaHora = Time.time;
+            PonerVineta(Tx("\"Hello, how are you?\"", "\"¡Hola! ¿Cómo estás?\""), VinetaLinea, -1);
+            holaHora = Time.time + Mathf.Max(5f, dura * 2f + 2f);   // (holaHora = cuándo termina)
         }
     }
 

@@ -111,6 +111,9 @@ public partial class ControlManos
         }
         if (arrastre != Objetivo.Nada)
         {
+            // v45: tocaste el tirador con el índice y luego pellizcaste: pasa a Alt (solo ese lado).
+            if (!asaPorPellizco && arrastre == Objetivo.Asa && Der.valida && Der.pellizco)
+                PasarAAlt();
             // v43: el tirador pellizcado se suelta al abrir el pellizco.
             if (asaPorPellizco && (!Der.valida || !Der.pellizco))
             {

@@ -6,11 +6,14 @@ Shader "TrazoVR/CieloVivo"
     //    Las estrellas van aparte (TrazoVR/Estrellas), de verdad en 3D.
     //  - _Modo 1 = SOBRE LAS NUBES: el cielo en degradado, el sol con su resplandor y la bruma del horizonte (el mar
     //    de nubes va aparte: TrazoVR/Nubes).
+    //  - v45: _Modo 2 = ATARDECER EN EL DESIERTO: el cielo del atardecer (violeta arriba, rosado, naranja en el
+    //    horizonte), el sol bajito con su resplandor, cirros rosados y el polvo que el viento levanta a lo lejos.
+    //  - v45: _Modo 3 = las DUNAS: la malla trae su color en cada vértice (lo calcula FondosVivos.cs).
     // _Ruido: una textura de ruido que se repite (la hace FondosVivos.cs al empezar; cada canal, un tamaño distinto).
     Properties
     {
         _Ruido ("Ruido", 2D) = "gray" {}
-        _Modo ("Modo (0 universo, 1 nubes)", Float) = 0
+        _Modo ("Modo (0 universo, 1 nubes, 2 desierto, 3 dunas)", Float) = 0
         _SolDir ("Dirección del sol", Vector) = (0.35, 0.18, 0.92, 0)
     }
 
@@ -43,6 +46,7 @@ Shader "TrazoVR/CieloVivo"
             struct Attributes
             {
                 float4 positionOS : POSITION;
+                half4 color       : COLOR;
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -50,6 +54,7 @@ Shader "TrazoVR/CieloVivo"
             {
                 float4 positionCS : SV_POSITION;
                 float3 dir        : TEXCOORD0;
+                half4 color       : COLOR;
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -60,6 +65,7 @@ Shader "TrazoVR/CieloVivo"
                 UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(o);
                 o.positionCS = TransformObjectToHClip(v.positionOS.xyz);
                 o.dir = v.positionOS.xyz;
+                o.color = v.color;
                 return o;
             }
 
@@ -112,15 +118,51 @@ Shader "TrazoVR/CieloVivo"
                 return min(col, 1.6);
             }
 
+            // v45: el cielo del atardecer en el desierto.
+            half3 Desierto(float3 d)
+            {
+                float3 sol = normalize(_SolDir.xyz);
+                float h = d.y;
+                float s = saturate(dot(d, sol));
+                float alto = saturate(h * 1.6);
+                half3 col = lerp(half3(1.0, 0.6, 0.32), half3(0.88, 0.45, 0.54), smoothstep(0.0, 0.4, alto));
+                col = lerp(col, half3(0.22, 0.21, 0.47), smoothstep(0.45, 1.0, alto));
+                // Más dorado hacia el sol (cerca del horizonte).
+                col = lerp(col, half3(1.0, 0.8, 0.48), pow(s, 6.0) * 0.65 * (1.0 - alto));
+                // Cirros finos, iluminados de rosado y dorado por abajo.
+                float2 uv = d.xz / max(h, 0.06) * 0.12;
+                float n = Ruido(uv * 0.5 + float2(_Time.y * 0.003, 0.0)).r * 0.6 + Ruido(uv * 1.6).g * 0.4;
+                float nube = smoothstep(0.55, 0.8, n) * smoothstep(0.04, 0.2, h) * (1.0 - smoothstep(0.55, 0.9, h));
+                col = lerp(col, half3(1.0, 0.68, 0.62) + pow(s, 3.0) * half3(0.25, 0.15, 0.0), nube * 0.5);
+                // El sol: su disco y su resplandor.
+                col += half3(1.0, 0.88, 0.62) * smoothstep(0.9993, 0.9996, s) * 1.8;
+                col += half3(1.0, 0.62, 0.3) * (pow(s, 40.0) * 0.55 + pow(s, 6.0) * 0.14);
+                // Unas pocas estrellas que ya se asoman arriba.
+                float2 e = d.xz / max(d.y, 0.2) * 9.0;
+                float estrella = step(0.985, Ruido(e).a) * smoothstep(0.6, 0.95, h);
+                col += estrella * 0.5;
+                // El viento: polvo a ras del horizonte que pasa despacio.
+                float ang = atan2(d.x, d.z);
+                float polvo = Ruido(float2(ang * 1.2 + _Time.y * 0.012, h * 6.0)).b;
+                col = lerp(col, half3(1.0, 0.76, 0.56), smoothstep(0.07, 0.0, abs(h - 0.012)) * smoothstep(0.35, 0.8, polvo) * 0.5);
+                // Bajo el horizonte: la bruma (el mismo color de las dunas a lo lejos).
+                col = lerp(col, half3(0.96, 0.64, 0.46), smoothstep(0.015, -0.05, h));
+                return col;
+            }
+
             half4 Frag(Varyings i) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
+                if (_Modo > 2.5)
+                    return half4(i.color.rgb, 1.0);   // las dunas (color por vértice)
                 float3 d = normalize(i.dir);
                 half3 col;
                 if (_Modo < 0.5)
                     col = Universo(d);
-                else
+                else if (_Modo < 1.5)
                     col = Nubes(d);
+                else
+                    col = Desierto(d);
                 return half4(col, 1.0);
             }
             ENDHLSL

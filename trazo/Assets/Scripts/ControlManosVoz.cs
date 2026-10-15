@@ -30,7 +30,9 @@ public partial class ControlManos
         // v43
         En2D, En3D, Tinta, SiguienteFondo, FondoNombre, Instrumento, Camara, SugiereCamara, ClaveCamara, Cebolla,
         // v44: la mirada y las capas por número
-        Mirada, ColorLinea, ColorRelleno, Copiar, Pegar, Esquina, Suave, BorraEsto, OcultaEsto, EstaCapa, Selecciona, IrACapa, Hola
+        Mirada, ColorLinea, ColorRelleno, Copiar, Pegar, Esquina, Suave, BorraEsto, OcultaEsto, EstaCapa, Selecciona, IrACapa, Hola,
+        // v45
+        CopiarColor, PegarColor
     }
 
     // v43: los fondos que se pueden pedir por su nombre (el nombre exacto que tienen en Escenario).
@@ -38,7 +40,7 @@ public partial class ControlManos
     {
         "Roma de noche", "Shanghai de noche", "Canal de Venecia", "Callejón de Venecia", "Amanecer", "Atardecer en el mar",
         "Mirador", "Parque", "Camino entre flores", "Campo seco", "Golf de noche", "Azotea en Nueva York", "Sala de lujo",
-        "Cuadrícula", "Realidad", "Estudio de animación",
+        "Cuadrícula", "Realidad", "Atardecer en el desierto",
     };
 
     struct FrasesComando
@@ -149,7 +151,7 @@ public partial class ControlManos
         C(ComandoVoz.FondoNombre, "Sala de lujo", "Living room", new[] { "sala", "sala de lujo" }, new[] { "living room", "luxury" }, 12),
         C(ComandoVoz.FondoNombre, "Cuadrícula", "Grid", new[] { "cuadrícula" }, new[] { "grid" }, 13),
         C(ComandoVoz.FondoNombre, "Realidad", "Reality", new[] { "realidad", "mi cuarto" }, new[] { "reality", "passthrough" }, 14),
-        C(ComandoVoz.FondoNombre, "Estudio", "Studio", new[] { "estudio", "estudio de animación" }, new[] { "studio", "animation studio" }, 15),
+        C(ComandoVoz.FondoNombre, "Desierto", "Desert", new[] { "desierto", "dunas" }, new[] { "desert", "dunes" }, 15),
         C(ComandoVoz.Instrumento, "Piano", "Piano", new[] { "piano" }, new[] { "piano" }, Sonidos.Piano),
         C(ComandoVoz.Instrumento, "Arpa", "Harp", new[] { "arpa" }, new[] { "harp" }, Sonidos.Arpa),
         C(ComandoVoz.Instrumento, "Orquesta", "Orchestra", new[] { "orquesta" }, new[] { "orchestra" }, Sonidos.Orquesta),
@@ -173,12 +175,15 @@ public partial class ControlManos
         string[] NumerosEs = { "uno", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez", "once", "doce" };
         string[] NumerosEn = { "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve" };
         var l = new List<FrasesComando>(base0);
-        l.Add(C(ComandoVoz.Hola, "Hola", "Hello", new[] { "hola" }, new[] { "hello", "hi" }));
+        l.Add(C(ComandoVoz.Hola, "Hola", "Hello", new[] { "hola", "hola cómo estás", "cómo estás" }, new[] { "hello", "hi", "hello how are you", "how are you" }));
         l.Add(C(ComandoVoz.Mirada, "Mirada", "Gaze", new[] { "mirada", "la mirada", "ojo" }, new[] { "gaze", "eye" }));
-        l.Add(C(ComandoVoz.Copiar, "Copiar", "Copy", new[] { "copiar", "copia", "copiar color", "copia color", "copia el color" },
-                new[] { "copy", "copy color" }));
-        l.Add(C(ComandoVoz.Pegar, "Pegar", "Paste", new[] { "pegar", "pega", "pegar color", "pega color", "pega el color" },
-                new[] { "paste", "paste color" }));
+        // v45: "copiar" / "pegar" = las LÍNEAS (con sus rellenos); "copiar color" / "pegar color" = el color.
+        l.Add(C(ComandoVoz.Copiar, "Copiar", "Copy", new[] { "copiar", "copia", "cópialo", "cópiala" }, new[] { "copy", "copy it", "copy this" }));
+        l.Add(C(ComandoVoz.Pegar, "Pegar", "Paste", new[] { "pegar", "pega", "pégalo", "pégala" }, new[] { "paste", "paste it" }));
+        l.Add(C(ComandoVoz.CopiarColor, "Copiar color", "Copy color", new[] { "copiar color", "copia color", "copia el color" },
+                new[] { "copy color", "copy the color" }));
+        l.Add(C(ComandoVoz.PegarColor, "Pegar color", "Paste color", new[] { "pegar color", "pega color", "pega el color" },
+                new[] { "paste color", "paste the color" }));
         l.Add(C(ComandoVoz.Esquina, "Esquina", "Corner",
                 new[] { "esquina", "esquinas", "alas", "alitas", "manijas", "handles", "antenas", "palancas", "tiradores", "alt" },
                 new[] { "corner", "corners", "wings", "handles", "alt" }));
@@ -455,11 +460,13 @@ public partial class ControlManos
                 {
                     var lip = FindFirstObjectByType<Lipsync>();
                     if (lip != null)
-                        lip.GenerarDePalabra(Idioma.Ingles ? "hello" : "hola");
+                        lip.GenerarDePalabra(Idioma.Ingles ? "hello, how are you?" : "hola, ¿cómo estás?");
                 }
                 break;
-            case ComandoVoz.Copiar: CopiarColorVoz(); break;
-            case ComandoVoz.Pegar: PegarColorVoz(); break;
+            case ComandoVoz.Copiar: CopiarLineasVoz(); break;
+            case ComandoVoz.Pegar: PegarLineasVoz(); break;
+            case ComandoVoz.CopiarColor: CopiarColorVoz(); break;
+            case ComandoVoz.PegarColor: PegarColorVoz(); break;
             case ComandoVoz.Esquina: EsquinaVoz(true); break;
             case ComandoVoz.Suave: EsquinaVoz(false); break;
             case ComandoVoz.BorraEsto: BorraEstoVoz(); break;
@@ -562,7 +569,7 @@ public partial class ControlManos
         }
         c.a = 1f;
         CargarJeringa(c);
-        dibujo.Mensaje("Color copiado: " + NombreColor(c) + " · mira otra cosa y di \"pegar\"");
+        dibujo.Mensaje("Color copiado: " + NombreColor(c) + " · mira otra cosa y di \"pegar color\"");
     }
 
     // "Pegar": ese color a lo que miras (sin mirada: a tus líneas nuevas).
@@ -570,7 +577,7 @@ public partial class ControlManos
     {
         if (!HayJeringa)
         {
-            dibujo.Mensaje("Primero di \"copiar\" (o toca un color de la paleta)");
+            dibujo.Mensaje("Primero di \"copiar color\" (o toca un color de la paleta)");
             return;
         }
         if (!ColorAMirada(ColorJeringa, 0))
@@ -578,6 +585,71 @@ public partial class ControlManos
             dibujo.ColorNuevo = ColorJeringa;
             dibujo.Mensaje("Líneas nuevas: " + NombreColor(ColorJeringa));
         }
+    }
+
+    // v45: "copiar" / "pegar" LÍNEAS: lo que está seleccionado (o lo que señala la mirada), con sus rellenos.
+    readonly List<DatosTrazo> portapapeles = new List<DatosTrazo>();
+
+    void CopiarLineasVoz()
+    {
+        var lista = dibujo.Seleccionadas();
+        if (lista.Count == 0 && Mirada.Activa && Mirada.Objetivo != null)
+            lista.Add(Mirada.Objetivo);
+        if (lista.Count == 0)
+        {
+            dibujo.Mensaje("Selecciona líneas (o míralas con la mirada) y di \"copiar\"");
+            return;
+        }
+        portapapeles.Clear();
+        foreach (var t in lista)
+            portapapeles.Add(JsonUtility.FromJson<DatosTrazo>(JsonUtility.ToJson(t.CrearDatos())));
+        dibujo.Mensaje(portapapeles.Count == 1 ? "Línea copiada · di \"pegar\"" : portapapeles.Count + " líneas copiadas · di \"pegar\"");
+    }
+
+    void PegarLineasVoz()
+    {
+        if (portapapeles.Count == 0)
+        {
+            dibujo.Mensaje("Primero di \"copiar\" (con líneas seleccionadas o con la mirada)");
+            return;
+        }
+        if (dibujo.EsCamara(dibujo.capaActual))
+        {
+            dibujo.Mensaje("Estás en la capa de la cámara: elige otra capa para pegar");
+            return;
+        }
+        // Dónde: un poquito corrida a tu derecha (5 cm). Si lo copiado no está delante de ti, sale delante de ti.
+        var raiz = dibujo.transform;
+        Vector3 centro = Vector3.zero;
+        int n = 0;
+        foreach (var d in portapapeles)
+            foreach (var p in d.nodos)
+            {
+                centro += p;
+                n++;
+            }
+        centro = n > 0 ? raiz.TransformPoint(centro / n) : raiz.position;
+        Vector3 mundo = Cabeza != null ? Cabeza.right * 0.05f : Vector3.right * 0.05f;
+        if (Cabeza != null && Vector3.Dot(centro - Cabeza.position, Cabeza.forward) < 0.15f)
+            mundo = Cabeza.position + Cabeza.forward * 0.45f - centro;
+        Vector3 local = raiz.InverseTransformVector(mundo);
+        dibujo.GuardarParaDeshacer();
+        Trazo ultima = null;
+        foreach (var original in portapapeles)
+        {
+            var d = JsonUtility.FromJson<DatosTrazo>(JsonUtility.ToJson(original));
+            d.id = 0;
+            for (int i = 0; i < d.nodos.Count; i++)
+                d.nodos[i] += local;
+            if (d.telaBase != null)
+                for (int i = 0; i < d.telaBase.Count; i++)
+                    d.telaBase[i] += local;
+            d.hojaPunto += local;
+            ultima = dibujo.AgregarTrazo(d);
+        }
+        if (ultima != null)
+            dibujo.Seleccionar(ultima);
+        dibujo.Mensaje(portapapeles.Count == 1 ? "Línea pegada" : portapapeles.Count + " líneas pegadas");
     }
 
     void BorraEstoVoz()

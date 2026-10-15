@@ -203,7 +203,8 @@ public class CapasProfundidad : MonoBehaviour
         // La tarjeta de la capa actual: blanca con borde negro, el nombre arriba y los botones abajo.
         tarjeta = new GameObject("CapaActual").transform;
         tarjeta.SetParent(raiz, false);
-        Quad(tarjeta, "Fondo", Vector3.zero, new Vector2(Ancho, Alto), materialPanel);
+        // v45: la tarjeta es más ancha a la izquierda: ahí va la miniatura, DENTRO de la tarjeta.
+        Quad(tarjeta, "Fondo", new Vector3(-ExtraIzq * 0.5f, 0f, 0f), new Vector2(Ancho + ExtraIzq, Alto), materialPanel);
         Marco(tarjeta, materialBotonMarcado, 0.0018f, -0.0004f);
         nombre = Texto(tarjeta, "Capa 1", new Vector3(-0.035f, 0.024f, -0.002f), new Vector2(0.15f, 0.02f), 0.26f, Color.black);
         nombre.fontStyle = FontStyles.Bold;
@@ -281,7 +282,7 @@ public class CapasProfundidad : MonoBehaviour
             f.relleno = Copia(materialTransparente, new Color(0.9f, 0.93f, 1f, 0.15f));
             f.borde = Copia(materialTransparente, new Color(0.85f, 0.92f, 1f, 0.6f));
             if (f.relleno != null)
-                Quad(f.t, "Relleno", Vector3.zero, new Vector2(Ancho, Alto), f.relleno);
+                Quad(f.t, "Relleno", new Vector3(-ExtraIzq * 0.5f, 0f, 0f), new Vector2(Ancho + ExtraIzq, Alto), f.relleno);
             Marco(f.t, f.borde != null ? f.borde : materialBoton, Borde, -0.0003f);
             fantasmas.Add(f);
         }
@@ -327,11 +328,14 @@ public class CapasProfundidad : MonoBehaviour
     }
 
     // El borde de una tarjeta: 4 tiritas.
+    const float ExtraIzq = 0.068f;   // v45: lo que crece la tarjeta a la izquierda (la miniatura)
+
     static void Marco(Transform padre, Material m, float grosor, float z)
     {
-        Quad(padre, "BordeArriba", new Vector3(0f, Alto * 0.5f, z), new Vector2(Ancho + grosor, grosor), m);
-        Quad(padre, "BordeAbajo", new Vector3(0f, -Alto * 0.5f, z), new Vector2(Ancho + grosor, grosor), m);
-        Quad(padre, "BordeIzq", new Vector3(-Ancho * 0.5f, 0f, z), new Vector2(grosor, Alto + grosor), m);
+        float ancho = Ancho + ExtraIzq, cx = -ExtraIzq * 0.5f;
+        Quad(padre, "BordeArriba", new Vector3(cx, Alto * 0.5f, z), new Vector2(ancho + grosor, grosor), m);
+        Quad(padre, "BordeAbajo", new Vector3(cx, -Alto * 0.5f, z), new Vector2(ancho + grosor, grosor), m);
+        Quad(padre, "BordeIzq", new Vector3(-Ancho * 0.5f - ExtraIzq, 0f, z), new Vector2(grosor, Alto + grosor), m);
         Quad(padre, "BordeDer", new Vector3(Ancho * 0.5f, 0f, z), new Vector2(grosor, Alto + grosor), m);
     }
 
@@ -446,7 +450,7 @@ public class CapasProfundidad : MonoBehaviour
 
     void ArmarMiniatura()
     {
-        var marco = Quad(tarjeta, "MarcoMiniatura", new Vector3(-Ancho * 0.5f - LadoMini * 0.5f - 0.008f, 0f, 0.0005f),
+        var marco = Quad(tarjeta, "MarcoMiniatura", new Vector3(-Ancho * 0.5f - ExtraIzq * 0.5f + 0.002f, 0f, -0.0005f),
                          new Vector2(LadoMini + 0.004f, LadoMini + 0.004f), Copia(materialBoton, new Color(0.55f, 0.56f, 0.6f, 1f)));
         rtMini = new RenderTexture(112, 112, 24, RenderTextureFormat.ARGB32);
         rtMini.Create();
@@ -852,7 +856,7 @@ public class CapasProfundidad : MonoBehaviour
             return;
         }
         Vector3 p = raiz.InverseTransformPoint(der.indice);
-        bool cerca = Mathf.Abs(p.x) < Ancho * 0.5f + 0.05f && p.y > -Alto * 0.5f - 0.06f && p.y < Alto * 0.5f + 0.05f
+        bool cerca = Mathf.Abs(p.x) < Ancho * 0.5f + ExtraIzq + 0.03f && p.y > -Alto * 0.5f - 0.06f && p.y < Alto * 0.5f + 0.05f
                      && p.z > -0.09f && p.z < 0.09f;
         if (cerca)
         {

@@ -7,13 +7,18 @@ using UnityEngine;
 //    tu lado (siempre a la misma velocidad suave, para no marear).
 //  - SOBRE LAS NUBES: un mar de nubes debajo de ti (dos capas: la de arriba pasa más rápido), el cielo en degradado y
 //    un sol cálido a lo lejos. "Volar": las nubes pasan despacio debajo, como desde la ventana de un avión.
+//  - v45: ATARDECER EN EL DESIERTO: dunas alrededor de ti (con la luz dorada del sol bajito y sombras violeta), un cielo
+//    del atardecer con cirros rosados, las primeras estrellas y el polvo que levanta el viento a lo lejos.
 // Salen en la ventanita de fondos 360 (después de los de la app). Las flechas de girar también los giran.
 // Shaders: TrazoVR/CieloVivo, TrazoVR/Estrellas y TrazoVR/Nubes (sus materiales los pone ★ Armar escena).
 public class FondosVivos : MonoBehaviour
 {
     public const int Cantidad = 3;
-    public const int Universo = 0, Nubes = 1, Estudio = 2;
-    static readonly string[] Nombres = { "Universo", "Sobre las nubes", "Estudio de animación" };
+    public const int Universo = 0, Nubes = 1, Desierto = 2;
+    static readonly string[] Nombres = { "Universo", "Sobre las nubes", "Atardecer en el desierto" };
+    // v45: el sol del desierto, bajito (el atardecer), adelante a la derecha.
+    static readonly Vector3 SolDesierto = new Vector3(0.55f, 0.15f, 0.83f);
+    const float PisoDesierto = -1.6f, RadioDunas = 100f;
     const float RadioCielo = 110f, RadioLejanas = 100f;
     const float Caja = 80f;                                  // las estrellas cercanas llenan una caja así (metros)
     const int CuantasLejanas = 5000, CuantasCercanas = 1600;
@@ -29,7 +34,7 @@ public class FondosVivos : MonoBehaviour
     static readonly Texture2D[] miniaturas = new Texture2D[Cantidad];
 
     Material baseCielo, baseEstrellas, baseNubes, base360;
-    Transform raizUniverso, raizNubes, cercanas, raizEstudio;
+    Transform raizUniverso, raizNubes, cercanas, raizDesierto;
     Material matCercanas, matNubesAbajo, matNubesArriba;
     readonly List<Material> materiales = new List<Material>();
     readonly List<Mesh> mallas = new List<Mesh>();
@@ -44,8 +49,8 @@ public class FondosVivos : MonoBehaviour
     public static string NombreAvanzar(int cual) => cual == Nubes ? "Volar" : "Avanzar";
     // El color de detrás (la cámara y el vidrio de los menús).
     public static Color ColorFondo(int cual) => cual == Nubes ? new Color(0.7f, 0.8f, 0.93f)
-                                               : cual == Estudio ? new Color(0.93f, 0.91f, 0.86f) : new Color(0.01f, 0.012f, 0.03f);
-    // v44: el estudio no avanza (es un cuarto).
+                                               : cual == Desierto ? new Color(0.96f, 0.64f, 0.46f) : new Color(0.01f, 0.012f, 0.03f);
+    // v45: el desierto no avanza (el viento ya se mueve solo).
     public static bool PuedeAvanzar(int cual) => cual == Universo || cual == Nubes;
 
     public void Preparar(Material cielo, Material estrellas, Material nubes, Material fondo360)
@@ -72,8 +77,8 @@ public class FondosVivos : MonoBehaviour
             cercanas.gameObject.SetActive(cual == Universo);
         if (raizNubes != null)
             raizNubes.gameObject.SetActive(cual == Nubes);
-        if (raizEstudio != null)
-            raizEstudio.gameObject.SetActive(cual == Estudio);
+        if (raizDesierto != null)
+            raizDesierto.gameObject.SetActive(cual == Desierto);
         if (cual >= 0)
             Centrar(cabeza);
     }
@@ -93,7 +98,7 @@ public class FondosVivos : MonoBehaviour
         if (adelante.sqrMagnitude < 1e-4f)
             adelante = Vector3.forward;
         Quaternion giro = Quaternion.LookRotation(adelante.normalized, Vector3.up);
-        foreach (var t in new[] { raizUniverso, raizNubes, cercanas, raizEstudio })
+        foreach (var t in new[] { raizUniverso, raizNubes, cercanas, raizDesierto })
             if (t != null)
                 t.SetPositionAndRotation(pos, giro);
         Shader.SetGlobalVector(idCentro, pos);
@@ -110,6 +115,8 @@ public class FondosVivos : MonoBehaviour
             raizUniverso.position = pos;
         if (puesto == Nubes && raizNubes != null)
             raizNubes.position = pos;
+        if (puesto == Desierto && raizDesierto != null)
+            raizDesierto.position = pos;
         Shader.SetGlobalVector(idCentro, pos);
     }
 
@@ -118,7 +125,7 @@ public class FondosVivos : MonoBehaviour
     {
         if (puesto < 0)
             return false;
-        foreach (var t in new[] { raizUniverso, raizNubes, cercanas, raizEstudio })
+        foreach (var t in new[] { raizUniverso, raizNubes, cercanas, raizDesierto })
             if (t != null)
                 t.RotateAround(pivote, Vector3.up, -grados);
         return true;
@@ -168,25 +175,20 @@ public class FondosVivos : MonoBehaviour
             matCercanas.SetFloat(idAvance, 0f);
             Pieza(cercanas, "Estrellas", Cercanas(), matCercanas, Vector3.zero);
         }
-        if (cual == Estudio && raizEstudio == null)
+        if (cual == Desierto && raizDesierto == null)
         {
-            // v44: el cuarto dibujado a lápiz (ver EstudioAnimacion.cs). Se queda quieto: puedes moverte adentro.
-            raizEstudio = new GameObject("EstudioAnimacion").transform;
-            raizEstudio.SetParent(transform, false);
-            var m = NuevoMaterial(base360);
-            var tex = EstudioAnimacion.Textura();
-            if (m.HasProperty("_BaseMap"))
-                m.SetTexture("_BaseMap", tex);
-            if (m.HasProperty("_MainTex"))
-                m.SetTexture("_MainTex", tex);
-            if (m.HasProperty("_BaseColor"))
-                m.SetColor("_BaseColor", Color.white);
-            if (m.HasProperty("_Cull"))
-                m.SetFloat("_Cull", 0f);
-            m.renderQueue = 2450;
-            var cuarto = EstudioAnimacion.Cuarto();
-            mallas.Add(cuarto);
-            Pieza(raizEstudio, "Cuarto", cuarto, m, Vector3.zero);
+            // v45: el cielo del atardecer (shader TrazoVR/CieloVivo, modo 2) y las dunas (modo 3: color por vértice).
+            raizDesierto = new GameObject("Desierto").transform;
+            raizDesierto.SetParent(transform, false);
+            var cielo = NuevoMaterial(baseCielo);
+            cielo.SetFloat("_Modo", 2f);
+            cielo.SetVector("_SolDir", SolDesierto.normalized);
+            cielo.SetTexture("_Ruido", Ruido());
+            Pieza(raizDesierto, "Cielo", Esfera(RadioCielo), cielo, Vector3.zero);
+            var dunas = NuevoMaterial(baseCielo);
+            dunas.SetFloat("_Modo", 3f);
+            dunas.renderQueue = baseCielo.renderQueue + 1;   // encima del cielo
+            Pieza(raizDesierto, "Dunas", Dunas(), dunas, Vector3.zero);
         }
         if (cual == Nubes && raizNubes == null)
         {
@@ -235,6 +237,114 @@ public class FondosVivos : MonoBehaviour
         r.sharedMaterial = m;
         r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         r.receiveShadows = false;
+    }
+
+    // ---------- v45: las dunas ----------
+
+    // La altura de la arena: cerca de ti casi plana (con ondulitas); lejos, dunas grandes con su cresta.
+    static float AlturaDuna(float x, float z, float r)
+    {
+        float lejos = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(10f, 55f, r));
+        float w = x * 0.04f + Mathf.Sin(z * 0.025f) * 1.6f + Mathf.PerlinNoise(x * 0.01f + 50f, z * 0.01f + 50f) * 3f;
+        float ola = Mathf.Sin(w) * 0.5f + 0.5f;
+        ola = ola * ola * (3f - 2f * ola);   // lomas suaves, sin picos
+        float alto = 2f + Mathf.PerlinNoise(x * 0.012f + 30f, z * 0.012f + 30f) * 5f;
+        float grande = ola * alto + Mathf.PerlinNoise(x * 0.02f + 10f, z * 0.02f + 10f) * 1.6f;
+        float cerca = Mathf.PerlinNoise(x * 0.15f + 3f, z * 0.15f + 7f) * 0.18f;
+        return PisoDesierto + Mathf.Lerp(cerca, grande, lejos);
+    }
+
+    // Anillos alrededor de ti (de lejos hacia cerca: así lo cercano tapa lo lejano sin necesitar profundidad). El color
+    // de cada punto ya trae la luz del sol bajito, la sombra violeta y la bruma de la distancia.
+    Mesh Dunas()
+    {
+        const int anillos = 64, lados = 180;
+        const float rMin = 1.2f;
+        Vector3 sol = SolDesierto.normalized;
+        Color luz = new Color(1f, 0.76f, 0.5f), sombra = new Color(0.56f, 0.37f, 0.43f), bruma = new Color(0.96f, 0.64f, 0.46f);
+        var v = new List<Vector3>((anillos + 1) * (lados + 1));
+        var col = new List<Color32>(v.Capacity);
+        for (int a = 0; a <= anillos; a++)
+        {
+            float r = rMin * Mathf.Pow(RadioDunas / rMin, a / (float)anillos);
+            for (int c = 0; c <= lados; c++)
+            {
+                float ang = c / (float)lados * Mathf.PI * 2f;
+                float x = Mathf.Sin(ang) * r, z = Mathf.Cos(ang) * r;
+                float y = AlturaDuna(x, z, r);
+                v.Add(new Vector3(x, y, z));
+                const float e = 0.4f;
+                float nx = AlturaDuna(x - e, z, r) - AlturaDuna(x + e, z, r);
+                float nz = AlturaDuna(x, z - e, r) - AlturaDuna(x, z + e, r);
+                Vector3 n = new Vector3(nx, 2f * e, nz).normalized;
+                float l = Mathf.Clamp01(Vector3.Dot(n, sol) * 3f + 0.06f);
+                Color k = Color.Lerp(sombra, luz, l);
+                // Las crestas que miran al sol, un poquito más doradas; ondulitas de viento en la arena.
+                k += new Color(0.12f, 0.06f, 0f) * Mathf.Pow(l, 6f);
+                k *= 0.985f + 0.015f * Mathf.Sin(x * 2.3f + z * 0.9f + Mathf.PerlinNoise(x * 0.3f, z * 0.3f) * 4f);
+                float niebla = 1f - Mathf.Exp(-r / 42f);
+                k = Color.Lerp(k, bruma, niebla * 0.85f);
+                k.a = 1f;
+                col.Add(k);
+            }
+        }
+        var t = new List<int>(anillos * lados * 6);
+        int ancho = lados + 1;
+        for (int a = anillos - 1; a >= 0; a--)
+            for (int c = 0; c < lados; c++)
+            {
+                int i0 = a * ancho + c, i1 = i0 + 1, i2 = i0 + ancho, i3 = i2 + 1;
+                t.Add(i0); t.Add(i2); t.Add(i1);
+                t.Add(i1); t.Add(i2); t.Add(i3);
+            }
+        var m = new Mesh { name = "Dunas" };
+        m.SetVertices(v);
+        m.SetColors(col);
+        m.SetTriangles(t, 0);
+        m.RecalculateBounds();
+        mallas.Add(m);
+        return m;
+    }
+
+    static Texture2D miniDesierto;
+
+    // La miniatura del desierto (para la ventanita de fondos): el cielo del atardecer y las dunas.
+    static Texture2D MiniaturaDesierto()
+    {
+        if (miniDesierto != null)
+            return miniDesierto;
+        const int w = 256, h = 128;
+        var pix = new Color32[w * h];
+        Vector3 sol = SolDesierto.normalized;
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                float lon = (x / (float)w - 0.5f) * Mathf.PI * 2f;
+                float lat = (y / (float)h - 0.5f) * Mathf.PI;
+                var d = new Vector3(Mathf.Cos(lat) * Mathf.Sin(lon), Mathf.Sin(lat), Mathf.Cos(lat) * Mathf.Cos(lon));
+                float s = Mathf.Clamp01(Vector3.Dot(d, sol));
+                float duna = 0.02f + 0.05f * Mathf.Pow(1f - Mathf.Abs(Mathf.Sin(lon * 3f + Mathf.Sin(lon * 7f))), 2f);
+                Color c;
+                if (d.y < duna)
+                {
+                    float k = Mathf.Clamp01(Mathf.Sin(lon * 3f + 1f) * 0.5f + 0.5f);
+                    c = Color.Lerp(new Color(0.5f, 0.32f, 0.4f), new Color(0.98f, 0.7f, 0.47f), k);
+                }
+                else
+                {
+                    float alto = Mathf.Clamp01(d.y * 2.2f);
+                    c = Color.Lerp(new Color(1f, 0.6f, 0.32f), new Color(0.86f, 0.43f, 0.52f), Mathf.SmoothStep(0f, 1f, alto / 0.35f));
+                    c = Color.Lerp(c, new Color(0.2f, 0.19f, 0.44f), Mathf.SmoothStep(0.3f, 1f, alto));
+                    c += new Color(1f, 0.7f, 0.4f) * (Mathf.Pow(s, 40f) * 0.8f + Mathf.Pow(s, 6f) * 0.15f);
+                }
+                c.a = 1f;
+                pix[y * w + x] = c;
+            }
+        miniDesierto = new Texture2D(w, h, TextureFormat.RGBA32, false) { name = "MiniaturaDesierto" };
+        miniDesierto.wrapMode = TextureWrapMode.Clamp;
+        miniDesierto.SetPixels32(pix);
+        miniDesierto.Apply(false, true);
+        return miniDesierto;
     }
 
     // Una esfera para verla desde adentro (el shader calcula el color con la dirección).
@@ -484,8 +594,8 @@ public class FondosVivos : MonoBehaviour
     public static Texture2D Miniatura(int cual)
     {
         cual = Mathf.Clamp(cual, 0, Cantidad - 1);
-        if (cual == Estudio)
-            return EstudioAnimacion.Textura();
+        if (cual == Desierto)
+            return MiniaturaDesierto();
         if (miniaturas[cual] != null)
             return miniaturas[cual];
         const int w = 256, h = 128;

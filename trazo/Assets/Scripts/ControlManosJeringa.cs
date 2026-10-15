@@ -1,7 +1,8 @@
 using UnityEngine;
 
 // EL DEDO JERINGA (v44, parte de ControlManos): toca un color de la paleta y tu índice derecho se va LLENANDO de ese
-// color, como el cuerpo de una jeringa (se ve a través de la mano de vidrio).
+// color, como el cuerpo de una jeringa. v45: se pinta EL MISMO DEDO de la mano (el shader de la mano, TrazoVR/ManoVidrio),
+// desde la yema hacia el nudillo (antes era una cápsula aparte que se salía del dedo).
 //  - Con el dedo cargado, TOCA una línea = la pintas; toca DENTRO de una forma = la rellenas. No hay que elegir antes
 //    entre línea y relleno. Al pintar, el dedo se vacía.
 //  - Mientras llevas el dedo cargado, a veces cae una gotita (o dos) de tinta, como si salieras de un tintero.
@@ -19,8 +20,10 @@ public partial class ControlManos
     float nivelJeringa, jeringaDesde, proximaGota;
     Trazo jeringaCandidato;
     bool jeringaCandidatoLinea;
-    Transform tuboJeringa, liquidoJeringa, nudilloIndiceDer;
-    Material matLiquido;
+    Transform tuboJeringa, nudilloIndiceDer, yemaIndiceDer;
+    static readonly int idJeringaPunta = Shader.PropertyToID("_JCJeringaPunta");
+    static readonly int idJeringaNudillo = Shader.PropertyToID("_JCJeringaNudillo");
+    static readonly int idJeringaColor = Shader.PropertyToID("_JCJeringaColor");
     readonly Transform[] gotas = new Transform[Gotas];
     readonly Vector3[] velGota = new Vector3[Gotas];
     readonly float[] vidaGota = new float[Gotas];
@@ -41,8 +44,7 @@ public partial class ControlManos
         jeringaEsperaSalir = true;
         if (nuevo)
             nivelJeringa = 0.05f;
-        if (matLiquido != null)
-            PintarMaterial(matLiquido, colorJeringa);
+        Shader.SetGlobalColor(idJeringaColor, colorJeringa);
         proximaGota = Time.time + 0.8f;
     }
 
@@ -119,36 +121,37 @@ public partial class ControlManos
         return true;
     }
 
-    // Cada cuadro: el líquido dentro del dedo y las gotas.
+    // Cada cuadro: el color dentro del dedo (lo dibuja el shader de la mano) y las gotas.
     void ActualizarJeringa()
     {
         float dt = Time.deltaTime;
         bool ver = hayJeringa && Der.valida && !ocultarTodas;
         if (ver && tuboJeringa == null)
             ArmarJeringa();
-        if (liquidoJeringa != null && liquidoJeringa.gameObject.activeSelf != ver)
-            liquidoJeringa.gameObject.SetActive(ver);
         if (ver)
         {
             if (nudilloIndiceDer == null)
                 nudilloIndiceDer = ManosUtil.Hueso(Der.esqueleto, "Index1", "IndexProximal");
+            if (yemaIndiceDer == null)
+                yemaIndiceDer = ManosUtil.Hueso(Der.esqueleto, "IndexTip");
             nivelJeringa = Mathf.MoveTowards(nivelJeringa, 1f, dt / LlenadoSegundos);
-            Vector3 punta = Der.indice;
+            Vector3 punta = yemaIndiceDer != null ? yemaIndiceDer.position : Der.indice;
             Vector3 nudillo = nudilloIndiceDer != null ? nudilloIndiceDer.position : punta + Vector3.down * 0.07f;
-            Vector3 eje = nudillo - punta;
-            float largo = Mathf.Clamp(eje.magnitude, 0.03f, 0.1f) * 0.85f;
-            Vector3 dir = eje.sqrMagnitude > 1e-8f ? eje.normalized : Vector3.up;
-            float lleno = largo * Mathf.SmoothStep(0f, 1f, nivelJeringa);
-            Vector3 inicio = punta + dir * 0.006f;   // un poquito adentro de la yema
-            liquidoJeringa.SetPositionAndRotation(inicio + dir * lleno * 0.5f, Quaternion.FromToRotation(Vector3.up, dir));
-            liquidoJeringa.localScale = new Vector3(0.0105f, Mathf.Max(0.0005f, lleno * 0.5f), 0.0105f);
+            // Se llena hasta el 92 % (sin llegar a la palma).
+            float nivel = Mathf.SmoothStep(0f, 1f, nivelJeringa) * 0.92f;
+            Shader.SetGlobalVector(idJeringaPunta, new Vector4(punta.x, punta.y, punta.z, nivel));
+            Shader.SetGlobalVector(idJeringaNudillo, new Vector4(nudillo.x, nudillo.y, nudillo.z, 1f));
             // Llevándolo cargado: de vez en cuando cae una gotita (o dos).
-            float vel = dt > 1e-5f ? Vector3.Distance(punta, puntaAntes) / dt : 0f;
+            float vel = dt > 1e-5f ? Vector3.Distance(Der.indice, puntaAntes) / dt : 0f;
             if (nivelJeringa > 0.6f && vel > 0.12f && Time.time > proximaGota)
             {
                 SoltarGotas(punta, Random.value < 0.5f ? 1 : 2);
                 proximaGota = Time.time + Random.Range(1.2f, 2.6f);
             }
+        }
+        else
+        {
+            Shader.SetGlobalVector(idJeringaNudillo, Vector4.zero);
         }
         puntaAntes = Der.indice;
         // Las gotas caen, se achican y desaparecen (nunca se ve dónde caen).
@@ -195,21 +198,6 @@ public partial class ControlManos
     {
         tuboJeringa = new GameObject("Jeringa").transform;
         var baseMat = materialNodo;
-        var cil = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        cil.name = "Liquido";
-        Destroy(cil.GetComponent<Collider>());
-        cil.transform.SetParent(tuboJeringa, false);
-        var r = cil.GetComponent<Renderer>();
-        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        r.receiveShadows = false;
-        if (baseMat != null)
-        {
-            matLiquido = new Material(baseMat);
-            PintarMaterial(matLiquido, colorJeringa);
-            r.sharedMaterial = matLiquido;
-        }
-        liquidoJeringa = cil.transform;
-        cil.SetActive(false);
         for (int i = 0; i < Gotas; i++)
         {
             var g = GameObject.CreatePrimitive(PrimitiveType.Sphere);

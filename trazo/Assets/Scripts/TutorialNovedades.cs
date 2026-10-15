@@ -12,7 +12,7 @@ using UnityEngine;
 //                                                   11 · Capas: 2D/3D, nombre, borrar, cebolla (v43).
 //                                                   12 · La cámara (v43; v44: es una capa).
 //                                                   13 · La mirada y el dedo jeringa (v44).
-//                                                   14 · Estudio de animación y capas (v44).
+//                                                   14 · Atardecer en el desierto y capas (v44-v45).
 public class TutorialNovedades : TarjetaTutorial
 {
     static readonly Color Celeste = new Color(0.55f, 0.78f, 1f);
@@ -66,7 +66,7 @@ public class TutorialNovedades : TarjetaTutorial
             case 10: return Tx("11 · Layers 2D/3D, onion skin and export", "11 · Capas 2D/3D, cebolla y exportar");
             case 11: return Tx("12 · The camera", "12 · La cámara");
             case 12: return Tx("13 · Gaze and the syringe finger", "13 · La mirada y el dedo jeringa");
-            default: return Tx("14 · Animation studio and layers", "14 · Estudio de animación y capas");
+            default: return Tx("14 · Desert sunset and layers", "14 · Atardecer en el desierto y capas");
         }
     }
 
@@ -116,12 +116,12 @@ public class TutorialNovedades : TarjetaTutorial
                     "Cada CAPA tiene dos botones REDONDOS, 2D y 3D: cada capa recuerda el suyo (ya no está en el reloj). \"Lápiz\" por voz = lápiz y 2D de una vez. \"Nombre\" abre el teclado (\"3 · Fondo\": el número se queda). \"Borrar\": toca dos veces (deshacer la devuelve). El maniquí y las bocas crean SU capa nueva. Los botones se esconden mientras empujas las capas y salen un segundo después; se tocan a propósito (1 cm adentro). PAPEL CEBOLLA (página Animar): la clave anterior en rojo y la siguiente en verde. EXPORTAR: 1920x1080 o vertical 1080x1920, y fondo verde opcional solo en el MP4.");
             case 12:
                 return Tx(
-                    "THE EYE (under the microphone): a small sight appears in the middle of your view and what you look at glows. Say \"red\" and it turns red (\"red line\" / \"red fill\" to be exact), \"copy\" and \"paste\", \"delete this\", \"hide this\", \"this layer\", \"select\". In Nodes: \"corner\" / \"smooth\". Next to the sight it tells you what to say. THE SYRINGE: touch a color of the palette and your index fills up with it; touch a line or the inside of a shape and it gets painted (a drop or two may fall).",
-                    "EL OJO (debajo del micrófono): sale una mira chiquita en el centro de tu vista y lo que miras brilla. Di \"rojo\" y se vuelve rojo (\"línea roja\" / \"relleno rojo\" para ser exacto), \"copiar\" y \"pegar\", \"borra esto\", \"oculta esto\", \"esta capa\", \"selecciona\". En Nodos: \"esquina\" / \"suave\". Junto a la mira te dice qué decir. LA JERINGA: toca un color de la paleta y tu índice se llena; toca una línea o el interior de una forma y se pinta (a veces cae una gotita).");
+                    "THE EYE (under the microphone): a small sight appears in the middle of your view and what you look at glows. Say \"red\" and it turns red (\"red line\" / \"red fill\" to be exact), \"copy color\" and \"paste color\", \"delete this\", \"hide this\", \"this layer\", \"select\". In Nodes: \"corner\" / \"smooth\". Next to the sight it tells you what to say. THE SYRINGE: touch a color of the palette and your index fills up with it; touch a line or the inside of a shape and it gets painted (a drop or two may fall).",
+                    "EL OJO (debajo del micrófono): sale una mira chiquita en el centro de tu vista y lo que miras brilla. Di \"rojo\" y se vuelve rojo (\"línea roja\" / \"relleno rojo\" para ser exacto), \"copiar color\" y \"pegar color\", \"borra esto\", \"oculta esto\", \"esta capa\", \"selecciona\". En Nodos: \"esquina\" / \"suave\". Junto a la mira te dice qué decir. LA JERINGA: toca un color de la paleta y tu índice se llena; toca una línea o el interior de una forma y se pinta (a veces cae una gotita).");
             default:
                 return Tx(
-                    "ANIMATION STUDIO: a new living background, a whole room drawn in pencil around you (blue construction lines and graphite), with a light table, shelves and drawings hanging on a line. LAYERS: each one shows a thumbnail on its left; say \"layer 2\" to jump to it; leave your finger still on the name to rename it; delete with the little trash can (tap twice). The camera is a layer of its own (\"+ Camera\" = another one). The panels open with either hand, whatever the other one is doing.",
-                    "ESTUDIO DE ANIMACIÓN: un fondo vivo nuevo, un cuarto entero dibujado a lápiz a tu alrededor (líneas azules de construcción y grafito), con mesa de luz, repisas y dibujos colgados. CAPAS: cada una muestra su miniatura a la izquierda; di \"capa 2\" para ir a ella; deja el dedo quieto en el nombre para cambiarlo; borra con el basurerito (toca dos veces). La cámara es su propia capa (\"+ Cámara\" = otra). Las persianas se abren con cualquier mano, haga lo que haga la otra.");
+                    "DESERT SUNSET: a new living background: dunes all around you lit by a low golden sun, violet shadows, a pink and purple sky with thin clouds, the first stars and the wind lifting dust far away. Say \"desert\". LAYERS: each one shows a thumbnail on its left; say \"layer 2\" to jump to it; leave your finger still on the name to rename it; delete with the little trash can (tap twice). The camera is a layer of its own (\"+ Camera\" = another one). The panels open with either hand, whatever the other one is doing.",
+                    "ATARDECER EN EL DESIERTO: un fondo vivo nuevo: dunas a tu alrededor con la luz dorada del sol bajito, sombras violeta, un cielo rosado y morado con nubes finas, las primeras estrellas y el viento levantando polvo a lo lejos. Di \"desierto\". CAPAS: cada una muestra su miniatura a la izquierda; di \"capa 2\" para ir a ella; deja el dedo quieto en el nombre para cambiarlo; borra con el basurerito (toca dos veces). La cámara es su propia capa (\"+ Cámara\" = otra). Las persianas se abren con cualquier mano, haga lo que haga la otra.");
             case 11:
                 return Tx(
                     "THE CAMERA: it is a LAYER of its own, in front of all the others (or say \"camera\"). In 2D it points straight at your plane; in 3D it finds the best angle by itself. PINCH it with your RIGHT hand and move it: it orbits around what it's looking at. With your LEFT hand: it slides without changing where it looks. The monitor above it shows what it sees. \"Suggest\" = 3 framings to choose from. \"Key\" saves it on that frame: between keys the camera travels smoothly (diamonds on the timeline). Photos and videos are exported from it. \"Remove\" = automatic framing again.",
