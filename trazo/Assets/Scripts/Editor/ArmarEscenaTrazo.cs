@@ -563,7 +563,7 @@ public static class ArmarEscenaTrazo
         Texto(contenido.transform, "JCartoons", new Vector3(0f, 0.09f, -0.001f), new Vector2(0.09f, 0.014f), Color.black);
         panel.textoEstado = Texto(contenido.transform, "", new Vector3(0f, -0.137f, -0.001f), new Vector2(0.098f, 0.022f), new Color(0.2f, 0.2f, 0.25f));
 
-        // Dos columnas: Plano / Fondo · Guardar / Cargar · Borrar todo / Capas · Esfera / Cubo · Cilindro / A líneas
+        // Dos columnas: (v43: sin Plano) Fondo · Guardar / Cargar · Borrar todo / Capas · Esfera / Cubo · Cilindro / A líneas
         // · ← Girar / Girar → · Vista limpia / Mesa. El imán ahora está en la paleta (palma izquierda).
         // v38: los botones un poco más chicos y más separados (antes se tocaba sin querer el de al lado).
         string[] nombres = { "Libre (3D)", "Fondo: Cuadrícula", "Guardar", "Archivos", "Borrar todo", "Esfera", "Cubo", "Cilindro", "A líneas", "Capas: 1",
@@ -811,7 +811,11 @@ public static class ArmarEscenaTrazo
         var animar = Pagina(paginas, "PaginaAnimar");
         panel.paginaAnimar = animar.gameObject;
         panel.paginaMedios = null;
-        panel.btnVideoAnim = BotonAncho(animar, "Video anim", new Vector3(-0.17f, 0.04f, 0f), matBoton, matBotonMarcado);
+        panel.btnVideoAnim = BotonAncho(animar, "Exportar", new Vector3(-0.17f, 0.04f, 0f), matBoton, matBotonMarcado);
+        // v43: el formato del video, el fondo verde (solo en el MP4) y el papel cebolla.
+        panel.btnFormato = BotonAncho(animar, "Horizontal 16:9", new Vector3(-0.055f, 0.04f, 0f), matBoton, matBotonMarcado);
+        panel.btnVerde = BotonAncho(animar, "Fondo verde: No", new Vector3(0.06f, 0.04f, 0f), matBoton, matBotonMarcado);
+        panel.btnCebolla = BotonAncho(animar, "Cebolla: No", new Vector3(0.175f, 0.04f, 0f), matBoton, matBotonMarcado);
         panel.btnGrabar = null;
         panel.btnPausaGrabar = null;
         panel.btnVideoProceso = null;
@@ -836,8 +840,8 @@ public static class ArmarEscenaTrazo
         panel.btnCargar = null;
         panel.btnBorrarTodo = null;
         panel.textoMedios = Texto(animar, "", new Vector3(0f, -0.048f, -0.001f), new Vector2(0.46f, 0.018f), new Color(0.2f, 0.2f, 0.25f));
-        Texto(animar, "Toca la barra = ir a un fotograma · pellizca una clave = moverla · Foto, SVG y Grabar proceso: Mis archivos → Compartir", new Vector3(0f, -0.085f, -0.001f), new Vector2(0.46f, 0.016f), new Color(0.3f, 0.3f, 0.35f));
-        Texto(animar, "Próximamente aquí: papel cebolla y cuadro a cuadro", new Vector3(0f, -0.115f, -0.001f), new Vector2(0.46f, 0.016f), new Color(0.45f, 0.45f, 0.5f));
+        Texto(animar, "Toca la barra = ir a un fotograma · pellizca una clave = moverla · Foto y SVG: Mis archivos → Compartir", new Vector3(0f, -0.085f, -0.001f), new Vector2(0.46f, 0.016f), new Color(0.3f, 0.3f, 0.35f));
+        Texto(animar, "Cebolla: la clave anterior (roja) y la siguiente (verde) · Cámara: en las Capas (rombitos = sus claves)", new Vector3(0f, -0.115f, -0.001f), new Vector2(0.46f, 0.016f), new Color(0.45f, 0.45f, 0.5f));
 
         // ----- Página Bocas -----
         var bocas = Pagina(paginas, "PaginaBocas");

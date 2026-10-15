@@ -126,8 +126,9 @@ public class ExportadorVideo : MonoBehaviour
         dibujo.EncuadreExportar(1.15f, out posicion, out rotacion, out campoVision);
         // v43: el formato. En vertical se abre la vista para que el dibujo quepa de lado a lado.
         bool vertical = Vertical;
+        bool conCamara = CamaraEscena.Hay;   // v43: la cámara (con sus claves) manda
         int anchoVideo = vertical ? 1080 : 1920, altoVideo = vertical ? 1920 : 1080;
-        if (vertical)
+        if (vertical && !conCamara)
         {
             float t = Mathf.Tan(campoVision * 0.5f * Mathf.Deg2Rad) * altoVideo / anchoVideo;
             campoVision = Mathf.Min(2f * Mathf.Atan(t) * Mathf.Rad2Deg, 120f);
@@ -152,6 +153,8 @@ public class ExportadorVideo : MonoBehaviour
             animacion.MostrarFotograma();
             if (dibujo.temblor != null)
                 dibujo.temblor.PonerTiempo(f / (float)fps);
+            if (conCamara && CamaraEscena.PoseMundo(f, out posicion, out rotacion, out campoVision))
+                captura.Poner(posicion, rotacion, campoVision);
             if (dibujo.figuras != null)
                 dibujo.figuras.PonerVista(posicion);
             ok = envio.Cuadro();

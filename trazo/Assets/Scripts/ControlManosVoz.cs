@@ -28,7 +28,7 @@ public partial class ControlManos
         Plano, Fondo, Archivos, Esfera, Cubo, Cilindro, ALineas, Ayuda, Inicio, Zoom, Animar, Bocas, Titere, Video,
         Muestra, Oculta, Lapiz, Liberar, Avanza, Universo, Nubes, Color, Grueso, Fino, Espanol, Ingles,
         // v43
-        En2D, En3D, Tinta, SiguienteFondo, FondoNombre, Instrumento
+        En2D, En3D, Tinta, SiguienteFondo, FondoNombre, Instrumento, Camara, SugiereCamara, ClaveCamara, Cebolla
     }
 
     // v43: los fondos que se pueden pedir por su nombre (el nombre exacto que tienen en Escenario).
@@ -125,6 +125,11 @@ public partial class ControlManos
         C(ComandoVoz.En2D, "2D", "2D", new[] { "dos de", "dos d", "en dos de", "plano dos de" }, new[] { "two d", "two dee", "flat" }),
         C(ComandoVoz.En3D, "3D", "3D", new[] { "tres de", "tres d", "en tres de", "libre" }, new[] { "three d", "three dee", "free" }),
         C(ComandoVoz.Tinta, "Tinta", "Ink", new[] { "tinta" }, new[] { "ink" }),
+        C(ComandoVoz.Camara, "Cámara", "Camera", new[] { "cámara", "la cámara" }, new[] { "camera" }),
+        C(ComandoVoz.SugiereCamara, "Sugiere", "Suggest", new[] { "sugiere", "sugiere cámara", "encuadre", "encuadra" },
+          new[] { "suggest", "suggest camera", "frame it" }),
+        C(ComandoVoz.ClaveCamara, "Clave de cámara", "Camera key", new[] { "clave de cámara", "clave cámara" }, new[] { "camera key" }),
+        C(ComandoVoz.Cebolla, "Cebolla", "Onion skin", new[] { "cebolla", "papel cebolla" }, new[] { "onion", "onion skin" }),
         C(ComandoVoz.SiguienteFondo, "Siguiente fondo", "Next background",
           new[] { "siguiente fondo", "otro fondo", "cambia fondo", "cambia el fondo" }, new[] { "next background", "change background" }),
         C(ComandoVoz.FondoNombre, "Roma", "Rome", new[] { "roma" }, new[] { "rome" }, 0),
@@ -357,6 +362,10 @@ public partial class ControlManos
                 if (dibujo.temblor != null)
                     dibujo.temblor.PonerBoceto(false);
                 break;
+            case ComandoVoz.Camara: CamaraEscena.Alternar(); break;
+            case ComandoVoz.SugiereCamara: CamaraEscena.SugerirVoz(); break;
+            case ComandoVoz.ClaveCamara: CamaraEscena.AgregarClave(); break;
+            case ComandoVoz.Cebolla: PapelCebolla.Alternar(); break;
             case ComandoVoz.En2D: dibujo.PonerPlano(true); break;
             case ComandoVoz.En3D: dibujo.PonerPlano(false); break;
             case ComandoVoz.SiguienteFondo: SiguienteFondoVoz(); break;

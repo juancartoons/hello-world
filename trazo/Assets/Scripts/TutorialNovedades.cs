@@ -9,6 +9,8 @@ using UnityEngine;
 //  4 · Vidrio, luz en tu dedo y etiquetas.           8 · Girar con las flechitas de abajo (v42).
 //                                                    9 · Paneles flexibles (v41).
 //                                                   10 · Fondos vivos: universo y nubes (v42).
+//                                                   11 · Capas: 2D/3D, nombre, borrar, cebolla (v43).
+//                                                   12 · La cámara (v43).
 public class TutorialNovedades : TarjetaTutorial
 {
     static readonly Color Celeste = new Color(0.55f, 0.78f, 1f);
@@ -26,7 +28,7 @@ public class TutorialNovedades : TarjetaTutorial
     readonly List<Vector3> otra = new List<Vector3>();
     readonly List<Vector3> tramo = new List<Vector3>();
 
-    protected override int Paginas => 10;
+    protected override int Paginas => 12;
 
     protected override void ArmarExtra()
     {
@@ -58,7 +60,9 @@ public class TutorialNovedades : TarjetaTutorial
             case 6: return Tx("7 · Timeline with gestures", "7 · Línea de tiempo con gestos");
             case 7: return Tx("8 · Turning with the arrows", "8 · Girar con las flechas");
             case 8: return Tx("9 · Flexible panels", "9 · Paneles flexibles");
-            default: return Tx("10 · Living backgrounds", "10 · Fondos vivos");
+            case 9: return Tx("10 · Living backgrounds", "10 · Fondos vivos");
+            case 10: return Tx("11 · Layers 2D/3D, onion skin and export", "11 · Capas 2D/3D, cebolla y exportar");
+            default: return Tx("12 · The camera", "12 · La cámara");
         }
     }
 
@@ -102,10 +106,18 @@ public class TutorialNovedades : TarjetaTutorial
                 return Tx(
                     "FLEXIBLE PANELS: PINCH a pill (without pulling it) and carry it to the TOP or the BOTTOM of your view. At the top you pull it DOWN and its panel unfolds downward: the desk at the top puts its tabs and pages UNDER the player; the layers at the bottom are seen from above. Both pills on the same edge sit side by side. If you open both from the same edge, they arrange themselves one at the top and one at the bottom. It's remembered.",
                     "PANELES FLEXIBLES: PELLIZCA una pastillita (sin jalarla) y llévala ARRIBA o ABAJO de tu vista. Arriba se jala HACIA ABAJO y su panel se despliega hacia abajo: la mesa arriba deja sus pestañas y páginas DEBAJO del reproductor; las capas abajo se ven desde arriba. Las dos pastillas en la misma orilla se ponen lado a lado. Si abres las dos desde la misma orilla, se acomodan una arriba y otra abajo. Se recuerda.");
+            case 10:
+                return Tx(
+                    "Each LAYER has two ROUND buttons, 2D and 3D: each layer remembers its own (it's no longer on the watch). \"Pencil\" by voice = pencil + 2D at once. \"Name\" opens the keyboard (\"3 · Background\": the number stays). \"Delete\": tap twice (undo brings it back). The mannequin and the mouths make their OWN new layer. Buttons hide while you push the layers and come back a second later; press them on purpose (1 cm in). ONION SKIN (Animate page): the previous key in red and the next one in green. EXPORT: 1920x1080 or vertical 1080x1920, and an optional green background only in the MP4.",
+                    "Cada CAPA tiene dos botones REDONDOS, 2D y 3D: cada capa recuerda el suyo (ya no está en el reloj). \"Lápiz\" por voz = lápiz y 2D de una vez. \"Nombre\" abre el teclado (\"3 · Fondo\": el número se queda). \"Borrar\": toca dos veces (deshacer la devuelve). El maniquí y las bocas crean SU capa nueva. Los botones se esconden mientras empujas las capas y salen un segundo después; se tocan a propósito (1 cm adentro). PAPEL CEBOLLA (página Animar): la clave anterior en rojo y la siguiente en verde. EXPORTAR: 1920x1080 o vertical 1080x1920, y fondo verde opcional solo en el MP4.");
             default:
                 return Tx(
-                    "LIVING BACKGROUNDS (not photos: the app draws them). UNIVERSE: thousands of stars around you, the closest ones truly in 3D, the Milky Way and colorful nebulae; there is no floor, you float in space. ABOVE THE CLOUDS: a sea of clouds below you and a warm sun far away. In the 360 window, \"Fly\" makes the stars or the clouds pass slowly by (always gently, so it doesn't make you dizzy). Also by voice: \"universe\", \"clouds\", \"fly\".",
-                    "FONDOS VIVOS (no son fotos: los dibuja la app). UNIVERSO: miles de estrellas a tu alrededor, las cercanas de verdad en 3D, la Vía Láctea y nebulosas de colores; no hay piso, flotas en el espacio. SOBRE LAS NUBES: un mar de nubes debajo de ti y un sol cálido a lo lejos. En la ventanita de fondos, \"Avanzar\" hace que las estrellas o las nubes pasen despacio (siempre suave, para no marear). También con la voz: \"universo\", \"nubes\", \"avanzar\".");
+                    "THE CAMERA: Layers > \"Camera\" (or say \"camera\"). In 2D it points straight at your plane; in 3D it finds the best angle by itself. PINCH it with your RIGHT hand and move it: it orbits around what it's looking at. With your LEFT hand: it slides without changing where it looks. The monitor above it shows what it sees. \"Suggest\" = 3 framings to choose from. \"Key\" saves it on that frame: between keys the camera travels smoothly (diamonds on the timeline). Photos and videos are exported from it. \"Remove\" = automatic framing again.",
+                    "LA CÁMARA: Capas > \"Cámara\" (o di \"cámara\"). En 2D apunta de frente a tu plano; en 3D busca sola el mejor ángulo. PELLÍZCALA con la DERECHA y muévela: gira alrededor de lo que mira. Con la IZQUIERDA: se corre sin cambiar hacia dónde mira. El monitor de encima muestra lo que ve. \"Sugiere\" = 3 encuadres para elegir. \"Clave\" la guarda en ese fotograma: entre claves la cámara viaja suave (rombitos en la línea de tiempo). Fotos y videos salen desde ella. \"Quitar\" = encuadre automático otra vez.");
+            case 9:
+                return Tx(
+                    "LIVING BACKGROUNDS (not photos: the app draws them). UNIVERSE: thousands of stars around you, the closest ones truly in 3D, and small colorful nebulae far away; there is no floor, you float in space. ABOVE THE CLOUDS: a sea of clouds below you and a warm sun far away. In the 360 window, \"Fly\" makes the stars or the clouds pass slowly by (always gently, so it doesn't make you dizzy). Also by voice: \"universe\", \"clouds\", \"fly\".",
+                    "FONDOS VIVOS (no son fotos: los dibuja la app). UNIVERSO: miles de estrellas a tu alrededor, las cercanas de verdad en 3D, y pequeñas nebulosas de colores a lo lejos; no hay piso, flotas en el espacio. SOBRE LAS NUBES: un mar de nubes debajo de ti y un sol cálido a lo lejos. En la ventanita de fondos, \"Avanzar\" hace que las estrellas o las nubes pasen despacio (siempre suave, para no marear). También con la voz: \"universo\", \"nubes\", \"avanzar\".");
         }
     }
 
@@ -140,7 +152,9 @@ public class TutorialNovedades : TarjetaTutorial
             case 6: AnimarBarra(t); break;
             case 7: AnimarGiro(t); break;
             case 8: AnimarFlexibles(t); break;
-            default: AnimarVivos(t); break;
+            case 9: AnimarVivos(t); break;
+            case 10: AnimarPersianaArriba(t); break;
+            default: AnimarRespira(t); break;
         }
     }
 

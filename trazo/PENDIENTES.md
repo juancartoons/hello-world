@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 12 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v42***
+*Actualizado: 15 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v43***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,6 +16,48 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 4. **Build And Run**.
 
 ---
+
+## 0+. Hecho en la v43 (falta probarlo en el visor)
+
+**La cámara** (nueva "capa" de cámara)
+- [x] Capas → botón **Cámara** (o di **"cámara"**). Se ve una camarita con su **cuadro** (16:9 o 9:16 según el formato de Exportar) y encima un **monitor** en vivo con sus botones: **Clave, Quita, Sugiere, + / −** (zoom) y **Quitar**.
+- [x] En **2D** apunta de frente al plano de tu capa. En **3D** se pone sola en el mejor ángulo.
+- [x] **Pellizco derecho** = la mueves y gira alrededor de lo que mira. **Pellizco izquierdo** = se corre sin cambiar hacia dónde mira.
+- [x] **Sugiere** (o di "sugiere" / "encuadre"): prueba 28 ángulos y propone los **3 mejores** (llena más el cuadro, menos líneas encimadas, deja aire arriba). Salen 3 miniaturas encima del monitor: toca una.
+- [x] **Cámara animada**: "Clave" (o "clave de cámara") la guarda en el fotograma; entre claves viaja suave. Con claves, moverla guarda la clave sola. Sus claves salen como **rombitos** encima de la barra.
+- [x] Fotos y videos salen desde la cámara. **Quitar** = encuadre automático. Se guarda con el proyecto y entra en deshacer.
+
+**Capas**
+- [x] Botones **redondos 2D / 3D** en cada capa (cada capa recuerda el suyo). Se quitó el botón Plano del reloj.
+- [x] **Borrar capa** (toca dos veces; deshacer la devuelve; las de encima bajan un número). Ya no hay capas fijas: siempre queda al menos una.
+- [x] **Nombre**: el teclado del Quest; se muestra "3 · Fondo" (el número se queda).
+- [x] El **maniquí** y las **bocas** crean su propia capa nueva ("Maniquí", "Bocas").
+- [x] Mientras empujas las capas, los botones se **esconden** y salen 1 s después de que todo queda quieto. Se tocan **a propósito**: el dedo llega de frente y se activa 1 cm detrás del botón.
+
+**Voz**
+- [x] **"Lápiz"** = lápiz y 2D de una vez en la capa actual; **"tinta"** = sin lápiz; **"dos de" / "tres de"**.
+- [x] **"Siguiente fondo"** (sin abrir la ventanita) y cada fondo **por su nombre**: roma, shanghai, venecia, callejón, amanecer, atardecer, mirador, parque, flores, campo, golf, nueva york, sala, cuadrícula, realidad (y universo, nubes).
+- [x] **Instrumento por voz**: piano, arpa, orquesta, cajita, japón, post punk, drum and bass, dubstep, marimba.
+- [x] "exportar", "cebolla", "cámara", "sugiere", "clave de cámara".
+
+**Animación y exportar**
+- [x] **Papel cebolla** (página Animar → "Cebolla"): con la animación en pausa se ven la clave anterior (roja) y la siguiente (verde) de tu capa. No salen en fotos ni videos.
+- [x] **Exportar** (antes "Video"): **1920x1080** horizontal o **1080x1920** vertical, y **fondo verde** opcional (solo en el MP4).
+- [x] "Grabar proceso" se quitó de la vista (el código queda para después).
+
+**Nodos**
+- [x] **Pellizco derecho** sobre un tirador = se mueve solo ese lado (como Alt), con un campo invisible más grande. El índice sigue moviendo nodos y tiradores normales. Se quitó el gesto de la V.
+- [x] Una esquina ya rota **respeta siempre** sus lados (no se vuelve a alinear sola).
+
+**Otros**
+- [x] La mesa arriba, 4.5 cm más cerca. La **mano izquierda** también toca las flechas de girar, el micrófono y las pastillas (plegadas y desplegadas).
+- [x] **Universo**: sin las formas grises estiradas; nebulosas más chicas, lejanas y redondeadas.
+- [x] Fondos: se quitó la **avenida ancha** y la **sala de lujo repetida**.
+- [x] Novedades: páginas **11 · Capas 2D/3D, cebolla y exportar** y **12 · La cámara**.
+
+**Para después**
+- [ ] **Estudio de animación** (fondo nuevo): se dejó para otra versión.
+- [ ] Meter los idiomas de la voz dentro de la app (solo para la versión final del concurso).
 
 ## 0+. Hecho en la v42 (falta probarlo en el visor)
 

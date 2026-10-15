@@ -366,6 +366,12 @@ public static class Exportar
 
         void Renderizar()
         {
+            RenderizarEn(cam, rt);
+        }
+
+        // v43: lo usa también la cámara del dibujo (su monitor y las miniaturas de Sugiere).
+        public static void RenderizarEn(Camera cam, RenderTexture rt)
+        {
             var pedido = new RenderPipeline.StandardRequest { destination = rt };
             if (RenderPipeline.SupportsRenderRequest(cam, pedido))
             {

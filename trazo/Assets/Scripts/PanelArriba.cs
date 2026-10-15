@@ -83,6 +83,9 @@ public class PanelArriba : MonoBehaviour
     public BotonTocable btnHebras, btnGrosorVivo, btnCicloTemblor, btnImagenesVer;
     public BotonTocable btnSuavidad, btnVelocidadTemblor, btnBoceto, btnUnirPlano, btnIman;
     public TMP_Text textoMedios;
+    // v43: en la página Animar: el formato del video, el fondo verde y el papel cebolla.
+    public BotonTocable btnFormato, btnVerde, btnCebolla;
+    readonly List<Transform> marcasCamara = new List<Transform>();
 
     [Header("Bocas")]
     public BotonTocable[] btnBocas = new BotonTocable[0];
@@ -240,7 +243,29 @@ public class PanelArriba : MonoBehaviour
         if (btnQuitarClave != null)
             btnQuitarClave.PonerTexto("Quita clave");
         if (btnVideoAnim != null)
-            btnVideoAnim.PonerTexto("Video");
+            btnVideoAnim.PonerTexto("Exportar");   // v43
+        BotonTocable.PonerNombre(btnFormato, "Formato del video");
+        BotonTocable.PonerNombre(btnVerde, "Fondo verde (solo en el video)");
+        BotonTocable.PonerVoz(btnCebolla, ControlManos.ComandoVoz.Cebolla);
+        Conectar(btnFormato, () =>
+        {
+            ExportadorVideo.Vertical = !ExportadorVideo.Vertical;
+            if (dibujo != null)
+                dibujo.Mensaje(ExportadorVideo.Vertical ? "Video vertical 1080x1920 (celular)" : "Video horizontal 1920x1080");
+            Refrescar();
+        });
+        Conectar(btnVerde, () =>
+        {
+            ExportadorVideo.FondoVerde = !ExportadorVideo.FondoVerde;
+            if (dibujo != null)
+                dibujo.Mensaje(ExportadorVideo.FondoVerde ? "Fondo verde: Sí (solo en el MP4, para recortarlo)" : "Fondo verde: No (blanco)");
+            Refrescar();
+        });
+        Conectar(btnCebolla, () =>
+        {
+            PapelCebolla.Alternar();
+            Refrescar();
+        });
 
         if (animacion != null)
         {
@@ -1265,6 +1290,38 @@ public class PanelArriba : MonoBehaviour
                 if (marcas[i].gameObject.activeSelf)
                     marcas[i].gameObject.SetActive(false);
 
+            // v43: las claves de la CÁMARA: rombitos encima de la barra.
+            int nc = 0;
+            foreach (var k in CamaraEscena.Claves)
+            {
+                if (!EnVentana(k.fotograma))
+                    continue;
+                if (nc >= marcasCamara.Count)
+                {
+                    var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    go.name = "MarcaCamara";
+                    Destroy(go.GetComponent<Collider>());
+                    go.transform.SetParent(contenido.transform, false);
+                    go.transform.localRotation = Quaternion.Euler(0f, 0f, 45f);
+                    go.transform.localScale = new Vector3(0.007f, 0.007f, 0.004f);
+                    var r = go.GetComponent<Renderer>();
+                    var rc = cabezal != null ? cabezal.GetComponent<Renderer>() : null;
+                    if (rc != null)
+                        r.sharedMaterial = rc.sharedMaterial;
+                    else if (materialClave != null)
+                        r.sharedMaterial = materialClave;
+                    r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    marcasCamara.Add(go.transform);
+                }
+                var mc = marcasCamara[nc++];
+                if (!mc.gameObject.activeSelf)
+                    mc.gameObject.SetActive(true);
+                mc.localPosition = PosicionEnBarra(k.fotograma, -0.005f) + new Vector3(0f, 0.022f, 0f);
+            }
+            for (int i = nc; i < marcasCamara.Count; i++)
+                if (marcasCamara[i].gameObject.activeSelf)
+                    marcasCamara[i].gameObject.SetActive(false);
+
             if (textoFotograma != null)
             {
                 string texto = "Fotograma " + (animacion.Fotograma + 1) + " / " + Animacion.TotalFotogramas;
@@ -1460,8 +1517,20 @@ public class PanelArriba : MonoBehaviour
         else if (!string.IsNullOrEmpty(Galeria.UltimoGuardado))
             texto = Galeria.UltimoGuardado;
         else
-            texto = "Video anim: la animación en MP4, en Descargas → JCartoons";
+            texto = "Exportar: la animación en MP4 (" + ExportadorVideo.NombreFormato + "), en Descargas → JCartoons";
         textoMedios.text = Idioma.T(texto);
+        if (btnFormato != null)
+            btnFormato.PonerTexto(ExportadorVideo.Vertical ? "Vertical 9:16" : "Horizontal 16:9");
+        if (btnVerde != null)
+        {
+            btnVerde.PonerTexto(ExportadorVideo.FondoVerde ? "Fondo verde: Sí" : "Fondo verde: No");
+            btnVerde.Marcar(ExportadorVideo.FondoVerde);
+        }
+        if (btnCebolla != null)
+        {
+            btnCebolla.PonerTexto(PapelCebolla.Activo ? "Cebolla: Sí" : "Cebolla: No");
+            btnCebolla.Marcar(PapelCebolla.Activo);
+        }
     }
 
     void RefrescarBocas()

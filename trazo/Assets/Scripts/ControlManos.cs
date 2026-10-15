@@ -356,6 +356,8 @@ public partial class ControlManos : MonoBehaviour
         FlechasGiro.Crear(this);
         // v42: las etiquetas de todos los botones (con microfonito si también se pueden decir).
         EtiquetasBotones.Crear(this);
+        CamaraEscena.Asegurar();   // v43
+        PapelCebolla.Asegurar();   // v43
         PrepararMusica();
     }
 
@@ -2402,6 +2404,8 @@ public partial class ControlManos : MonoBehaviour
         if (ArrastrePanel.Contiene(Der.PuntoPellizco)) // v38: Mis archivos y la ventanita de fondos
             return;
         if (Persiana.Contiene(Der.PuntoPellizco))      // v41: pellizcar una pastillita la mueve (ver Persiana.cs)
+            return;
+        if (CamaraEscena.Contiene(Der.PuntoPellizco))  // v43: pellizcar la camarita la mueve (ver CamaraEscena.cs)
             return;
         var t = LineaBajo(Der.PuntoPellizco, Der.indice);
         seleccionPrevia.Clear();

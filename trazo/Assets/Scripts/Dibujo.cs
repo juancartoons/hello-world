@@ -132,6 +132,7 @@ public class DatosDibujo
     public string audio = "";
     public List<DatosFigura> figuras = new List<DatosFigura>();
     public List<TrazoLapiz> lapiz = new List<TrazoLapiz>();
+    public DatosCamara camara = new DatosCamara();   // v43: la cámara (y sus claves)
     public int temblor;
     public bool pincelElegido;
     public float anchoPincelLocal;   // el grosor del dial medido en el dibujo (0 = proyecto viejo: se calcula)
@@ -2410,6 +2411,7 @@ public class Dibujo : MonoBehaviour
             d.bocas.AddRange(lipsync.CopiarPoses());
             d.audio = lipsync.ArchivoAudio;
         }
+        d.camara = CamaraEscena.Guardar();
         return d;
     }
 
@@ -2534,6 +2536,7 @@ public class Dibujo : MonoBehaviour
         anchoPincelLocal = d.anchoPincelLocal > 0f ? d.anchoPincelLocal : anchoPincel / EscalaMundo;
         if (titere != null)
             titere.Restaurar(d);
+        CamaraEscena.Restaurar(d.camara);   // v43
         if (incluirFondo && escenario != null)
             escenario.PonerModo(d.fondo);
         if (incluirFondo)
@@ -2629,6 +2632,9 @@ public class Dibujo : MonoBehaviour
     // Desde dónde se toma la foto o el video: tu cabeza mirando al dibujo, con el ángulo justo para que quepa.
     public void EncuadreExportar(float margen, out Vector3 posicion, out Quaternion rotacion, out float campoVision)
     {
+        // v43: si pusiste una cámara, se exporta desde ella (en el fotograma actual).
+        if (CamaraEscena.PoseMundo(animacion != null ? animacion.Fotograma : 0, out posicion, out rotacion, out campoVision))
+            return;
         Vector3 adelante;
         VistaExportar(out adelante, out posicion);
         campoVision = 60f;
@@ -2718,7 +2724,7 @@ public class Dibujo : MonoBehaviour
         Avisar();
     }
 
-    void Avisar()
+    public void Avisar()
     {
         alCambiar?.Invoke();
     }

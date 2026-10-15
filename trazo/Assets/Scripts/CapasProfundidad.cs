@@ -29,6 +29,7 @@ using UnityEngine;
 //    "Nombre" (el teclado del Quest: "3 · Fondo", sin perder el número) y "Borrar" (toca dos veces; deshacer la
 //    devuelve). Mientras empujas o atraes las capas, los botones se esconden y salen 1 segundo después de que todo
 //    queda quieto. Y se tocan A PROPÓSITO: el dedo llega de frente y se hunde 1 cm detrás del botón.
+//    "Cámara": la capa de la cámara (ver CamaraEscena.cs).
 public class CapasProfundidad : MonoBehaviour
 {
     const float Ancho = 0.26f, Alto = 0.085f;   // v43: más alta (tercera fila)
@@ -72,7 +73,7 @@ public class CapasProfundidad : MonoBehaviour
     Transform raiz, tarjeta;
     TMP_Text nombre, ayuda;
     BotonTocable btnVer, btnBoceto, btnPlano, btnLiberar, btnCerrar, btnMas;
-    BotonTocable btn2D, btn3D, btnNombre, btnBorrar;    // v43
+    BotonTocable btn2D, btn3D, btnNombre, btnBorrar, btnCamara;    // v43
     bool liberarVisible;
     float quietoDesde = -10f, borrarHasta;
     TouchScreenKeyboard teclado;
@@ -205,7 +206,10 @@ public class CapasProfundidad : MonoBehaviour
         // v43: la tercera fila.
         btn2D = BotonRedondo(tarjeta, "2D", new Vector3(-0.109f, FilaBotones2, 0f), 0.02f);
         btn3D = BotonRedondo(tarjeta, "3D", new Vector3(-0.082f, FilaBotones2, 0f), 0.02f);
-        btnNombre = Boton(tarjeta, "Nombre", new Vector3(0.0f, FilaBotones2, 0f), new Vector2(0.062f, 0.017f));
+        btnCamara = Boton(tarjeta, "Cámara", new Vector3(-0.036f, FilaBotones2, 0f), new Vector2(0.05f, 0.017f));
+        btnNombre = Boton(tarjeta, "Nombre", new Vector3(0.03f, FilaBotones2, 0f), new Vector2(0.056f, 0.017f));
+        btnCamara.alTocar.AddListener(() => { CamaraEscena.Alternar(); Tocado(); });
+        BotonTocable.PonerVoz(btnCamara, ControlManos.ComandoVoz.Camara);
         btnBorrar = Boton(tarjeta, "Borrar", new Vector3(0.0965f, FilaBotones2, 0f), new Vector2(0.045f, 0.017f));
         btn2D.alTocar.AddListener(() => { dibujo.PonerPlano(true); Tocado(); });
         btn3D.alTocar.AddListener(() => { dibujo.PonerPlano(false); Tocado(); });
@@ -792,6 +796,7 @@ public class CapasProfundidad : MonoBehaviour
         liberarVisible = dibujo.EncantadasEnCapa(cur) > 0 || (!c.unido && c.hayPlano);
         // v43: 2D / 3D (el de esta capa, marcado) y Borrar (si no está preguntando).
         btn2D.Marcar(c.en2D);
+        btnCamara.Marcar(CamaraEscena.Visible);
         btn3D.Marcar(!c.en2D);
         if (Time.time > borrarHasta)
         {
