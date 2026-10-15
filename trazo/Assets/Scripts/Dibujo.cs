@@ -60,10 +60,16 @@ public class DatosCapa
     public bool unido = true;        // unido con los planos de las otras capas (como acetato sobre papel)
     public int papel;                // boceto en 2D: el papel detrás del lápiz. 0 blanco, 1 a la mitad, 2 transparente
     public bool en2D;                // v43: esta capa se dibuja en 2D (sobre su plano) o en 3D (libre). Cada capa el suyo
+    // v44: una CAPA DE CÁMARA (no se dibuja en ella): guarda una cámara con sus claves. Van siempre adelante de todas.
+    public bool camara;
+    public DatosCamara datosCamara;
 
     public DatosCapa Copia()
     {
-        return (DatosCapa)MemberwiseClone();
+        var c = (DatosCapa)MemberwiseClone();
+        if (datosCamara != null)
+            c.datosCamara = JsonUtility.FromJson<DatosCamara>(JsonUtility.ToJson(datosCamara));
+        return c;
     }
 }
 
@@ -132,7 +138,8 @@ public class DatosDibujo
     public string audio = "";
     public List<DatosFigura> figuras = new List<DatosFigura>();
     public List<TrazoLapiz> lapiz = new List<TrazoLapiz>();
-    public DatosCamara camara = new DatosCamara();   // v43: la cámara (y sus claves)
+    public DatosCamara camara = new DatosCamara();   // v43: la cámara (y sus claves). v44: va en su capa (esto se lee de los v43)
+    public int camaraActiva = -1;                    // v44: la capa de cámara que se usa al exportar
     public int temblor;
     public bool pincelElegido;
     public float anchoPincelLocal;   // el grosor del dial medido en el dibujo (0 = proyecto viejo: se calcula)
@@ -424,27 +431,109 @@ public class Dibujo : MonoBehaviour
         if (capas.Count == 0)
             while (capas.Count < NumeroDeCapas)
                 capas.Add(new DatosCapa { nombre = "Capa " + (capas.Count + 1), visible = true });
+        // v44: siempre hay al menos una capa de cámara (adelante de todas).
+        if (PrimeraCamara() < 0)
+            capas.Add(NuevaCamara("Cámara"));
         capaActual = Mathf.Clamp(capaActual, 0, capas.Count - 1);
     }
 
     // Botón "+" de las capas: una capa nueva adelante de todas (la más cercana a ti), y se dibuja en ella.
     // Devuelve su número, o -1 si ya hay el máximo.
     // v43: con nombre (el maniquí y las bocas crean la suya: "Maniquí", "Bocas"); deshacer = false si ya se guardó.
+    // v44: va justo antes de las capas de cámara (que siempre quedan adelante).
     public int AgregarCapa(string nombre = null, bool deshacer = true)
     {
         AsegurarCapas();
-        if (capas.Count >= MaximoDeCapas)
+        if (CapasDeDibujo >= MaximoDeCapas)
         {
             Mensaje("Ya no caben más capas (máximo 12)");
             return -1;
         }
         if (deshacer)
             GuardarParaDeshacer();
-        capas.Add(new DatosCapa { nombre = string.IsNullOrEmpty(nombre) ? "Capa " + (capas.Count + 1) : nombre, visible = true });
+        int pos = PrimeraCamara();
+        if (pos < 0)
+            pos = capas.Count;
+        capas.Insert(pos, new DatosCapa { nombre = string.IsNullOrEmpty(nombre) ? "Capa " + (pos + 1) : nombre, visible = true });
+        if (camaraActiva >= pos)
+            camaraActiva++;
+        HayCambios = true;
+        SeleccionarCapa(pos);
+        return pos;
+    }
+
+    // ---------- v44: capas de cámara ----------
+
+    int camaraActiva = -1;
+
+    static DatosCapa NuevaCamara(string nombre)
+    {
+        return new DatosCapa { nombre = nombre, visible = true, camara = true, datosCamara = new DatosCamara() };
+    }
+
+    public int PrimeraCamara()
+    {
+        for (int i = 0; i < capas.Count; i++)
+            if (capas[i] != null && capas[i].camara)
+                return i;
+        return -1;
+    }
+
+    public bool EsCamara(int capa) => capa >= 0 && capa < capas.Count && capas[capa].camara;
+
+    int CapasDeDibujo
+    {
+        get
+        {
+            int n = 0;
+            foreach (var c in capas)
+                if (c != null && !c.camara)
+                    n++;
+            return n;
+        }
+    }
+
+    // La capa de cámara que se usa (la última que elegiste; si no, la primera).
+    public int CamaraActiva
+    {
+        get
+        {
+            AsegurarCapas();
+            return EsCamara(camaraActiva) ? camaraActiva : PrimeraCamara();
+        }
+    }
+
+    public DatosCamara DatosCamaraActiva
+    {
+        get
+        {
+            int i = CamaraActiva;
+            if (i < 0)
+                return null;
+            if (capas[i].datosCamara == null)
+                capas[i].datosCamara = new DatosCamara();
+            return capas[i].datosCamara;
+        }
+    }
+
+    // "+ Cámara": otra capa de cámara (otro ángulo u otro recorrido), al final.
+    public int AgregarCamara()
+    {
+        AsegurarCapas();
+        GuardarParaDeshacer();
+        int n = 0;
+        foreach (var c in capas)
+            if (c.camara)
+                n++;
+        capas.Add(NuevaCamara("Cámara " + (n + 1)));
         HayCambios = true;
         SeleccionarCapa(capas.Count - 1);
         return capas.Count - 1;
     }
+
+    // La última capa de dibujo que elegiste (para volver desde la cámara).
+    int ultimaDeDibujo;
+    public int UltimaCapaDeDibujo => ultimaDeDibujo >= 0 && ultimaDeDibujo < capas.Count && !capas[ultimaDeDibujo].camara ? ultimaDeDibujo : 0;
 
     public DatosCapa DatosDeCapa(int capa)
     {
@@ -467,6 +556,8 @@ public class Dibujo : MonoBehaviour
         if (capa < 0 || capa >= capas.Count)
             return "";
         string n = capas[capa].nombre;
+        if (capas[capa].camara)
+            return n;
         return NombrePorDefecto(n) ? "Capa " + (capa + 1) : (capa + 1) + " · " + n;
     }
 
@@ -484,6 +575,15 @@ public class Dibujo : MonoBehaviour
         Mensaje("Nombre: " + NombreCapa(capa));
     }
 
+    int CuantasCamaras()
+    {
+        int n = 0;
+        foreach (var c in capas)
+            if (c != null && c.camara)
+                n++;
+        return n;
+    }
+
     // v43: borra una capa con todo lo suyo (líneas, rellenos, claves, figuras y lápiz). Deshacer la devuelve.
     // Las de encima bajan un número. Siempre queda al menos una capa.
     public bool BorrarCapa(int capa)
@@ -491,9 +591,9 @@ public class Dibujo : MonoBehaviour
         AsegurarCapas();
         if (capa < 0 || capa >= capas.Count)
             return false;
-        if (capas.Count <= 1)
+        if (capas[capa].camara ? CuantasCamaras() <= 1 : CapasDeDibujo <= 1)
         {
-            Mensaje("Es la única capa: no se puede borrar");
+            Mensaje(capas[capa].camara ? "Siempre queda una cámara: esta no se puede borrar" : "Es la única capa: no se puede borrar");
             return false;
         }
         string nombre = NombreCapa(capa);
@@ -530,6 +630,7 @@ public class Dibujo : MonoBehaviour
                 d.capas[i].nombre = "Capa " + (i + 1);
         int actual = capaActual > capa ? capaActual - 1 : capaActual;
         d.capaActual = Mathf.Clamp(actual, 0, d.capas.Count - 1);
+        d.camaraActiva = camaraActiva > capa ? camaraActiva - 1 : camaraActiva == capa ? -1 : camaraActiva;
         d.plano = d.capas[d.capaActual].en2D;
         Aplicar(d, false);
         HayCambios = true;
@@ -774,10 +875,14 @@ public class Dibujo : MonoBehaviour
             ActualizarVisibilidad();
         }
         plano = capas[capaActual].en2D;   // v43: cada capa recuerda si es 2D o 3D
+        if (capas[capaActual].camara)
+            camaraActiva = capaActual;     // v44: la cámara que elegiste es la que se usa
+        else
+            ultimaDeDibujo = capaActual;
         RefrescarPlano();
         ActualizarGuia();
         Avisar();
-        Mensaje("Dibujas en " + capas[capaActual].nombre);
+        Mensaje(capas[capaActual].camara ? capas[capaActual].nombre + ": pellízcala para moverla (aquí no se dibuja)" : "Dibujas en " + capas[capaActual].nombre);
     }
 
     public void AlternarVerCapa(int capa)
@@ -2411,7 +2516,7 @@ public class Dibujo : MonoBehaviour
             d.bocas.AddRange(lipsync.CopiarPoses());
             d.audio = lipsync.ArchivoAudio;
         }
-        d.camara = CamaraEscena.Guardar();
+        d.camaraActiva = camaraActiva;
         return d;
     }
 
@@ -2536,7 +2641,14 @@ public class Dibujo : MonoBehaviour
         anchoPincelLocal = d.anchoPincelLocal > 0f ? d.anchoPincelLocal : anchoPincel / EscalaMundo;
         if (titere != null)
             titere.Restaurar(d);
-        CamaraEscena.Restaurar(d.camara);   // v43
+        // v44: la cámara va en su capa. Un proyecto v43 traía la cámara aparte: pasa a la primera capa de cámara.
+        camaraActiva = d.camaraActiva;
+        if (d.camara != null && d.camara.hay)
+        {
+            int ic = PrimeraCamara();
+            if (ic >= 0 && (capas[ic].datosCamara == null || !capas[ic].datosCamara.hay))
+                capas[ic].datosCamara = JsonUtility.FromJson<DatosCamara>(JsonUtility.ToJson(d.camara));
+        }
         if (incluirFondo && escenario != null)
             escenario.PonerModo(d.fondo);
         if (incluirFondo)

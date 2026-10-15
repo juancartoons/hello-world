@@ -829,6 +829,15 @@ public class NavegadorArchivos : MonoBehaviour
                 dibujo.Mensaje("No encuentro el grabador (vuelve a tocar ★ Armar escena en Unity)");
         });
         Mostrar(btnGrabar, false);   // v43: "Grabar proceso" se quita de la vista (el código queda para después)
+        // v44: en su lugar, AYUDA: los tutoriales (y la ayuda de la mesa, que antes estaba en la mesa).
+        var ayudaArchivos = Boton(raiz, "Ayuda", new Vector3(0.13f, 0.2f, 0f), new Vector2(0.07f, 0.03f));
+        ayudaArchivos.alTocar.AddListener(() =>
+        {
+            Cerrar();
+            if (Tutorial.Instancia != null)
+                Tutorial.Instancia.AbrirSecciones();
+        });
+        BotonTocable.PonerVoz(ayudaArchivos, ControlManos.ComandoVoz.Ayuda);
         btnPausa = Boton(raiz, "Pausa", new Vector3(0.205f, 0.2f, 0f), new Vector2(0.045f, 0.03f));
         btnPausa.alTocar.AddListener(() => { if (grabador != null) grabador.AlternarPausa(); });
         Mostrar(btnPausa, false);

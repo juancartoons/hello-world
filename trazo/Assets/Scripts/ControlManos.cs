@@ -92,6 +92,7 @@ public partial class ControlManos : MonoBehaviour
     float candidatoDesde;
     bool esperarSoltarIzq;
     Trazo trazoActual;
+    float trazandoHasta = -10f;   // v44: cuándo fue la última vez que la derecha trazaba una línea
     float inicioTrazo;
 
     // El tutorial pide borrar nodo por nodo (frotar no borra la línea entera).
@@ -352,6 +353,7 @@ public partial class ControlManos : MonoBehaviour
         // v40: la voz y su micrófono (arriba a la izquierda, en espejo del parlante).
         Voz.Crear();
         BotonVoz.Crear(this, materialNodo);
+        Mirada.Crear(this, materialNodo);   // v44: el ojo, debajo del micrófono
         // v42: las flechitas de girar el fondo 360 (fijas, en la fila de la pastillita de abajo).
         FlechasGiro.Crear(this);
         // v42: las etiquetas de todos los botones (con microfonito si también se pueden decir).
@@ -409,8 +411,8 @@ public partial class ControlManos : MonoBehaviour
         bool protegido = DibujoBloqueado || Titere.ManoCerca;
         switch (GestoIzq)
         {
-            case Gesto.Dibujar: if (!Titere.ManoCerca) Dibujar(); break;
-            case Gesto.Recta: if (!Titere.ManoCerca) Recta(); break;
+            case Gesto.Dibujar: if (!Titere.ManoCerca && !EnCapaCamara()) Dibujar(); break;
+            case Gesto.Recta: if (!Titere.ManoCerca && !EnCapaCamara()) Recta(); break;
             // Con el candado ("modo seguro") no se edita nada: solo se puede mirar y navegar.
             case Gesto.Nodos: if (!protegido) EditarNodos(); break;
             case Gesto.Grosor: if (!protegido) CambiarGrosor(); break;
@@ -419,7 +421,9 @@ public partial class ControlManos : MonoBehaviour
             default:
                 if (!menuAbierto && !paletaAbierta && !protegido)
                 {
-                    RevisarAgarreLinea();
+                    // v44: con el dedo cargado (jeringa), tocar una línea o un relleno lo pinta.
+                    if (!RevisarJeringa(Der.indice))
+                        RevisarAgarreLinea();
                 }
                 break;
         }
@@ -436,6 +440,20 @@ public partial class ControlManos : MonoBehaviour
         ActualizarCursor();
         ActualizarEtiqueta();
         ActualizarSimbolos();
+    }
+
+    // v44: en una capa de cámara no se dibuja (avisa, sin repetirlo a cada rato).
+    float avisoCamaraHasta;
+    bool EnCapaCamara()
+    {
+        if (dibujo == null || !dibujo.EsCamara(dibujo.capaActual))
+            return false;
+        if (Der.valida && Time.time > avisoCamaraHasta)
+        {
+            avisoCamaraHasta = Time.time + 4f;
+            dibujo.Mensaje("Estás en la capa de la cámara: elige otra capa para dibujar");
+        }
+        return true;
     }
 
     // Borrador, candado y dial (la flecha y la diana las maneja ActualizarFlecha).
@@ -869,7 +887,7 @@ public partial class ControlManos : MonoBehaviour
             return;
         // Con el dedo en el parlante, en el carrusel de instrumentos o junto a un botón de un menú no empieza una línea.
         if (trazoActual == null && (BotonSonido.DedoCerca || BotonVoz.DedoCerca || BotonTocable.DedoCerca || CapasProfundidad.DedoCerca
-                                    || PanelArriba.DedoEnMesa || FlechasGiro.DedoCerca))
+                                    || PanelArriba.DedoEnMesa || FlechasGiro.DedoCerca || Persiana.DedoCerca || Mirada.DedoCerca))
             return;
         if (trazoActual == null)
         {
@@ -1235,7 +1253,7 @@ public partial class ControlManos : MonoBehaviour
         Vector3 puntaAsa = tipo == Objetivo.Asa ? PuntaAsaVisible(t, i, salida, out factor) : Vector3.zero;
         factorAsaArrastre = Mathf.Max(1f, factor);
         // v43: solo este tirador si lo PELLIZCAS (como Alt) o si el nodo ya es una esquina (respeta lo que hiciste).
-        asaSola = tipo == Objetivo.Asa && (asaPorPellizco || t.EsEsquina(i));
+        asaSola = tipo == Objetivo.Asa && (asaPorPellizco || t.EsEsquina(i) || EsquinaPorVoz(t, i));
         asaEnCero = false;
         if (asaSola && asaPorPellizco)
             dibujo.Mensaje("Pellizco: solo este tirador (esquina)");
@@ -1505,7 +1523,7 @@ public partial class ControlManos : MonoBehaviour
         hoverTipo = Objetivo.Nada;
         // Con el dedo en el parlante, en el carrusel de instrumentos o junto a un botón de un menú no se borra nada.
         if (!Der.valida || BotonSonido.DedoCerca || BotonVoz.DedoCerca || BotonTocable.DedoCerca || CapasProfundidad.DedoCerca
-            || PanelArriba.DedoEnMesa || FlechasGiro.DedoCerca)
+            || PanelArriba.DedoEnMesa || FlechasGiro.DedoCerca || Persiana.DedoCerca || Mirada.DedoCerca)
         {
             CancelarFrote();
             MostrarModoNodos(false, null);
@@ -2603,7 +2621,7 @@ public partial class ControlManos : MonoBehaviour
         // En el modo nodos tampoco (no estás dibujando: estás moviendo nodos), ni cerca de un botón de un menú.
         bool ver = Der.valida && GestoIzq != Gesto.Transformar && GestoIzq != Gesto.Nodos && !flechaDer.activa
                    && !BotonSonido.DedoCerca && !BotonVoz.DedoCerca && !BotonTocable.DedoCerca && !CapasProfundidad.DedoCerca
-                   && !LapizAtrapado && !PanelArriba.DedoEnMesa && !FlechasGiro.DedoCerca;
+                   && !LapizAtrapado && !PanelArriba.DedoEnMesa && !FlechasGiro.DedoCerca && !Persiana.DedoCerca && !Mirada.DedoCerca;
         if (cursor.gameObject.activeSelf != ver)
             cursor.gameObject.SetActive(ver);
         if (!ver)

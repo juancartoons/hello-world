@@ -80,7 +80,8 @@ public class Tutorial : MonoBehaviour
     enum Estado
     {
         Nada, Titulo, Demo1, Paso1, Gota, Demo2, Paso2, Paso3, Corre, Paso4,
-        Demo56, Paso5, Paso6, Regresa, Demo7, Paso7, Demo8, Paso8, Demo9, Paso9, Pausa, Final
+        Demo56, Paso5, Paso6, Regresa, Demo7, Paso7, Demo8, Paso8, Demo9, Paso9, Pausa, Final,
+        Hola   // v44: al final, una cabeza que dice "hola"
     }
     Estado estado = Estado.Nada;
     float desde;
@@ -316,6 +317,15 @@ public class Tutorial : MonoBehaviour
                     trasPausa = null;
                     if (siguiente != null)
                         siguiente();
+                }
+                break;
+            case Estado.Hola:
+                // Después de decir "hola", un momento para verla hablar (otra vez = vuelve a hablar), y el final.
+                if (holaHora > 0f && Time.time - holaHora > 4f)
+                {
+                    holaHora = -1f;
+                    MostrarBoton(btnHola, false);
+                    Pausa(EntrarFinal);
                 }
                 break;
             case Estado.Final:
@@ -597,6 +607,13 @@ public class Tutorial : MonoBehaviour
     }
 
     // Sección 4: lo nuevo de las últimas versiones.
+    // Sección 5 (v44): la mirada y la voz.
+    public void EmpezarMirada()
+    {
+        PanelTutoriales.CerrarSiAbierto(this);
+        TarjetaTutorial.Abrir<TutorialMirada>(this);
+    }
+
     public void EmpezarNovedades()
     {
         PanelTutoriales.CerrarSiAbierto(this);
@@ -2045,12 +2062,56 @@ public class Tutorial : MonoBehaviour
             if (logradoPaso9 >= 0f && ((!sigue && Time.time - logradoPaso9 > 0.3f) || Time.time - logradoPaso9 > 12f))
             {
                 Exito(9, (a + b) * 0.5f);
-                Pausa(EntrarFinal);
+                Pausa(EntrarHola);   // v44: antes del final, la cabeza que dice "hola"
                 return;
             }
         }
         if (TocaPista() && Demo9(Time.time - pistaDesde, false))
             PararPista();
+    }
+
+    // ==================== v44: la cabeza que dice "hola" ====================
+
+    BotonTocable btnHola;
+    float holaHora = -1f;
+
+    public bool EsperaHola => estado == Estado.Hola && holaHora < 0f;
+
+    void EntrarHola()
+    {
+        var lip = FindFirstObjectByType<Lipsync>();
+        if (lip == null || control == null || control.Cabeza == null)
+        {
+            EntrarFinal();
+            return;
+        }
+        OcultarGuia();
+        // Una cabeza (un círculo) con ojos y boca, y sus 7 bocas listas.
+        lip.CrearMuestra(control.Cabeza);
+        if (btnHola == null && raiz != null)
+        {
+            btnHola = CrearBoton(Tx("Hello!", "¡Hola!"), new Vector3(0f, -0.2f, 0f), new Vector2(0.1f, 0.032f));
+            btnHola.alTocar.AddListener(DecirHola);
+        }
+        MostrarBoton(btnHola, true);
+        PonerVineta(Tx("Last one: this head can talk. Say \"HELLO\" out loud (or tap Hello!)",
+                       "Último: esta cabeza habla. Di \"HOLA\" en voz alta (o toca ¡Hola!)"), VinetaLinea, -1);
+        holaHora = -1f;
+        Cambiar(Estado.Hola);
+    }
+
+    // La voz ("hola") o el botón: la boca dice "hola".
+    public void DecirHola()
+    {
+        if (estado != Estado.Hola)
+            return;
+        var lip = FindFirstObjectByType<Lipsync>();
+        if (lip != null && lip.GenerarDePalabra(Idioma.Ingles ? "hello" : "hola"))
+        {
+            if (fuente != null)
+                fuente.PlayOneShot(Sonidos.Magia, 0.7f);
+            holaHora = Time.time;
+        }
     }
 
     void EntrarFinal()

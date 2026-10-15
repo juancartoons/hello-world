@@ -33,12 +33,18 @@ public partial class ControlManos
 
     // Segundos desde que dibujaste o editaste por última vez (cualquier gesto de la mano izquierda).
     public float SegundosSinEditar => Time.time - ultimaEdicion;
+    // v44: la mano derecha está trazando una línea (o acaba de terminarla). Las persianas solo esperan a esto: ya no
+    // dependen de lo que haga la mano izquierda.
+    public bool TrazandoAhora => Time.time - trazandoHasta < 0.4f;
 
     // Cada cuadro (desde LateUpdate).
     void Actualizar2030()
     {
         if (GestoIzq != Gesto.Ninguno || LapizAtrapado)
             ultimaEdicion = Time.time;
+        if (trazoActual != null || LapizAtrapado)
+            trazandoHasta = Time.time;
+        ActualizarJeringa();   // v44
         CapasProfundidad.Asegurar();
 
         // La luz de la punta de los dedos (se apaga suave si la mano se pierde o se esconde).

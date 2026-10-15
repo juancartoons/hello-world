@@ -11,9 +11,9 @@ using UnityEngine;
 // Shaders: TrazoVR/CieloVivo, TrazoVR/Estrellas y TrazoVR/Nubes (sus materiales los pone ★ Armar escena).
 public class FondosVivos : MonoBehaviour
 {
-    public const int Cantidad = 2;
-    public const int Universo = 0, Nubes = 1;
-    static readonly string[] Nombres = { "Universo", "Sobre las nubes" };
+    public const int Cantidad = 3;
+    public const int Universo = 0, Nubes = 1, Estudio = 2;
+    static readonly string[] Nombres = { "Universo", "Sobre las nubes", "Estudio de animación" };
     const float RadioCielo = 110f, RadioLejanas = 100f;
     const float Caja = 80f;                                  // las estrellas cercanas llenan una caja así (metros)
     const int CuantasLejanas = 5000, CuantasCercanas = 1600;
@@ -28,8 +28,8 @@ public class FondosVivos : MonoBehaviour
     static Texture2D ruido;
     static readonly Texture2D[] miniaturas = new Texture2D[Cantidad];
 
-    Material baseCielo, baseEstrellas, baseNubes;
-    Transform raizUniverso, raizNubes, cercanas;
+    Material baseCielo, baseEstrellas, baseNubes, base360;
+    Transform raizUniverso, raizNubes, cercanas, raizEstudio;
     Material matCercanas, matNubesAbajo, matNubesArriba;
     readonly List<Material> materiales = new List<Material>();
     readonly List<Mesh> mallas = new List<Mesh>();
@@ -38,18 +38,22 @@ public class FondosVivos : MonoBehaviour
 
     public bool Avanzando { get; private set; }
     public int Puesto => puesto;
-    public bool Listo => baseCielo != null && baseEstrellas != null && baseNubes != null;
+    public bool Listo => baseCielo != null && baseEstrellas != null && baseNubes != null && base360 != null;
 
     public static string Nombre(int cual) => Nombres[Mathf.Clamp(cual, 0, Cantidad - 1)];
     public static string NombreAvanzar(int cual) => cual == Nubes ? "Volar" : "Avanzar";
     // El color de detrás (la cámara y el vidrio de los menús).
-    public static Color ColorFondo(int cual) => cual == Nubes ? new Color(0.7f, 0.8f, 0.93f) : new Color(0.01f, 0.012f, 0.03f);
+    public static Color ColorFondo(int cual) => cual == Nubes ? new Color(0.7f, 0.8f, 0.93f)
+                                               : cual == Estudio ? new Color(0.93f, 0.91f, 0.86f) : new Color(0.01f, 0.012f, 0.03f);
+    // v44: el estudio no avanza (es un cuarto).
+    public static bool PuedeAvanzar(int cual) => cual == Universo || cual == Nubes;
 
-    public void Preparar(Material cielo, Material estrellas, Material nubes)
+    public void Preparar(Material cielo, Material estrellas, Material nubes, Material fondo360)
     {
         baseCielo = cielo;
         baseEstrellas = estrellas;
         baseNubes = nubes;
+        base360 = fondo360;
     }
 
     // cual = Universo, Nubes o -1 (ninguno).
@@ -68,13 +72,15 @@ public class FondosVivos : MonoBehaviour
             cercanas.gameObject.SetActive(cual == Universo);
         if (raizNubes != null)
             raizNubes.gameObject.SetActive(cual == Nubes);
+        if (raizEstudio != null)
+            raizEstudio.gameObject.SetActive(cual == Estudio);
         if (cual >= 0)
             Centrar(cabeza);
     }
 
     public void AlternarAvanzar()
     {
-        if (puesto >= 0)
+        if (puesto >= 0 && PuedeAvanzar(puesto))
             Avanzando = !Avanzando;
     }
 
@@ -87,7 +93,7 @@ public class FondosVivos : MonoBehaviour
         if (adelante.sqrMagnitude < 1e-4f)
             adelante = Vector3.forward;
         Quaternion giro = Quaternion.LookRotation(adelante.normalized, Vector3.up);
-        foreach (var t in new[] { raizUniverso, raizNubes, cercanas })
+        foreach (var t in new[] { raizUniverso, raizNubes, cercanas, raizEstudio })
             if (t != null)
                 t.SetPositionAndRotation(pos, giro);
         Shader.SetGlobalVector(idCentro, pos);
@@ -112,7 +118,7 @@ public class FondosVivos : MonoBehaviour
     {
         if (puesto < 0)
             return false;
-        foreach (var t in new[] { raizUniverso, raizNubes, cercanas })
+        foreach (var t in new[] { raizUniverso, raizNubes, cercanas, raizEstudio })
             if (t != null)
                 t.RotateAround(pivote, Vector3.up, -grados);
         return true;
@@ -161,6 +167,26 @@ public class FondosVivos : MonoBehaviour
             matCercanas.SetFloat("_Caja", Caja);
             matCercanas.SetFloat(idAvance, 0f);
             Pieza(cercanas, "Estrellas", Cercanas(), matCercanas, Vector3.zero);
+        }
+        if (cual == Estudio && raizEstudio == null)
+        {
+            // v44: el cuarto dibujado a lápiz (ver EstudioAnimacion.cs). Se queda quieto: puedes moverte adentro.
+            raizEstudio = new GameObject("EstudioAnimacion").transform;
+            raizEstudio.SetParent(transform, false);
+            var m = NuevoMaterial(base360);
+            var tex = EstudioAnimacion.Textura();
+            if (m.HasProperty("_BaseMap"))
+                m.SetTexture("_BaseMap", tex);
+            if (m.HasProperty("_MainTex"))
+                m.SetTexture("_MainTex", tex);
+            if (m.HasProperty("_BaseColor"))
+                m.SetColor("_BaseColor", Color.white);
+            if (m.HasProperty("_Cull"))
+                m.SetFloat("_Cull", 0f);
+            m.renderQueue = 2450;
+            var cuarto = EstudioAnimacion.Cuarto();
+            mallas.Add(cuarto);
+            Pieza(raizEstudio, "Cuarto", cuarto, m, Vector3.zero);
         }
         if (cual == Nubes && raizNubes == null)
         {
@@ -458,6 +484,8 @@ public class FondosVivos : MonoBehaviour
     public static Texture2D Miniatura(int cual)
     {
         cual = Mathf.Clamp(cual, 0, Cantidad - 1);
+        if (cual == Estudio)
+            return EstudioAnimacion.Textura();
         if (miniaturas[cual] != null)
             return miniaturas[cual];
         const int w = 256, h = 128;

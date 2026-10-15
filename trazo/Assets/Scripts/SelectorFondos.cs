@@ -124,8 +124,8 @@ public class SelectorFondos : MonoBehaviour
         }
         // v42: Avanzar / Volar (solo con un fondo vivo).
         int vivo = escenario.VivoPuesto;
-        Ver(btnAvanzar, vivo >= 0);
-        if (vivo >= 0 && btnAvanzar != null)
+        Ver(btnAvanzar, vivo >= 0 && FondosVivos.PuedeAvanzar(vivo));
+        if (vivo >= 0 && FondosVivos.PuedeAvanzar(vivo) && btnAvanzar != null)
         {
             btnAvanzar.PonerTexto(FondosVivos.NombreAvanzar(vivo) + (escenario.Avanzando ? ": Sí" : ": No"));
             btnAvanzar.Marcar(escenario.Avanzando);

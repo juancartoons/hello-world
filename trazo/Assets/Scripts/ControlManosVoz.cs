@@ -28,7 +28,9 @@ public partial class ControlManos
         Plano, Fondo, Archivos, Esfera, Cubo, Cilindro, ALineas, Ayuda, Inicio, Zoom, Animar, Bocas, Titere, Video,
         Muestra, Oculta, Lapiz, Liberar, Avanza, Universo, Nubes, Color, Grueso, Fino, Espanol, Ingles,
         // v43
-        En2D, En3D, Tinta, SiguienteFondo, FondoNombre, Instrumento, Camara, SugiereCamara, ClaveCamara, Cebolla
+        En2D, En3D, Tinta, SiguienteFondo, FondoNombre, Instrumento, Camara, SugiereCamara, ClaveCamara, Cebolla,
+        // v44: la mirada y las capas por número
+        Mirada, ColorLinea, ColorRelleno, Copiar, Pegar, Esquina, Suave, BorraEsto, OcultaEsto, EstaCapa, Selecciona, IrACapa, Hola
     }
 
     // v43: los fondos que se pueden pedir por su nombre (el nombre exacto que tienen en Escenario).
@@ -36,7 +38,7 @@ public partial class ControlManos
     {
         "Roma de noche", "Shanghai de noche", "Canal de Venecia", "Callejón de Venecia", "Amanecer", "Atardecer en el mar",
         "Mirador", "Parque", "Camino entre flores", "Campo seco", "Golf de noche", "Azotea en Nueva York", "Sala de lujo",
-        "Cuadrícula", "Realidad",
+        "Cuadrícula", "Realidad", "Estudio de animación",
     };
 
     struct FrasesComando
@@ -49,7 +51,7 @@ public partial class ControlManos
 
     static readonly string[] Nada0 = new string[0];
 
-    static readonly FrasesComando[] Comandos =
+    static readonly FrasesComando[] Comandos = ConExtras(new[]
     {
         C(ComandoVoz.Dibuja, "Dibuja", "Draw", new[] { "dibuja", "dibujar", "dibujo", "pinta", "pintar" }, new[] { "draw", "paint" }),
         C(ComandoVoz.Borra, "Borra", "Erase", new[] { "borra", "borrar", "borrador" }, new[] { "erase", "eraser", "delete" }),
@@ -147,6 +149,7 @@ public partial class ControlManos
         C(ComandoVoz.FondoNombre, "Sala de lujo", "Living room", new[] { "sala", "sala de lujo" }, new[] { "living room", "luxury" }, 12),
         C(ComandoVoz.FondoNombre, "Cuadrícula", "Grid", new[] { "cuadrícula" }, new[] { "grid" }, 13),
         C(ComandoVoz.FondoNombre, "Realidad", "Reality", new[] { "realidad", "mi cuarto" }, new[] { "reality", "passthrough" }, 14),
+        C(ComandoVoz.FondoNombre, "Estudio", "Studio", new[] { "estudio", "estudio de animación" }, new[] { "studio", "animation studio" }, 15),
         C(ComandoVoz.Instrumento, "Piano", "Piano", new[] { "piano" }, new[] { "piano" }, Sonidos.Piano),
         C(ComandoVoz.Instrumento, "Arpa", "Harp", new[] { "arpa" }, new[] { "harp" }, Sonidos.Arpa),
         C(ComandoVoz.Instrumento, "Orquesta", "Orchestra", new[] { "orquesta" }, new[] { "orchestra" }, Sonidos.Orquesta),
@@ -158,7 +161,47 @@ public partial class ControlManos
         C(ComandoVoz.Instrumento, "Dubstep", "Dubstep", new[] { "dubstep" }, new[] { "dubstep" }, Sonidos.Dubstep),
         C(ComandoVoz.Instrumento, "Marimba", "Marimba", new[] { "marimba" }, new[] { "marimba" }, Sonidos.Marimba),
         C(ComandoVoz.Ingles, "Inglés", "English", new[] { "inglés", "english", "en inglés" }, Nada0),
-    };
+    });
+
+    // v44: lo que se arma solo: "línea roja" / "relleno rojo" (los 12 colores), "capa uno" ... "capa doce", y la mirada.
+    static readonly string[] ColorMasc = { "negro", "blanco", "gris", "amarillo", "naranja", "rojo", "rosado", "morado", "azul", "verde", "café", "piel" };
+    static readonly string[] ColorFem = { "negra", "blanca", "gris", "amarilla", "naranja", "roja", "rosada", "morada", "azul", "verde", "café", "piel" };
+    static readonly string[] ColorIngles = { "black", "white", "gray", "yellow", "orange", "red", "pink", "purple", "blue", "green", "brown", "skin" };
+    static readonly string[] NumerosEs = { "uno", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez", "once", "doce" };
+    static readonly string[] NumerosEn = { "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve" };
+
+    static FrasesComando[] ConExtras(FrasesComando[] base0)
+    {
+        var l = new List<FrasesComando>(base0);
+        l.Add(C(ComandoVoz.Hola, "Hola", "Hello", new[] { "hola" }, new[] { "hello", "hi" }));
+        l.Add(C(ComandoVoz.Mirada, "Mirada", "Gaze", new[] { "mirada", "la mirada", "ojo" }, new[] { "gaze", "eye" }));
+        l.Add(C(ComandoVoz.Copiar, "Copiar", "Copy", new[] { "copiar", "copia", "copiar color", "copia color", "copia el color" },
+                new[] { "copy", "copy color" }));
+        l.Add(C(ComandoVoz.Pegar, "Pegar", "Paste", new[] { "pegar", "pega", "pegar color", "pega color", "pega el color" },
+                new[] { "paste", "paste color" }));
+        l.Add(C(ComandoVoz.Esquina, "Esquina", "Corner",
+                new[] { "esquina", "esquinas", "alas", "alitas", "manijas", "handles", "antenas", "palancas", "tiradores", "alt" },
+                new[] { "corner", "corners", "wings", "handles", "alt" }));
+        l.Add(C(ComandoVoz.Suave, "Suave", "Smooth", new[] { "suave", "lisa", "alisa" }, new[] { "smooth" }));
+        l.Add(C(ComandoVoz.BorraEsto, "Borra esto", "Delete this", new[] { "borra esto", "bórralo", "borrar esto" },
+                new[] { "delete this", "erase this", "delete it" }));
+        l.Add(C(ComandoVoz.OcultaEsto, "Oculta esto", "Hide this", new[] { "oculta esto", "ocúltalo", "esconde esto", "escóndelo" },
+                new[] { "hide this", "hide it" }));
+        l.Add(C(ComandoVoz.EstaCapa, "Esta capa", "This layer", new[] { "esta capa", "a esta capa" }, new[] { "this layer" }));
+        l.Add(C(ComandoVoz.Selecciona, "Selecciona", "Select", new[] { "selecciona", "selecciónalo", "elige esto" },
+                new[] { "select", "select this", "select it" }));
+        for (int i = 0; i < ColorMasc.Length; i++)
+        {
+            string fem = ColorFem[i], masc = ColorMasc[i], en = ColorIngles[i];
+            var esLinea = fem == masc ? new[] { "línea " + fem, "contorno " + masc } : new[] { "línea " + fem, "línea " + masc, "contorno " + masc };
+            l.Add(C(ComandoVoz.ColorLinea, "Línea " + fem, en + " line", esLinea, new[] { en + " line", "line " + en }, i));
+            l.Add(C(ComandoVoz.ColorRelleno, "Relleno " + masc, en + " fill", new[] { "relleno " + masc }, new[] { en + " fill", "fill " + en }, i));
+        }
+        for (int i = 0; i < NumerosEs.Length; i++)
+            l.Add(C(ComandoVoz.IrACapa, "Capa " + (i + 1), "Layer " + (i + 1),
+                    new[] { "capa " + NumerosEs[i], "layer " + NumerosEs[i] }, new[] { "layer " + NumerosEn[i] }, i));
+        return l.ToArray();
+    }
 
     static FrasesComando C(ComandoVoz c, string nombreEs, string nombreEn, string[] es, string[] en, int dato = 0)
     {
@@ -240,7 +283,8 @@ public partial class ControlManos
         var c = Comandos[mejor];
         // v42: durante el tutorial solo valen los de la mano izquierda (y el silencio): nada que lo desordene.
         if (Tutorial.EnCurso && c.comando != ComandoVoz.Dibuja && c.comando != ComandoVoz.Borra && c.comando != ComandoVoz.Nodos
-            && c.comando != ComandoVoz.Ya && c.comando != ComandoVoz.Deshaz && c.comando != ComandoVoz.Silencio)
+            && c.comando != ComandoVoz.Ya && c.comando != ComandoVoz.Deshaz && c.comando != ComandoVoz.Silencio
+            && c.comando != ComandoVoz.Hola)
             return;
         UltimoComandoVoz = ingles ? c.nombreEn : c.nombreEs;
         UltimoComandoHora = Time.time;
@@ -384,14 +428,218 @@ public partial class ControlManos
             case ComandoVoz.Universo: FondoVivoVoz(FondosVivos.Universo); break;
             case ComandoVoz.Nubes: FondoVivoVoz(FondosVivos.Nubes); break;
             case ComandoVoz.Color:
-                if (dato >= 0 && dato < ColoresPaleta.Length)
+                // v44: con la mirada señalando algo, el color va a eso (el relleno o la línea que brilla).
+                if (dato >= 0 && dato < ColoresPaleta.Length && !ColorAMirada(ColoresPaleta[dato], 0))
                     ElegirColor(ColoresPaleta[dato], Cabeza != null ? Cabeza.position + Cabeza.forward * 0.4f : transform.position);
+                break;
+            case ComandoVoz.ColorLinea:
+                if (dato >= 0 && dato < ColoresPaleta.Length && !ColorAMirada(ColoresPaleta[dato], 1))
+                {
+                    dibujo.ColorNuevo = ColoresPaleta[dato];
+                    dibujo.Mensaje("Líneas nuevas: " + NombreComando(ComandoVoz.ColorLinea, dato));
+                }
+                break;
+            case ComandoVoz.ColorRelleno:
+                if (dato >= 0 && dato < ColoresPaleta.Length && !ColorAMirada(ColoresPaleta[dato], 2))
+                {
+                    PonerColorRellenoNuevo(ColoresPaleta[dato]);
+                    dibujo.Mensaje("Rellenos nuevos: " + NombreComando(ComandoVoz.ColorRelleno, dato));
+                }
+                break;
+            case ComandoVoz.Mirada: Mirada.Alternar(); break;
+            case ComandoVoz.Hola:
+                // v44: en el tutorial, la cabeza dice "hola"; si no, la boca de tus bocas dice "hola".
+                if (Tutorial.Instancia != null && Tutorial.Instancia.EsperaHola)
+                    Tutorial.Instancia.DecirHola();
+                else
+                {
+                    var lip = FindFirstObjectByType<Lipsync>();
+                    if (lip != null)
+                        lip.GenerarDePalabra(Idioma.Ingles ? "hello" : "hola");
+                }
+                break;
+            case ComandoVoz.Copiar: CopiarColorVoz(); break;
+            case ComandoVoz.Pegar: PegarColorVoz(); break;
+            case ComandoVoz.Esquina: EsquinaVoz(true); break;
+            case ComandoVoz.Suave: EsquinaVoz(false); break;
+            case ComandoVoz.BorraEsto: BorraEstoVoz(); break;
+            case ComandoVoz.OcultaEsto:
+            {
+                var t = ObjetivoMirada();
+                if (t != null && dibujo.capas[t.capa].visible)
+                    dibujo.AlternarVerCapa(t.capa);
+                break;
+            }
+            case ComandoVoz.EstaCapa:
+            {
+                var t = ObjetivoMirada();
+                if (t != null)
+                    dibujo.SeleccionarCapa(t.capa);
+                break;
+            }
+            case ComandoVoz.Selecciona:
+            {
+                var t = ObjetivoMirada();
+                if (t != null)
+                {
+                    dibujo.Seleccionar(t);
+                    dibujo.Mensaje("Seleccionada");
+                }
+                break;
+            }
+            case ComandoVoz.IrACapa:
+                if (dato >= 0 && dato < dibujo.capas.Count)
+                    dibujo.SeleccionarCapa(dato);
+                else
+                    dibujo.Mensaje("Esa capa no existe (hay " + dibujo.capas.Count + ")");
                 break;
             case ComandoVoz.Grueso: GrosorVoz(1.4f); break;
             case ComandoVoz.Fino: GrosorVoz(1f / 1.4f); break;
             case ComandoVoz.Espanol: IdiomaVoz(false); break;
             case ComandoVoz.Ingles: IdiomaVoz(true); break;
         }
+    }
+
+    // ---------- v44: la mirada ----------
+
+    // v44: el nombre que se muestra de un comando con dato ("Línea roja", "Capa 3").
+    static string NombreComando(ComandoVoz c, int dato)
+    {
+        foreach (var f in Comandos)
+            if (f.comando == c && f.dato == dato)
+                return Idioma.Ingles ? f.nombreEn : f.nombreEs;
+        return "";
+    }
+
+    // Lo que señala la mirada (o un aviso si no hay nada).
+    Trazo ObjetivoMirada()
+    {
+        if (!Mirada.Activa)
+        {
+            dibujo.Mensaje("Prende la mirada (el ojo, debajo del micrófono) y mira algo");
+            return null;
+        }
+        if (Mirada.Objetivo == null)
+        {
+            dibujo.Mensaje("Mira una línea o un relleno (que brille) y vuelve a decirlo");
+            return null;
+        }
+        return Mirada.Objetivo;
+    }
+
+    // Un color a lo que señala la mirada. cual: 0 = lo que brilla (relleno o línea), 1 = la línea, 2 = el relleno.
+    // false si la mirada no señala nada (entonces el color es para lo que dibujes después).
+    bool ColorAMirada(Color c, int cual)
+    {
+        if (!Mirada.Activa || Mirada.Objetivo == null)
+            return false;
+        var t = Mirada.Objetivo;
+        bool relleno = cual == 2 || (cual == 0 && Mirada.EsRelleno);
+        if (relleno)
+        {
+            dibujo.RellenarConColor(t, c);
+            dibujo.Mensaje("Relleno pintado");
+        }
+        else
+        {
+            dibujo.GuardarParaDeshacer();
+            dibujo.PonerColor(t, c);
+            dibujo.Mensaje("Línea pintada");
+        }
+        if (Cabeza != null)
+            Burbuja(Cabeza.position + Cabeza.forward * 0.5f, 1f);
+        return true;
+    }
+
+    // "Copiar": el color de lo que miras (sin mirada: el de tus líneas). Se carga también en el dedo (la jeringa).
+    void CopiarColorVoz()
+    {
+        Color c = dibujo.ColorNuevo;
+        if (Mirada.Activa && Mirada.Objetivo != null)
+        {
+            var t = Mirada.Objetivo;
+            c = Mirada.EsRelleno && t.colorFondo.a > 0.01f ? t.colorFondo : t.color;
+        }
+        c.a = 1f;
+        CargarJeringa(c);
+        dibujo.Mensaje("Color copiado: " + NombreColor(c) + " · mira otra cosa y di \"pegar\"");
+    }
+
+    // "Pegar": ese color a lo que miras (sin mirada: a tus líneas nuevas).
+    void PegarColorVoz()
+    {
+        if (!HayJeringa)
+        {
+            dibujo.Mensaje("Primero di \"copiar\" (o toca un color de la paleta)");
+            return;
+        }
+        if (!ColorAMirada(ColorJeringa, 0))
+        {
+            dibujo.ColorNuevo = ColorJeringa;
+            dibujo.Mensaje("Líneas nuevas: " + NombreColor(ColorJeringa));
+        }
+    }
+
+    void BorraEstoVoz()
+    {
+        var t = ObjetivoMirada();
+        if (t == null)
+            return;
+        dibujo.GuardarParaDeshacer();
+        if (Mirada.EsRelleno)
+        {
+            dibujo.QuitarRelleno(t);
+            dibujo.Mensaje("Relleno quitado");
+        }
+        else
+        {
+            dibujo.BorrarTrazo(t, true);
+        }
+    }
+
+    // "Esquina" (o alas, manijas, tiradores...): el nodo que miras (o el elegido en nodos) queda como esquina: cada
+    // tirador se mueve por su lado. "Suave": vuelven a quedar alineados.
+    readonly HashSet<long> esquinasVoz = new HashSet<long>();
+
+    static long ClaveEsquina(Trazo t, int i) => (long)t.GetInstanceID() * 4096L + i;
+
+    bool EsquinaPorVoz(Trazo t, int i) => t != null && esquinasVoz.Contains(ClaveEsquina(t, i));
+
+    void EsquinaVoz(bool esquina)
+    {
+        Trazo t = null;
+        int i = -1;
+        if (Mirada.Activa && Mirada.NodoTrazo != null && Mirada.Nodo >= 0)
+        {
+            t = Mirada.NodoTrazo;
+            i = Mirada.Nodo;
+        }
+        else if (SeleccionValida)
+        {
+            t = selTrazo;
+            i = selIndice;
+        }
+        if (t == null || i < 0 || i >= t.nodos.Count)
+        {
+            dibujo.Mensaje("Mira un nodo (o tócalo en Nodos) y vuelve a decirlo");
+            return;
+        }
+        if (esquina)
+        {
+            esquinasVoz.Add(ClaveEsquina(t, i));
+            t.AsegurarAsas();
+            t.asaManual[i] = true;
+            dibujo.Mensaje("Esquina: mueve un tirador con el índice y solo se mueve ese lado");
+        }
+        else
+        {
+            esquinasVoz.Remove(ClaveEsquina(t, i));
+            dibujo.GuardarParaDeshacer();
+            t.Alisar(i);
+            dibujo.Mensaje("Suave: los tiradores vuelven a quedar alineados");
+        }
+        selTrazo = t;
+        selIndice = i;
     }
 
     // v42: "muestra" / "oculta": la capa en la que dibujas.

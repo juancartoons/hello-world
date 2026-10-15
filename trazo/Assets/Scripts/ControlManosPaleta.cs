@@ -200,7 +200,10 @@ public partial class ControlManos
         if (tocado >= 0 && pellizcoTrazo == null)
         {
             if (!dedoEnColor)
+            {
                 ElegirColor(ColoresPaleta[tocado], botonesColor[tocado].position);
+                CargarJeringa(ColoresPaleta[tocado]);   // v44: el dedo se llena de ese color (la jeringa)
+            }
             dedoEnColor = true;
             return;
         }
@@ -209,6 +212,14 @@ public partial class ControlManos
         if (Vector3.Distance(punta, paleta.position) < 0.1f)
         {
             TerminarPellizcoTextura();
+            dedoEnLinea = false;
+            dedoEnRelleno = false;
+            rellenoCandidato = null;
+            return;
+        }
+        // v44: con el dedo cargado (jeringa): tocar una línea o un relleno lo pinta (antes que el cuentagotas).
+        if (RevisarJeringa(punta))
+        {
             dedoEnLinea = false;
             dedoEnRelleno = false;
             rellenoCandidato = null;
@@ -252,6 +263,7 @@ public partial class ControlManos
                 }
                 Burbuja(punta, 1.3f);
                 MostrarEtiqueta("Cuentagotas: color tomado");
+                CargarJeringa(RellenoAbierto ? colorRellenoNuevo : cerca.color);   // v44: también carga el dedo
             }
             dedoEnLinea = true;
             dedoEnRelleno = false;

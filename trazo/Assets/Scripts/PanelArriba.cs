@@ -216,6 +216,13 @@ public class PanelArriba : MonoBehaviour
         Conectar(btnSeguir, AlternarFijo);
         CrearX();
         Conectar(btnAyuda, AlternarAyuda);
+        // v44: la ayuda de la mesa ahora está en Mis archivos → Ayuda (y en el panel "?"): aquí el botón se esconde.
+        if (btnAyuda != null)
+        {
+            btnAyuda.gameObject.SetActive(false);
+            if (btnAyuda.etiqueta != null)
+                btnAyuda.etiqueta.gameObject.SetActive(false);
+        }
         // Las capas ahora cuelgan en profundidad (ver CapasProfundidad.cs); la lista de antes ya no se abre.
         Conectar(btnCapasPlegar, CapasProfundidad.Alternar);
         PrepararCapas();
@@ -803,7 +810,7 @@ public class PanelArriba : MonoBehaviour
         persianaAbajo.alMoverA = MoverPastilla;
         persianaAbajo.comandoVoz = ControlManos.ComandoVoz.Mesa;
         persianaAbajo.visible = () => !visible && !Tutorial.EnCurso && !ExportadorVideo.Exportando;
-        persianaAbajo.puedeJalar = () => control != null && control.SegundosSinEditar > 0.6f && !control.PaletaAbierta;
+        persianaAbajo.puedeJalar = () => control != null && !control.TrazandoAhora;   // v44: sin depender de la otra mano
         persianaAbajo.texto = TextoPastilla;
         persianaAbajo.progreso = () => animacion != null ? animacion.Fotograma / (float)Mathf.Max(1, animacion.UltimoFotograma()) : 0f;
         persianaAbajo.alAbrir = AbrirDesdePersiana;
@@ -896,6 +903,15 @@ public class PanelArriba : MonoBehaviour
     public void AbrirMesa()
     {
         AbrirDesdePersiana();
+    }
+
+    // v44: la ayuda de la mesa (la copia azul), desde Mis archivos o el panel "?".
+    public void AbrirAyudaMesa()
+    {
+        if (!visible)
+            AbrirMesa();
+        if (ayuda == null || !ayudaAbierta)
+            AlternarAyuda();
     }
 
     // v40: ¿la mesa se ve? (y la voz: "mesa" la saca o la guarda)
@@ -1784,6 +1800,12 @@ public class PanelArriba : MonoBehaviour
             if (!textos.TryGetValue(b, out texto))
                 texto = "Este botón: " + (b.etiqueta != null ? b.etiqueta.text : b.name);
             Conectar(b, () => MostrarAyuda(texto));
+        }
+        if (btnAyuda != null)
+        {
+            btnAyuda.gameObject.SetActive(true);   // v44: en la copia azul sí está (para cerrarla)
+            if (btnAyuda.etiqueta != null)
+                btnAyuda.etiqueta.gameObject.SetActive(true);
         }
         Conectar(btnAyuda, () => { if (original != null) original.CerrarAyuda(); });
         PonerPagina(original != null ? original.pagina : 0);

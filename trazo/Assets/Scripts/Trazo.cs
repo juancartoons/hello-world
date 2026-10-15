@@ -562,6 +562,28 @@ public class Trazo : MonoBehaviour
 
     // v43: ¿el nodo i es una ESQUINA (sus dos tiradores no están alineados, o uno está en cero)? Entonces mover un
     // tirador mueve solo ese lado (respeta el "Alt" que ya le hiciste). Si vuelven a quedar alineados, es suave.
+    // v44 (la voz: "suave"): los dos tiradores del nodo i vuelven a quedar alineados (curva lisa), con sus largos.
+    public void Alisar(int i)
+    {
+        AsegurarAsas();
+        if (i < 0 || i >= nodos.Count)
+            return;
+        Vector3 a = asaEntrada[i], b = asaSalida[i];
+        Vector3 dir = b - a;
+        if (dir.sqrMagnitude < 1e-12f)
+        {
+            asaManual[i] = false;
+        }
+        else
+        {
+            dir.Normalize();
+            asaEntrada[i] = -dir * a.magnitude;
+            asaSalida[i] = dir * b.magnitude;
+            asaManual[i] = true;
+        }
+        Reconstruir();
+    }
+
     public bool EsEsquina(int i)
     {
         AsegurarAsas();

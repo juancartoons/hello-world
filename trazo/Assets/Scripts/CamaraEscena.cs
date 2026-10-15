@@ -25,7 +25,9 @@ public class DatosCamara
     public List<ClaveCamara> claves = new List<ClaveCamara>();
 }
 
-// LA CÁMARA (v43): la "capa" de la cámara. Botón "Cámara" en las capas, o la voz ("cámara").
+// LA CÁMARA (v43): la "capa" de la cámara. v44: es una CAPA de verdad (adelante de todas, con ícono de cámara);
+// elígela en las capas (o di "cámara") y aparece. "+ Cámara" en su tarjeta = otra cámara (otro ángulo u otro
+// recorrido); la que elegiste es la que se usa al exportar.
 //  - Se ve una camarita con su CUADRO (16:9 horizontal o 9:16 vertical, como el formato de Exportar) y, encima, un
 //    MONITOR que muestra en vivo lo que ve, con sus botones: Clave, Quita, Sugiere, + (acerca), − (aleja) y Quitar.
 //  - PELLIZCA la camarita con la DERECHA y muévela: gira alrededor de lo que está mirando (siempre lo mira).
@@ -46,29 +48,35 @@ public class CamaraEscena : MonoBehaviour
     const int CadaCuantos = 3;           // el monitor se actualiza 1 de cada 3 cuadros (rendimiento)
 
     static CamaraEscena instancia;
-    static DatosCamara datos = new DatosCamara();
+    static readonly DatosCamara vacia = new DatosCamara();
     static Dibujo dib;
 
+    // v44: la cámara vive en su CAPA (ver Dibujo: capas de cámara). Se usa la capa de cámara elegida.
+    static DatosCamara datos
+    {
+        get
+        {
+            var d = ElDibujo;
+            var c = d != null ? d.DatosCamaraActiva : null;
+            if (c == null)
+                return vacia;
+            if (c.claves == null)
+                c.claves = new List<ClaveCamara>();
+            return c;
+        }
+    }
+
     public static bool Hay => datos.hay;
-    public static bool Visible { get; private set; }
+    // v44: se ve cuando estás en una capa de cámara.
+    public static bool Visible
+    {
+        get
+        {
+            var d = ElDibujo;
+            return d != null && d.capas.Count > 0 && d.EsCamara(d.capaActual);
+        }
+    }
     public static List<ClaveCamara> Claves => datos.claves;
-
-    // ---------- Guardar y cargar (con el proyecto y en deshacer) ----------
-
-    public static DatosCamara Guardar()
-    {
-        return JsonUtility.FromJson<DatosCamara>(JsonUtility.ToJson(datos));
-    }
-
-    public static void Restaurar(DatosCamara d)
-    {
-        datos = d != null ? JsonUtility.FromJson<DatosCamara>(JsonUtility.ToJson(d)) : new DatosCamara();
-        if (datos.claves == null)
-            datos.claves = new List<ClaveCamara>();
-        datos.claves.Sort((a, b) => a.fotograma.CompareTo(b.fotograma));
-        if (!datos.hay)
-            Visible = false;
-    }
 
     static Dibujo ElDibujo
     {
@@ -205,27 +213,29 @@ public class CamaraEscena : MonoBehaviour
             instancia = new GameObject("CamaraEscena").AddComponent<CamaraEscena>();
     }
 
-    // Botón "Cámara" de las capas, o la voz: se ve / se esconde. La primera vez se pone sola (la mejor sugerencia).
+    // La voz ("cámara"): ve a la capa de la cámara (o vuelve a tu capa de dibujo). La primera vez se pone sola.
     public static void Alternar()
     {
         Asegurar();
+        var d = ElDibujo;
+        if (d == null)
+            return;
         if (Visible)
         {
-            Visible = false;
-            Mensaje("Cámara guardada (sigue usándose al exportar)");
+            d.SeleccionarCapa(d.UltimaCapaDeDibujo);
             return;
         }
-        Visible = true;
-        if (!datos.hay)
-            instancia.Sugerir(true);
-        else
-            Mensaje("Cámara: pellízcala para moverla · Sugiere: 3 encuadres");
+        d.SeleccionarCapa(d.CamaraActiva);
     }
 
     public static void SugerirVoz()
     {
         Asegurar();
-        Visible = true;
+        var d = ElDibujo;
+        if (d == null)
+            return;
+        if (!Visible)
+            d.SeleccionarCapa(d.CamaraActiva);
         instancia.Sugerir(!datos.hay);
     }
 
@@ -236,10 +246,7 @@ public class CamaraEscena : MonoBehaviour
             return;
         Asegurar();
         if (!datos.hay)
-        {
-            Visible = true;
             instancia.Sugerir(true);
-        }
         d.GuardarParaDeshacer();
         int f = FotogramaActual;
         Vector3 p;
@@ -282,10 +289,11 @@ public class CamaraEscena : MonoBehaviour
         if (d == null)
             return;
         d.GuardarParaDeshacer();
-        datos = new DatosCamara();
-        Visible = false;
+        var c = datos;
+        c.hay = false;
+        c.claves.Clear();
         d.Avisar();
-        Mensaje("Sin cámara: el encuadre vuelve a ser automático (deshacer la devuelve)");
+        Mensaje("Cámara vacía: el encuadre vuelve a ser automático (deshacer la devuelve) · Sugiere: ponerla otra vez");
     }
 
     static void Mensaje(string t)
@@ -324,7 +332,7 @@ public class CamaraEscena : MonoBehaviour
     readonly RenderTexture[] rtMinis = new RenderTexture[3];
     readonly List<Sugerencia> sugerencias = new List<Sugerencia>();
     float minisHasta;
-    bool armada, verticalPuesto, agarrada, conIzquierda;
+    bool armada, verticalPuesto, agarrada, conIzquierda, intentoAuto;
     Vector3 desfase, objetivo, poseViva;
     Quaternion rotViva, rotInicio;
     float distanciaViva;
@@ -366,7 +374,14 @@ public class CamaraEscena : MonoBehaviour
         // El monitor, con sus botones debajo y las miniaturas (de Sugiere) encima.
         panel = new GameObject("Monitor").transform;
         panel.SetParent(raiz, false);
-        fondoMonitor = Pieza(PrimitiveType.Quad, panel, new Vector3(0f, 0f, 0.002f), Quaternion.identity, Vector3.one, matPanel);
+        // v44: con borde gris (con el fondo blanco no se veía dónde empieza).
+        Material matBorde = matPanel != null ? new Material(matPanel) : null;
+        if (matBorde != null)
+        {
+            materiales.Add(matBorde);
+            PintarColor(matBorde, new Color(0.55f, 0.56f, 0.6f));
+        }
+        fondoMonitor = Pieza(PrimitiveType.Quad, panel, new Vector3(0f, 0f, 0.002f), Quaternion.identity, Vector3.one, matBorde);
         matMonitor = matImagen != null ? new Material(matImagen) : null;
         if (matMonitor != null)
             materiales.Add(matMonitor);
@@ -468,7 +483,7 @@ public class CamaraEscena : MonoBehaviour
         verticalPuesto = vertical;
         float w = vertical ? 0.072f : 0.16f, h = vertical ? 0.128f : 0.09f;
         monitor.localScale = new Vector3(w, h, 1f);
-        fondoMonitor.localScale = new Vector3(w + 0.008f, h + 0.008f, 1f);
+        fondoMonitor.localScale = new Vector3(w + 0.007f, h + 0.007f, 1f);
         if (rtMonitor != null)
             rtMonitor.Release();
         rtMonitor = new RenderTexture(vertical ? 144 : 256, vertical ? 256 : 144, 24, RenderTextureFormat.ARGB32);
@@ -496,6 +511,17 @@ public class CamaraEscena : MonoBehaviour
         }
     }
 
+    static void PintarColor(Material m, Color c)
+    {
+        if (m.HasProperty("_BaseColor"))
+            m.SetColor("_BaseColor", c);
+        if (m.HasProperty("_Color"))
+            m.SetColor("_Color", c);
+    }
+
+    // v44: la miniatura de la capa de cámara (lo que ve), para la tarjeta de capas.
+    public static RenderTexture Monitor => instancia != null ? instancia.rtMonitor : null;
+
     static void PonerTextura(Material m, Texture t)
     {
         if (m == null)
@@ -518,7 +544,16 @@ public class CamaraEscena : MonoBehaviour
             control = ControlManos.Instancia;
         var d = ElDibujo;
         var cab = control != null ? control.Cabeza : null;
-        bool ver = Visible && datos.hay && d != null && cab != null && !ExportadorVideo.Exportando && !Tutorial.EnCurso && !VistaLimpia.Activa;
+        bool enCapa = Visible && d != null && cab != null && !ExportadorVideo.Exportando && !Tutorial.EnCurso;
+        // v44: al llegar a una capa de cámara vacía, se pone sola en el mejor ángulo (una vez).
+        if (enCapa && !datos.hay && !intentoAuto)
+        {
+            intentoAuto = true;
+            Sugerir(true);
+        }
+        if (!enCapa)
+            intentoAuto = false;
+        bool ver = enCapa && datos.hay && !VistaLimpia.Activa;
         if (!ver)
         {
             if (agarrada)
@@ -679,8 +714,6 @@ public class CamaraEscena : MonoBehaviour
         if (puntos.Count == 0)
         {
             Mensaje("Dibuja algo primero: la cámara busca el mejor ángulo de tu dibujo");
-            if (!datos.hay)
-                Visible = false;
             return;
         }
         Vector3 c = Vector3.zero;

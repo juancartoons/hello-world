@@ -146,7 +146,7 @@ public class Lipsync : MonoBehaviour
         PonerBoca(0);
         modoGuardar = false;
         Avisar();
-        Mensaje("Muestra de bocas lista (Capa 3). Toca Voz, habla, Voz otra vez, luego Lipsync y Play");
+        Mensaje("Muestra de bocas lista (capa Bocas). Di \"hola\", o toca Voz, habla, Voz otra vez, luego Lipsync y Play");
     }
 
     Trazo Linea(List<Vector3> local, bool cerrada, int color, float grosor)
@@ -558,6 +558,63 @@ public class Lipsync : MonoBehaviour
         animacion.IrA(volver);
         animacion.MostrarFotograma();
         Mensaje("Lipsync listo: " + claves + " claves. Toca Play");
+    }
+
+    // v44: bocas para una PALABRA (sin grabar audio): "hola" = O, L, A. Cada letra su boca, y al final descansa. Luego
+    // se reproduce. Lo usa la voz ("hola") y el final del tutorial.
+    public bool GenerarDePalabra(string palabra)
+    {
+        if (dibujo == null || animacion == null || Elegir(Reposo) < 0)
+        {
+            Mensaje("Primero hacen falta las bocas (página Bocas de la mesa)");
+            return false;
+        }
+        var visemas = new List<int> { Reposo };
+        foreach (char ch in (palabra ?? "").ToLowerInvariant())
+        {
+            int v = -1;
+            switch (ch)
+            {
+                case 'a': case 'á': v = A; break;
+                case 'e': case 'é': v = E; break;
+                case 'i': case 'í': case 'y': v = I; break;
+                case 'o': case 'ó': v = O; break;
+                case 'u': case 'ú': case 'w': v = U; break;
+                case 'm': case 'b': case 'p': v = M; break;
+                case 'l': case 'n': case 'd': case 't': case 's': case 'r': case 'c': case 'z': v = E; break;
+            }
+            if (v >= 0)
+                visemas.Add(v);
+        }
+        visemas.Add(Reposo);
+        float fps = Mathf.Max(1f, animacion.fotogramasPorSegundo);
+        int porLetra = Mathf.Max(2, Mathf.RoundToInt(fps * 0.14f));
+        animacion.Pausar();
+        dibujo.GuardarParaDeshacer();
+        bool antes = Trazo.silenciar;
+        Trazo.silenciar = true;
+        int f = 0, anterior = -1;
+        foreach (int vis in visemas)
+        {
+            int b = Elegir(vis);
+            if (b < 0 || b == anterior)
+            {
+                f += porLetra;
+                continue;
+            }
+            if (anterior >= 0 && f - 1 > 0)
+                Clavar(f - 1, anterior);
+            Clavar(f, b);
+            anterior = b;
+            f += porLetra;
+        }
+        Trazo.silenciar = antes;
+        Trazo.huboCambio = false;
+        animacion.IrA(0);
+        animacion.MostrarFotograma();
+        if (!animacion.Reproduciendo)
+            animacion.AlternarReproducir();
+        return true;
     }
 
     void Clavar(int f, int boca)

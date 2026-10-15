@@ -46,7 +46,8 @@ public class CapasProfundidad : MonoBehaviour
     const float HundirBoton = 0.01f;                        // v43: el toque se activa 1 cm detrás del botón
     const float EsperaBotones = 1f;                         // v43: segundos quietas antes de que salgan los botones
     const float FinZonaNombre = 0.04f;                      // la zona para empujar llega hasta aquí (a la derecha: "+" y X)
-    const string AyudaNormal = "Empuja: capa de adelante · Atrae hacia ti: capa de atrás · +: capa nueva";
+    const string AyudaNormal = "Empuja: capa de adelante · Atrae: la de atrás · Deja el dedo quieto en el nombre: cambiarlo";
+    const float MantenerNombre = 1f;                        // v44: segundos con el dedo quieto en el nombre = teclado
     // La pastillita (la persiana).
     const float AnchoPastilla = 0.085f, AltoPastilla = 0.022f;
     const float BajoCapas = 18f;            // v41: abajo, grados debajo de hacia donde miras
@@ -73,7 +74,16 @@ public class CapasProfundidad : MonoBehaviour
     Transform raiz, tarjeta;
     TMP_Text nombre, ayuda;
     BotonTocable btnVer, btnBoceto, btnPlano, btnLiberar, btnCerrar, btnMas;
-    BotonTocable btn2D, btn3D, btnNombre, btnBorrar, btnCamara;    // v43
+    BotonTocable btn2D, btn3D, btnBorrar;                // v43 (v44: Borrar es un basurerito)
+    BotonTocable btnMasCamara, btnSugiere;               // v44: en la tarjeta de una capa de cámara
+    Transform iconoCamara;                               // v44
+    Material matMini;
+    RenderTexture rtMini;
+    Camera lenteMini;
+    float proximaMini, quietoNombreDesde;
+    bool miniSucia = true;
+    int miniDe = -1;
+    readonly List<Renderer> apagados = new List<Renderer>();
     bool liberarVisible;
     float quietoDesde = -10f, borrarHasta;
     TouchScreenKeyboard teclado;
@@ -206,19 +216,24 @@ public class CapasProfundidad : MonoBehaviour
         // v43: la tercera fila.
         btn2D = BotonRedondo(tarjeta, "2D", new Vector3(-0.109f, FilaBotones2, 0f), 0.02f);
         btn3D = BotonRedondo(tarjeta, "3D", new Vector3(-0.082f, FilaBotones2, 0f), 0.02f);
-        btnCamara = Boton(tarjeta, "Cámara", new Vector3(-0.036f, FilaBotones2, 0f), new Vector2(0.05f, 0.017f));
-        btnNombre = Boton(tarjeta, "Nombre", new Vector3(0.03f, FilaBotones2, 0f), new Vector2(0.056f, 0.017f));
-        btnCamara.alTocar.AddListener(() => { CamaraEscena.Alternar(); Tocado(); });
-        BotonTocable.PonerVoz(btnCamara, ControlManos.ComandoVoz.Camara);
-        btnBorrar = Boton(tarjeta, "Borrar", new Vector3(0.0965f, FilaBotones2, 0f), new Vector2(0.045f, 0.017f));
+        // v44: borrar = un basurerito en la esquina de abajo a la derecha (toca dos veces).
+        btnBorrar = Boton(tarjeta, "", new Vector3(Ancho * 0.5f - 0.016f, FilaBotones2, 0f), new Vector2(0.02f, 0.02f));
+        IconoBasura(btnBorrar.etiqueta.transform);
         btn2D.alTocar.AddListener(() => { dibujo.PonerPlano(true); Tocado(); });
         btn3D.alTocar.AddListener(() => { dibujo.PonerPlano(false); Tocado(); });
-        btnNombre.alTocar.AddListener(AbrirTeclado);
         btnBorrar.alTocar.AddListener(TocarBorrar);
         BotonTocable.PonerVoz(btn2D, ControlManos.ComandoVoz.En2D);
         BotonTocable.PonerVoz(btn3D, ControlManos.ComandoVoz.En3D);
-        BotonTocable.PonerNombre(btnNombre, "Cambiar el nombre de la capa");
         BotonTocable.PonerNombre(btnBorrar, "Borrar esta capa (toca dos veces)");
+        // v44: la tarjeta de una capa de CÁMARA: "+ Cámara" (otra cámara) y "Sugiere" (3 encuadres).
+        btnMasCamara = Boton(tarjeta, "+ Cámara", new Vector3(-0.08f, FilaBotones, 0f), new Vector2(0.06f, 0.017f));
+        btnSugiere = Boton(tarjeta, "Sugiere", new Vector3(-0.012f, FilaBotones, 0f), new Vector2(0.06f, 0.017f));
+        btnMasCamara.alTocar.AddListener(() => { dibujo.AgregarCamara(); AsegurarFantasmas(Actual); Tocado(); });
+        btnSugiere.alTocar.AddListener(() => { CamaraEscena.SugerirVoz(); Tocado(); });
+        BotonTocable.PonerNombre(btnMasCamara, "Otra cámara (otro ángulo o recorrido)");
+        BotonTocable.PonerVoz(btnSugiere, ControlManos.ComandoVoz.SugiereCamara);
+        iconoCamara = IconoCamara(tarjeta, new Vector3(-Ancho * 0.5f + 0.016f, 0.024f, -0.002f));
+        ArmarMiniatura();
         btnVer.alTocar.AddListener(() => { dibujo.AlternarVerCapa(Actual); Tocado(); });
         // v43: al poner el lápiz, la capa pasa a 2D de una vez (el lápiz es sobre una hoja).
         btnBoceto.alTocar.AddListener(() =>
@@ -380,13 +395,161 @@ public class CapasProfundidad : MonoBehaviour
         {
             if (b == null || b == btnCerrar)
                 continue;
-            bool v = ver && (b != btnLiberar || liberarVisible);
+            bool v = ver && Aplica(b);
             if (b.gameObject.activeSelf == v)
                 continue;
             b.gameObject.SetActive(v);
             if (b.etiqueta != null)
                 b.etiqueta.gameObject.SetActive(v);
         }
+    }
+
+    // v44: qué botones tiene la tarjeta según su capa (de dibujo o de cámara).
+    bool Aplica(BotonTocable b)
+    {
+        bool cam = dibujo != null && dibujo.EsCamara(Actual);
+        if (b == btnMasCamara || b == btnSugiere)
+            return cam;
+        if (b == btnVer || b == btnBoceto || b == btnPlano || b == btn2D || b == btn3D)
+            return !cam;
+        if (b == btnLiberar)
+            return !cam && liberarVisible;
+        return true;
+    }
+
+    // v44: el basurerito (rojo, para que se vea sobre el botón claro y sobre el oscuro de "¿borrar?").
+    void IconoBasura(Transform padre)
+    {
+        var rojo = Copia(materialTransparente != null ? materialTransparente : materialBoton, new Color(0.78f, 0.16f, 0.16f, 1f));
+        Quad(padre, "Tapa", new Vector3(0f, 0.0052f, 0f), new Vector2(0.012f, 0.0016f), rojo);
+        Quad(padre, "Asa", new Vector3(0f, 0.0066f, 0f), new Vector2(0.004f, 0.0012f), rojo);
+        Quad(padre, "Cuerpo", new Vector3(0f, -0.0012f, 0f), new Vector2(0.0095f, 0.0105f), rojo);
+    }
+
+    // v44: una camarita (cuerpo y lente) junto al nombre de las capas de cámara.
+    Transform IconoCamara(Transform padre, Vector3 pos)
+    {
+        var raizIcono = new GameObject("IconoCamara").transform;
+        raizIcono.SetParent(padre, false);
+        raizIcono.localPosition = pos;
+        var oscuro = materialBotonMarcado;
+        Quad(raizIcono, "Cuerpo", new Vector3(-0.002f, 0f, 0f), new Vector2(0.014f, 0.01f), oscuro);
+        Quad(raizIcono, "Lente", new Vector3(0.0075f, 0f, 0f), new Vector2(0.005f, 0.007f), oscuro);
+        Quad(raizIcono, "Visor", new Vector3(-0.005f, 0.0062f, 0f), new Vector2(0.005f, 0.0024f), oscuro);
+        raizIcono.gameObject.SetActive(false);
+        return raizIcono;
+    }
+
+    // ---------- v44: la miniatura de la capa (a la izquierda de la tarjeta) ----------
+
+    const float LadoMini = 0.058f;
+
+    void ArmarMiniatura()
+    {
+        var marco = Quad(tarjeta, "MarcoMiniatura", new Vector3(-Ancho * 0.5f - LadoMini * 0.5f - 0.008f, 0f, 0.0005f),
+                         new Vector2(LadoMini + 0.004f, LadoMini + 0.004f), Copia(materialBoton, new Color(0.55f, 0.56f, 0.6f, 1f)));
+        rtMini = new RenderTexture(112, 112, 24, RenderTextureFormat.ARGB32);
+        rtMini.Create();
+        var nav = FindFirstObjectByType<NavegadorArchivos>(FindObjectsInactive.Include);
+        matMini = nav != null && nav.materialImagen != null ? new Material(nav.materialImagen) : null;
+        if (matMini != null)
+        {
+            materiales.Add(matMini);
+            if (matMini.HasProperty("_BaseMap"))
+                matMini.SetTexture("_BaseMap", rtMini);
+            if (matMini.HasProperty("_MainTex"))
+                matMini.SetTexture("_MainTex", rtMini);
+            PonerAlfa(matMini, Color.white);
+        }
+        Quad(tarjeta, "Miniatura", marco.localPosition + new Vector3(0f, 0f, -0.001f), new Vector2(LadoMini, LadoMini), matMini);
+        var go = new GameObject("LenteMiniatura");
+        go.transform.SetParent(transform, false);
+        lenteMini = go.AddComponent<Camera>();
+        lenteMini.enabled = false;
+        lenteMini.stereoTargetEye = StereoTargetEyeMask.None;
+        lenteMini.clearFlags = CameraClearFlags.SolidColor;
+        lenteMini.backgroundColor = Color.white;
+        lenteMini.nearClipPlane = 0.01f;
+        lenteMini.farClipPlane = 50f;
+        lenteMini.fieldOfView = 40f;
+        lenteMini.aspect = 1f;
+        dibujo.alCambiar += () => miniSucia = true;
+    }
+
+    // Solo cuando cambia algo (no cada cuadro): se esconden un momento las otras capas y se toma la foto.
+    void ActualizarMiniatura(int cur)
+    {
+        if (rtMini == null || lenteMini == null)
+            return;
+        bool cam = dibujo.EsCamara(cur);
+        if (cur != miniDe)
+        {
+            miniDe = cur;
+            miniSucia = true;
+        }
+        if (cam)
+        {
+            // La de la cámara: lo que ve su monitor (si ya hay cámara puesta).
+            var mon = CamaraEscena.Monitor;
+            if (Time.time >= proximaMini && mon != null && CamaraEscena.Hay)
+            {
+                proximaMini = Time.time + 0.5f;
+                Graphics.Blit(mon, rtMini);
+            }
+            return;
+        }
+        if (!miniSucia || Time.time < proximaMini)
+            return;
+        miniSucia = false;
+        proximaMini = Time.time + 0.6f;
+        // La caja de las líneas de esta capa.
+        bool hay = false;
+        Bounds caja = new Bounds();
+        foreach (var t in dibujo.trazos)
+        {
+            if (t == null || t.capa != cur || !t.gameObject.activeInHierarchy)
+                continue;
+            var r = t.GetComponent<Renderer>();
+            if (r == null)
+                continue;
+            if (!hay)
+            {
+                caja = r.bounds;
+                hay = true;
+            }
+            else
+            {
+                caja.Encapsulate(r.bounds);
+            }
+        }
+        apagados.Clear();
+        if (hay)
+            foreach (var t in dibujo.trazos)
+            {
+                if (t == null || t.capa == cur || !t.gameObject.activeInHierarchy)
+                    continue;
+                foreach (var r in t.GetComponentsInChildren<Renderer>())
+                    if (r.enabled)
+                    {
+                        r.enabled = false;
+                        apagados.Add(r);
+                    }
+            }
+        Vector3 centro = hay ? caja.center : dibujo.transform.position;
+        Vector3 desde = control != null && control.Cabeza != null ? control.Cabeza.position : centro - Vector3.forward;
+        Vector3 dir = centro - desde;
+        if (dir.sqrMagnitude < 1e-4f)
+            dir = Vector3.forward;
+        dir.Normalize();
+        float radio = hay ? Mathf.Max(0.02f, caja.extents.magnitude) : 0.1f;
+        float dist = radio / Mathf.Tan(20f * Mathf.Deg2Rad) * 1.1f;
+        lenteMini.transform.SetPositionAndRotation(centro - dir * dist, Quaternion.LookRotation(dir, Vector3.up));
+        lenteMini.cullingMask = hay ? dibujo.MascaraExportar : 0;
+        Exportar.Captura.RenderizarEn(lenteMini, rtMini);
+        foreach (var r in apagados)
+            if (r != null)
+                r.enabled = true;
+        apagados.Clear();
     }
 
     // v43: "Nombre": el teclado del Quest. Lo que escribas queda junto al número ("3 · Fondo").
@@ -428,7 +591,6 @@ public class CapasProfundidad : MonoBehaviour
         if (Time.time > borrarHasta)
         {
             borrarHasta = Time.time + 3f;
-            btnBorrar.PonerTexto("¿Borrar?");
             btnBorrar.Marcar(true);
             Ayuda("Toca otra vez para borrar " + dibujo.NombreCapa(Actual) + " (deshacer la devuelve)");
             avisoHasta = Time.time + 3f;
@@ -537,6 +699,7 @@ public class CapasProfundidad : MonoBehaviour
             proximoRefresco = Time.time + 0.25f;
             RefrescarTarjeta(cur);
         }
+        ActualizarMiniatura(cur);
 
         // Todas las capas se acomodan (suave) en su lugar: adelante las más altas, atrás las más bajas.
         // Así, al cambiar de capa, se mueve todo el montón junto.
@@ -622,7 +785,7 @@ public class CapasProfundidad : MonoBehaviour
         persianaArriba.visible = () => !Abierta && !Tutorial.EnCurso && !ExportadorVideo.Exportando;
         persianaArriba.texto = () => dibujo != null ? "Capa " + (Actual + 1) + " · de " + dibujo.capas.Count : "";
         persianaArriba.alAbrir = () => Abrir(true);
-        persianaArriba.puedeJalar = () => control != null && control.SegundosSinEditar > 0.6f && !control.PaletaAbierta;
+        persianaArriba.puedeJalar = () => control != null && !control.TrazandoAhora;   // v44: sin depender de la otra mano
 
         var go2 = new GameObject("TiradorCapas");
         go2.transform.SetParent(transform, false);
@@ -712,10 +875,25 @@ public class CapasProfundidad : MonoBehaviour
                 empujando = true;
                 zInicio = p.z;
                 desdeEmpuje = Time.time;
+                quietoNombreDesde = Time.time;
             }
             return;
         }
         float dz = p.z - zInicio;
+        // v44: el dedo QUIETO en el nombre un segundo = cambiarle el nombre (sale el teclado). El nombre se pone
+        // verde azulado mientras tanto.
+        if (Mathf.Abs(dz) > 0.008f)
+            quietoNombreDesde = Time.time;
+        float mantener = Mathf.Clamp01((Time.time - quietoNombreDesde) / MantenerNombre);
+        nombre.color = Color.Lerp(Color.black, new Color(0.16f, 0.62f, 0.58f), mantener);
+        if (mantener >= 1f)
+        {
+            empujando = false;
+            esperarSalir = true;
+            nombre.color = Color.black;
+            AbrirTeclado();
+            return;
+        }
         bool fuera = Mathf.Abs(p.x) > Ancho * 0.5f + 0.03f || p.y < -Alto * 0.5f - 0.03f || p.y > Alto * 0.5f + 0.04f;
         if (fuera || Time.time - desdeEmpuje > 2.5f)
         {
@@ -796,13 +974,13 @@ public class CapasProfundidad : MonoBehaviour
         liberarVisible = dibujo.EncantadasEnCapa(cur) > 0 || (!c.unido && c.hayPlano);
         // v43: 2D / 3D (el de esta capa, marcado) y Borrar (si no está preguntando).
         btn2D.Marcar(c.en2D);
-        btnCamara.Marcar(CamaraEscena.Visible);
+        if (!empujando)
+            nombre.color = Color.black;
+        if (iconoCamara.gameObject.activeSelf != c.camara)
+            iconoCamara.gameObject.SetActive(c.camara);
         btn3D.Marcar(!c.en2D);
         if (Time.time > borrarHasta)
-        {
-            btnBorrar.PonerTexto("Borrar");
             btnBorrar.Marcar(false);
-        }
     }
 
     void OnDestroy()

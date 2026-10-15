@@ -10,7 +10,9 @@ using UnityEngine;
 //                                                    9 · Paneles flexibles (v41).
 //                                                   10 · Fondos vivos: universo y nubes (v42).
 //                                                   11 · Capas: 2D/3D, nombre, borrar, cebolla (v43).
-//                                                   12 · La cámara (v43).
+//                                                   12 · La cámara (v43; v44: es una capa).
+//                                                   13 · La mirada y el dedo jeringa (v44).
+//                                                   14 · Estudio de animación y capas (v44).
 public class TutorialNovedades : TarjetaTutorial
 {
     static readonly Color Celeste = new Color(0.55f, 0.78f, 1f);
@@ -28,7 +30,7 @@ public class TutorialNovedades : TarjetaTutorial
     readonly List<Vector3> otra = new List<Vector3>();
     readonly List<Vector3> tramo = new List<Vector3>();
 
-    protected override int Paginas => 12;
+    protected override int Paginas => 14;
 
     protected override void ArmarExtra()
     {
@@ -62,7 +64,9 @@ public class TutorialNovedades : TarjetaTutorial
             case 8: return Tx("9 · Flexible panels", "9 · Paneles flexibles");
             case 9: return Tx("10 · Living backgrounds", "10 · Fondos vivos");
             case 10: return Tx("11 · Layers 2D/3D, onion skin and export", "11 · Capas 2D/3D, cebolla y exportar");
-            default: return Tx("12 · The camera", "12 · La cámara");
+            case 11: return Tx("12 · The camera", "12 · La cámara");
+            case 12: return Tx("13 · Gaze and the syringe finger", "13 · La mirada y el dedo jeringa");
+            default: return Tx("14 · Animation studio and layers", "14 · Estudio de animación y capas");
         }
     }
 
@@ -110,10 +114,18 @@ public class TutorialNovedades : TarjetaTutorial
                 return Tx(
                     "Each LAYER has two ROUND buttons, 2D and 3D: each layer remembers its own (it's no longer on the watch). \"Pencil\" by voice = pencil + 2D at once. \"Name\" opens the keyboard (\"3 · Background\": the number stays). \"Delete\": tap twice (undo brings it back). The mannequin and the mouths make their OWN new layer. Buttons hide while you push the layers and come back a second later; press them on purpose (1 cm in). ONION SKIN (Animate page): the previous key in red and the next one in green. EXPORT: 1920x1080 or vertical 1080x1920, and an optional green background only in the MP4.",
                     "Cada CAPA tiene dos botones REDONDOS, 2D y 3D: cada capa recuerda el suyo (ya no está en el reloj). \"Lápiz\" por voz = lápiz y 2D de una vez. \"Nombre\" abre el teclado (\"3 · Fondo\": el número se queda). \"Borrar\": toca dos veces (deshacer la devuelve). El maniquí y las bocas crean SU capa nueva. Los botones se esconden mientras empujas las capas y salen un segundo después; se tocan a propósito (1 cm adentro). PAPEL CEBOLLA (página Animar): la clave anterior en rojo y la siguiente en verde. EXPORTAR: 1920x1080 o vertical 1080x1920, y fondo verde opcional solo en el MP4.");
+            case 12:
+                return Tx(
+                    "THE EYE (under the microphone): a small sight appears in the middle of your view and what you look at glows. Say \"red\" and it turns red (\"red line\" / \"red fill\" to be exact), \"copy\" and \"paste\", \"delete this\", \"hide this\", \"this layer\", \"select\". In Nodes: \"corner\" / \"smooth\". Next to the sight it tells you what to say. THE SYRINGE: touch a color of the palette and your index fills up with it; touch a line or the inside of a shape and it gets painted (a drop or two may fall).",
+                    "EL OJO (debajo del micrófono): sale una mira chiquita en el centro de tu vista y lo que miras brilla. Di \"rojo\" y se vuelve rojo (\"línea roja\" / \"relleno rojo\" para ser exacto), \"copiar\" y \"pegar\", \"borra esto\", \"oculta esto\", \"esta capa\", \"selecciona\". En Nodos: \"esquina\" / \"suave\". Junto a la mira te dice qué decir. LA JERINGA: toca un color de la paleta y tu índice se llena; toca una línea o el interior de una forma y se pinta (a veces cae una gotita).");
             default:
                 return Tx(
-                    "THE CAMERA: Layers > \"Camera\" (or say \"camera\"). In 2D it points straight at your plane; in 3D it finds the best angle by itself. PINCH it with your RIGHT hand and move it: it orbits around what it's looking at. With your LEFT hand: it slides without changing where it looks. The monitor above it shows what it sees. \"Suggest\" = 3 framings to choose from. \"Key\" saves it on that frame: between keys the camera travels smoothly (diamonds on the timeline). Photos and videos are exported from it. \"Remove\" = automatic framing again.",
-                    "LA CÁMARA: Capas > \"Cámara\" (o di \"cámara\"). En 2D apunta de frente a tu plano; en 3D busca sola el mejor ángulo. PELLÍZCALA con la DERECHA y muévela: gira alrededor de lo que mira. Con la IZQUIERDA: se corre sin cambiar hacia dónde mira. El monitor de encima muestra lo que ve. \"Sugiere\" = 3 encuadres para elegir. \"Clave\" la guarda en ese fotograma: entre claves la cámara viaja suave (rombitos en la línea de tiempo). Fotos y videos salen desde ella. \"Quitar\" = encuadre automático otra vez.");
+                    "ANIMATION STUDIO: a new living background, a whole room drawn in pencil around you (blue construction lines and graphite), with a light table, shelves and drawings hanging on a line. LAYERS: each one shows a thumbnail on its left; say \"layer 2\" to jump to it; leave your finger still on the name to rename it; delete with the little trash can (tap twice). The camera is a layer of its own (\"+ Camera\" = another one). The panels open with either hand, whatever the other one is doing.",
+                    "ESTUDIO DE ANIMACIÓN: un fondo vivo nuevo, un cuarto entero dibujado a lápiz a tu alrededor (líneas azules de construcción y grafito), con mesa de luz, repisas y dibujos colgados. CAPAS: cada una muestra su miniatura a la izquierda; di \"capa 2\" para ir a ella; deja el dedo quieto en el nombre para cambiarlo; borra con el basurerito (toca dos veces). La cámara es su propia capa (\"+ Cámara\" = otra). Las persianas se abren con cualquier mano, haga lo que haga la otra.");
+            case 11:
+                return Tx(
+                    "THE CAMERA: it is a LAYER of its own, in front of all the others (or say \"camera\"). In 2D it points straight at your plane; in 3D it finds the best angle by itself. PINCH it with your RIGHT hand and move it: it orbits around what it's looking at. With your LEFT hand: it slides without changing where it looks. The monitor above it shows what it sees. \"Suggest\" = 3 framings to choose from. \"Key\" saves it on that frame: between keys the camera travels smoothly (diamonds on the timeline). Photos and videos are exported from it. \"Remove\" = automatic framing again.",
+                    "LA CÁMARA: es una CAPA propia, adelante de todas (o di \"cámara\"). En 2D apunta de frente a tu plano; en 3D busca sola el mejor ángulo. PELLÍZCALA con la DERECHA y muévela: gira alrededor de lo que mira. Con la IZQUIERDA: se corre sin cambiar hacia dónde mira. El monitor de encima muestra lo que ve. \"Sugiere\" = 3 encuadres para elegir. \"Clave\" la guarda en ese fotograma: entre claves la cámara viaja suave (rombitos en la línea de tiempo). Fotos y videos salen desde ella. \"Quitar\" = encuadre automático otra vez.");
             case 9:
                 return Tx(
                     "LIVING BACKGROUNDS (not photos: the app draws them). UNIVERSE: thousands of stars around you, the closest ones truly in 3D, and small colorful nebulae far away; there is no floor, you float in space. ABOVE THE CLOUDS: a sea of clouds below you and a warm sun far away. In the 360 window, \"Fly\" makes the stars or the clouds pass slowly by (always gently, so it doesn't make you dizzy). Also by voice: \"universe\", \"clouds\", \"fly\".",
@@ -154,7 +166,9 @@ public class TutorialNovedades : TarjetaTutorial
             case 8: AnimarFlexibles(t); break;
             case 9: AnimarVivos(t); break;
             case 10: AnimarPersianaArriba(t); break;
-            default: AnimarRespira(t); break;
+            case 11: AnimarRespira(t); break;
+            case 12: AnimarVidrio(t); break;
+            default: AnimarVivos(t); break;
         }
     }
 

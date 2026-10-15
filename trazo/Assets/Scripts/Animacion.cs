@@ -264,6 +264,12 @@ public class Animacion : MonoBehaviour
 
     public void AgregarClave()
     {
+        // v44: en una capa de cámara, la clave es de la cámara.
+        if (dibujo.EsCamara(dibujo.capaActual))
+        {
+            CamaraEscena.AgregarClave();
+            return;
+        }
         dibujo.GuardarParaDeshacer();
         GuardarClave(Fotograma, CapaActiva);
         Trazo.huboCambio = false;
@@ -274,6 +280,11 @@ public class Animacion : MonoBehaviour
 
     public void QuitarClave()
     {
+        if (dibujo.EsCamara(dibujo.capaActual))
+        {
+            CamaraEscena.QuitarClave();
+            return;
+        }
         var c = BuscarClave(Fotograma, CapaActiva);
         if (c == null)
         {

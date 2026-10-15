@@ -138,7 +138,7 @@ public class Escenario : MonoBehaviour
         vivos = GetComponent<FondosVivos>();
         if (vivos == null)
             vivos = gameObject.AddComponent<FondosVivos>();
-        vivos.Preparar(materialCielo, materialEstrellas, materialNubes);
+        vivos.Preparar(materialCielo, materialEstrellas, materialNubes, materialFondo360);
         ListarFotosPropias();
         // El vidrio, mientras tanto: blanco esmerilado.
         Shader.SetGlobalFloat(idFondoHay, 0f);

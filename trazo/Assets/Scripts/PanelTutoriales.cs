@@ -6,6 +6,8 @@ using UnityEngine;
 //  2 · Rellenos: la cubeta, tocar dentro para rellenar y la tinta invisible (TutorialRellenos).
 //  3 · Nodos: tocar y soltar, nodo nuevo, lazo y plastilina (TutorialNodos).
 //  4 · Novedades: lo nuevo de las últimas versiones (TutorialNovedades).
+//  5 · Mira y di: la mirada y la voz (TutorialMirada, v44).
+//  6 · Ayuda de la mesa: la copia azul que explica cada botón (v44: antes era el "?" de la mesa).
 public class PanelTutoriales : MonoBehaviour
 {
     Transform raiz;
@@ -45,38 +47,54 @@ public class PanelTutoriales : MonoBehaviour
         raiz = new GameObject("PanelTutoriales").transform;
         raiz.SetPositionAndRotation(cab.position + adelante * 0.45f - Vector3.up * 0.06f, Quaternion.LookRotation(adelante, Vector3.up));
 
-        Fondo(raiz, new Vector2(0.3f, 0.26f), tutorial.materialNegro, tutorial.materialBlanco);
-        var titulo = Texto(raiz, Tx("? Tutorials", "? Tutoriales"), new Vector3(0f, 0.084f, -0.004f), new Vector2(0.22f, 0.03f), 0.3f, tutorial.fuenteComic);
+        Fondo(raiz, new Vector2(0.3f, 0.36f), tutorial.materialNegro, tutorial.materialBlanco);
+        var titulo = Texto(raiz, Tx("? Tutorials", "? Tutoriales"), new Vector3(0f, 0.134f, -0.004f), new Vector2(0.22f, 0.03f), 0.3f, tutorial.fuenteComic);
         titulo.color = Color.black;
-        var b1 = Boton(raiz, Tx("1 · First steps", "1 · Primeros pasos"), new Vector3(0f, 0.04f, 0f), new Vector2(0.25f, 0.034f),
+        var b1 = Boton(raiz, Tx("1 · First steps", "1 · Primeros pasos"), new Vector3(0f, 0.09f, 0f), new Vector2(0.25f, 0.034f),
                        tutorial.materialBoton, tutorial.materialBotonMarcado);
         b1.alTocar.AddListener(() =>
         {
             Cerrar();
             tutorial.Empezar();
         });
-        var b2 = Boton(raiz, Tx("2 · Fills (bucket and invisible ink)", "2 · Rellenos (cubeta y tinta invisible)"), new Vector3(0f, -0.006f, 0f),
+        var b2 = Boton(raiz, Tx("2 · Fills (bucket and invisible ink)", "2 · Rellenos (cubeta y tinta invisible)"), new Vector3(0f, 0.044f, 0f),
                        new Vector2(0.25f, 0.034f), tutorial.materialBoton, tutorial.materialBotonMarcado);
         b2.alTocar.AddListener(() =>
         {
             Cerrar();
             tutorial.EmpezarRellenos();
         });
-        var b3 = Boton(raiz, Tx("3 · Nodes (lasso and clay)", "3 · Nodos (lazo y plastilina)"), new Vector3(0f, -0.052f, 0f),
+        var b3 = Boton(raiz, Tx("3 · Nodes (lasso and clay)", "3 · Nodos (lazo y plastilina)"), new Vector3(0f, -0.002f, 0f),
                        new Vector2(0.25f, 0.034f), tutorial.materialBoton, tutorial.materialBotonMarcado);
         b3.alTocar.AddListener(() =>
         {
             Cerrar();
             tutorial.EmpezarNodos();
         });
-        var b4 = Boton(raiz, Tx("4 · What's new", "4 · Novedades"), new Vector3(0f, -0.098f, 0f),
+        var b4 = Boton(raiz, Tx("4 · What's new", "4 · Novedades"), new Vector3(0f, -0.048f, 0f),
                        new Vector2(0.25f, 0.034f), tutorial.materialBoton, tutorial.materialBotonMarcado);
         b4.alTocar.AddListener(() =>
         {
             Cerrar();
             tutorial.EmpezarNovedades();
         });
-        var x = Boton(raiz, "X", new Vector3(0.13f, 0.087f, 0f), new Vector2(0.024f, 0.024f), tutorial.materialBoton, tutorial.materialBotonMarcado);
+        var b5 = Boton(raiz, Tx("5 · Look and say (gaze + voice)", "5 · Mira y di (mirada + voz)"), new Vector3(0f, -0.094f, 0f),
+                       new Vector2(0.25f, 0.034f), tutorial.materialBoton, tutorial.materialBotonMarcado);
+        b5.alTocar.AddListener(() =>
+        {
+            Cerrar();
+            tutorial.EmpezarMirada();
+        });
+        var b6 = Boton(raiz, Tx("6 · Desk help (each button)", "6 · Ayuda de la mesa (cada botón)"), new Vector3(0f, -0.14f, 0f),
+                       new Vector2(0.25f, 0.034f), tutorial.materialBoton, tutorial.materialBotonMarcado);
+        b6.alTocar.AddListener(() =>
+        {
+            Cerrar();
+            var mesa = FindFirstObjectByType<PanelArriba>();
+            if (mesa != null)
+                mesa.AbrirAyudaMesa();
+        });
+        var x = Boton(raiz, "X", new Vector3(0.13f, 0.137f, 0f), new Vector2(0.024f, 0.024f), tutorial.materialBoton, tutorial.materialBotonMarcado);
         x.alTocar.AddListener(Cerrar);
     }
 

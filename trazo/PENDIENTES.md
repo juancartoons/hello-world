@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 15 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v43***
+*Actualizado: 15 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v44***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,6 +16,40 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 4. **Build And Run**.
 
 ---
+
+## 0+. Hecho en la v44 (falta probarlo en el visor)
+
+**La mirada** (el ojo, debajo del micrófono)
+- [x] Tócalo (con cualquier índice) o di **"mirada"**: sale una **mira** en el centro de tu vista, con **imán** invisible. Lo señalado **brilla** (celeste = línea, dorado = relleno).
+- [x] La mirada solo señala; la voz actúa: un **color** ("rojo") va a lo que brilla; si nada brilla, a tus líneas nuevas. **"línea roja"** / **"relleno rojo"** para ser exacto (los 12 colores).
+- [x] **"copiar"** / **"copiar color"** y **"pegar"**. **"borra esto"**, **"oculta esto"** / **"ocúltalo"**, **"esta capa"**, **"selecciona"**.
+- [x] En nodos: mira un nodo y di **"esquina"** (o esquinas, alas, alitas, manijas, antenas, palancas, tiradores, handles, alt): cada tirador se mueve por su lado con el índice. **"suave"** = vuelven a alinearse.
+- [x] Junto a la mira, una **sugerencia** de qué decir.
+- [ ] Seguimiento de ojos real (Quest Pro): por ahora la mirada es hacia donde apunta tu cabeza.
+
+**Dedo jeringa**
+- [x] Toca un color de la paleta: tu índice se **llena** de ese color. Toca una **línea** = la pintas; toca **dentro de una forma** = la rellenas. Al pintar se vacía. Caen **gotitas** al llevarlo cargado.
+- [x] El cuentagotas y "copiar" también cargan el dedo.
+- [ ] Si funciona bien: **quitar la cubeta** en la siguiente versión.
+
+**Capas**
+- [x] Voz **"capa 1"** ... **"capa 12"** (o "layer one"...).
+- [x] Borrar = un **basurerito** rojo en la esquina (toca dos veces). Se quitó el botón "Nombre": **deja el dedo quieto en el nombre** 1 segundo y sale el teclado.
+- [x] **Miniatura** de la capa a la izquierda de la tarjeta (se actualiza solo cuando cambia algo).
+- [x] **La cámara es una capa**: siempre hay una, adelante de todas, con ícono de cámara. Elígela y aparece la camarita. En su tarjeta: **"+ Cámara"** (otra cámara) y **"Sugiere"**. La que elegiste es la que se usa al exportar. En una capa de cámara no se dibuja, y "Clave" guarda una clave de cámara.
+- [x] Monitor de la cámara con **borde gris**.
+
+**Arreglos**
+- [x] Las **persianas** (capas y mesa) se abren con cualquier mano, aunque la otra haga un gesto o no se vea. Solo esperan si estás trazando una línea con esa mano.
+
+**Fondo nuevo: Estudio de animación** (dibujado por la app, a lápiz)
+- [x] Un cuarto completo alrededor de ti: líneas azules de construcción y grafito encima, mesa de luz con su disco, lámpara, frasco de lápices, corcho con dibujos, tendedero con la pelota que rebota, repisas con libros, ventana, planta, puerta, póster y lámpara colgante. Tiene profundidad real (paredes a su distancia). Voz: **"estudio"**.
+
+**Tutoriales**
+- [x] La ayuda de la mesa ya no está en la mesa: **Mis archivos → Ayuda** (y en el panel "?": **6 · Ayuda de la mesa**).
+- [x] Nuevo: **5 · Mira y di** (la mirada y la voz, 4 páginas).
+- [x] El primer tutorial termina con una **cabeza** que dice **"hola"**: di "hola" (o toca ¡Hola!) y su boca habla. La voz "hola" también hace hablar tus bocas en cualquier momento.
+- [x] Novedades: páginas **13 · La mirada y el dedo jeringa** y **14 · Estudio de animación y capas**.
 
 ## 0+. Hecho en la v43 (falta probarlo en el visor)
 
@@ -56,7 +90,7 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - [x] Novedades: páginas **11 · Capas 2D/3D, cebolla y exportar** y **12 · La cámara**.
 
 **Para después**
-- [ ] **Estudio de animación** (fondo nuevo): se dejó para otra versión.
+- [x] **Estudio de animación** (fondo nuevo): hecho en la v44.
 - [ ] Meter los idiomas de la voz dentro de la app (solo para la versión final del concurso).
 
 ## 0+. Hecho en la v42 (falta probarlo en el visor)

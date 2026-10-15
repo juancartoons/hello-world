@@ -67,6 +67,10 @@ public class Persiana : MonoBehaviour
     }
 
     // v41: ¿este punto está sobre una pastilla que se puede mover? (así ese pellizco no elige líneas)
+    static int cercaCuadro = -10;
+    // v44: el índice derecho está sobre alguna pastilla (ControlManos no empieza líneas ni borra ahí).
+    public static bool DedoCerca => Time.frameCount - cercaCuadro <= 1;
+
     public static bool Contiene(Vector3 punto)
     {
         foreach (var p in todas)
@@ -218,6 +222,9 @@ public class Persiana : MonoBehaviour
         bool cerca = dedoOk && Vector3.Distance(dedo, transform.position) < 0.12f;
         atencion = Mathf.MoveTowards(atencion, mira || cerca || agarrada || movida ? 1f : 0f, Time.deltaTime * 3f);
         PonerAtencion(atencion * ver);
+        // v44: el índice derecho sobre la pastilla: no dibuja ni borra ahí (así se jala aunque la izquierda tenga un gesto).
+        if (dedoOk && ver > 0.5f && Cerca(dedo, 0.015f))
+            cercaCuadro = Time.frameCount;
         // v42: su etiqueta, encima (la palabra que se dice: "Capas", "Mesa").
         if (comandoVoz != ControlManos.ComandoVoz.Nada && dedoOk && !agarrada && !movida && ver > 0.9f && Cerca(dedo, 0.02f))
             EtiquetasBotones.ProponerComando(transform, Vector3.Distance(dedo, transform.position), comandoVoz,
@@ -231,7 +238,7 @@ public class Persiana : MonoBehaviour
                 TerminarMovida(control, true);
         }
         else if (alMoverA != null && dedoOk && control.Der.empezoPellizco && !control.Ocupado
-                 && control.GestoIzq == ControlManos.Gesto.Ninguno && (puedeJalar == null || puedeJalar())
+                 && (puedeJalar == null || puedeJalar())
                  && Cerca(control.Der.PuntoPellizco, 0.02f))
         {
             EmpezarMovida(control);
