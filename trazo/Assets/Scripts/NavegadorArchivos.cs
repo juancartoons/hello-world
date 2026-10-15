@@ -828,6 +828,7 @@ public class NavegadorArchivos : MonoBehaviour
             else
                 dibujo.Mensaje("No encuentro el grabador (vuelve a tocar ★ Armar escena en Unity)");
         });
+        Mostrar(btnGrabar, false);   // v43: "Grabar proceso" se quita de la vista (el código queda para después)
         btnPausa = Boton(raiz, "Pausa", new Vector3(0.205f, 0.2f, 0f), new Vector2(0.045f, 0.03f));
         btnPausa.alTocar.AddListener(() => { if (grabador != null) grabador.AlternarPausa(); });
         Mostrar(btnPausa, false);
@@ -843,12 +844,16 @@ public class NavegadorArchivos : MonoBehaviour
         foto.alTocar.AddListener(TomarFoto);
         var svg = Boton(abanico.transform, "SVG (2)", new Vector3(0.015f, 0.157f, 0f), new Vector2(0.085f, 0.026f));
         svg.alTocar.AddListener(() => { dibujo.ExportarSVG(); Listar(); Mostrar(); });
-        var anim = Boton(abanico.transform, "Video anim", new Vector3(0.105f, 0.157f, 0f), new Vector2(0.085f, 0.026f));
+        var anim = Boton(abanico.transform, "Exportar", new Vector3(0.105f, 0.157f, 0f), new Vector2(0.085f, 0.026f));   // v43
+        BotonTocable.PonerVoz(anim, ControlManos.ComandoVoz.Video);
         anim.alTocar.AddListener(() => { if (exportador != null) exportador.ExportarAnimacion(); });
         var proceso = Boton(abanico.transform, "Video proceso", new Vector3(0.195f, 0.157f, 0f), new Vector2(0.085f, 0.026f));
         proceso.alTocar.AddListener(VideoProceso);
         btnVelocidad = Boton(abanico.transform, "Vel x1", new Vector3(0.268f, 0.157f, 0f), new Vector2(0.05f, 0.026f));
         btnVelocidad.alTocar.AddListener(() => { if (exportador != null) exportador.CambiarVelocidad(); });
+        // v43: el video del proceso se quita de la vista (el código queda para después).
+        Mostrar(proceso, false);
+        Mostrar(btnVelocidad, false);
         abanico.SetActive(false);
 
         // ----- La galería: qué mostrar, traer imágenes y ver/ocultar las de referencia -----

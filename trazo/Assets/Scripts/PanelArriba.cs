@@ -444,7 +444,7 @@ public class PanelArriba : MonoBehaviour
             return;
         if (btnCapasPlegar != null)
         {
-            btnCapasPlegar.PonerTexto(dibujo.CapaActual.nombre);
+            btnCapasPlegar.PonerTexto(dibujo.NombreCapa(dibujo.capaActual));
             btnCapasPlegar.Marcar(CapasProfundidad.Abierta);
         }
         if (!capasAbiertas || capasDesplegable == null || animacion == null || barra == null)
@@ -943,8 +943,8 @@ public class PanelArriba : MonoBehaviour
         Vector3 hacia = giro * (Quaternion.Euler(-elevacion, 0f, 0f) * Vector3.forward);
         Quaternion rot = Quaternion.LookRotation(hacia, Vector3.up);
         // Lo que siempre se ve queda centrado en esa dirección (el panel crece desde más abajo).
-        // v42: arriba, 1.5 cm más cerca de ti.
-        float distancia = arribaAhora ? DistanciaMesa - 0.015f : DistanciaMesa;
+        // v42: arriba, más cerca de ti (v43: 4.5 cm, para no estirar tanto el brazo).
+        float distancia = arribaAhora ? DistanciaMesa - 0.045f : DistanciaMesa;
         Vector3 pos = cabeza.position + hacia * distancia - rot * Vector3.up * (CentroMesa * escala);
         transform.position = Vector3.Lerp(transform.position, pos, a);
         transform.rotation = Quaternion.Slerp(transform.rotation, rot, a);

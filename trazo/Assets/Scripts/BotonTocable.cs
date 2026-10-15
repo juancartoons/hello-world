@@ -24,6 +24,10 @@ public class BotonTocable : MonoBehaviour
     // o un nombre (en español); si no tiene ninguno, lo que dice el botón.
     [System.NonSerialized] public ControlManos.ComandoVoz comandoVoz = ControlManos.ComandoVoz.Nada;
     [System.NonSerialized] public string nombre;
+    // v43: TOQUE A PROPÓSITO (las capas). > 0: el dedo tiene que llegar DE FRENTE (encima del botón y todavía
+    // delante de él; no de lado, ni porque el botón se movió hasta el dedo) y hundirse estos metros DETRÁS de su cara.
+    // Se ve a la altura del panel, pero se activa un poco más adentro (la ilusión de profundidad). 0 = como siempre.
+    [System.NonSerialized] public float fondoToque;
 
     // Cerca de cualquier botón (de cualquier menú), la bolita del dedo y el borrador se esconden y no se dibuja.
     const float DistanciaCerca = 0.045f;
@@ -35,12 +39,14 @@ public class BotonTocable : MonoBehaviour
     Renderer miRenderer;
     Vector3 escalaOriginal;
     float bloqueadoHasta;
-    bool dentro;
+    bool dentro, armado;
 
     void Awake()
     {
         miCollider = GetComponent<Collider>();
         miRenderer = GetComponent<Renderer>();
+        if (miRenderer == null)
+            miRenderer = GetComponentInChildren<Renderer>();   // v43: los botones redondos (el cilindro va de hijo)
         escalaOriginal = transform.localScale;
     }
 
@@ -49,6 +55,7 @@ public class BotonTocable : MonoBehaviour
         // Al aparecer el panel no se presiona nada hasta que el dedo salga y vuelva a entrar.
         bloqueadoHasta = Time.time + 0.4f;
         dentro = true;
+        armado = false;
         if (escalaOriginal != Vector3.zero)
             transform.localScale = escalaOriginal;
     }
@@ -67,14 +74,31 @@ public class BotonTocable : MonoBehaviour
             cercaCuadro = Time.frameCount;
         if (d < DistanciaEtiqueta)
             ProponerEtiqueta(d);
-        bool toca = d < distancia;
+        bool toca = fondoToque > 0f ? TocaAProposito(punta) : d < distancia;
         if (toca && !dentro && Time.time >= bloqueadoHasta)
         {
+            armado = false;
             bloqueadoHasta = Time.time + pausa;
             StartCoroutine(Hundir());
             alTocar.Invoke();
         }
         dentro = toca;
+    }
+
+    // v43: ¿el dedo llegó de frente y ya está "fondoToque" detrás de la cara del botón? (Su cara mira hacia -forward.)
+    bool TocaAProposito(Vector3 punta)
+    {
+        Vector3 escala = transform.lossyScale;
+        Vector3 rel = punta - transform.position;
+        float prof = Vector3.Dot(rel, transform.forward) + Mathf.Abs(escala.z) * 0.5f;   // > 0: detrás de su cara
+        float lx = Mathf.Abs(Vector3.Dot(rel, transform.right)) - Mathf.Abs(escala.x) * 0.5f;
+        float ly = Mathf.Abs(Vector3.Dot(rel, transform.up)) - Mathf.Abs(escala.y) * 0.5f;
+        bool encima = lx < 0.004f && ly < 0.004f;
+        if (!encima || prof < -0.05f)
+            armado = false;
+        else if (prof < -0.002f)
+            armado = true;
+        return armado && encima && prof >= fondoToque;
     }
 
     // v42: para que cada menú le ponga su palabra de voz o su nombre a sus botones.

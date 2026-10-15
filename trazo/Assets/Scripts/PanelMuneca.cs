@@ -61,7 +61,14 @@ public class PanelMuneca : MonoBehaviour
 
         if (dibujo != null)
         {
-            Conectar(btnPlano, dibujo.AlternarPlano);
+            // v43: el 2D / 3D ya no va en el reloj (va en cada capa). Si la escena es de antes, se esconde.
+            if (btnPlano != null)
+            {
+                btnPlano.gameObject.SetActive(false);
+                if (btnPlano.etiqueta != null)
+                    btnPlano.etiqueta.gameObject.SetActive(false);
+                btnPlano = null;
+            }
             Conectar(btnGuardar, dibujo.Guardar);
             Conectar(btnCargar, AbrirMisArchivos);
             Conectar(btnBorrar, dibujo.BorrarTodo);

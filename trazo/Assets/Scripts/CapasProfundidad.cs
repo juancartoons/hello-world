@@ -25,9 +25,13 @@ using UnityEngine;
 //  - v41: PANELES FLEXIBLES (ver PanelesFlexibles.cs). Pellizca la pastillita y llévala ABAJO: ahí se jala hacia
 //    arriba y las capas salen DEBAJO de tu mirada, inclinadas hacia ti (las ves desde arriba). En espejo: las de
 //    adelante bajan y las de atrás suben; el tirador para guardarlas queda encima de la tarjeta (jálalo hacia abajo).
+//  - v43: una tercera fila: dos botones REDONDOS "2D" / "3D" (cada capa recuerda el suyo; ya no está en el reloj),
+//    "Nombre" (el teclado del Quest: "3 · Fondo", sin perder el número) y "Borrar" (toca dos veces; deshacer la
+//    devuelve). Mientras empujas o atraes las capas, los botones se esconden y salen 1 segundo después de que todo
+//    queda quieto. Y se tocan A PROPÓSITO: el dedo llega de frente y se hunde 1 cm detrás del botón.
 public class CapasProfundidad : MonoBehaviour
 {
-    const float Ancho = 0.26f, Alto = 0.065f;
+    const float Ancho = 0.26f, Alto = 0.085f;   // v43: más alta (tercera fila)
     const float DistanciaActual = 0.35f;                    // metros de tus ojos a la capa actual
     const float PasoFondo = 0.07f;                          // metros entre una capa y la siguiente
     const float SubeAdelante = 0.024f, SubeMas = 0.005f;    // las de adelante suben (más mientras más cerca de ti)
@@ -36,7 +40,10 @@ public class CapasProfundidad : MonoBehaviour
     const float Empujon = 0.03f;                            // cuánto hay que empujar o atraer
     const float CerrarSola = 20f;
     const float Borde = 0.0022f;
-    const float FilaBotones = -0.018f;                      // la fila de botones (abajo de la tarjeta)
+    const float FilaBotones = -0.006f;                      // la fila de botones (abajo de la tarjeta)
+    const float FilaBotones2 = -0.03f;                      // v43: la tercera fila (2D, 3D, Nombre, Borrar)
+    const float HundirBoton = 0.01f;                        // v43: el toque se activa 1 cm detrás del botón
+    const float EsperaBotones = 1f;                         // v43: segundos quietas antes de que salgan los botones
     const float FinZonaNombre = 0.04f;                      // la zona para empujar llega hasta aquí (a la derecha: "+" y X)
     const string AyudaNormal = "Empuja: capa de adelante · Atrae hacia ti: capa de atrás · +: capa nueva";
     // La pastillita (la persiana).
@@ -65,6 +72,11 @@ public class CapasProfundidad : MonoBehaviour
     Transform raiz, tarjeta;
     TMP_Text nombre, ayuda;
     BotonTocable btnVer, btnBoceto, btnPlano, btnLiberar, btnCerrar, btnMas;
+    BotonTocable btn2D, btn3D, btnNombre, btnBorrar;    // v43
+    bool liberarVisible;
+    float quietoDesde = -10f, borrarHasta;
+    TouchScreenKeyboard teclado;
+    int capaTeclado = -1;
     readonly List<BotonTocable> botones = new List<BotonTocable>();
     Material materialPanel, materialBoton, materialBotonMarcado, materialTransparente;
     readonly List<Material> materiales = new List<Material>();
@@ -138,6 +150,8 @@ public class CapasProfundidad : MonoBehaviour
         ultimoToque = Time.time;
         capaMostrada = -1;
         empujando = false;
+        quietoDesde = -10f;
+        borrarHasta = 0f;
         esperarSalir = true; // si el dedo ya estaba ahí, no empuja hasta que salga
         int cur = Actual;
         AsegurarFantasmas(cur);
@@ -180,16 +194,39 @@ public class CapasProfundidad : MonoBehaviour
         tarjeta.SetParent(raiz, false);
         Quad(tarjeta, "Fondo", Vector3.zero, new Vector2(Ancho, Alto), materialPanel);
         Marco(tarjeta, materialBotonMarcado, 0.0018f, -0.0004f);
-        nombre = Texto(tarjeta, "Capa 1", new Vector3(-0.035f, 0.015f, -0.002f), new Vector2(0.15f, 0.02f), 0.26f, Color.black);
+        nombre = Texto(tarjeta, "Capa 1", new Vector3(-0.035f, 0.024f, -0.002f), new Vector2(0.15f, 0.02f), 0.26f, Color.black);
         nombre.fontStyle = FontStyles.Bold;
-        btnMas = Boton(tarjeta, "+ Capa", new Vector3(Ancho * 0.5f - 0.055f, 0.016f, 0f), new Vector2(0.05f, 0.018f));
-        btnCerrar = Boton(tarjeta, "X", new Vector3(Ancho * 0.5f - 0.015f, 0.018f, 0f), new Vector2(0.022f, 0.022f)); // v37: más grande
+        btnMas = Boton(tarjeta, "+ Capa", new Vector3(Ancho * 0.5f - 0.055f, 0.026f, 0f), new Vector2(0.05f, 0.018f));
+        btnCerrar = Boton(tarjeta, "X", new Vector3(Ancho * 0.5f - 0.015f, 0.028f, 0f), new Vector2(0.022f, 0.022f)); // v37: más grande
         btnVer = Boton(tarjeta, "Ver", new Vector3(-0.0965f, FilaBotones, 0f), new Vector2(0.045f, 0.017f));
         btnBoceto = Boton(tarjeta, "Lápiz: No", new Vector3(-0.035f, FilaBotones, 0f), new Vector2(0.062f, 0.017f));
         btnPlano = Boton(tarjeta, "Plano: unido", new Vector3(0.035f, FilaBotones, 0f), new Vector2(0.062f, 0.017f));
         btnLiberar = Boton(tarjeta, "Liberar", new Vector3(0.0965f, FilaBotones, 0f), new Vector2(0.045f, 0.017f));
+        // v43: la tercera fila.
+        btn2D = BotonRedondo(tarjeta, "2D", new Vector3(-0.109f, FilaBotones2, 0f), 0.02f);
+        btn3D = BotonRedondo(tarjeta, "3D", new Vector3(-0.082f, FilaBotones2, 0f), 0.02f);
+        btnNombre = Boton(tarjeta, "Nombre", new Vector3(0.0f, FilaBotones2, 0f), new Vector2(0.062f, 0.017f));
+        btnBorrar = Boton(tarjeta, "Borrar", new Vector3(0.0965f, FilaBotones2, 0f), new Vector2(0.045f, 0.017f));
+        btn2D.alTocar.AddListener(() => { dibujo.PonerPlano(true); Tocado(); });
+        btn3D.alTocar.AddListener(() => { dibujo.PonerPlano(false); Tocado(); });
+        btnNombre.alTocar.AddListener(AbrirTeclado);
+        btnBorrar.alTocar.AddListener(TocarBorrar);
+        BotonTocable.PonerVoz(btn2D, ControlManos.ComandoVoz.En2D);
+        BotonTocable.PonerVoz(btn3D, ControlManos.ComandoVoz.En3D);
+        BotonTocable.PonerNombre(btnNombre, "Cambiar el nombre de la capa");
+        BotonTocable.PonerNombre(btnBorrar, "Borrar esta capa (toca dos veces)");
         btnVer.alTocar.AddListener(() => { dibujo.AlternarVerCapa(Actual); Tocado(); });
-        btnBoceto.alTocar.AddListener(() => { if (dibujo.temblor != null) dibujo.temblor.SiguienteBoceto(); Tocado(); });
+        // v43: al poner el lápiz, la capa pasa a 2D de una vez (el lápiz es sobre una hoja).
+        btnBoceto.alTocar.AddListener(() =>
+        {
+            if (dibujo.temblor != null)
+            {
+                dibujo.temblor.SiguienteBoceto();
+                if (dibujo.CapaActual.boceto > 0 && !dibujo.plano)
+                    dibujo.PonerPlano(true);
+            }
+            Tocado();
+        });
         btnPlano.alTocar.AddListener(() => { dibujo.AlternarUnirPlano(); Tocado(); });
         btnLiberar.alTocar.AddListener(() => { dibujo.LiberarCapa(Actual); Tocado(); });
         btnMas.alTocar.AddListener(AgregarCapa);
@@ -296,8 +333,110 @@ public class CapasProfundidad : MonoBehaviour
         b.materialMarcado = materialBotonMarcado;
         b.etiqueta = Texto(padre, texto, pos + new Vector3(0f, 0f, -0.0036f), new Vector2(tam.x * 0.92f, tam.y * 0.8f), 0.16f, Color.black);
         b.etiqueta.fontStyle = FontStyles.Bold;
+        b.fondoToque = HundirBoton;   // v43: a propósito (de frente y 1 cm adentro)
         botones.Add(b);
         return b;
+    }
+
+    // v43: un botón REDONDO (2D / 3D): el que toca es un cuadrito invisible del tamaño del círculo; el círculo
+    // (un cilindro de frente) va de hijo.
+    BotonTocable BotonRedondo(Transform padre, string texto, Vector3 pos, float diametro)
+    {
+        var go = new GameObject("Boton_" + texto);
+        go.transform.SetParent(padre, false);
+        go.transform.localPosition = pos;
+        go.transform.localScale = new Vector3(diametro, diametro, 0.006f);
+        go.AddComponent<BoxCollider>();
+        var cil = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        cil.name = "Circulo";
+        Destroy(cil.GetComponent<Collider>());
+        cil.transform.SetParent(go.transform, false);
+        cil.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        cil.transform.localScale = new Vector3(1f, 0.5f, 1f);
+        var r = cil.GetComponent<Renderer>();
+        if (materialBoton != null)
+            r.sharedMaterial = materialBoton;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
+        var b = go.AddComponent<BotonTocable>();
+        b.materialNormal = materialBoton;
+        b.materialMarcado = materialBotonMarcado;
+        b.etiqueta = Texto(padre, texto, pos + new Vector3(0f, 0f, -0.0036f), new Vector2(diametro * 0.8f, diametro * 0.6f), 0.16f, Color.black);
+        b.etiqueta.fontStyle = FontStyles.Bold;
+        b.fondoToque = HundirBoton;
+        botones.Add(b);
+        return b;
+    }
+
+    // v43: los botones (menos la X) se esconden mientras empujas o atraes las capas, y salen un momento después
+    // de que todo queda quieto (así no se toca uno sin querer al pasar de capa).
+    void MostrarBotones(bool ver)
+    {
+        foreach (var b in botones)
+        {
+            if (b == null || b == btnCerrar)
+                continue;
+            bool v = ver && (b != btnLiberar || liberarVisible);
+            if (b.gameObject.activeSelf == v)
+                continue;
+            b.gameObject.SetActive(v);
+            if (b.etiqueta != null)
+                b.etiqueta.gameObject.SetActive(v);
+        }
+    }
+
+    // v43: "Nombre": el teclado del Quest. Lo que escribas queda junto al número ("3 · Fondo").
+    void AbrirTeclado()
+    {
+        Tocado();
+        if (!TouchScreenKeyboard.isSupported)
+        {
+            dibujo.Mensaje("El teclado sale después de TrazoVR > ★ Armar escena (y Build)");
+            return;
+        }
+        capaTeclado = Actual;
+        var c = dibujo.capas[capaTeclado];
+        string actual = c.nombre != null && c.nombre.StartsWith("Capa ") ? "" : c.nombre;
+        teclado = TouchScreenKeyboard.Open(actual ?? "", TouchScreenKeyboardType.Default, false, false, false, false, "Nombre de la capa");
+    }
+
+    void RevisarTeclado()
+    {
+        if (teclado == null)
+            return;
+        ultimoToque = Time.time;   // mientras escribes, las capas no se cierran
+        var estado = teclado.status;
+        if (estado == TouchScreenKeyboard.Status.Visible)
+            return;
+        if (estado == TouchScreenKeyboard.Status.Done && capaTeclado >= 0 && capaTeclado < dibujo.capas.Count)
+        {
+            dibujo.RenombrarCapa(capaTeclado, teclado.text);
+            proximoRefresco = 0f;
+        }
+        teclado = null;
+        capaTeclado = -1;
+    }
+
+    // v43: "Borrar": el primer toque pregunta ("¿Borrar?"); el segundo (en 3 s) la borra. Deshacer la devuelve.
+    void TocarBorrar()
+    {
+        Tocado();
+        if (Time.time > borrarHasta)
+        {
+            borrarHasta = Time.time + 3f;
+            btnBorrar.PonerTexto("¿Borrar?");
+            btnBorrar.Marcar(true);
+            Ayuda("Toca otra vez para borrar " + dibujo.NombreCapa(Actual) + " (deshacer la devuelve)");
+            avisoHasta = Time.time + 3f;
+            return;
+        }
+        borrarHasta = 0f;
+        if (dibujo.BorrarCapa(Actual))
+        {
+            control.SonidoBurbuja(tarjeta.position);
+            capaMostrada = -1;
+        }
+        RefrescarTarjeta(Actual);
     }
 
     static TMP_Text Texto(Transform padre, string texto, Vector3 pos, Vector2 tam, float maximo, Color color)
@@ -365,6 +504,12 @@ public class CapasProfundidad : MonoBehaviour
         Vector3 adelante = rot * Vector3.forward;
 
         AsegurarFantasmas(Actual);
+        RevisarTeclado();
+        if (borrarHasta > 0f && Time.time > borrarHasta)
+        {
+            borrarHasta = 0f;
+            proximoRefresco = 0f;
+        }
         aparece = Mathf.MoveTowards(aparece, 1f, dt * 5f);
         sacudida = Mathf.MoveTowards(sacudida, 0f, dt * 3f);
         // El dedo (puede cambiar de capa). z: cuánto empujas (+) o atraes (-) todo el montón.
@@ -435,6 +580,10 @@ public class CapasProfundidad : MonoBehaviour
         float x = Mathf.Sin(sacudida * 40f) * 0.006f * sacudida;
         tarjeta.localPosition = Lugar(sActual) + new Vector3(x, 0f, 0f);
         tarjeta.localScale = Vector3.one * Mathf.Lerp(0.9f, 1f, Suave(aparece));
+        // v43: los botones, solo con todo quieto (y un momento después).
+        if (empujando || Mathf.Abs(sActual) > 0.03f || Mathf.Abs(z) > 0.002f)
+            quietoDesde = Time.time;
+        MostrarBotones(Time.time - quietoDesde > EsperaBotones);
 
         if (Time.time > avisoHasta && avisoHasta > 0f)
         {
@@ -630,7 +779,7 @@ public class CapasProfundidad : MonoBehaviour
         if (cur < 0 || cur >= dibujo.capas.Count)
             return;
         var c = dibujo.capas[cur];
-        Idioma.Poner(nombre, c.nombre);
+        Idioma.Poner(nombre, dibujo.NombreCapa(cur));
         // v42: el botón dice lo que hace (y es su palabra de voz): "Oculta" la capa, o "Muestra" la que está oculta.
         btnVer.PonerTexto(c.visible ? "Oculta" : "Muestra");
         btnVer.comandoVoz = c.visible ? ControlManos.ComandoVoz.Oculta : ControlManos.ComandoVoz.Muestra;
@@ -640,12 +789,14 @@ public class CapasProfundidad : MonoBehaviour
         btnBoceto.Marcar(c.boceto > 0);
         btnPlano.PonerTexto(c.unido ? "Plano: unido" : "Plano: propio");
         btnPlano.Marcar(c.unido);
-        bool liberar = dibujo.EncantadasEnCapa(cur) > 0 || (!c.unido && c.hayPlano);
-        if (btnLiberar.gameObject.activeSelf != liberar)
+        liberarVisible = dibujo.EncantadasEnCapa(cur) > 0 || (!c.unido && c.hayPlano);
+        // v43: 2D / 3D (el de esta capa, marcado) y Borrar (si no está preguntando).
+        btn2D.Marcar(c.en2D);
+        btn3D.Marcar(!c.en2D);
+        if (Time.time > borrarHasta)
         {
-            btnLiberar.gameObject.SetActive(liberar);
-            if (btnLiberar.etiqueta != null)
-                btnLiberar.etiqueta.gameObject.SetActive(liberar);
+            btnBorrar.PonerTexto("Borrar");
+            btnBorrar.Marcar(false);
         }
     }
 

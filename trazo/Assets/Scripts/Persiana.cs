@@ -48,6 +48,7 @@ public class Persiana : MonoBehaviour
     float avance, ver, atencion = 0.5f;
     string textoPuesto = "";
     bool movida, tieneObjetivo;            // v41: la llevas con un pellizco
+    bool conIzquierda;                     // v43: la jala el índice izquierdo
     Vector3 desfaseMovida, inicioMovida, objetivoAntes, vueloDesde;
     Quaternion vueloGiroDesde;
     float vuelo;
@@ -236,6 +237,15 @@ public class Persiana : MonoBehaviour
             EmpezarMovida(control);
         }
 
+        // v43: también se jala con el índice IZQUIERDO (sin gesto en esa mano).
+        var izq = control.Izq;
+        bool izqOk = izq.valida && quiere && control.GestoIzq == ControlManos.Gesto.Ninguno;
+        if (agarrada && conIzquierda)
+        {
+            dedoOk = izqOk;
+            dedo = izq.indice;
+        }
+
         // Jalar.
         if (movida)
         {
@@ -244,12 +254,21 @@ public class Persiana : MonoBehaviour
         else if (!agarrada)
         {
             avance = Mathf.MoveTowards(avance, 0f, Time.deltaTime * 4f);
-            if (esperarSalir && (!dedoOk || !Cerca(dedo, 0.04f)))
+            if (esperarSalir && (!dedoOk || !Cerca(dedo, 0.04f)) && (!izqOk || !Cerca(izq.indice, 0.04f)))
                 esperarSalir = false;
-            if (dedoOk && !esperarSalir && !control.Ocupado && (puedeJalar == null || puedeJalar()) && Sobre(dedo))
+            bool puede = !esperarSalir && !control.Ocupado && (puedeJalar == null || puedeJalar());
+            if (puede && dedoOk && Sobre(dedo))
             {
                 agarrada = true;
+                conIzquierda = false;
                 inicio = dedo;
+                eje = transform.up * sentido;
+            }
+            else if (puede && izqOk && Sobre(izq.indice))
+            {
+                agarrada = true;
+                conIzquierda = true;
+                inicio = izq.indice;
                 eje = transform.up * sentido;
             }
         }

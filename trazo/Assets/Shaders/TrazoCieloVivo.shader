@@ -2,8 +2,8 @@ Shader "TrazoVR/CieloVivo"
 {
     // FONDOS VIVOS (v42): el cielo a tu alrededor (una esfera grande que va contigo), calculado aquí mismo. No es una
     // foto: lo dibuja la app.
-    //  - _Modo 0 = UNIVERSO: el negro del espacio, la Vía Láctea (más brillante y cálida hacia su centro, con su polvo
-    //    oscuro) y nebulosas de colores. Las estrellas van aparte (TrazoVR/Estrellas), de verdad en 3D.
+    //  - _Modo 0 = UNIVERSO: el negro del espacio y nebulosas de colores pequeñas y lejanas (v43: sin la franja gris).
+    //    Las estrellas van aparte (TrazoVR/Estrellas), de verdad en 3D.
     //  - _Modo 1 = SOBRE LAS NUBES: el cielo en degradado, el sol con su resplandor y la bruma del horizonte (el mar
     //    de nubes va aparte: TrazoVR/Nubes).
     // _Ruido: una textura de ruido que se repite (la hace FondosVivos.cs al empezar; cada canal, un tamaño distinto).
@@ -68,41 +68,30 @@ Shader "TrazoVR/CieloVivo"
                 return SAMPLE_TEXTURE2D(_Ruido, sampler_Ruido, uv);
             }
 
-            // Una nebulosa: una mancha de color suave alrededor de la dirección c, con su ruido.
-            half3 Nebulosa(float3 d, float3 c, half3 color, float ruido, float fuerza)
+            // Una nebulosa (v43): una mancha de color pequeña y lejana alrededor de la dirección c. Su forma se calcula
+            // en un plano propio (así no se estira) con dos capas de ruido, y se apaga redonda hacia su orilla.
+            half3 Nebulosa(float3 d, float3 c, half3 color, float2 desplaza, float fuerza)
             {
-                float k = saturate(dot(d, c));
-                float mancha = pow(k, 14.0);
-                return color * mancha * saturate(ruido * 1.6 - 0.25) * fuerza;
+                float k = dot(d, c);
+                float3 t1 = normalize(cross(c, float3(0.0, 1.0, 0.0)));
+                float3 t2 = cross(c, t1);
+                float2 p = float2(dot(d, t1), dot(d, t2)) / 0.1;
+                float4 a = Ruido(p * 0.35 + desplaza);
+                float4 b = Ruido(p * 0.9 + desplaza * 1.7);
+                float forma = a.r * 0.65 + b.g * 0.35;
+                float caida = saturate(1.0 - dot(p, p) * 0.45);
+                float nube = smoothstep(0.3, 0.85, forma * caida + caida * 0.2) * smoothstep(0.85, 0.97, k);
+                return color * nube * fuerza;
             }
 
+            // v43: sin la franja gris de la Vía Láctea (parecía nubes estiradas): el negro del espacio y unas pocas
+            // nebulosas de colores, chiquitas y lejanas. Las estrellas van aparte.
             half3 Universo(float3 d)
             {
-                // La Vía Láctea: una banda inclinada que da toda la vuelta al cielo.
-                float3 n = normalize(float3(0.25, 0.92, 0.3));             // perpendicular a la banda
-                float3 t = normalize(cross(n, float3(0.0, 0.0, 1.0)));
-                float3 b = cross(n, t);
-                float alto = dot(d, n);                                      // 0 = en medio de la banda
-                float vuelta = atan2(dot(d, b), dot(d, t)) / 6.2831853 + 0.5;
-                float2 uv = float2(vuelta * 4.0, alto * 2.0);
-                float4 r1 = Ruido(uv);
-                float4 r2 = Ruido(uv * 3.0 + float2(0.37, 0.11));
-                float ancho = 0.17 + 0.09 * (r1.r - 0.5);
-                float banda = exp(-alto * alto / (ancho * ancho));
-                // Más brillante (y más cálida) hacia el centro de la galaxia.
-                float nucleo = pow(saturate(dot(d, t) * 0.5 + 0.5), 4.0);
-                float brillo = banda * (0.3 + 0.7 * r1.g) * (0.22 + 1.25 * nucleo);
-                // El polvo oscuro que la parte por la mitad.
-                float polvo = exp(-alto * alto / 0.0035) * smoothstep(0.35, 0.75, r2.r);
-                brillo *= 1.0 - 0.8 * polvo;
-                half3 tono = lerp(half3(0.55, 0.63, 0.92), half3(1.0, 0.84, 0.66), nucleo);
-                half3 col = half3(0.004, 0.005, 0.014);                      // el negro azulado del espacio
-                col += tono * brillo * 0.4;
-                col += tono * banda * pow(r2.a, 6.0) * 0.7;                  // granitos de estrellas lejanas
-                // Nebulosas de colores.
-                col += Nebulosa(d, normalize(float3(0.8, 0.25, -0.5)), half3(0.85, 0.25, 0.55), r1.b, 0.22);
-                col += Nebulosa(d, normalize(float3(-0.4, 0.5, -0.75)), half3(0.2, 0.55, 0.9), r2.g, 0.18);
-                col += Nebulosa(d, normalize(float3(-0.85, -0.25, 0.4)), half3(0.5, 0.3, 0.95), r1.a, 0.16);
+                half3 col = half3(0.004, 0.005, 0.014);
+                col += Nebulosa(d, normalize(float3(0.8, 0.25, -0.5)), half3(0.85, 0.25, 0.55), float2(0.1, 0.3), 0.22);
+                col += Nebulosa(d, normalize(float3(-0.4, 0.5, -0.75)), half3(0.2, 0.55, 0.9), float2(0.6, 0.2), 0.18);
+                col += Nebulosa(d, normalize(float3(-0.85, -0.25, 0.4)), half3(0.5, 0.3, 0.95), float2(0.35, 0.75), 0.16);
                 return col;
             }
 

@@ -571,7 +571,7 @@ public static class ArmarEscenaTrazo
         const float columna = 0.026f;
         Vector2[] lugares =
         {
-            new Vector2(-columna, 0.068f), new Vector2(columna, 0.068f),
+            new Vector2(-columna, 0.068f), new Vector2(0f, 0.068f),   // v43: sin Plano (va en cada capa: 2D / 3D)
             new Vector2(-columna, 0.040f), new Vector2(columna, 0.040f),
             new Vector2(-columna, 0.012f),
             new Vector2(-columna, -0.026f), new Vector2(columna, -0.026f),
@@ -583,16 +583,19 @@ public static class ArmarEscenaTrazo
         var botones = new BotonTocable[nombres.Length];
         for (int i = 0; i < nombres.Length; i++)
         {
+            if (i == 0)
+                continue;   // v43: el botón Plano del reloj ya no va (2D / 3D en cada capa)
+            float ancho = i == 1 ? 0.095f : 0.043f;   // v43: Fondo, a lo ancho
             botones[i] = Boton(contenido.transform, nombres[i], new Vector3(lugares[i].x, lugares[i].y, 0f), matBoton, matBotonMarcado);
-            botones[i].transform.localScale = new Vector3(0.043f, 0.02f, 0.008f);
+            botones[i].transform.localScale = new Vector3(ancho, 0.02f, 0.008f);
             if (botones[i].etiqueta != null)
-                botones[i].etiqueta.rectTransform.sizeDelta = new Vector2(0.039f, 0.016f);
+                botones[i].etiqueta.rectTransform.sizeDelta = new Vector2(ancho - 0.004f, 0.016f);
         }
         panel.btnGirarIzq = botones[10];
         panel.btnGirarDer = botones[11];
         panel.btnVistaLimpia = botones[12];
         panel.btnMesa = botones[13];
-        panel.btnPlano = botones[0];
+        panel.btnPlano = null;
         panel.btnFondo = botones[1];
         panel.btnGuardar = botones[2];
         panel.btnCargar = botones[3];
@@ -968,13 +971,26 @@ public static class ArmarEscenaTrazo
         { "camino_flores360", "Camino entre flores" },
         { "campo_seco360", "Campo seco" },
         { "golf_noche360", "Golf de noche" },
-        { "avenida360", "Avenida ancha" },
         { "nueva_york360", "Azotea en Nueva York" },
         { "sala_lujo360", "Sala de lujo" },
     };
 
     // Fondos que ya no vienen con la app: si siguen en tu proyecto de Unity, se borran solos.
-    static readonly string[] FondosQuitados = { "cuarto360", "crucero360", "columnas360", "luna360", "grafitis360", "shanghai_dia360" };
+    static readonly string[] FondosQuitados = { "cuarto360", "crucero360", "columnas360", "luna360", "grafitis360", "shanghai_dia360", "avenida360" };
+
+    // v43: una copia vieja de un fondo de la app (por ejemplo "sala_lujo360 1" o "sala_lujo360_v38") o uno quitado
+    // no entra otra vez como fondo extra (antes salía repetido).
+    static bool EsCopiaDeFondo(string nombre)
+    {
+        nombre = nombre.ToLowerInvariant();
+        for (int k = 0; k < Fondos360.GetLength(0); k++)
+            if (nombre.StartsWith(Fondos360[k, 0]) || nombre.StartsWith(Fondos360[k, 0].Replace("360", "")))
+                return true;
+        foreach (var q in FondosQuitados)
+            if (nombre.StartsWith(q))
+                return true;
+        return false;
+    }
 
     static void QuitarFondosViejos()
     {
@@ -1016,7 +1032,7 @@ public static class ArmarEscenaTrazo
             foreach (var guid in AssetDatabase.FindAssets("t:Texture2D", new[] { carpetaFondos }))
             {
                 string rutaTex = AssetDatabase.GUIDToAssetPath(guid);
-                if (usadas.Contains(rutaTex))
+                if (usadas.Contains(rutaTex) || EsCopiaDeFondo(System.IO.Path.GetFileNameWithoutExtension(rutaTex)))
                     continue;
                 var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(rutaTex);
                 if (tex == null || Mathf.Abs(tex.width - tex.height * 2) > tex.height / 20)

@@ -119,7 +119,8 @@ public class Lipsync : MonoBehaviour
         Vector3 centro = cabeza.position + frente * 0.5f - Vector3.up * 0.05f;
 
         dibujo.GuardarParaDeshacer();
-        dibujo.SeleccionarCapa(2);
+        // v43: la cara de muestra va en una capa nueva ("Bocas"), adelante de todas (si ya hay 12, en la que estás).
+        dibujo.AgregarCapa("Bocas", false);
         // Cara, ojos y boca.
         var cara = Linea(Ovalo(centro, derecha, 0.11f, 0.14f, 12, 0f), true, 0, 1f);
         Linea(Ovalo(centro + derecha * -0.04f + Vector3.up * 0.035f, derecha, 0.009f, 0.013f, 8, 0f), true, 7, 0.7f);

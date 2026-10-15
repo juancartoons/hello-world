@@ -39,6 +39,7 @@ public class FlechasGiro : MonoBehaviour
     bool arrastrando, esperarSalir, armada;
     Vector3 inicio, dedoAntes;
     float quietoDesde, ver;
+    ManoSeguida mano;          // v43: la mano que está tocando (derecha o izquierda)
 
     public static void Crear(ControlManos control)
     {
@@ -161,28 +162,40 @@ public class FlechasGiro : MonoBehaviour
                             flechas[i].t.rotation);
                 }
 
+        // v43: también con el índice IZQUIERDO: la mano que toca primero es la que manda hasta soltar.
+        var izq = control.Izq;
+        bool izqOk = izq.valida && quiere && ver > 0.9f && !control.Ocupado;
         if (activa < 0)
         {
             if (esperarSalir)
             {
-                if (!dedoOk || (!Cerca(0, der.indice, 0.02f) && !Cerca(1, der.indice, 0.02f)))
+                bool derLejos = !dedoOk || (!Cerca(0, der.indice, 0.02f) && !Cerca(1, der.indice, 0.02f));
+                bool izqLejos = !izqOk || (!Cerca(0, izq.indice, 0.02f) && !Cerca(1, izq.indice, 0.02f));
+                if (derLejos && izqLejos)
                     esperarSalir = false;
                 return;
             }
-            if (!dedoOk)
-                return;
-            for (int i = 0; i < 2; i++)
+            for (int h = 0; h < 2; h++)
             {
-                if (!Cerca(i, der.indice, 0.006f))
+                var m = h == 0 ? der : izq;
+                if (!(h == 0 ? dedoOk : izqOk))
                     continue;
-                activa = i;
-                arrastrando = false;
-                inicio = dedoAntes = der.indice;
-                quietoDesde = Time.time;
-                break;
+                for (int i = 0; i < 2; i++)
+                {
+                    if (!Cerca(i, m.indice, 0.006f))
+                        continue;
+                    activa = i;
+                    mano = m;
+                    arrastrando = false;
+                    inicio = dedoAntes = m.indice;
+                    quietoDesde = Time.time;
+                    return;
+                }
             }
             return;
         }
+        der = mano ?? der;
+        dedoOk = der.valida && quiere && ver > 0.9f && !control.Ocupado;
 
         if (!arrastrando)
         {

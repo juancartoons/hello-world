@@ -12,7 +12,6 @@ De Poly Haven (polyhaven.com, licencia CC0 = dominio público):
  9. camino_flores360.jpg    — "Flower Road"               https://polyhaven.com/a/flower_road
 10. campo_seco360.jpg       — "Syferfontein 18d Clear"    https://polyhaven.com/a/syferfontein_18d_clear
 11. golf_noche360.jpg       — "Moonless Golf"             https://polyhaven.com/a/moonless_golf
-12. avenida360.jpg          — "Wide Street" (de los ejemplos de PlayCanvas, originalmente de Poly Haven)
 14. nueva_york360.jpg       — "Azotea en Nueva York": imagen creada por Juan Carlos con ChatGPT (generación de
     imágenes), subida a 4096 x 2048 con Real-ESRGAN y con profundidad de Depth Anything V2.
 15. sala_lujo360.jpg         — "Sala de lujo": también creada por Juan Carlos con ChatGPT; se unió la costura de atrás

@@ -59,6 +59,7 @@ public class DatosCapa
     public Vector3 planoNormal = Vector3.forward;
     public bool unido = true;        // unido con los planos de las otras capas (como acetato sobre papel)
     public int papel;                // boceto en 2D: el papel detrás del lápiz. 0 blanco, 1 a la mitad, 2 transparente
+    public bool en2D;                // v43: esta capa se dibuja en 2D (sobre su plano) o en 3D (libre). Cada capa el suyo
 
     public DatosCapa Copia()
     {
@@ -418,14 +419,17 @@ public class Dibujo : MonoBehaviour
 
     void AsegurarCapas()
     {
-        while (capas.Count < NumeroDeCapas)
-            capas.Add(new DatosCapa { nombre = "Capa " + (capas.Count + 1), visible = true });
+        // v43: un dibujo nuevo empieza con 4; después se pueden borrar (siempre queda al menos una).
+        if (capas.Count == 0)
+            while (capas.Count < NumeroDeCapas)
+                capas.Add(new DatosCapa { nombre = "Capa " + (capas.Count + 1), visible = true });
         capaActual = Mathf.Clamp(capaActual, 0, capas.Count - 1);
     }
 
     // Botón "+" de las capas: una capa nueva adelante de todas (la más cercana a ti), y se dibuja en ella.
     // Devuelve su número, o -1 si ya hay el máximo.
-    public int AgregarCapa()
+    // v43: con nombre (el maniquí y las bocas crean la suya: "Maniquí", "Bocas"); deshacer = false si ya se guardó.
+    public int AgregarCapa(string nombre = null, bool deshacer = true)
     {
         AsegurarCapas();
         if (capas.Count >= MaximoDeCapas)
@@ -433,8 +437,9 @@ public class Dibujo : MonoBehaviour
             Mensaje("Ya no caben más capas (máximo 12)");
             return -1;
         }
-        GuardarParaDeshacer();
-        capas.Add(new DatosCapa { nombre = "Capa " + (capas.Count + 1), visible = true });
+        if (deshacer)
+            GuardarParaDeshacer();
+        capas.Add(new DatosCapa { nombre = string.IsNullOrEmpty(nombre) ? "Capa " + (capas.Count + 1) : nombre, visible = true });
         HayCambios = true;
         SeleccionarCapa(capas.Count - 1);
         return capas.Count - 1;
@@ -447,6 +452,89 @@ public class Dibujo : MonoBehaviour
     }
 
     public DatosCapa CapaActual => DatosDeCapa(capaActual);
+
+    // v43: ¿es un nombre puesto solo ("Capa 3")? Esos se renumeran al borrar una capa.
+    static bool NombrePorDefecto(string n)
+    {
+        int k;
+        return string.IsNullOrEmpty(n) || (n.StartsWith("Capa ") && int.TryParse(n.Substring(5), out k));
+    }
+
+    // v43: como se muestra: "Capa 3", o con tu nombre sin perder el número: "3 · Fondo".
+    public string NombreCapa(int capa)
+    {
+        if (capa < 0 || capa >= capas.Count)
+            return "";
+        string n = capas[capa].nombre;
+        return NombrePorDefecto(n) ? "Capa " + (capa + 1) : (capa + 1) + " · " + n;
+    }
+
+    // v43: cambiar el nombre de una capa (vacío = vuelve a "Capa N").
+    public void RenombrarCapa(int capa, string nombre)
+    {
+        if (capa < 0 || capa >= capas.Count)
+            return;
+        nombre = (nombre ?? "").Trim();
+        if (nombre.Length > 18)
+            nombre = nombre.Substring(0, 18);
+        GuardarParaDeshacer();
+        capas[capa].nombre = nombre.Length == 0 ? "Capa " + (capa + 1) : nombre;
+        Avisar();
+        Mensaje("Nombre: " + NombreCapa(capa));
+    }
+
+    // v43: borra una capa con todo lo suyo (líneas, rellenos, claves, figuras y lápiz). Deshacer la devuelve.
+    // Las de encima bajan un número. Siempre queda al menos una capa.
+    public bool BorrarCapa(int capa)
+    {
+        AsegurarCapas();
+        if (capa < 0 || capa >= capas.Count)
+            return false;
+        if (capas.Count <= 1)
+        {
+            Mensaje("Es la única capa: no se puede borrar");
+            return false;
+        }
+        string nombre = NombreCapa(capa);
+        GuardarParaDeshacer();
+        // Una copia completa (de verdad aparte: las claves vivas no se tocan) y se arregla ahí.
+        var d = JsonUtility.FromJson<DatosDibujo>(JsonUtility.ToJson(CrearDatos(true)));
+        d.trazos.RemoveAll(t => t == null || t.capa == capa);
+        foreach (var t in d.trazos)
+            if (t.capa > capa)
+                t.capa--;
+        d.claves.RemoveAll(c => c == null || c.capa == capa);
+        foreach (var c in d.claves)
+        {
+            if (c.capa > capa)
+                c.capa--;
+            if (c.trazos == null)
+                continue;
+            c.trazos.RemoveAll(t => t == null || t.capa == capa);
+            foreach (var t in c.trazos)
+                if (t.capa > capa)
+                    t.capa--;
+        }
+        d.figuras.RemoveAll(f => f == null || f.capa == capa);
+        foreach (var f in d.figuras)
+            if (f.capa > capa)
+                f.capa--;
+        d.lapiz.RemoveAll(l => l == null || l.capa == capa);
+        foreach (var l in d.lapiz)
+            if (l.capa > capa)
+                l.capa--;
+        d.capas.RemoveAt(capa);
+        for (int i = 0; i < d.capas.Count; i++)
+            if (NombrePorDefecto(d.capas[i].nombre))
+                d.capas[i].nombre = "Capa " + (i + 1);
+        int actual = capaActual > capa ? capaActual - 1 : capaActual;
+        d.capaActual = Mathf.Clamp(actual, 0, d.capas.Count - 1);
+        d.plano = d.capas[d.capaActual].en2D;
+        Aplicar(d, false);
+        HayCambios = true;
+        Mensaje(nombre + " borrada (deshacer la devuelve)");
+        return true;
+    }
 
     // La capa de boceto en Plano (2D) dibuja con lápiz sobre una hoja (como papel).
     public bool UsaHoja => hojas != null && plano && EsBoceto(capaActual);
@@ -684,6 +772,7 @@ public class Dibujo : MonoBehaviour
             capas[capaActual].visible = true;
             ActualizarVisibilidad();
         }
+        plano = capas[capaActual].en2D;   // v43: cada capa recuerda si es 2D o 3D
         RefrescarPlano();
         ActualizarGuia();
         Avisar();
@@ -1212,7 +1301,14 @@ public class Dibujo : MonoBehaviour
 
     public void AlternarPlano()
     {
-        plano = !plano;
+        PonerPlano(!plano);
+    }
+
+    // v43: 2D (true) o 3D (false) para la capa en la que dibujas (los botones redondos de cada capa).
+    public void PonerPlano(bool en2D)
+    {
+        plano = en2D;
+        CapaActual.en2D = en2D;
         // La capa recuerda su hoja: al volver a 2D sigues en la misma. (Para otra hoja: "Liberar" o en otra capa.)
         RefrescarPlano();
         ActualizarGuia();
@@ -2341,8 +2437,6 @@ public class Dibujo : MonoBehaviour
         bool rotacionValida = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w > 0.5f;
         transform.localRotation = rotacionValida ? q : Quaternion.identity;
         transform.localScale = Vector3.one * (d.escala > 0f ? d.escala : 1f);
-        plano = d.plano;
-
         capas.Clear();
         if (d.capas != null)
             foreach (var c in d.capas)
@@ -2350,6 +2444,10 @@ public class Dibujo : MonoBehaviour
                     capas.Add(c.Copia());
         AsegurarCapas();
         capaActual = Mathf.Clamp(d.capaActual, 0, capas.Count - 1);
+        // v43: el 2D/3D es de cada capa (los dibujos de antes: el de todo el dibujo pasa a la capa elegida).
+        if (d.plano)
+            capas[capaActual].en2D = true;
+        plano = capas[capaActual].en2D;
         if (d.version < 4)
         {
             // Dibujos viejos: el plano y las líneas vivas eran de todo el dibujo.

@@ -13,6 +13,9 @@ using UnityEngine;
 //    "animar", "bocas", "títere", "video", "muestra" / "oculta" (la capa), "lápiz", "liberar", "avanzar" (fondos
 //    vivos), "universo", "nubes", los COLORES ("rojo", "azul"...), "más grueso" / "más fino" y el IDIOMA (en
 //    inglés di "spanish"; en español di "inglés").
+//  - v43: "siguiente fondo" (sin abrir la ventanita) y el NOMBRE de cada fondo ("roma", "parque", "nubes"...);
+//    "dos de" / "tres de" (2D o 3D en la capa), "lápiz" (lápiz Y 2D de una vez), "tinta"; el INSTRUMENTO ("piano",
+//    "arpa", "drum and bass"...); "exportar" (el video).
 //  - "Borrar todo" NO va por voz (por seguridad).
 // Los gestos siguen funcionando al mismo tiempo.
 public partial class ControlManos
@@ -23,8 +26,18 @@ public partial class ControlManos
         Mesa, Play, Pausa, Siguiente, Anterior, Clave, QuitaClave, Paleta, Guarda, VistaLimpia, Silencio, Halo,
         // v42
         Plano, Fondo, Archivos, Esfera, Cubo, Cilindro, ALineas, Ayuda, Inicio, Zoom, Animar, Bocas, Titere, Video,
-        Muestra, Oculta, Lapiz, Liberar, Avanza, Universo, Nubes, Color, Grueso, Fino, Espanol, Ingles
+        Muestra, Oculta, Lapiz, Liberar, Avanza, Universo, Nubes, Color, Grueso, Fino, Espanol, Ingles,
+        // v43
+        En2D, En3D, Tinta, SiguienteFondo, FondoNombre, Instrumento
     }
+
+    // v43: los fondos que se pueden pedir por su nombre (el nombre exacto que tienen en Escenario).
+    static readonly string[] FondosPorVoz =
+    {
+        "Roma de noche", "Shanghai de noche", "Canal de Venecia", "Callejón de Venecia", "Amanecer", "Atardecer en el mar",
+        "Mirador", "Parque", "Camino entre flores", "Campo seco", "Golf de noche", "Azotea en Nueva York", "Sala de lujo",
+        "Cuadrícula", "Realidad",
+    };
 
     struct FrasesComando
     {
@@ -70,7 +83,7 @@ public partial class ControlManos
         C(ComandoVoz.Halo, "Halo", "Halo", new[] { "halo" }, new[] { "halo" }),
         // v42: los botones que no tenían voz.
         C(ComandoVoz.Plano, "Plano", "Plane", new[] { "plano" }, new[] { "plane" }),
-        C(ComandoVoz.Fondo, "Fondo", "Background", new[] { "fondo", "otro fondo", "cambia fondo" }, new[] { "background" }),
+        C(ComandoVoz.Fondo, "Fondo", "Background", new[] { "fondo" }, new[] { "background" }),
         C(ComandoVoz.Archivos, "Archivos", "Files", new[] { "archivos", "mis archivos" }, new[] { "files", "my files" }),
         C(ComandoVoz.Esfera, "Esfera", "Sphere", new[] { "esfera" }, new[] { "sphere", "ball" }),
         C(ComandoVoz.Cubo, "Cubo", "Cube", new[] { "cubo" }, new[] { "cube", "box" }),
@@ -82,7 +95,8 @@ public partial class ControlManos
         C(ComandoVoz.Animar, "Animar", "Animate", new[] { "animar", "anima" }, new[] { "animate" }),
         C(ComandoVoz.Bocas, "Bocas", "Mouths", new[] { "bocas", "boca" }, new[] { "mouths", "mouth" }),
         C(ComandoVoz.Titere, "Títere", "Puppet", new[] { "títere", "títeres" }, new[] { "puppet" }),
-        C(ComandoVoz.Video, "Video", "Video", new[] { "video", "haz video", "haz un video" }, new[] { "video", "make video" }),
+        C(ComandoVoz.Video, "Exportar", "Export", new[] { "exportar", "exporta", "video", "haz video", "haz un video" },
+          new[] { "export", "video", "make video" }),
         C(ComandoVoz.Muestra, "Muestra", "Show", new[] { "muestra", "mostrar", "muestra capa", "ver capa" }, new[] { "show", "show layer" }),
         C(ComandoVoz.Oculta, "Oculta", "Hide", new[] { "oculta", "ocultar", "oculta capa", "esconde" }, new[] { "hide", "hide layer" }),
         C(ComandoVoz.Lapiz, "Lápiz", "Pencil", new[] { "lápiz" }, new[] { "pencil" }),
@@ -107,6 +121,37 @@ public partial class ControlManos
         C(ComandoVoz.Grueso, "Más grueso", "Thicker", new[] { "más grueso", "más gruesa", "grueso", "gruesa" }, new[] { "thicker", "thick" }),
         C(ComandoVoz.Fino, "Más fino", "Thinner", new[] { "más fino", "más fina", "fino", "fina", "delgado" }, new[] { "thinner", "thin" }),
         C(ComandoVoz.Espanol, "Español", "Spanish", Nada0, new[] { "spanish", "español", "espanol" }),
+        // v43: 2D / 3D en la capa, tinta, el siguiente fondo y cada fondo por su nombre, el instrumento.
+        C(ComandoVoz.En2D, "2D", "2D", new[] { "dos de", "dos d", "en dos de", "plano dos de" }, new[] { "two d", "two dee", "flat" }),
+        C(ComandoVoz.En3D, "3D", "3D", new[] { "tres de", "tres d", "en tres de", "libre" }, new[] { "three d", "three dee", "free" }),
+        C(ComandoVoz.Tinta, "Tinta", "Ink", new[] { "tinta" }, new[] { "ink" }),
+        C(ComandoVoz.SiguienteFondo, "Siguiente fondo", "Next background",
+          new[] { "siguiente fondo", "otro fondo", "cambia fondo", "cambia el fondo" }, new[] { "next background", "change background" }),
+        C(ComandoVoz.FondoNombre, "Roma", "Rome", new[] { "roma" }, new[] { "rome" }, 0),
+        C(ComandoVoz.FondoNombre, "Shanghai", "Shanghai", new[] { "shanghai", "shangai" }, new[] { "shanghai" }, 1),
+        C(ComandoVoz.FondoNombre, "Venecia", "Venice", new[] { "venecia", "canal" }, new[] { "venice", "canal" }, 2),
+        C(ComandoVoz.FondoNombre, "Callejón", "Alley", new[] { "callejón" }, new[] { "alley" }, 3),
+        C(ComandoVoz.FondoNombre, "Amanecer", "Sunrise", new[] { "amanecer" }, new[] { "sunrise" }, 4),
+        C(ComandoVoz.FondoNombre, "Atardecer", "Sunset", new[] { "atardecer", "el mar" }, new[] { "sunset", "sea" }, 5),
+        C(ComandoVoz.FondoNombre, "Mirador", "Lookout", new[] { "mirador" }, new[] { "lookout" }, 6),
+        C(ComandoVoz.FondoNombre, "Parque", "Park", new[] { "parque" }, new[] { "park" }, 7),
+        C(ComandoVoz.FondoNombre, "Flores", "Flowers", new[] { "flores", "camino" }, new[] { "flowers" }, 8),
+        C(ComandoVoz.FondoNombre, "Campo", "Field", new[] { "campo", "campo seco" }, new[] { "field" }, 9),
+        C(ComandoVoz.FondoNombre, "Golf", "Golf", new[] { "golf" }, new[] { "golf" }, 10),
+        C(ComandoVoz.FondoNombre, "Nueva York", "New York", new[] { "nueva york", "azotea" }, new[] { "new york", "rooftop" }, 11),
+        C(ComandoVoz.FondoNombre, "Sala de lujo", "Living room", new[] { "sala", "sala de lujo" }, new[] { "living room", "luxury" }, 12),
+        C(ComandoVoz.FondoNombre, "Cuadrícula", "Grid", new[] { "cuadrícula" }, new[] { "grid" }, 13),
+        C(ComandoVoz.FondoNombre, "Realidad", "Reality", new[] { "realidad", "mi cuarto" }, new[] { "reality", "passthrough" }, 14),
+        C(ComandoVoz.Instrumento, "Piano", "Piano", new[] { "piano" }, new[] { "piano" }, Sonidos.Piano),
+        C(ComandoVoz.Instrumento, "Arpa", "Harp", new[] { "arpa" }, new[] { "harp" }, Sonidos.Arpa),
+        C(ComandoVoz.Instrumento, "Orquesta", "Orchestra", new[] { "orquesta" }, new[] { "orchestra" }, Sonidos.Orquesta),
+        C(ComandoVoz.Instrumento, "Cajita", "Music box", new[] { "cajita", "cajita de música" }, new[] { "music box" }, Sonidos.Cajita),
+        C(ComandoVoz.Instrumento, "Japón", "Japan", new[] { "japón", "japonés" }, new[] { "japan" }, Sonidos.Japan),
+        C(ComandoVoz.Instrumento, "Post-punk", "Post-punk", new[] { "post punk", "punk" }, new[] { "post punk", "punk" }, Sonidos.PostPunk),
+        C(ComandoVoz.Instrumento, "Drum and bass", "Drum and bass", new[] { "drum and bass", "drum", "batería" },
+          new[] { "drum and bass", "drums" }, Sonidos.DrumAndBass),
+        C(ComandoVoz.Instrumento, "Dubstep", "Dubstep", new[] { "dubstep" }, new[] { "dubstep" }, Sonidos.Dubstep),
+        C(ComandoVoz.Instrumento, "Marimba", "Marimba", new[] { "marimba" }, new[] { "marimba" }, Sonidos.Marimba),
         C(ComandoVoz.Ingles, "Inglés", "English", new[] { "inglés", "english", "en inglés" }, Nada0),
     };
 
@@ -301,7 +346,30 @@ public partial class ControlManos
             }
             case ComandoVoz.Muestra: VerCapaVoz(true); break;
             case ComandoVoz.Oculta: VerCapaVoz(false); break;
-            case ComandoVoz.Lapiz: if (dibujo.temblor != null) dibujo.temblor.SiguienteBoceto(); break;
+            case ComandoVoz.Lapiz:
+                // v43: lápiz Y 2D de una vez, en la capa en la que dibujas.
+                if (dibujo.temblor != null)
+                    dibujo.temblor.PonerBoceto(true);
+                dibujo.PonerPlano(true);
+                dibujo.Mensaje("Lápiz en 2D: " + dibujo.NombreCapa(dibujo.capaActual));
+                break;
+            case ComandoVoz.Tinta:
+                if (dibujo.temblor != null)
+                    dibujo.temblor.PonerBoceto(false);
+                break;
+            case ComandoVoz.En2D: dibujo.PonerPlano(true); break;
+            case ComandoVoz.En3D: dibujo.PonerPlano(false); break;
+            case ComandoVoz.SiguienteFondo: SiguienteFondoVoz(); break;
+            case ComandoVoz.FondoNombre: FondoPorNombreVoz(dato); break;
+            case ComandoVoz.Instrumento:
+                if (dato >= 0 && dato < Sonidos.Instrumentos.Length)
+                {
+                    ElegirInstrumento(dato);
+                    if (!MusicaEncendida)
+                        BotonSonido.Alternar();
+                    dibujo.Mensaje("Instrumento: " + Sonidos.Instrumentos[dato]);
+                }
+                break;
             case ComandoVoz.Liberar: dibujo.LiberarCapa(dibujo.capaActual); break;
             case ComandoVoz.Avanza: AvanzarVoz(); break;
             case ComandoVoz.Universo: FondoVivoVoz(FondosVivos.Universo); break;
@@ -325,6 +393,34 @@ public partial class ControlManos
             return;
         if (dibujo.capas[capa].visible != ver)
             dibujo.AlternarVerCapa(capa);
+    }
+
+    // v43: "siguiente fondo": el que sigue de todos, de una vez (sin la ventanita de las fotos).
+    void SiguienteFondoVoz()
+    {
+        if (escenarioGiro == null)
+            escenarioGiro = FindFirstObjectByType<Escenario>();
+        if (escenarioGiro == null)
+            return;
+        escenarioGiro.SiguienteDeTodos();
+        SelectorFondos.RefrescarSiAbierto();
+        dibujo.Mensaje(escenarioGiro.MensajeFondo);
+    }
+
+    // v43: "roma", "parque"...: ese fondo.
+    void FondoPorNombreVoz(int cual)
+    {
+        if (escenarioGiro == null)
+            escenarioGiro = FindFirstObjectByType<Escenario>();
+        if (escenarioGiro == null || cual < 0 || cual >= FondosPorVoz.Length)
+            return;
+        if (!escenarioGiro.PonerPorNombre(FondosPorVoz[cual]))
+        {
+            dibujo.Mensaje("Ese fondo sale después de TrazoVR > ★ Armar escena");
+            return;
+        }
+        SelectorFondos.RefrescarSiAbierto();
+        dibujo.Mensaje(escenarioGiro.MensajeFondo);
     }
 
     // v42: "avanzar" / "volar" en los fondos vivos.

@@ -6,7 +6,9 @@ using UnityEngine;
 using UnityEngine.Rendering;
 
 // Videos MP4 (se guardan en Dibujos, junto a las fotos):
-//  - "Video anim": la animación (con el audio del lipsync, si hay).
+//  - "Exportar" (antes "Video anim"): la animación (con el audio del lipsync, si hay).
+//    v43: en 1920x1080 (horizontal) o 1080x1920 (vertical, para celular), y con FONDO VERDE si quieres (solo en el
+//    MP4, para recortarlo en un editor de video; en la app no cambia nada). Se recuerdan.
 //  - "Video proceso": repite lo que grabaste (líneas apareciendo + tus manos, con forma de mano de verdad).
 // Modo rápido: el color se convierte al formato del video en la tarjeta gráfica y se hacen varios cuadros
 // por paso (sin esperar a que la tarjeta termine cada uno).
@@ -35,6 +37,21 @@ public class ExportadorVideo : MonoBehaviour
     public int alto = 720;
     public int fpsProceso = 30;
     public int velocidad = 1;
+
+    // v43: el formato del video de la animación y el fondo verde (se recuerdan).
+    const string ClaveVertical = "jcartoons_video_vertical", ClaveVerde = "jcartoons_video_verde";
+    public static bool Vertical
+    {
+        get => PlayerPrefs.GetInt(ClaveVertical, 0) == 1;
+        set { PlayerPrefs.SetInt(ClaveVertical, value ? 1 : 0); PlayerPrefs.Save(); }
+    }
+    public static bool FondoVerde
+    {
+        get => PlayerPrefs.GetInt(ClaveVerde, 0) == 1;
+        set { PlayerPrefs.SetInt(ClaveVerde, value ? 1 : 0); PlayerPrefs.Save(); }
+    }
+    public static string NombreFormato => Vertical ? "1080x1920" : "1920x1080";
+    static readonly Color Verde = new Color(0f, 0.694f, 0.251f);   // el verde de croma de siempre (0, 177, 64)
 
     // Dedos de la mano (índices de GrabadorProceso.Huesos) dibujados como líneas.
     static readonly int[][] Cadenas =
@@ -107,14 +124,22 @@ public class ExportadorVideo : MonoBehaviour
         Quaternion rotacion;
         float campoVision;
         dibujo.EncuadreExportar(1.15f, out posicion, out rotacion, out campoVision);
+        // v43: el formato. En vertical se abre la vista para que el dibujo quepa de lado a lado.
+        bool vertical = Vertical;
+        int anchoVideo = vertical ? 1080 : 1920, altoVideo = vertical ? 1920 : 1080;
+        if (vertical)
+        {
+            float t = Mathf.Tan(campoVision * 0.5f * Mathf.Deg2Rad) * altoVideo / anchoVideo;
+            campoVision = Mathf.Min(2f * Mathf.Atan(t) * Mathf.Rad2Deg, 120f);
+        }
         int volver = animacion.Fotograma;
         animacion.Pausar();
         dibujo.Seleccionar(null); // la línea seleccionada (azul) sale negra en el video
 
         var codificador = new CodificadorVideo();
-        var captura = new Exportar.Captura(ancho, alto, dibujo.MascaraExportar, Color.white);
+        var captura = new Exportar.Captura(anchoVideo, altoVideo, dibujo.MascaraExportar, FondoVerde ? Verde : Color.white);
         captura.Poner(posicion, rotacion, campoVision);
-        bool ok = codificador.Iniciar(dibujo.CarpetaDibujos, NombreArchivo("animacion"), ancho, alto, fps, audio);
+        bool ok = codificador.Iniciar(dibujo.CarpetaDibujos, NombreArchivo("animacion"), anchoVideo, altoVideo, fps, audio);
         var envio = new Envio(codificador, captura, materialNv12);
         Mensaje("Haciendo el video... no te muevas mucho");
         yield return null;

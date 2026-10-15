@@ -1159,6 +1159,7 @@ public partial class ControlManos : MonoBehaviour
     float factorAsaArrastre = 1f;
     // Con la V (índice y medio estirados) se mueve SOLO el tirador que tocaste (el nodo queda como esquina).
     bool asaSola, asaEnCero;
+    bool asaPorPellizco;   // v43: el tirador se agarró con un pellizco (se suelta al abrir el pellizco)
     // Llevar la bolita de un tirador hasta su nodo (más cerca que esto, en metros) = tirador en cero (recto).
     const float RadioAsaEnCero = 0.012f;
 
@@ -1231,10 +1232,11 @@ public partial class ControlManos : MonoBehaviour
         float factor = 1f;
         Vector3 puntaAsa = tipo == Objetivo.Asa ? PuntaAsaVisible(t, i, salida, out factor) : Vector3.zero;
         factorAsaArrastre = Mathf.Max(1f, factor);
-        asaSola = tipo == Objetivo.Asa && Der.DosDedos;
+        // v43: solo este tirador si lo PELLIZCAS (como Alt) o si el nodo ya es una esquina (respeta lo que hiciste).
+        asaSola = tipo == Objetivo.Asa && (asaPorPellizco || t.EsEsquina(i));
         asaEnCero = false;
-        if (asaSola)
-            dibujo.Mensaje("V: solo este tirador (esquina)");
+        if (asaSola && asaPorPellizco)
+            dibujo.Mensaje("Pellizco: solo este tirador (esquina)");
         arrastre = tipo;
         arrTrazo = t;
         arrIndice = i;
@@ -1271,12 +1273,6 @@ public partial class ControlManos : MonoBehaviour
 
         if (arrastre == Objetivo.Asa)
         {
-            // Si pasas a la V mientras lo mueves, desde ahí se mueve solo este tirador (como apretar Alt).
-            if (!asaSola && Der.DosDedos)
-            {
-                asaSola = true;
-                dibujo.Mensaje("V: solo este tirador (esquina)");
-            }
             // La bolita hasta su nodo = tirador en cero: la línea sale recta de ese nodo (esquina recta).
             Vector3 nodoMundo = dibujo.transform.TransformPoint(arrTrazo.nodos[arrIndice]);
             bool enCero = Vector3.Distance(dibujo.transform.TransformPoint(local), nodoMundo) < RadioAsaEnCero;
@@ -1322,6 +1318,7 @@ public partial class ControlManos : MonoBehaviour
 
     void TerminarArrastre()
     {
+        asaPorPellizco = false;
         if (arrastre == Objetivo.Nodo && imanTrazo != null && arrTrazo != null)
         {
             int extremoArrastrado = arrIndice == 0 ? 0 : 1;

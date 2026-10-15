@@ -463,7 +463,7 @@ public class FondosVivos : MonoBehaviour
         const int w = 256, h = 128;
         var pix = new Color32[w * h];
         var r = new System.Random(3 + cual);
-        Vector3 nb = NormalBanda.normalized, sol = SolDir.normalized;
+        Vector3 sol = SolDir.normalized;
         for (int y = 0; y < h; y++)
             for (int x = 0; x < w; x++)
             {
@@ -473,9 +473,7 @@ public class FondosVivos : MonoBehaviour
                 Color c;
                 if (cual == Universo)
                 {
-                    float alto = Vector3.Dot(d, nb);
-                    float banda = Mathf.Exp(-alto * alto / 0.03f) * (0.5f + Mathf.PerlinNoise(x * 0.05f, y * 0.08f));
-                    c = new Color(0.01f, 0.012f, 0.035f) + new Color(0.75f, 0.72f, 0.85f) * banda * 0.35f;
+                    c = new Color(0.01f, 0.012f, 0.035f);
                     if (r.NextDouble() < 0.012)
                         c += Color.white * (0.4f + 0.6f * (float)r.NextDouble());
                 }

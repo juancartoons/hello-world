@@ -560,6 +560,19 @@ public class Trazo : MonoBehaviour
         Reconstruir();
     }
 
+    // v43: ¿el nodo i es una ESQUINA (sus dos tiradores no están alineados, o uno está en cero)? Entonces mover un
+    // tirador mueve solo ese lado (respeta el "Alt" que ya le hiciste). Si vuelven a quedar alineados, es suave.
+    public bool EsEsquina(int i)
+    {
+        AsegurarAsas();
+        if (i < 0 || i >= nodos.Count || !asaManual[i])
+            return false;
+        Vector3 a = asaEntrada[i], b = asaSalida[i];
+        if (a.sqrMagnitude < 1e-12f || b.sqrMagnitude < 1e-12f)
+            return true;
+        return Vector3.Angle(-a, b) > 6f;
+    }
+
     public void ReiniciarAsa(int i)
     {
         AsegurarAsas();

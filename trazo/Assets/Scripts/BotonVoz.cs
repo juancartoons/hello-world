@@ -208,6 +208,9 @@ public class BotonVoz : MonoBehaviour
             EtiquetasBotones.Proponer(micro, alMicro, Idioma.T(Voz.Activa ? "Apagar la voz" : "Prender la voz"), false,
                                       micro.position - transform.up * 0.032f - transform.forward * 0.006f, transform.rotation);
         bool toca = dedo && Vector3.Distance(punta, micro.position) < RadioToque * Escala;
+        // v43: también con el índice izquierdo.
+        if (control.Izq.valida && Vector3.Distance(control.Izq.indice, micro.position) < RadioToque * Escala)
+            toca = true;
         if (toca && !dedoEnMicro && Time.time >= bloqueadoHasta)
         {
             bloqueadoHasta = Time.time + 0.6f;

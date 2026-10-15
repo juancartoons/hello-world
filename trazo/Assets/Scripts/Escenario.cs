@@ -201,6 +201,35 @@ public class Escenario : MonoBehaviour
         PonerModo(n);
     }
 
+    // v43 (la voz: "siguiente fondo"): el que sigue de TODOS (también los 360), sin abrir la ventanita.
+    public void SiguienteDeTodos()
+    {
+        aviso = null;
+        int n = CantidadModos;
+        for (int k = 1; k <= n; k++)
+        {
+            int m = (modo + k) % n;
+            if (Disponible(m))
+            {
+                PonerModo(m);
+                return;
+            }
+        }
+    }
+
+    // v43 (la voz: "roma", "parque"...): pone el fondo con ese nombre. false si no está.
+    public bool PonerPorNombre(string nombre)
+    {
+        for (int m = 0; m < CantidadModos; m++)
+            if (string.Equals(Nombre(m), nombre, System.StringComparison.OrdinalIgnoreCase) && Disponible(m))
+            {
+                aviso = null;
+                PonerModo(m);
+                return true;
+            }
+        return false;
+    }
+
     // El fondo 360 que elegiste la última vez (o el primero que haya). -1 si no hay ninguno.
     public int Primer360()
     {

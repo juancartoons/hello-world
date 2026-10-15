@@ -102,6 +102,14 @@ public class Temblor : MonoBehaviour
         Cambio(Capa.boceto == 0 ? "tinta (sale en fotos y videos)" : "lápiz (en Plano 2D, sobre una hoja; no sale en fotos ni videos)");
     }
 
+    // v43 (la voz: "lápiz" / "tinta"): lápiz sí o no, directo.
+    public void PonerBoceto(bool lapiz)
+    {
+        if (Capa == null) return;
+        if ((Capa.boceto > 0) != lapiz)
+            SiguienteBoceto();
+    }
+
     // Grosor de cada hebra (con el gesto de grosor y un pellizco derecho en el aire).
     public void PonerGrosorHebra(float valor)
     {

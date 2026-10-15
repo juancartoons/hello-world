@@ -70,7 +70,7 @@ public class DatosPersonaje
 //    "Choca esos cinco" con tu personaje (o "Parar") = terminar.
 //  - "Ciclo": Normal, Con estilo (Richard Williams), Sigiloso (Ken Harris) o tus ciclos guardados.
 //    "Guardar ciclo" toma tus claves.
-//  - Los personajes nuevos van en la ÚLTIMA capa (Capa 4): "Ver/Oculta" de esa capa los esconde.
+//  - Los personajes nuevos van en SU PROPIA capa (v43: se crea una, "Maniquí"): "Ver/Oculta" de esa capa los esconde.
 //  - Acerca la mano derecha a un personaje apagado: aparece su marco con una X arriba a la derecha.
 //    Toca la X = borrar ese personaje (se puede deshacer).
 //  - Mano ABAJO (más de 4 cm) = agacharse. Golpe rápido hacia arriba = saltar.
@@ -351,10 +351,13 @@ public class Titere : MonoBehaviour
             Mensaje(p.nombre + " borrado (deshacer lo devuelve)");
     }
 
-    // Los personajes nuevos van en su propia capa (la última): "Ver/Oculta" de esa capa los esconde.
+    // Los personajes nuevos van en su propia capa: "Ver/Oculta" de esa capa los esconde.
+    // v43: cada maniquí nuevo crea SU capa ("Maniquí"), adelante de todas (si ya hay 12, va en la que estás).
     void MoverACapaPersonajes(DatosPersonaje p)
     {
-        int capa = Dibujo.NumeroDeCapas - 1;
+        int capa = dibujo.AgregarCapa("Maniquí", false);
+        if (capa < 0)
+            capa = dibujo.capaActual;
         var datos = dibujo.DatosDeCapa(capa);
         datos.visible = true;
         foreach (int id in IdsDe(p, true))

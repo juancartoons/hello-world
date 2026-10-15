@@ -6,8 +6,10 @@ using UnityEngine;
 //    Para SOLTARLO: abre los dedos de la mano izquierda.
 //  - TIRADORES (Bézier): al ACERCAR el dedo a un nodo (sin tocarlo) aparecen sus tiradores; toca la punta
 //    de uno y se pega al dedo (para curvar la línea). Se suelta igual: abriendo la mano izquierda.
-//    Un dedo = los dos lados (el otro gira en espejo, curva suave). Con la V (índice y medio estirados) =
-//    solo ese lado (esquina, como Alt en Illustrator). Llevar la bolita hasta su nodo = tirador en cero (recto).
+//    Un dedo = los dos lados (el otro gira en espejo, curva suave). v43: PELLIZCO (pulgar + índice derechos) sobre
+//    la bolita = solo ese lado (esquina, como Alt en Illustrator); se suelta al abrir el pellizco. Y si el nodo ya
+//    es esquina, el dedo también mueve solo ese lado (respeta lo que hiciste). Llevar la bolita hasta su nodo =
+//    tirador en cero (recto).
 //  - ÍNDICE + MEDIO estirados (juntos o en V) y los otros dedos doblados, al tocar un nodo = PLASTILINA:
 //    los vecinos de la misma línea lo siguen suave (más cerca, más se mueven) y brillan en naranja clarito.
 //  - LAZO: empieza en un espacio vacío y dibuja un círculo alrededor de varios nodos: quedan naranjas.
@@ -31,6 +33,7 @@ public partial class ControlManos
     const float CierreLazo = 0.03f;          // metros del inicio para que el lazo se cierre
     const float RadioVerAsas = 0.06f;        // metros: al acercar el dedo a un nodo se ven sus tiradores
     const float RadioPrevio = 0.035f;        // metros: lo que vas a agarrar se ilumina desde esta distancia
+    const float RadioPellizcoAsa = 0.04f;    // v43: un pellizco así de cerca de la bolita de un tirador la agarra
 
     // Un nodo de un grupo (lazo o plastilina): su línea, cuál es, dónde estaba y cuánto se mueve (0..1).
     struct NodoGrupo
@@ -108,7 +111,29 @@ public partial class ControlManos
         }
         if (arrastre != Objetivo.Nada)
         {
+            // v43: el tirador pellizcado se suelta al abrir el pellizco.
+            if (asaPorPellizco && (!Der.valida || !Der.pellizco))
+            {
+                asaPorPellizco = false;
+                TerminarArrastre();
+                MostrarModoNodos(true, dibujo.Seleccion);
+                return;
+            }
             ContinuarArrastre(punta);
+            MostrarModoNodos(true, dibujo.Seleccion);
+            return;
+        }
+
+        // 1a. v43: PELLIZCAR un tirador (pulgar + índice derechos) = mover SOLO ese lado (como Alt). Se agarra con un
+        //     margen generoso alrededor de la bolita (desde cualquier lado) y se suelta al abrir el pellizco.
+        bool salidaPellizco;
+        if (Der.empezoPellizco && SeleccionValida
+            && BuscarAsaCercana(Der.PuntoPellizco, Der.indice, RadioPellizcoAsa, out salidaPellizco))
+        {
+            CancelarLazo();
+            esperaDesde = -1f;
+            asaPorPellizco = true;
+            EmpezarArrastre(Objetivo.Asa, selTrazo, selIndice, salidaPellizco, punta);
             MostrarModoNodos(true, dibujo.Seleccion);
             return;
         }
