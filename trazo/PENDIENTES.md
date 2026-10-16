@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 16 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v47***
+*Actualizado: 16 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v48***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,6 +16,14 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 4. **Build And Run**.
 
 ---
+
+## 0+. Hecho en la v48 (falta probarlo en el visor)
+
+- [x] **Exportar**: lista que baja desde el botón (4 tamaños); tocar uno solo lo elige y el video empieza con el botón oscuro **"Hacer video >"** al final. El exportador ya no se traba en silencio si un video falla (avisa, y a los 15 s se suelta solo).
+- [x] Un dibujo nuevo empieza con **una sola capa** + la de cámara.
+- [x] **Cámara**: al entrar a su capa apareces **detrás de ella**, mirando hacia donde mira. Botón **"Libre"** en el monitor: la derecha la sostiene como una cámara de verdad (gira con tu mano). Apagado = siempre mira al dibujo.
+- [x] **Más gotas** de tinta del dedo.
+- [ ] Revisar por qué en la v47 los tamaños no respondían al tocarlos (si sigue pasando con la lista nueva).
 
 ## 0+. Hecho en la v47 (falta probarlo en el visor)
 

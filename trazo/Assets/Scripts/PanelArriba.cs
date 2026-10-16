@@ -1204,12 +1204,15 @@ public class PanelArriba : MonoBehaviour
 
     float xCabezal;            // v46: dónde va el cabezal (sigue al dedo con un poquito de peso)
 
-    // ---------- v47: los tamaños del video, dentro de Exportar ----------
-    // Tocar Exportar abre (o cierra) una fila con los 4 tamaños justo debajo; al tocar uno, se exporta en ese tamaño.
+    // ---------- v47/v48: los tamaños del video, en una lista que baja desde Exportar ----------
+    // Tocar Exportar despliega hacia abajo los 4 tamaños y, al final, el botón "Hacer video >". Tocar un tamaño solo
+    // lo elige (queda marcado); el video empieza con "Hacer video >". Tocar Exportar otra vez cierra la lista.
     GameObject opcionesExportar;
     readonly List<BotonTocable> botonesTamano = new List<BotonTocable>();
+    BotonTocable btnHacerVideo;
     static readonly string[] NombresTamano = { "Horizontal 1080p", "Vertical 1080p", "Horizontal 2K", "Vertical 2K" };
     static readonly int[] FormatoDeTamano = { 0, 1, 3, 2 };   // el orden de los botones → ExportadorVideo.Formato
+    int tamanoElegido;
 
     void TocarExportar()
     {
@@ -1222,10 +1225,12 @@ public class PanelArriba : MonoBehaviour
         btnVideoAnim.Marcar(abrir);
         if (abrir)
         {
-            for (int i = 0; i < botonesTamano.Count; i++)
-                botonesTamano[i].Marcar(FormatoDeTamano[i] == ExportadorVideo.Formato);
+            tamanoElegido = System.Array.IndexOf(FormatoDeTamano, ExportadorVideo.Formato);
+            if (tamanoElegido < 0)
+                tamanoElegido = 0;
+            MarcarTamanos();
             if (dibujo != null)
-                dibujo.Mensaje("Elige el tamaño del video");
+                dibujo.Mensaje("Elige el tamaño y toca \"Hacer video >\"");
         }
     }
 
@@ -1233,25 +1238,48 @@ public class PanelArriba : MonoBehaviour
     {
         opcionesExportar = new GameObject("OpcionesExportar");
         opcionesExportar.transform.SetParent(btnVideoAnim.transform.parent, false);
-        Vector3 inicio = btnVideoAnim.transform.localPosition + new Vector3(0f, -0.034f, 0f);
+        // Debajo de Exportar, un poquito adelante del panel (flota encima de lo que haya ahí).
+        Vector3 inicio = btnVideoAnim.transform.localPosition + new Vector3(0f, 0f, -0.012f);
         for (int i = 0; i < NombresTamano.Length; i++)
         {
             int cual = i;
-            var b = PanelTutoriales.Boton(opcionesExportar.transform, Idioma.T(NombresTamano[i]), inicio + new Vector3(i * 0.115f, 0f, 0f),
+            var b = PanelTutoriales.Boton(opcionesExportar.transform, Idioma.T(NombresTamano[i]), inicio + new Vector3(0f, -0.028f * (i + 1), 0f),
                                           new Vector2(0.11f, 0.024f), btnVideoAnim.materialNormal, btnVideoAnim.materialMarcado);
+            b.distancia = 0.013f;
             b.alTocar.AddListener(() => ElegirTamano(cual));
             botonesTamano.Add(b);
         }
+        // El último paso: oscuro, para que se note que es el que hace el video.
+        btnHacerVideo = PanelTutoriales.Boton(opcionesExportar.transform, Idioma.T("Hacer video >"), inicio + new Vector3(0f, -0.028f * 5 - 0.006f, 0f),
+                                              new Vector2(0.11f, 0.03f), btnVideoAnim.materialMarcado, btnVideoAnim.materialNormal);
+        btnHacerVideo.etiqueta.color = Color.white;
+        btnHacerVideo.textoNormal = Color.white;
+        btnHacerVideo.distancia = 0.013f;
+        btnHacerVideo.alTocar.AddListener(HacerVideo);
         opcionesExportar.SetActive(false);
+    }
+
+    void MarcarTamanos()
+    {
+        for (int i = 0; i < botonesTamano.Count; i++)
+            botonesTamano[i].Marcar(i == tamanoElegido);
     }
 
     void ElegirTamano(int boton)
     {
-        ExportadorVideo.Formato = FormatoDeTamano[Mathf.Clamp(boton, 0, FormatoDeTamano.Length - 1)];
+        tamanoElegido = Mathf.Clamp(boton, 0, FormatoDeTamano.Length - 1);
+        ExportadorVideo.Formato = FormatoDeTamano[tamanoElegido];
+        MarcarTamanos();
+        Refrescar();
+        if (dibujo != null)
+            dibujo.Mensaje("Video: " + ExportadorVideo.NombreFormato + " · toca \"Hacer video >\"");
+    }
+
+    void HacerVideo()
+    {
         if (opcionesExportar != null)
             opcionesExportar.SetActive(false);
         btnVideoAnim.Marcar(false);
-        Refrescar();
         if (exportador != null)
             exportador.ExportarAnimacion();
     }
@@ -2057,7 +2085,7 @@ public class PanelArriba : MonoBehaviour
         Poner(d, btnPausaGrabar, "PAUSA / REANUDAR\nSolo aparece mientras grabas el proceso. Pausa deja de grabar un momento (ese tiempo no sale en el video); Reanudar sigue grabando. Lo que hagas en pausa aparece de una vez al reanudar.");
         Poner(d, btnVideoProceso, "VIDEO PROCESO\nConvierte tu grabación (botón Grabar) en un video MP4: líneas + manos en gris. Elige antes la velocidad con Vel.\nDÓNDE QUEDA: app Archivos del Quest → Descargas → JCartoons (también lo dice abajo en esta página).");
         Poner(d, btnVelocidad, "VEL x1 / x2 / x4 / x8\nQué tan rápido se ve el video del proceso.");
-        Poner(d, btnVideoAnim, "EXPORTAR\nTócalo y elige el tamaño ahí mismo: Horizontal 1080p (1920x1080), Vertical 1080p (1080x1920, para celular), Horizontal 2K o Vertical 2K (más nítidos, más pesados). Al elegir, se hace el MP4, con el audio de las bocas si hay. Necesitas al menos 2 claves.\nDÓNDE QUEDA: app Archivos del Quest → Descargas → JCartoons. (WhatsApp lo achica: mándalo como Documento.)");
+        Poner(d, btnVideoAnim, "EXPORTAR\nTócalo y baja una lista: elige el tamaño (Horizontal 1080p, Vertical 1080p para celular, Horizontal 2K o Vertical 2K, más nítidos) y toca \"Hacer video >\" abajo. Se hace el MP4, con el audio de las bocas si hay. Necesitas al menos 2 claves.\nDÓNDE QUEDA: app Archivos del Quest → Descargas → JCartoons. (WhatsApp lo achica: mándalo como Documento.)");
         Poner(d, btnImagenMas, "IMAGEN +\nAbre las imágenes de tu Quest (Descargas, Cámara, capturas, WhatsApp, Facebook...). Toca una para verla en grande y elige: Importar (aparece frente a ti) o, si es una foto 360, Fondo 360. O pellízcala y sácala del panel: queda donde la sueltes.\nPara calcar: en Plano, suelta la imagen cerca del plano y se pega detrás.");
         Poner(d, btnImagenMenos, "IMAGEN -\nQuita la imagen seleccionada (la que tiene tono azul). Pellizca una imagen para elegirla.");
         Poner(d, btnImagenesVer, "IMÁGENES: VER / OCULTAS\nEsconde o muestra todas las imágenes de referencia a la vez.");

@@ -167,7 +167,8 @@ public class DatosDibujo
 // Las líneas son hijas de este objeto, así se puede mover, girar y escalar todo junto.
 public class Dibujo : MonoBehaviour
 {
-    public const int NumeroDeCapas = 4;    // las capas con que empieza todo dibujo
+    public const int NumeroDeCapas = 4;    // las filas de capas de la mesa (antes: con cuántas empezaba el dibujo)
+    public const int CapasAlEmpezar = 1;   // v48: un dibujo nuevo empieza con UNA capa (+ la de cámara); tú agregas más
     public const int MaximoDeCapas = 12;   // con el botón "+" de las capas se agregan hasta aquí
 
     public Material materialLinea;
@@ -431,9 +432,9 @@ public class Dibujo : MonoBehaviour
 
     void AsegurarCapas()
     {
-        // v43: un dibujo nuevo empieza con 4; después se pueden borrar (siempre queda al menos una).
+        // v43: un dibujo nuevo empieza con sus capas (v48: solo una); después se agregan o borran (siempre queda una).
         if (capas.Count == 0)
-            while (capas.Count < NumeroDeCapas)
+            while (capas.Count < CapasAlEmpezar)
                 capas.Add(new DatosCapa { nombre = "Capa " + (capas.Count + 1), visible = true });
         // v44: siempre hay al menos una capa de cámara (adelante de todas).
         if (PrimeraCamara() < 0)

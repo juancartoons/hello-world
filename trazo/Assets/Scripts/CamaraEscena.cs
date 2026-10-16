@@ -32,6 +32,9 @@ public class DatosCamara
 //    MONITOR que muestra en vivo lo que ve, con sus botones: Clave, Quita, Sugiere, + (acerca), − (aleja) y Quitar.
 //  - PELLIZCA la camarita con la DERECHA y muévela: gira alrededor de lo que está mirando (siempre lo mira).
 //    Con la IZQUIERDA: se mueve sin cambiar hacia dónde mira (para correrla de lado, subirla o acercarla).
+//  - v48: botón "Libre" (en el monitor): con él prendido, la DERECHA la sostiene como una cámara de verdad: gira con
+//    tu mano y apunta a donde quieras. Apagado (lo normal), siempre mira a lo que dibujaste.
+//  - v48: al entrar a la capa de cámara, apareces justo DETRÁS de ella (mirando hacia donde mira).
 //  - En 2D, al ponerla, apunta de frente al plano de tu capa.
 //  - SUGIERE: la app prueba muchos ángulos (de frente, de tres cuartos, desde arriba, desde abajo) y elige los 3 en los
 //    que el dibujo se ve mejor (más grande, menos líneas encimadas, bien acomodado en el cuadro y con aire arriba).
@@ -333,6 +336,15 @@ public class CamaraEscena : MonoBehaviour
     readonly List<Sugerencia> sugerencias = new List<Sugerencia>();
     float minisHasta;
     bool armada, verticalPuesto, agarrada, conIzquierda, intentoAuto;
+    // v48: apuntar libre (se recuerda) y ponerte detrás de la cámara al entrar a su capa.
+    const string ClaveLibre = "jcartoons_camara_libre";
+    static bool Libre
+    {
+        get => PlayerPrefs.GetInt(ClaveLibre, 0) == 1;
+        set { PlayerPrefs.SetInt(ClaveLibre, value ? 1 : 0); PlayerPrefs.Save(); }
+    }
+    Quaternion manoInicio = Quaternion.identity;
+    bool estabaEnCapa, ponerDetras;
     Vector3 desfase, objetivo, poseViva;
     Quaternion rotViva, rotInicio;
     float distanciaViva;
@@ -386,7 +398,7 @@ public class CamaraEscena : MonoBehaviour
         if (matMonitor != null)
             materiales.Add(matMonitor);
         monitor = Pieza(PrimitiveType.Quad, panel, Vector3.zero, Quaternion.identity, Vector3.one, matMonitor);
-        string[] nombres = { "Clave", "Quita", "Sugiere", "+", "−", "Quitar" };
+        string[] nombres = { "Clave", "Quita", "Sugiere", "+", "−", "Quitar", "Libre" };
         for (int i = 0; i < nombres.Length; i++)
         {
             var b = Boton(panel, nombres[i], Vector3.zero, new Vector2(i >= 3 && i <= 4 ? 0.02f : 0.03f, 0.016f));
@@ -399,6 +411,14 @@ public class CamaraEscena : MonoBehaviour
         botones[3].alTocar.AddListener(() => Zoom(1f / 1.2f));
         botones[4].alTocar.AddListener(() => Zoom(1.2f));
         botones[5].alTocar.AddListener(Quitar);
+        botones[6].alTocar.AddListener(() =>
+        {
+            Libre = !Libre;
+            botones[6].Marcar(Libre);
+            Mensaje(Libre ? "Cámara libre: pellízcala con la derecha y apúntala a donde quieras (gira con tu mano)"
+                          : "Cámara: siempre mira a tu dibujo");
+        });
+        BotonTocable.PonerNombre(botones[6], "Apuntar libre (gira con tu mano)");
         BotonTocable.PonerVoz(botones[0], ControlManos.ComandoVoz.ClaveCamara);
         BotonTocable.PonerNombre(botones[1], "Quitar la clave de cámara");
         BotonTocable.PonerVoz(botones[2], ControlManos.ComandoVoz.SugiereCamara);
@@ -490,11 +510,12 @@ public class CamaraEscena : MonoBehaviour
         rtMonitor.Create();
         PonerTextura(matMonitor, rtMonitor);
         float yBotones = -h * 0.5f - 0.016f;
-        float[] xs = { -0.069f, -0.036f, -0.003f, 0.025f, 0.048f, 0.077f };
+        float[] xs = { -0.069f, -0.036f, -0.003f, 0.025f, 0.048f, 0.077f, 0f };
         for (int i = 0; i < botones.Count; i++)
         {
             var b = botones[i];
-            Vector3 p = new Vector3(xs[i], yBotones, 0f);
+            // v48: "Libre" va en una segunda fila, al centro.
+            Vector3 p = new Vector3(xs[i], i == 6 ? yBotones - 0.02f : yBotones, 0f);
             b.transform.localPosition = p;
             b.etiqueta.transform.localPosition = p + new Vector3(0f, 0f, -0.0036f);
         }
@@ -553,6 +574,10 @@ public class CamaraEscena : MonoBehaviour
         }
         if (!enCapa)
             intentoAuto = false;
+        // v48: al entrar a la capa de cámara, apareces detrás de ella (cuando ya sabe dónde está).
+        if (enCapa && !estabaEnCapa)
+            ponerDetras = true;
+        estabaEnCapa = enCapa;
         bool ver = enCapa && datos.hay && !VistaLimpia.Activa;
         if (!ver)
         {
@@ -585,6 +610,13 @@ public class CamaraEscena : MonoBehaviour
             PoseMundo(FotogramaActual, out p0, out r0, out campo);
         }
         cuerpo.SetPositionAndRotation(poseViva, rotViva);
+        if (ponerDetras && !agarrada)
+        {
+            ponerDetras = false;
+            PonermeDetras(cab);
+        }
+        if (botones.Count > 6)
+            botones[6].Marcar(Libre);
 
         // El cuadro: un rectángulo adelante del lente, del tamaño de lo que ve.
         float altoMedio = Mathf.Tan(campo * 0.5f * Mathf.Deg2Rad) * DistanciaCuadro;
@@ -639,7 +671,14 @@ public class CamaraEscena : MonoBehaviour
                 return;
             }
             poseViva = m.PuntoPellizco + desfase;
-            if (conIzquierda)
+            if (!conIzquierda && Libre && der.hand != null)
+            {
+                // v48: libre: la cámara gira con tu mano, como si la sostuvieras.
+                Quaternion giro = der.hand.transform.rotation * Quaternion.Inverse(manoInicio);
+                poseViva = m.PuntoPellizco + giro * desfase;
+                rotViva = giro * rotInicio;
+            }
+            else if (conIzquierda)
             {
                 rotViva = rotInicio;
             }
@@ -666,8 +705,28 @@ public class CamaraEscena : MonoBehaviour
         desfase = cuerpo.position - mano.PuntoPellizco;
         rotInicio = cuerpo.rotation;
         objetivo = cuerpo.position + cuerpo.forward * Mathf.Max(0.05f, distanciaViva);
+        manoInicio = mano.hand != null ? mano.hand.transform.rotation : Quaternion.identity;
         control.Ocupado = true;
         control.SonidoBurbuja(cuerpo.position);
+    }
+
+    // v48: te pone justo detrás de la cámara, mirando hacia donde ella mira (mueve tu lugar en el mundo, no la cámara).
+    void PonermeDetras(Transform cab)
+    {
+        var rig = FindFirstObjectByType<OVRCameraRig>();
+        if (rig == null || cab == null)
+            return;
+        Vector3 adelante = Vector3.ProjectOnPlane(rotViva * Vector3.forward, Vector3.up);
+        Vector3 miAdelante = Vector3.ProjectOnPlane(cab.forward, Vector3.up);
+        if (adelante.sqrMagnitude < 1e-4f || miAdelante.sqrMagnitude < 1e-4f)
+            return;
+        adelante.Normalize();
+        float angulo = Vector3.SignedAngle(miAdelante, adelante, Vector3.up);
+        Transform r = rig.transform;
+        r.RotateAround(cab.position, Vector3.up, angulo);
+        // 40 cm detrás y un poquito arriba (para ver la camarita y su monitor).
+        Vector3 deseado = poseViva - adelante * 0.4f + Vector3.up * 0.05f;
+        r.position += deseado - cab.position;
     }
 
     void Soltar(bool guardar)

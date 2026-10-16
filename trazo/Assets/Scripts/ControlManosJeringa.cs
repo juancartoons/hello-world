@@ -18,7 +18,7 @@ public partial class ControlManos
 {
     const float LlenadoSegundos = 0.7f;
     const float EsperaJeringa = 0.12f;     // segundos tocando antes de pintar (así no pinta al pasar de largo)
-    const int Gotas = 4;
+    const int Gotas = 12;   // v48: más gotas (el efecto es bonito)
 
     Color colorJeringa = Color.black;
     bool hayJeringa, jeringaEsperaSalir;
@@ -126,7 +126,7 @@ public partial class ControlManos
             MostrarEtiqueta("Relleno pintado");
         }
         Burbuja(punta, 1.2f);
-        SoltarGotas(punta, 2);
+        SoltarGotas(punta, 4);
         VaciarJeringa();
         return true;
     }
@@ -168,10 +168,11 @@ public partial class ControlManos
             Shader.SetGlobalVector(idJeringaNudillo, new Vector4(nudillo.x, nudillo.y, nudillo.z, 1f));
             // Llevándolo cargado: de vez en cuando cae una gotita (o dos).
             float vel = dt > 1e-5f ? Vector3.Distance(Der.indice, puntaAntes) / dt : 0f;
-            if (hayJeringa && nivelJeringa > 0.6f && vel > 0.12f && Time.time > proximaGota)
+            // v48: caen más seguido (moviéndolo más; quieto, de vez en cuando).
+            if (hayJeringa && nivelJeringa > 0.6f && Time.time > proximaGota)
             {
-                SoltarGotas(punta, Random.value < 0.5f ? 1 : 2);
-                proximaGota = Time.time + Random.Range(1.2f, 2.6f);
+                SoltarGotas(punta, vel > 0.12f ? Random.Range(1, 4) : 1);
+                proximaGota = Time.time + (vel > 0.12f ? Random.Range(0.25f, 0.7f) : Random.Range(0.9f, 1.8f));
             }
         }
         else

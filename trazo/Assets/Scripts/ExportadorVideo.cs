@@ -118,10 +118,23 @@ public class ExportadorVideo : MonoBehaviour
 
     // ---------- Video de la animación ----------
 
+    // v48: si un video se quedó trabado (un error a la mitad), no bloquea los siguientes: a los 15 s sin avanzar se suelta.
+    float ultimoAvance;
+
     public void ExportarAnimacion()
     {
-        if (Exportando || dibujo == null || animacion == null)
+        if (Exportando && Time.realtimeSinceStartup - ultimoAvance > 15f)
+            Exportando = false;
+        if (Exportando)
+        {
+            Mensaje("Ya se está haciendo un video... espera un momento");
             return;
+        }
+        if (dibujo == null || animacion == null)
+        {
+            Mensaje("No se pudo exportar (falta el dibujo)");
+            return;
+        }
         if (animacion.claves.Count < 2 || animacion.UltimaClave <= 0)
         {
             Mensaje("Necesitas al menos 2 claves para el video");
@@ -133,6 +146,7 @@ public class ExportadorVideo : MonoBehaviour
     IEnumerator VideoAnimacion()
     {
         Exportando = true;
+        ultimoAvance = Time.realtimeSinceStartup;
         int fps = Mathf.RoundToInt(animacion.fotogramasPorSegundo);
         AudioClip audio = lipsync != null ? lipsync.Clip : null;
         int fin = animacion.UltimaClave;
@@ -179,15 +193,25 @@ public class ExportadorVideo : MonoBehaviour
         float lote = Time.realtimeSinceStartup;
         for (int f = 0; f <= fin && ok; f++)
         {
-            animacion.IrA(f);
-            animacion.MostrarFotograma();
-            if (dibujo.temblor != null)
-                dibujo.temblor.PonerTiempo(f / (float)fps);
-            if (conCamara && CamaraEscena.PoseMundo(f, out posicion, out rotacion, out campoVision))
-                captura.Poner(posicion, rotacion, campoVision);
-            if (dibujo.figuras != null)
-                dibujo.figuras.PonerVista(posicion);
-            ok = envio.Cuadro();
+            try
+            {
+                animacion.IrA(f);
+                animacion.MostrarFotograma();
+                if (dibujo.temblor != null)
+                    dibujo.temblor.PonerTiempo(f / (float)fps);
+                if (conCamara && CamaraEscena.PoseMundo(f, out posicion, out rotacion, out campoVision))
+                    captura.Poner(posicion, rotacion, campoVision);
+                if (dibujo.figuras != null)
+                    dibujo.figuras.PonerVista(posicion);
+                ok = envio.Cuadro();
+            }
+            catch (System.Exception e)
+            {
+                // v48: un error en un cuadro termina el video con aviso (antes dejaba todo trabado y en silencio).
+                Debug.LogWarning("TrazoVR: error en el cuadro " + f + " del video: " + e);
+                ok = false;
+            }
+            ultimoAvance = Time.realtimeSinceStartup;
             if (Time.time > avisoEn)
             {
                 avisoEn = Time.time + 1.2f;
@@ -200,17 +224,26 @@ public class ExportadorVideo : MonoBehaviour
                 lote = Time.realtimeSinceStartup;
             }
         }
-        ok = envio.Terminar() && ok;
-        if (ok)
-            GuardarMiniatura(captura, codificador);
-        captura.Liberar();
-        if (dibujo.temblor != null)
-            dibujo.temblor.PonerTiempo(-1f);
-        if (dibujo.figuras != null)
-            dibujo.figuras.PonerVista(null);
-        bool listo = codificador.Terminar() && ok;
-        animacion.IrA(volver);
-        animacion.MostrarFotograma();
+        bool listo = false;
+        try
+        {
+            ok = envio.Terminar() && ok;
+            if (ok)
+                GuardarMiniatura(captura, codificador);
+            captura.Liberar();
+            if (dibujo.temblor != null)
+                dibujo.temblor.PonerTiempo(-1f);
+            if (dibujo.figuras != null)
+                dibujo.figuras.PonerVista(null);
+            listo = codificador.Terminar() && ok;
+            animacion.IrA(volver);
+            animacion.MostrarFotograma();
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("TrazoVR: error al terminar el video: " + e);
+            listo = false;
+        }
         Exportando = false;
         Avisar(listo, codificador);
     }
