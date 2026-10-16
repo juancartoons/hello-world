@@ -85,6 +85,7 @@ public class PanelArriba : MonoBehaviour
     public TMP_Text textoMedios;
     // v43: en la página Animar: el formato del video, el fondo verde y el papel cebolla.
     public BotonTocable btnFormato, btnVerde, btnCebolla;
+    public BotonTocable btnCuadros;   // v46: "Cuadro a cuadro" (capas donde cada cuadro empieza vacío)
     readonly List<Transform> marcasCamara = new List<Transform>();
 
     [Header("Bocas")]
@@ -254,6 +255,7 @@ public class PanelArriba : MonoBehaviour
         BotonTocable.PonerNombre(btnFormato, "Formato del video");
         BotonTocable.PonerNombre(btnVerde, "Fondo verde (solo en el video)");
         BotonTocable.PonerVoz(btnCebolla, ControlManos.ComandoVoz.Cebolla);
+        BotonTocable.PonerVoz(btnCuadros, ControlManos.ComandoVoz.CuadroACuadro);
         Conectar(btnFormato, () =>
         {
             ExportadorVideo.Vertical = !ExportadorVideo.Vertical;
@@ -271,6 +273,12 @@ public class PanelArriba : MonoBehaviour
         Conectar(btnCebolla, () =>
         {
             PapelCebolla.Alternar();
+            Refrescar();
+        });
+        Conectar(btnCuadros, () =>
+        {
+            if (dibujo != null)
+                dibujo.AlternarCuadroACuadro();
             Refrescar();
         });
 
@@ -1180,10 +1188,21 @@ public class PanelArriba : MonoBehaviour
         if (!encima && !barraSujeta)
             return;
         // Con la barra sujeta vale solo lo de lado (x), aunque el dedo esté lejos de la barra.
-        int fotograma = FotogramaEn(Mathf.Clamp(local.x, -0.5f, 0.5f));
+        // v46: al ARRASTRAR se siente un poquito pesado: el cabezal sigue al dedo con algo de inercia (al tocar, va
+        // directo a ese cuadro).
+        float objetivo = Mathf.Clamp(local.x, -0.5f, 0.5f);
+        if (Time.frameCount - cuadroCabezal > 1)
+            xCabezal = objetivo;
+        else
+            xCabezal = Mathf.Lerp(xCabezal, objetivo, 1f - Mathf.Exp(-9f * Time.deltaTime));
+        cuadroCabezal = Time.frameCount;
+        int fotograma = FotogramaEn(xCabezal);
         if (fotograma != animacion.Fotograma)
             animacion.IrA(fotograma);
     }
+
+    float xCabezal;            // v46: dónde va el cabezal (sigue al dedo con un poquito de peso)
+    int cuadroCabezal = -10;
 
     // La clave de la capa activa más cerca del fotograma f (unos 1.3 cm de barra), o -1.
     int ClaveCerca(int f)
@@ -1546,6 +1565,12 @@ public class PanelArriba : MonoBehaviour
         {
             btnCebolla.PonerTexto(PapelCebolla.Activo ? "Cebolla: Sí" : "Cebolla: No");
             btnCebolla.Marcar(PapelCebolla.Activo);
+        }
+        if (btnCuadros != null && dibujo != null)
+        {
+            bool cuadros = dibujo.EsCuadroACuadro(dibujo.capaActual);
+            btnCuadros.PonerTexto(cuadros ? "Cuadro a cuadro: Sí" : "Cuadro a cuadro");
+            btnCuadros.Marcar(cuadros);
         }
     }
 
@@ -1933,7 +1958,9 @@ public class PanelArriba : MonoBehaviour
     {
         var d = new Dictionary<BotonTocable, string>();
         // Pestañas y barra de arriba
-        Poner(d, btnPaginaAnimar, "ANIMAR (página)\nLas pestañas se asoman arriba del panel, como en un archivador (debajo, si la mesa está arriba): toca una para abrir su página y tócala otra vez para guardarla.\nVideo anim: tu animación en MP4 (también en Mis archivos → Compartir). Aquí vendrán papel cebolla y cuadro a cuadro.");
+        Poner(d, btnPaginaAnimar, "ANIMAR (página)\nLas pestañas se asoman arriba del panel, como en un archivador (debajo, si la mesa está arriba): toca una para abrir su página y tócala otra vez para guardarla.\nVideo anim: tu animación en MP4 (también en Mis archivos → Compartir).");
+        Poner(d, btnCebolla, "PAPEL CEBOLLA\nEn pausa ves clarito la clave anterior (rojiza) y la siguiente (verdosa) de tu capa, para calcar el movimiento. No sale en fotos ni videos. En las capas Cuadro a cuadro sale siempre.");
+        Poner(d, btnCuadros, "CUADRO A CUADRO\nLa única excepción de la app: en estas capas cada cuadro es un dibujo propio y un cuadro nuevo empieza VACÍO (como los programas de animación de siempre). Ves el cuadro anterior en rojizo y el siguiente en verdoso.\nAvanza con > y dibuja; cada dibujo dura hasta el siguiente. Si tu capa ya tiene dibujo, se crea una capa nueva \"Cuadros\" (así no se mezclan). Voz: \"cuadro a cuadro\".");
         if (btnLiberarCapa != null)
             foreach (var b in btnLiberarCapa)
                 Poner(d, b, "LIBERAR (de esta capa)\nLo que dibujas en Plano 2D queda encantado en la hoja de su capa: nodos, tiradores, lazo y moverlo se quedan dentro de esa hoja.\nLiberar quita el encantamiento: si tienes líneas elegidas (azules) de esta capa, solo esas; si no, toda la capa. Después se mueven libres en 3D. Se puede deshacer.");

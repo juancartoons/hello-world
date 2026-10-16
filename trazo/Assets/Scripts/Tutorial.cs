@@ -2094,25 +2094,47 @@ public class Tutorial : MonoBehaviour
             btnHola.alTocar.AddListener(DecirHola);
         }
         MostrarBoton(btnHola, true);
-        PonerVineta(Tx("Last one: this head can talk. Say \"HELLO\" out loud (or tap Hello!)",
-                       "Último: esta cabeza habla. Di \"HOLA\" en voz alta (o toca ¡Hola!)"), VinetaLinea, -1);
+        PonerVineta(Tx("Last one: this head can talk. Say out loud \"HELLO, HOW ARE YOU?\": it repeats it with YOUR voice (or tap Hello!)",
+                       "Último: esta cabeza habla. Di en voz alta \"HOLA, ¿CÓMO ESTÁS?\": la repite con TU voz (o toca ¡Hola!)"), VinetaLinea, -1);
         holaHora = -1f;
         Cambiar(Estado.Hola);
     }
 
-    // La voz ("hola") o el botón: la boca dice "hola".
+    // El botón: la boca dice "hola, ¿cómo estás?" (sin sonido: no hay voz grabada).
     public void DecirHola()
     {
         if (estado != Estado.Hola)
             return;
         var lip = FindFirstObjectByType<Lipsync>();
-        float dura = lip != null ? lip.GenerarDePalabra(Idioma.Ingles ? "hello, how are you?" : "hola, ¿cómo estás?") : 0f;
+        HolaDicho(lip != null ? lip.GenerarDePalabra(Idioma.Ingles ? "hello, how are you?" : "hola, ¿cómo estás?") : 0f);
+    }
+
+    // v46: la voz: la cabeza repite TU frase con TU voz (la grabó la voz al oírte), con la boca moviéndose.
+    public void DecirHolaConVoz()
+    {
+        if (estado != Estado.Hola)
+            return;
+        var lip = FindFirstObjectByType<Lipsync>();
+        if (lip == null)
+            return;
+        holaHora = Time.time + 8f;   // ya no espera otro "hola" (mientras llega tu frase)
+        lip.RepetirMiVoz(Idioma.Ingles ? "hello, how are you?" : "hola, ¿cómo estás?", HolaDicho);
+    }
+
+    void HolaDicho(float dura)
+    {
+        if (estado != Estado.Hola)
+            return;
         if (dura > 0f)
         {
             if (fuente != null)
-                fuente.PlayOneShot(Sonidos.Magia, 0.7f);
+                fuente.PlayOneShot(Sonidos.Magia, 0.5f);
             PonerVineta(Tx("\"Hello, how are you?\"", "\"¡Hola! ¿Cómo estás?\""), VinetaLinea, -1);
             holaHora = Time.time + Mathf.Max(5f, dura * 2f + 2f);   // (holaHora = cuándo termina)
+        }
+        else
+        {
+            holaHora = -1f;   // no se pudo: puede intentarlo otra vez
         }
     }
 

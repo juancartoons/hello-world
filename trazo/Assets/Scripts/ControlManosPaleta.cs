@@ -208,18 +208,19 @@ public partial class ControlManos
             return;
         }
         dedoEnColor = false;
-        // Cerca de la paleta no se toman colores de las líneas ni se rellena.
-        if (Vector3.Distance(punta, paleta.position) < 0.1f)
+        // v44: con el dedo cargado (jeringa): tocar una línea o un relleno lo pinta (antes que el cuentagotas).
+        // v46: va ANTES de la zona cerca de la paleta (antes no pintaba líneas que estaban a menos de 10 cm de ella).
+        if (Vector3.Distance(punta, paleta.position) > 0.045f && RevisarJeringa(punta))
         {
-            TerminarPellizcoTextura();
             dedoEnLinea = false;
             dedoEnRelleno = false;
             rellenoCandidato = null;
             return;
         }
-        // v44: con el dedo cargado (jeringa): tocar una línea o un relleno lo pinta (antes que el cuentagotas).
-        if (RevisarJeringa(punta))
+        // Cerca de la paleta no se toman colores de las líneas ni se rellena.
+        if (Vector3.Distance(punta, paleta.position) < 0.1f)
         {
+            TerminarPellizcoTextura();
             dedoEnLinea = false;
             dedoEnRelleno = false;
             rellenoCandidato = null;

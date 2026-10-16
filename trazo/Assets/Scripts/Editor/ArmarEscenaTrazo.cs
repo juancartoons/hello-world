@@ -816,6 +816,8 @@ public static class ArmarEscenaTrazo
         panel.btnFormato = BotonAncho(animar, "Horizontal 16:9", new Vector3(-0.055f, 0.04f, 0f), matBoton, matBotonMarcado);
         panel.btnVerde = BotonAncho(animar, "Fondo verde: No", new Vector3(0.06f, 0.04f, 0f), matBoton, matBotonMarcado);
         panel.btnCebolla = BotonAncho(animar, "Cebolla: No", new Vector3(0.175f, 0.04f, 0f), matBoton, matBotonMarcado);
+        // v46: capas cuadro a cuadro (cada cuadro empieza vacío), debajo de la cebolla.
+        panel.btnCuadros = BotonAncho(animar, "Cuadro a cuadro", new Vector3(0.175f, 0.006f, 0f), matBoton, matBotonMarcado);
         panel.btnGrabar = null;
         panel.btnPausaGrabar = null;
         panel.btnVideoProceso = null;

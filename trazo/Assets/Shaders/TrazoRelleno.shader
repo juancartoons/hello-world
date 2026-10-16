@@ -9,6 +9,8 @@ Shader "TrazoVR/Relleno"
     Properties
     {
         _BaseColor ("Tinte", Color) = (1, 1, 1, 1)
+        // v46: el titileo de la mirada (rgb = hacia qué color, a = cuánto). Lo pone Mirada con un PropertyBlock.
+        _Titileo ("Titileo", Color) = (0, 0, 0, 0)
     }
 
     SubShader
@@ -33,6 +35,7 @@ Shader "TrazoVR/Relleno"
 
             CBUFFER_START(UnityPerMaterial)
                 float4 _BaseColor;
+                float4 _Titileo;
             CBUFFER_END
 
             struct Attributes
@@ -144,6 +147,7 @@ Shader "TrazoVR/Relleno"
                     c = RellenoVivo(c, i.textura.xy, i.textura.z, i.textura.w, i.semilla);
                 // v36: la luz de la punta del dedo (suave).
                 c += TrazoColorLuz * (0.3 * TrazoLuzDedo(i.posWS));
+                c = lerp(c, _Titileo.rgb, _Titileo.a);
                 return half4(c, 1);
             }
             ENDHLSL

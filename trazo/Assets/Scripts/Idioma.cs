@@ -427,6 +427,11 @@ public static class Idioma
         "Otra cámara (otro ángulo o recorrido)", "Another camera (another angle or path)",
         "Empuja: capa de adelante · Atrae: la de atrás · Deja el dedo quieto en el nombre: cambiarlo", "Push: layer in front · Pull: the one behind · Keep your finger still on the name: rename it",
         "Atardecer en el desierto", "Desert sunset",
+        // v46: cuadro a cuadro
+        "Cuadro a cuadro", "Frame by frame",
+        "Cuadro a cuadro: Sí", "Frame by frame: On",
+        "Capa cuadro a cuadro: cada cuadro empieza vacío (el anterior se ve rojizo, el siguiente verdoso)", "Frame-by-frame layer: each frame starts empty (previous one reddish, next one greenish)",
+        "Capa normal otra vez (con morph entre claves)", "Normal layer again (morph between keys)",
         "Copiar color", "Copy color",
         "Pegar color", "Paste color",
         "Línea pegada", "Line pasted",

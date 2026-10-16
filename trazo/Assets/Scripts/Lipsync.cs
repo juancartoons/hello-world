@@ -653,6 +653,15 @@ public class Lipsync : MonoBehaviour
 
         dibujo.GuardarParaDeshacer();
         int volver = animacion.Fotograma;
+        int claves = ClavarVisemas(visemas);
+        animacion.IrA(volver);
+        animacion.MostrarFotograma();
+        Mensaje("Lipsync listo: " + claves + " claves. Toca Play");
+    }
+
+    // Una clave cada vez que cambia la boca (y la anterior se sostiene hasta justo antes). Devuelve cuántas claves.
+    int ClavarVisemas(int[] visemas)
+    {
         bool antes = Trazo.silenciar;
         Trazo.silenciar = true;
         int claves = 0;
@@ -684,9 +693,82 @@ public class Lipsync : MonoBehaviour
         }
         Trazo.silenciar = antes;
         Trazo.huboCambio = false;
-        animacion.IrA(volver);
-        animacion.MostrarFotograma();
-        Mensaje("Lipsync listo: " + claves + " claves. Toca Play");
+        return claves;
+    }
+
+    // ---------- v46: la cara repite lo que dijiste, CON TU VOZ ----------
+    // La voz (TrazoVoz.java) guarda cada frase que dices. Al oír "hola, ¿cómo estás?" se espera a que termines,
+    // se hacen las bocas a partir de TU audio y se reproduce una vez (tu voz suena mientras la boca se mueve).
+    // Si no hay audio (en el editor, o con el botón), dice el texto con las bocas, sin sonido.
+    public static float HablandoHasta { get; private set; } = -10f;   // mientras habla, la voz no se escucha a sí misma
+
+    public void RepetirMiVoz(string texto, System.Action<float> listo)
+    {
+        HablandoHasta = Time.time + 6f;   // (mientras espera la frase)
+        StartCoroutine(Repetir(texto, listo));
+    }
+
+    IEnumerator Repetir(string texto, System.Action<float> listo)
+    {
+        // Si todavía estás hablando, espera a que termines la frase (como mucho 3 s).
+        if (Voz.Hablando())
+        {
+            int antes = Voz.NumeroFrase();
+            float limite = Time.time + 3f;
+            while (Time.time < limite && Voz.NumeroFrase() == antes)
+                yield return null;
+        }
+        float[] muestras = Voz.SegundosDesdeFrase() < 4f ? Voz.UltimaFrase() : null;
+        float dura = 0f;
+        if (muestras != null && muestras.Length > Voz.MuestreoFrase / 4 && dibujo != null && animacion != null && Elegir(Reposo) >= 0)
+        {
+            // Un poco más fuerte si quedó bajito (sin pasarse).
+            float pico = 1e-4f;
+            foreach (float m in muestras)
+                pico = Mathf.Max(pico, Mathf.Abs(m));
+            float ganancia = Mathf.Clamp(0.85f / pico, 1f, 8f);
+            for (int i = 0; i < muestras.Length; i++)
+                muestras[i] *= ganancia;
+            var clip = AudioClip.Create("Hola", muestras.Length, 1, Voz.MuestreoFrase, false);
+            clip.SetData(muestras, 0);
+            PonerClip(clip, "");
+            float fps = Mathf.Max(1f, animacion.fotogramasPorSegundo);
+            int[] visemas = Analizar(clip, fps);
+            if (visemas.Length > 0)
+            {
+                animacion.Pausar();
+                dibujo.GuardarParaDeshacer();
+                ClavarVisemas(visemas);
+                animacion.IrA(0);
+                animacion.MostrarFotograma();
+                if (!animacion.Reproduciendo)
+                    animacion.AlternarReproducir();
+                dura = clip.length;
+                StartCoroutine(CallarDespues(dura + 0.15f));
+            }
+        }
+        if (dura <= 0f)
+        {
+            // Sin tu audio: las bocas dicen el texto (y no suena un audio viejo).
+            if (Clip != null && Clip.name == "Hola")
+                QuitarAudioSinAviso();
+            dura = GenerarDePalabra(texto);
+        }
+        HablandoHasta = Time.time + dura + 1.5f;
+        if (listo != null)
+            listo(dura);
+    }
+
+    // Lo dice UNA vez y la boca descansa (no se repite en bucle).
+    IEnumerator CallarDespues(float segundos)
+    {
+        yield return new WaitForSeconds(segundos);
+        if (animacion != null && animacion.Reproduciendo)
+        {
+            animacion.Pausar();
+            animacion.IrA(0);
+            animacion.MostrarFotograma();
+        }
     }
 
     // v44: bocas para una PALABRA (sin grabar audio): "hola" = O, L, A. Cada letra su boca, y al final descansa. Luego

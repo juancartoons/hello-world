@@ -3,6 +3,7 @@ Shader "TrazoVR/ManoVidrio"
     // MANOS DE VIDRIO (v36): casi transparentes por dentro, con el contorno iluminado (fresnel), y las yemas de los
     // índices brillan con la luz de la punta del dedo (ver TrazoLuz.hlsl).
     // v45: EL DEDO JERINGA: el índice derecho se llena de color desde la yema hacia el nudillo (ControlManosJeringa).
+    // v46: sigue las falanges (no una línea recta), con un poco más de grosor.
     Properties
     {
         _BaseColor ("Color del vidrio", Color) = (0.72, 0.86, 1, 1)
@@ -36,6 +37,22 @@ Shader "TrazoVR/ManoVidrio"
             float4 _JCJeringaPunta;
             float4 _JCJeringaNudillo;
             float4 _JCJeringaColor;
+            // v46: las falanges del medio (yema → A → B → nudillo): así el color sigue el dedo aunque esté doblado.
+            float4 _JCJeringaA;
+            float4 _JCJeringaB;
+
+            // La distancia del punto p al tramo a-b, y en qué parte del dedo cae (0 = yema, 1 = nudillo).
+            void Tramo(float3 p, float3 a, float3 b, float desde, float total, inout float dMin, inout float sMin)
+            {
+                float3 ab = b - a;
+                float t = saturate(dot(p - a, ab) / max(dot(ab, ab), 1e-8));
+                float d = distance(p, a + ab * t);
+                if (d < dMin)
+                {
+                    dMin = d;
+                    sMin = (desde + t * length(ab)) / total;
+                }
+            }
 
             struct Attributes
             {
@@ -75,11 +92,19 @@ Shader "TrazoVR/ManoVidrio"
                 // v45: el índice derecho lleno de color, desde la yema hasta donde llegue el "líquido".
                 if (_JCJeringaNudillo.w > 0.5)
                 {
-                    float3 pa = _JCJeringaPunta.xyz;
-                    float3 ab = _JCJeringaNudillo.xyz - pa;
-                    float t = saturate(dot(i.posWS - pa, ab) / max(dot(ab, ab), 1e-6));
-                    float d = distance(i.posWS, pa + ab * t);
-                    float lleno = step(t, _JCJeringaPunta.w) * (1.0 - smoothstep(0.011, 0.015, d));
+                    float3 p0 = _JCJeringaPunta.xyz;
+                    float3 p1 = _JCJeringaA.xyz;
+                    float3 p2 = _JCJeringaB.xyz;
+                    float3 p3 = _JCJeringaNudillo.xyz;
+                    float l1 = distance(p0, p1);
+                    float l2 = distance(p1, p2);
+                    float total = max(l1 + l2 + distance(p2, p3), 1e-4);
+                    float d = 1e5;
+                    float t = 0.0;
+                    Tramo(i.posWS, p0, p1, 0.0, total, d, t);
+                    Tramo(i.posWS, p1, p2, l1, total, d, t);
+                    Tramo(i.posWS, p2, p3, l1 + l2, total, d, t);
+                    float lleno = step(t, _JCJeringaPunta.w) * (1.0 - smoothstep(0.0125, 0.017, d));
                     // La orilla del líquido, un poquito más clara (como el menisco de una jeringa).
                     float orilla = lleno * (1.0 - smoothstep(0.0, 0.06, _JCJeringaPunta.w - t)) * 0.25;
                     float3 tinta = _JCJeringaColor.rgb * (0.78 + 0.3 * fres) + orilla;

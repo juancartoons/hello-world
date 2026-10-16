@@ -76,6 +76,7 @@ public class CapasProfundidad : MonoBehaviour
     BotonTocable btnVer, btnBoceto, btnPlano, btnLiberar, btnCerrar, btnMas;
     BotonTocable btn2D, btn3D, btnBorrar;                // v43 (v44: Borrar es un basurerito)
     BotonTocable btnMasCamara, btnSugiere;               // v44: en la tarjeta de una capa de cámara
+    BotonTocable btnCuadros;                             // v46: "Cuadro a cuadro"
     Transform iconoCamara;                               // v44
     Material matMini;
     RenderTexture rtMini;
@@ -223,6 +224,10 @@ public class CapasProfundidad : MonoBehaviour
         btn2D.alTocar.AddListener(() => { dibujo.PonerPlano(true); Tocado(); });
         btn3D.alTocar.AddListener(() => { dibujo.PonerPlano(false); Tocado(); });
         btnBorrar.alTocar.AddListener(TocarBorrar);
+        // v46: cuadro a cuadro (cada cuadro empieza vacío): convierte esta capa si está vacía, o crea una nueva.
+        btnCuadros = Boton(tarjeta, "Cuadro a cuadro", new Vector3(0.012f, FilaBotones2, 0f), new Vector2(0.085f, 0.017f));
+        btnCuadros.alTocar.AddListener(() => { dibujo.AlternarCuadroACuadro(); AsegurarFantasmas(Actual); RefrescarTarjeta(Actual); Tocado(); });
+        BotonTocable.PonerVoz(btnCuadros, ControlManos.ComandoVoz.CuadroACuadro);
         BotonTocable.PonerVoz(btn2D, ControlManos.ComandoVoz.En2D);
         BotonTocable.PonerVoz(btn3D, ControlManos.ComandoVoz.En3D);
         BotonTocable.PonerNombre(btnBorrar, "Borrar esta capa (toca dos veces)");
@@ -414,7 +419,7 @@ public class CapasProfundidad : MonoBehaviour
         bool cam = dibujo != null && dibujo.EsCamara(Actual);
         if (b == btnMasCamara || b == btnSugiere)
             return cam;
-        if (b == btnVer || b == btnBoceto || b == btnPlano || b == btn2D || b == btn3D)
+        if (b == btnVer || b == btnBoceto || b == btnPlano || b == btn2D || b == btn3D || b == btnCuadros)
             return !cam;
         if (b == btnLiberar)
             return !cam && liberarVisible;
@@ -983,6 +988,8 @@ public class CapasProfundidad : MonoBehaviour
         if (iconoCamara.gameObject.activeSelf != c.camara)
             iconoCamara.gameObject.SetActive(c.camara);
         btn3D.Marcar(!c.en2D);
+        btnCuadros.PonerTexto(c.cuadroACuadro ? "Cuadro a cuadro: Sí" : "Cuadro a cuadro");
+        btnCuadros.Marcar(c.cuadroACuadro);
         if (Time.time > borrarHasta)
             btnBorrar.Marcar(false);
     }

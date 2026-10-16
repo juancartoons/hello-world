@@ -30,7 +30,7 @@ public class TutorialNovedades : TarjetaTutorial
     readonly List<Vector3> otra = new List<Vector3>();
     readonly List<Vector3> tramo = new List<Vector3>();
 
-    protected override int Paginas => 14;
+    protected override int Paginas => 15;
 
     protected override void ArmarExtra()
     {
@@ -66,7 +66,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 10: return Tx("11 · Layers 2D/3D, onion skin and export", "11 · Capas 2D/3D, cebolla y exportar");
             case 11: return Tx("12 · The camera", "12 · La cámara");
             case 12: return Tx("13 · Gaze and the syringe finger", "13 · La mirada y el dedo jeringa");
-            default: return Tx("14 · Desert sunset and layers", "14 · Atardecer en el desierto y capas");
+            case 13: return Tx("14 · Desert sunset and layers", "14 · Atardecer en el desierto y capas");
+            default: return Tx("15 · Frame by frame and your voice", "15 · Cuadro a cuadro y tu voz");
         }
     }
 
@@ -118,10 +119,14 @@ public class TutorialNovedades : TarjetaTutorial
                 return Tx(
                     "THE EYE (under the microphone): a small sight appears in the middle of your view and what you look at glows. Say \"red\" and it turns red (\"red line\" / \"red fill\" to be exact), \"copy color\" and \"paste color\", \"delete this\", \"hide this\", \"this layer\", \"select\". In Nodes: \"corner\" / \"smooth\". Next to the sight it tells you what to say. THE SYRINGE: touch a color of the palette and your index fills up with it; touch a line or the inside of a shape and it gets painted (a drop or two may fall).",
                     "EL OJO (debajo del micrófono): sale una mira chiquita en el centro de tu vista y lo que miras brilla. Di \"rojo\" y se vuelve rojo (\"línea roja\" / \"relleno rojo\" para ser exacto), \"copiar color\" y \"pegar color\", \"borra esto\", \"oculta esto\", \"esta capa\", \"selecciona\". En Nodos: \"esquina\" / \"suave\". Junto a la mira te dice qué decir. LA JERINGA: toca un color de la paleta y tu índice se llena; toca una línea o el interior de una forma y se pinta (a veces cae una gotita).");
-            default:
+            case 13:
                 return Tx(
                     "DESERT SUNSET: a new living background: dunes all around you lit by a low golden sun, violet shadows, a pink and purple sky with thin clouds, the first stars and the wind lifting dust far away. Say \"desert\". LAYERS: each one shows a thumbnail on its left; say \"layer 2\" to jump to it; leave your finger still on the name to rename it; delete with the little trash can (tap twice). The camera is a layer of its own (\"+ Camera\" = another one). The panels open with either hand, whatever the other one is doing.",
                     "ATARDECER EN EL DESIERTO: un fondo vivo nuevo: dunas a tu alrededor con la luz dorada del sol bajito, sombras violeta, un cielo rosado y morado con nubes finas, las primeras estrellas y el viento levantando polvo a lo lejos. Di \"desierto\". CAPAS: cada una muestra su miniatura a la izquierda; di \"capa 2\" para ir a ella; deja el dedo quieto en el nombre para cambiarlo; borra con el basurerito (toca dos veces). La cámara es su propia capa (\"+ Cámara\" = otra). Las persianas se abren con cualquier mano, haga lo que haga la otra.");
+            default:
+                return Tx(
+                    "FRAME BY FRAME: the one exception of the app. Tap \"Frame by frame\" (Animate page of the desk, or on the layer card) or say \"frame by frame\": you get a layer where each new frame starts EMPTY, like classic animation programs. You see the previous drawing in reddish and the next one in greenish (onion skin, always on here). Each drawing lasts until the next one. YOUR VOICE: say \"hello, how are you?\" and the head (or your mouths) repeats it with YOUR voice while its mouth moves. Also: the syringe finger fills along your real finger and paints lines more easily; what you look at blinks softly; golden desert sand; the timeline feels a bit heavier when you drag it.",
+                    "CUADRO A CUADRO: la única excepción de la app. Toca \"Cuadro a cuadro\" (página Animar de la mesa, o en la tarjeta de la capa) o di \"cuadro a cuadro\": tienes una capa donde cada cuadro nuevo empieza VACÍO, como los programas de animación de siempre. Ves el dibujo anterior rojizo y el siguiente verdoso (papel cebolla, aquí siempre prendido). Cada dibujo dura hasta el siguiente. TU VOZ: di \"hola, ¿cómo estás?\" y la cabeza (o tus bocas) lo repite con TU voz mientras mueve la boca. Además: el dedo jeringa se llena a lo largo de tu dedo y pinta líneas más fácil; lo que miras titila suave; arena dorada en el desierto; el timeline se siente un poquito más pesado al arrastrarlo.");
             case 11:
                 return Tx(
                     "THE CAMERA: it is a LAYER of its own, in front of all the others (or say \"camera\"). In 2D it points straight at your plane; in 3D it finds the best angle by itself. PINCH it with your RIGHT hand and move it: it orbits around what it's looking at. With your LEFT hand: it slides without changing where it looks. The monitor above it shows what it sees. \"Suggest\" = 3 framings to choose from. \"Key\" saves it on that frame: between keys the camera travels smoothly (diamonds on the timeline). Photos and videos are exported from it. \"Remove\" = automatic framing again.",
@@ -153,6 +158,7 @@ public class TutorialNovedades : TarjetaTutorial
         SinRelleno();
         dedo.gameObject.SetActive(false);
         dedo.localScale = Vector3.one * 0.009f;
+        PonerColor(matGris, p == Paginas - 1 ? new Color(0.95f, 0.55f, 0.55f) : new Color(0.72f, 0.74f, 0.8f));   // v46: cebolla rojiza
         switch (p)
         {
             case 0: AnimarPersianaArriba(t); break;
@@ -168,7 +174,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 10: AnimarPersianaArriba(t); break;
             case 11: AnimarRespira(t); break;
             case 12: AnimarVidrio(t); break;
-            default: AnimarVivos(t); break;
+            case 13: AnimarVivos(t); break;
+            default: AnimarCuadros(t); break;
         }
     }
 
@@ -649,6 +656,28 @@ public class TutorialNovedades : TarjetaTutorial
 
     // Fondos vivos: primero el universo (las estrellas salen del centro y pasan a tu lado: avanzas); luego, sobre las
     // nubes (un sol y nubes que pasan debajo).
+    // v46: cuadro a cuadro: una pelota que rebota, un dibujo por cuadro; el anterior se ve rojizo (papel cebolla).
+    static float Bote(int i)
+    {
+        return 0.035f - 0.07f * Mathf.Abs(Mathf.Sin(i / 4f * Mathf.PI));
+    }
+
+    void AnimarCuadros(float t)
+    {
+        int k = Mathf.FloorToInt(t * 2.5f) % 5;
+        Circulo(otra, -0.08f + k * 0.04f, Bote(k), 0.014f, -0.001f);
+        PonerLinea(linea, otra);
+        if (k > 0)
+        {
+            Circulo(forma, -0.08f + (k - 1) * 0.04f, Bote(k - 1), 0.014f, -0.0005f);
+            PonerLinea(lineaGris, forma);
+        }
+        else
+        {
+            lineaGris.positionCount = 0;
+        }
+    }
+
     void AnimarVivos(float t)
     {
         bool universo = t < 2.3f;

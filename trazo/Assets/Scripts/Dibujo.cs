@@ -63,6 +63,10 @@ public class DatosCapa
     // v44: una CAPA DE CÁMARA (no se dibuja en ella): guarda una cámara con sus claves. Van siempre adelante de todas.
     public bool camara;
     public DatosCamara datosCamara;
+    // v46: una capa CUADRO A CUADRO (la única excepción de la app): cada clave es un dibujo propio. Un cuadro nuevo
+    // empieza VACÍO (con el papel cebolla del anterior y el siguiente), las líneas no pasan de una clave a otra y
+    // no hay morph: cada dibujo se sostiene hasta la clave siguiente (como los programas de animación normales).
+    public bool cuadroACuadro;
 
     public DatosCapa Copia()
     {
@@ -460,6 +464,61 @@ public class Dibujo : MonoBehaviour
         HayCambios = true;
         SeleccionarCapa(pos);
         return pos;
+    }
+
+    // ---------- v46: capas cuadro a cuadro ----------
+
+    public bool EsCuadroACuadro(int capa) => capa >= 0 && capa < capas.Count && capas[capa] != null && capas[capa].cuadroACuadro;
+
+    // Una capa cuadro a cuadro nueva (adelante, como "+ Capa"), y se dibuja en ella.
+    public int AgregarCuadroACuadro()
+    {
+        int n = AgregarCapa("Cuadros");
+        if (n < 0)
+            return -1;
+        capas[n].cuadroACuadro = true;
+        if (animacion != null)
+            animacion.MostrarFotograma();
+        Avisar();
+        Mensaje("Capa cuadro a cuadro: cada cuadro empieza vacío (el anterior se ve rojizo, el siguiente verdoso)");
+        return n;
+    }
+
+    // El botón de la tarjeta: si la capa está vacía, se vuelve cuadro a cuadro; si ya tiene dibujo, se crea una
+    // capa nueva para eso (así no se mezclan). En una capa cuadro a cuadro, la vuelve normal.
+    public void AlternarCuadroACuadro()
+    {
+        AsegurarCapas();
+        int capa = capaActual;
+        if (capa < 0 || capa >= capas.Count || capas[capa].camara)
+            return;
+        if (capas[capa].cuadroACuadro)
+        {
+            GuardarParaDeshacer();
+            capas[capa].cuadroACuadro = false;
+            HayCambios = true;
+            if (animacion != null)
+                animacion.MostrarFotograma();
+            Avisar();
+            Mensaje("Capa normal otra vez (con morph entre claves)");
+            return;
+        }
+        bool vacia = true;
+        foreach (var t in trazos)
+            if (t != null && t.capa == capa)
+                vacia = false;
+        if (animacion != null && animacion.CapaAnimada(capa))
+            vacia = false;
+        if (!vacia)
+        {
+            AgregarCuadroACuadro();
+            return;
+        }
+        GuardarParaDeshacer();
+        capas[capa].cuadroACuadro = true;
+        HayCambios = true;
+        Avisar();
+        Mensaje("Capa cuadro a cuadro: cada cuadro empieza vacío (el anterior se ve rojizo, el siguiente verdoso)");
     }
 
     // ---------- v44: capas de cámara ----------

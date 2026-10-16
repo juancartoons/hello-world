@@ -4,8 +4,10 @@ import org.vosk.LibVosk;
 import org.vosk.LogLevel;
 import org.vosk.Model;
 import org.vosk.Recognizer;
-import org.vosk.android.RecognitionListener;
-import org.vosk.android.SpeechService;
+
+import android.media.AudioFormat;
+import android.media.AudioRecord;
+import android.media.MediaRecorder;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -22,6 +24,9 @@ import java.util.zip.ZipInputStream;
 // entiende tus palabras. Solo la primera vez baja el "modelo" del idioma (unos 40 MB) desde alphacephei.com.
 // Unity (Voz.cs) le pregunta cada cuadro: estado(), progreso() y siguiente() (lo último que entendió).
 // Todo lo lento (bajar, descomprimir, cargar) va en otro hilo: la app no se congela.
+// v46: ya no usa SpeechService: tiene su propia "oreja" (un hilo que lee el micrófono y se lo pasa a Vosk). Así además
+// GUARDA lo que oye: cada frase que dices (de cuando empiezas a hablar hasta que te callas) queda lista para que la
+// app la repita con TU voz (la cara del tutorial que dice "hola, ¿cómo estás?"). Unity la pide con fraseAudio().
 public class TrazoVoz {
     static final float MUESTREO = 16000f;
 
@@ -30,7 +35,18 @@ public class TrazoVoz {
     static final ConcurrentLinkedQueue<String> oido = new ConcurrentLinkedQueue<String>();
     static Model modelo;
     static Recognizer reconocedor;
-    static SpeechService servicio;
+    // La oreja (v46).
+    static Thread hilo;
+    static volatile boolean oyendo;
+    static final int ANILLO = 16000 * 10;               // los últimos 10 s de lo que oye
+    static final short[] anillo = new short[ANILLO];
+    static long escritos = 0;                           // muestras guardadas desde que empezó a escuchar
+    static long inicioVoz = -1;                         // dónde empezó la frase que estás diciendo (-1 = callado)
+    static long ultimaVoz = -1;                         // la última muestra con voz
+    static float piso = 300f;                           // el ruido de fondo (se va ajustando solo)
+    static volatile float[] frase = new float[0];       // la última frase completa (de -1 a 1)
+    static volatile int numeroFrase = 0;                // sube cada vez que termina una frase
+    static long finFrase = -1;                          // dónde terminó la última frase
     static String carpetaCargada = "";
     static String gramaticaCargada = "";
 
@@ -79,6 +95,7 @@ public class TrazoVoz {
                         gramaticaCargada = "";
                     }
                     if (reconocedor == null || !gramaticaCargada.equals(gramatica)) {
+                        parar();   // v46: la oreja usa el reconocedor: primero se para
                         if (reconocedor != null)
                             reconocedor.close();
                         reconocedor = new Recognizer(modelo, MUESTREO, gramatica);
@@ -96,30 +113,158 @@ public class TrazoVoz {
     public static boolean escuchar() {
         if (reconocedor == null)
             return false;
+        if (oyendo && hilo != null && hilo.isAlive()) {
+            estado = "escuchando";
+            return true;
+        }
         try {
-            if (servicio == null)
-                servicio = new SpeechService(reconocedor, MUESTREO);
+            int minimo = AudioRecord.getMinBufferSize((int) MUESTREO, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT);
+            final AudioRecord grabadora = new AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, (int) MUESTREO,
+                    AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, Math.max(minimo, 8192) * 2);
+            if (grabadora.getState() != AudioRecord.STATE_INITIALIZED) {
+                grabadora.release();
+                estado = "error: no se pudo abrir el micrófono";
+                return false;
+            }
             oido.clear();
-            boolean ok = servicio.startListening(new Oyente());
-            if (ok)
-                estado = "escuchando";
-            return ok;
+            reconocedor.reset();
+            synchronized (anillo) {
+                escritos = 0;
+                finFrase = -1;
+                inicioVoz = -1;
+                ultimaVoz = -1;
+            }
+            oyendo = true;
+            grabadora.startRecording();
+            hilo = new Thread(new Runnable() {
+                public void run() {
+                    oir(grabadora);
+                }
+            });
+            hilo.start();
+            estado = "escuchando";
+            return true;
         } catch (Throwable e) {
+            oyendo = false;
             estado = "error: " + e.getMessage();
             return false;
         }
     }
 
-    // Deja de escuchar (el modelo se queda cargado, para volver rápido).
-    public static void parar() {
+    // El hilo de la oreja: lee el micrófono de a 0.1 s, guarda, mide si hay voz y se lo pasa a Vosk.
+    static void oir(AudioRecord grabadora) {
+        short[] buffer = new short[1600];
+        int errores = 0;
         try {
-            if (servicio != null) {
-                servicio.stop();
-                servicio.shutdown();
-                servicio = null;
+            while (oyendo) {
+                int n = grabadora.read(buffer, 0, buffer.length);
+                if (n <= 0) {
+                    if (++errores > 50)
+                        break;
+                    Thread.sleep(10);
+                    continue;
+                }
+                errores = 0;
+                guardarAudio(buffer, n);
+                Recognizer r = reconocedor;
+                if (r == null || !oyendo)
+                    break;
+                if (r.acceptWaveForm(buffer, n))
+                    guardar(r.getResult());
             }
         } catch (Throwable e) {
+            if (oyendo)
+                estado = "error: " + e.getMessage();
+        }
+        try {
+            grabadora.stop();
+        } catch (Throwable e) {
             // nada
+        }
+        grabadora.release();
+    }
+
+    // Guarda el pedacito en el anillo y decide si estás hablando (por el volumen comparado con el ruido de fondo).
+    // Cuando te callas 0.8 s, la frase se recorta y queda lista en "frase".
+    static void guardarAudio(short[] buffer, int n) {
+        double suma = 0;
+        for (int i = 0; i < n; i++)
+            suma += (double) buffer[i] * buffer[i];
+        float rms = (float) Math.sqrt(suma / Math.max(1, n));
+        boolean voz = rms > Math.max(220f, piso * 2.8f);
+        if (!voz)
+            piso = rms < piso ? piso * 0.8f + rms * 0.2f : piso * 0.995f + rms * 0.005f;
+        synchronized (anillo) {
+            for (int i = 0; i < n; i++)
+                anillo[(int) ((escritos + i) % ANILLO)] = buffer[i];
+            long antes = escritos;
+            escritos += n;
+            if (voz) {
+                if (inicioVoz < 0)
+                    inicioVoz = Math.max(0, antes - (long) (MUESTREO * 0.3f));
+                ultimaVoz = escritos;
+            }
+            if (inicioVoz >= 0) {
+                boolean callado = escritos - ultimaVoz > (long) (MUESTREO * 0.8f);
+                boolean largo = escritos - inicioVoz > ANILLO - (long) MUESTREO;
+                if (callado || largo) {
+                    long desde = Math.max(inicioVoz, escritos - ANILLO + 1);
+                    long hasta = Math.min(escritos, ultimaVoz + (long) (MUESTREO * 0.25f));
+                    int largoFrase = (int) Math.max(0, hasta - desde);
+                    // Menos de 0.25 s no es una frase (un golpe, un ruido).
+                    if (ultimaVoz - inicioVoz > (long) (MUESTREO * 0.25f) && largoFrase > 0) {
+                        float[] f = new float[largoFrase];
+                        for (int i = 0; i < largoFrase; i++)
+                            f[i] = anillo[(int) ((desde + i) % ANILLO)] / 32768f;
+                        frase = f;
+                        finFrase = hasta;
+                        numeroFrase++;
+                    }
+                    inicioVoz = -1;
+                }
+            }
+        }
+    }
+
+    // v46: la última frase que dijiste (muestras de -1 a 1, a 16000 por segundo). Vacía si no hay.
+    public static float[] fraseAudio() {
+        float[] f = frase;
+        return f != null ? f : new float[0];
+    }
+
+    // v46: cuántas frases terminaron (para saber si ya llegó una nueva) y si estás hablando ahora mismo.
+    public static int numeroFrase() {
+        return numeroFrase;
+    }
+
+    public static boolean hablando() {
+        synchronized (anillo) {
+            return inicioVoz >= 0;
+        }
+    }
+
+    // Segundos desde que terminó la última frase (mucho si no hay ninguna).
+    public static float segundosDesdeFrase() {
+        synchronized (anillo) {
+            return finFrase < 0 ? 9999f : (escritos - finFrase) / MUESTREO;
+        }
+    }
+
+    public static int muestreo() {
+        return (int) MUESTREO;
+    }
+
+    // Deja de escuchar (el modelo se queda cargado, para volver rápido).
+    public static void parar() {
+        oyendo = false;
+        Thread h = hilo;
+        hilo = null;
+        if (h != null) {
+            try {
+                h.join(1500);
+            } catch (Throwable e) {
+                // nada
+            }
         }
         if (estado.equals("escuchando"))
             estado = "lista";
@@ -134,26 +279,6 @@ public class TrazoVoz {
         if (modelo != null) {
             modelo.close();
             modelo = null;
-        }
-    }
-
-    static class Oyente implements RecognitionListener {
-        public void onPartialResult(String hipotesis) {
-        }
-
-        public void onResult(String hipotesis) {
-            guardar(hipotesis);
-        }
-
-        public void onFinalResult(String hipotesis) {
-            guardar(hipotesis);
-        }
-
-        public void onError(Exception e) {
-            estado = "error: " + (e != null ? e.getMessage() : "");
-        }
-
-        public void onTimeout() {
         }
     }
 

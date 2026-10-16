@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 15 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v45***
+*Actualizado: 16 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v46***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,6 +16,17 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 4. **Build And Run**.
 
 ---
+
+## 0+. Hecho en la v46 (falta probarlo en el visor)
+
+- [x] **Dedo jeringa**: el color ahora sigue las **falanges** del dedo (aunque esté doblado) y por dentro lleva un "alma" de color fina que se ve siempre. Tocar **líneas** es más fácil (más margen) y funciona también cerca de la paleta.
+- [x] **Mirada**: lo señalado ya **no se infla**: conserva su forma y grosor y **titila suave** de color (la línea y el relleno).
+- [x] **"Hola, ¿cómo estás?"**: la voz ahora **graba tu frase** (Vosk con su propio micrófono) y la cabeza la **repite con tu voz** mientras mueve la boca, una vez. Con el botón ¡Hola! (sin voz) la dice muda, como antes.
+- [x] **Cuadro a cuadro**: capas dedicadas (botón en la página Animar de la mesa, en la tarjeta de la capa, o voz "cuadro a cuadro"). Cada cuadro nuevo empieza **vacío**, sin morph; cada dibujo dura hasta el siguiente; papel cebolla siempre prendido (anterior rojizo, siguiente verdoso). Si la capa ya tiene dibujo, se crea una capa nueva "Cuadros".
+- [x] **Arena del desierto amarilla** (dorada al sol, ocre en la sombra), ya no del color del cielo.
+- [x] **Timeline**: al arrastrar el cabezal se siente un poquito pesado (inercia suave).
+- [ ] Cuadro a cuadro: botón "copiar el cuadro anterior" (para retocar en vez de redibujar) y ver 2 o 3 cuadros de cebolla.
+- [ ] Si el dedo jeringa aún no se ve lleno en el visor: revisar qué mano está dibujando el visor (puede no ser la de vidrio).
 
 ## 0+. Hecho en la v45 (falta probarlo en el visor)
 

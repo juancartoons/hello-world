@@ -7,6 +7,9 @@ using UnityEngine;
 // - Si estás en un fotograma y editas algo, se crea/actualiza la clave de ESA capa en ese fotograma (automático).
 // - Una capa sin claves no se anima (se queda quieta). Play reproduce todas las capas juntas.
 // - Una línea NUEVA (dibujada en cualquier fotograma) aparece en toda la animación de su capa.
+// - v46: la excepción, las capas CUADRO A CUADRO (DatosCapa.cuadroACuadro): cada clave es su propio dibujo, sin morph;
+//   se sostiene hasta la clave siguiente. En pausa, un cuadro sin clave se ve VACÍO (con el papel cebolla) y lo que
+//   dibujes ahí se vuelve una clave nueva solo con eso.
 public class Animacion : MonoBehaviour
 {
     public const int TotalFotogramas = 2000;
@@ -68,7 +71,8 @@ public class Animacion : MonoBehaviour
             bool alguna = false;
             foreach (int capa in capas)
             {
-                if (!CapaAnimada(capa))
+                // v46: una capa cuadro a cuadro guarda su clave desde el primer trazo.
+                if (!CapaAnimada(capa) && !EsCuadros(capa))
                     continue;
                 GuardarClave(Fotograma, capa);
                 alguna = true;
@@ -148,8 +152,20 @@ public class Animacion : MonoBehaviour
             return;
         int cuantas = dibujo != null ? dibujo.capas.Count : Dibujo.NumeroDeCapas;
         for (int capa = 0; capa < cuantas; capa++)
-            if (!CapaAnimada(capa) && CapaTieneLineas(capa))
+            if (!CapaAnimada(capa) && !EsCuadros(capa) && CapaTieneLineas(capa))
                 GuardarClave(0, capa);
+    }
+
+    bool EsCuadros(int capa) => dibujo != null && dibujo.EsCuadroACuadro(capa);
+
+    bool HayCuadros()
+    {
+        if (dibujo == null)
+            return false;
+        for (int i = 0; i < dibujo.capas.Count; i++)
+            if (dibujo.EsCuadroACuadro(i))
+                return true;
+        return false;
     }
 
     public bool EsClave(int f)
@@ -192,6 +208,26 @@ public class Animacion : MonoBehaviour
             while (i < claves.Count && claves[i].fotograma <= f)
                 i++;
             claves.Insert(i, c);
+        }
+        // v46: cuadro a cuadro: la clave guarda SOLO su dibujo (lo que ya era suyo + lo nuevo que no es de otra clave).
+        if (EsCuadros(capa))
+        {
+            var mias = new HashSet<int>();
+            foreach (var p in c.trazos)
+                if (p != null)
+                    mias.Add(p.id);
+            var deOtras = new HashSet<int>();
+            foreach (var k in claves)
+                if (k != c && k.capa == capa)
+                    foreach (var p in k.trazos)
+                        if (p != null)
+                            deOtras.Add(p.id);
+            c.cache = null;
+            c.trazos.Clear();
+            foreach (var t in dibujo.trazos)
+                if (t != null && t.capa == capa && t.visibleAnim && t.nodos.Count >= 2 && (mias.Contains(t.id) || !deOtras.Contains(t.id)))
+                    c.trazos.Add(t.CrearDatos());
+            return;
         }
         // Las líneas que ya existían en alguna clave de esta capa (las demás son líneas NUEVAS).
         var conocidas = new HashSet<int>();
@@ -337,6 +373,9 @@ public class Animacion : MonoBehaviour
         Reproduciendo = false;
         if (fuenteAudio != null)
             fuenteAudio.Stop();
+        // v46: en pausa, las capas cuadro a cuadro muestran vacío el cuadro sin clave.
+        if (HayCuadros())
+            MostrarFotograma();
         Avisar();
     }
 
@@ -459,12 +498,14 @@ public class Animacion : MonoBehaviour
                 siguiente[c.capa] = c;
         }
         // Antes de la primera clave de una capa, la capa se ve como en esa primera clave.
+        var antesDeLaPrimera = new HashSet<int>();
         foreach (int capa in conocidas.Keys)
         {
             if (anterior.ContainsKey(capa))
                 continue;
             anterior[capa] = siguiente[capa];
             siguiente.Remove(capa);
+            antesDeLaPrimera.Add(capa);
         }
 
         bool antes = Trazo.silenciar;
@@ -480,6 +521,17 @@ public class Animacion : MonoBehaviour
                 continue;
             }
             Clave a = anterior[t.capa];
+            // v46: cuadro a cuadro: sin morph; cada dibujo se sostiene hasta la clave siguiente. En pausa, un cuadro
+            // sin clave propia (o antes de la primera) se ve vacío: ahí empieza un dibujo nuevo.
+            if (EsCuadros(t.capa))
+            {
+                bool vacio = antesDeLaPrimera.Contains(t.capa) || (!Reproduciendo && !ExportadorVideo.Exportando && a.fotograma != Fotograma);
+                var pc = vacio ? null : BuscarPose(a, t.id);
+                t.visibleAnim = pc != null;
+                if (pc != null)
+                    t.AplicarPose(pc, null, 0f);
+                continue;
+            }
             Clave b;
             siguiente.TryGetValue(t.capa, out b);
             var pa = BuscarPose(a, t.id);

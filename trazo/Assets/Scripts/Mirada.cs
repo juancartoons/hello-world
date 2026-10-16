@@ -5,6 +5,7 @@ using UnityEngine;
 // LA MIRADA (v44): un OJO debajo del micrófono. Tócalo (con cualquier índice) o di "mirada": se prende o se apaga.
 //  - Prendida, sale una MIRA chiquita en el centro de tu vista (un aro con un puntito). Tiene un IMÁN invisible:
 //    no hace falta apuntar exacto; se pega a la línea o al relleno más cercano, y eso BRILLA suave.
+//    v46: ya no se dibuja una línea gorda encima: lo señalado TITILA suave de color (no cambia de forma ni de grosor).
 //  - La mirada solo SEÑALA. Lo que pasa lo dices tú con la voz (ver ControlManosVoz):
 //      "rojo" (o cualquier color)      → lo que brilla se vuelve rojo (si nada brilla: tus próximas líneas).
 //      "línea roja" / "relleno rojo"   → solo el contorno o solo el relleno de lo que brilla.
@@ -23,8 +24,13 @@ public class Mirada : MonoBehaviour
     const float RadioToque = 0.026f;
     static readonly Color ColorPrendida = new Color(0.16f, 0.68f, 0.64f);
     static readonly Color ColorApagada = new Color(0.22f, 0.22f, 0.24f);
-    static readonly Color ColorBrilloLinea = new Color(0.45f, 0.85f, 1f);
-    static readonly Color ColorBrilloRelleno = new Color(1f, 0.85f, 0.35f);
+    // v46: el titileo: hacia un celeste claro (o un azul más oscuro si lo señalado ya es claro). Prudente.
+    static readonly Color TitileoClaro = new Color(0.72f, 0.9f, 1f);
+    static readonly Color TitileoOscuro = new Color(0.2f, 0.42f, 0.72f);
+    const float TitileoLinea = 0.6f;     // cuánto se acerca la línea a ese color (en lo más alto del latido)
+    const float TitileoRelleno = 0.32f;  // y el relleno (menos: es más grande)
+    static readonly int idBaseColor = Shader.PropertyToID("_BaseColor");
+    static readonly int idTitileo = Shader.PropertyToID("_Titileo");
 
     public static Mirada Instancia { get; private set; }
     public static bool DedoCerca { get; private set; }
@@ -58,12 +64,14 @@ public class Mirada : MonoBehaviour
 
     ControlManos control;
     Transform ojo, raya, mira;
-    LineRenderer aro, brillo;
+    LineRenderer aro;
+    MaterialPropertyBlock bloqueTitileo;
+    Renderer titilando;          // lo que titila ahora (la línea o el relleno señalado)
+    bool titilandoRelleno;
     TMP_Text sugerencia;   // v44: qué decir (junto a la mira)
-    Material matIcono, matMira, matBrillo;
+    Material matIcono, matMira;
     readonly List<Material> materiales = new List<Material>();
     readonly List<Mesh> mallas = new List<Mesh>();
-    readonly List<Vector3> puntos = new List<Vector3>();
     readonly List<Vector2> poligono = new List<Vector2>();
     Quaternion giroSuave = Quaternion.identity;
     bool colocado, dedoEnOjo;
@@ -79,7 +87,7 @@ public class Mirada : MonoBehaviour
         Instancia.Armar(baseMaterial);
     }
 
-    // ---------- Armar: el ojo (como el micrófono), la mira y el brillo ----------
+    // ---------- Armar: el ojo (como el micrófono), la mira (lo señalado titila) ----------
 
     void Armar(Material baseMaterial)
     {
@@ -134,19 +142,6 @@ public class Mirada : MonoBehaviour
         tx.rectTransform.sizeDelta = new Vector2(0.16f, 0.011f);
         tx.text = "";
         sugerencia = tx;
-
-        // El brillo de lo señalado.
-        matBrillo = Tenido(baseMaterial, ColorBrilloLinea);
-        var gb = new GameObject("BrilloMirada");
-        brillo = gb.AddComponent<LineRenderer>();
-        brillo.useWorldSpace = true;
-        brillo.sharedMaterial = matBrillo;
-        brillo.widthMultiplier = 0.004f;
-        brillo.numCapVertices = 3;
-        brillo.numCornerVertices = 2;
-        brillo.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        brillo.receiveShadows = false;
-        brillo.positionCount = 0;
     }
 
     Material Tenido(Material baseMaterial, Color c)
@@ -282,15 +277,14 @@ public class Mirada : MonoBehaviour
             Objetivo = null;
             NodoTrazo = null;
             Nodo = -1;
-            brillo.positionCount = 0;
+            Titilar();
             return;
         }
         Buscar(cab);
-        float crece = Objetivo != null ? 1.35f : 1f;
+        float crece = Objetivo != null ? 1.12f : 1f;
         mira.SetPositionAndRotation(cab.position + cab.forward * Distancia, cab.rotation);
         mira.localScale = Vector3.one * crece;
-        Pintar(matMira, Objetivo != null ? (EsRelleno ? ColorBrilloRelleno : ColorBrilloLinea) : ColorPrendida);
-        PonerBrillo();
+        Titilar();
         PonerSugerencia();
     }
 
@@ -438,27 +432,73 @@ public class Mirada : MonoBehaviour
         return dentro;
     }
 
-    // Lo señalado brilla: su contorno, en celeste (línea) o dorado (relleno), latiendo suave.
-    void PonerBrillo()
+    // v46: lo señalado TITILA: su mismo color late suave hacia un celeste (como un "aquí estoy"), sin cambiar de
+    // forma ni de grosor. La línea con su propio color (PropertyBlock); el relleno con _Titileo (TrazoVR/Relleno).
+    void Titilar()
     {
-        if (Objetivo == null)
+        Renderer r = null;
+        bool relleno = EsRelleno;
+        if (Objetivo != null)
+            r = relleno ? Objetivo.RendererRelleno : Objetivo.RendererLinea;
+        if (r != titilando || relleno != titilandoRelleno)
         {
-            brillo.positionCount = 0;
-            return;
+            SoltarTitileo();
+            titilando = r;
+            titilandoRelleno = relleno;
         }
-        var t = Objetivo;
-        var tr = t.transform;
-        int paso = Mathf.Max(1, t.curva.Count / 128);
-        puntos.Clear();
-        for (int i = 0; i < t.curva.Count; i += paso)
-            puntos.Add(tr.TransformPoint(t.curva[i]));
-        if (t.cerrado && puntos.Count > 2)
-            puntos.Add(puntos[0]);
-        brillo.positionCount = puntos.Count;
-        brillo.SetPositions(puntos.ToArray());
-        float late = 0.75f + 0.25f * Mathf.Sin(Time.time * 6f);
-        brillo.widthMultiplier = Mathf.Max(0.003f, t.ancho * 1.8f) * late;
-        Pintar(matBrillo, EsRelleno ? ColorBrilloRelleno : ColorBrilloLinea);
+        if (r == null)
+            return;
+        if (bloqueTitileo == null)
+            bloqueTitileo = new MaterialPropertyBlock();
+        // De 0 a 1 y de vuelta, un poco menos de una vez por segundo.
+        float k = 0.5f - 0.5f * Mathf.Cos(Time.time * Mathf.PI * 1.8f);
+        r.GetPropertyBlock(bloqueTitileo);
+        if (relleno)
+        {
+            Color c = Objetivo.ColorDelRelleno;
+            Color hacia = Claro(c) ? TitileoOscuro : TitileoClaro;
+            bloqueTitileo.SetVector(idTitileo, new Vector4(hacia.r, hacia.g, hacia.b, k * TitileoRelleno));
+        }
+        else
+        {
+            Color c = Objetivo.color;
+            Color hacia = Claro(c) ? TitileoOscuro : TitileoClaro;
+            Color mezcla = Color.Lerp(c, hacia, k * TitileoLinea);
+            mezcla.a = 1f;
+            bloqueTitileo.SetColor(idBaseColor, mezcla);
+        }
+        r.SetPropertyBlock(bloqueTitileo);
+    }
+
+    static bool Claro(Color c)
+    {
+        return c.r * 0.3f + c.g * 0.59f + c.b * 0.11f > 0.62f;
+    }
+
+    // Lo que titilaba vuelve a ser como era.
+    void SoltarTitileo()
+    {
+        if (titilando != null)
+        {
+            if (titilandoRelleno)
+            {
+                if (bloqueTitileo == null)
+                    bloqueTitileo = new MaterialPropertyBlock();
+                titilando.GetPropertyBlock(bloqueTitileo);
+                bloqueTitileo.SetVector(idTitileo, Vector4.zero);
+                titilando.SetPropertyBlock(bloqueTitileo);
+            }
+            else
+            {
+                titilando.SetPropertyBlock(null);   // la línea vuelve a usar el color de su material
+            }
+        }
+        titilando = null;
+    }
+
+    void OnDisable()
+    {
+        SoltarTitileo();
     }
 
     void OnDestroy()
@@ -471,8 +511,6 @@ public class Mirada : MonoBehaviour
                 Destroy(m);
         if (mira != null)
             Destroy(mira.gameObject);
-        if (brillo != null)
-            Destroy(brillo.gameObject);
         if (Instancia == this)
             Instancia = null;
         Objetivo = null;

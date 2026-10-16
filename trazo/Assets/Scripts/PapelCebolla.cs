@@ -5,6 +5,8 @@ using UnityEngine;
 // CLAVE ANTERIOR (rojizas) y de la SIGUIENTE (verdosas) de la capa en la que dibujas. Así calcas el movimiento.
 //  - Solo se ven: no se tocan, no se borran y no salen en fotos ni videos.
 //  - Se prende y se apaga con el botón "Cebolla" de la página Animar (la mesa) o la voz ("cebolla"). Se recuerda.
+//  - v46: en una capa CUADRO A CUADRO se ve SIEMPRE (ahí es donde más se usa: cada cuadro empieza vacío y calcas
+//    el anterior). El botón "Cebolla" es para las capas normales.
 public class PapelCebolla : MonoBehaviour
 {
     const string ClaveGuardada = "jcartoons_cebolla";
@@ -53,7 +55,8 @@ public class PapelCebolla : MonoBehaviour
         if (dibujo == null)
             dibujo = FindFirstObjectByType<Dibujo>();
         var anim = dibujo != null ? dibujo.animacion : null;
-        bool ver = Activo && anim != null && anim.claves.Count > 0 && !anim.Reproduciendo && !ExportadorVideo.Exportando
+        bool cuadros = dibujo != null && dibujo.EsCuadroACuadro(dibujo.capaActual);
+        bool ver = (Activo || cuadros) && anim != null && anim.claves.Count > 0 && !anim.Reproduciendo && !ExportadorVideo.Exportando
                    && !Tutorial.EnCurso;
         Clave a = null, b = null;
         int capa = ver ? dibujo.capaActual : -1;

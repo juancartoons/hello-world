@@ -9,10 +9,10 @@ public class TutorialMirada : TarjetaTutorial
     static readonly Color Amarillo = new Color(1f, 0.85f, 0.35f);
     static readonly Color Rojo = new Color(0.9f, 0.25f, 0.2f);
     static readonly Color Azul = new Color(0.25f, 0.5f, 0.95f);
-    static readonly Color Brillo = new Color(0.45f, 0.85f, 1f);
+    static readonly Color Brillo = new Color(0.72f, 0.9f, 1f);   // v46: el titileo (prudente)
 
     LineRenderer mira, brillo, otra;
-    Material matOtra;
+    Material matOtra, matBrillo;
     readonly List<Vector3> aro = new List<Vector3>();
     readonly List<Vector3> segunda = new List<Vector3>();
 
@@ -21,7 +21,7 @@ public class TutorialMirada : TarjetaTutorial
     protected override void ArmarExtra()
     {
         mira = Linea("Mira", Copia(tutorial.materialNegro, new Color(0.16f, 0.62f, 0.58f)), 0.0012f);
-        brillo = Linea("Brillo", Copia(tutorial.materialNegro, Brillo), 0.004f);
+        brillo = Linea("Brillo", matBrillo = Copia(tutorial.materialNegro, Brillo), 0.0035f);   // v46: mismo grosor que la línea
         matOtra = Copia(tutorial.materialNegro, Color.black);
         otra = Linea("Otra", matOtra, 0.0025f);
     }
@@ -43,8 +43,8 @@ public class TutorialMirada : TarjetaTutorial
         {
             case 0:
                 return Tx(
-                    "Touch the EYE (under the microphone) or say \"gaze\": a small SIGHT appears in the middle of your view. Look at a line or a fill: it doesn't need to be exact (it has an invisible magnet); what you point at GLOWS (light blue = the line, gold = the fill). Looking never does anything by itself: you say what happens. The voice must be on (the microphone).",
-                    "Toca el OJO (debajo del micrófono) o di \"mirada\": sale una MIRA chiquita en el centro de tu vista. Mira una línea o un relleno: no hace falta ser exacto (tiene un imán invisible); lo señalado BRILLA (celeste = la línea, dorado = el relleno). Mirar nunca hace nada solo: tú dices qué pasa. La voz tiene que estar prendida (el micrófono).");
+                    "Touch the EYE (under the microphone) or say \"gaze\": a small SIGHT appears in the middle of your view. Look at a line or a fill: it doesn't need to be exact (it has an invisible magnet); what you point at BLINKS softly (it keeps its shape and thickness). Looking never does anything by itself: you say what happens. The voice must be on (the microphone).",
+                    "Toca el OJO (debajo del micrófono) o di \"mirada\": sale una MIRA chiquita en el centro de tu vista. Mira una línea o un relleno: no hace falta ser exacto (tiene un imán invisible); lo señalado TITILA suave (no cambia de forma ni de grosor). Mirar nunca hace nada solo: tú dices qué pasa. La voz tiene que estar prendida (el micrófono).");
             case 1:
                 return Tx(
                     "Look at a fill and say \"red\": it turns red. Say \"red line\" or \"red fill\" to choose exactly the outline or the inside. If NOTHING glows, the color is for what you draw next (as always). Also: \"delete this\", \"hide this\", \"this layer\", \"select\".",
@@ -103,9 +103,8 @@ public class TutorialMirada : TarjetaTutorial
         PonerMira(Vector3.Lerp(desde, hasta, u), encima);
         if (encima)
         {
-            brillo.widthMultiplier = 0.004f * (0.8f + 0.2f * Mathf.Sin(t * 6f));
+            Titila(t, Color.black);
             PonerLinea(brillo, puntos);
-            Rellenar(puntos, Amarillo, 0.35f);
         }
     }
 
@@ -115,6 +114,7 @@ public class TutorialMirada : TarjetaTutorial
         Circulo(puntos, Vector3.zero, 0.04f);
         PonerLinea(linea, puntos);
         PonerMira(new Vector3(0.01f, 0.005f, 0f), true);
+        Titila(t, Color.black);
         PonerLinea(brillo, puntos);
         Rellenar(puntos, t < 1.6f ? Amarillo : Rojo, 1f);
     }
@@ -134,7 +134,9 @@ public class TutorialMirada : TarjetaTutorial
         float u = Suave(Mathf.InverseLerp(1.3f, 2.3f, t));
         Vector3 m = Vector3.Lerp(izq, der, u);
         PonerMira(m, u < 0.05f || u > 0.95f);
-        PonerLinea(brillo, u < 0.5f ? puntos : segunda);
+        Titila(t, u < 0.5f ? Azul : Color.black);
+        if (!pegado)
+            PonerLinea(brillo, u < 0.5f ? puntos : segunda);
         // El dedo, cargado del color copiado.
         dedo.gameObject.SetActive(t > 1f && !pegado);
         dedo.localPosition = new Vector3(0f, -0.055f, -0.004f);
@@ -169,6 +171,13 @@ public class TutorialMirada : TarjetaTutorial
         PonerMira(nodo, true);
         dedo.gameObject.SetActive(t > 1.2f && t < 3f);
         dedo.localPosition = der + new Vector3(0f, 0f, -0.004f);
+    }
+
+    // v46: la línea señalada titila: su color va y vuelve suave hacia un celeste (encima, con el mismo grosor).
+    void Titila(float t, Color desde)
+    {
+        float k = 0.5f - 0.5f * Mathf.Cos(t * Mathf.PI * 1.8f);
+        PonerColor(matBrillo, Color.Lerp(desde, Brillo, k * 0.6f));
     }
 
     static Vector3 Bezier(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t)

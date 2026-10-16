@@ -32,7 +32,9 @@ public partial class ControlManos
         // v44: la mirada y las capas por número
         Mirada, ColorLinea, ColorRelleno, Copiar, Pegar, Esquina, Suave, BorraEsto, OcultaEsto, EstaCapa, Selecciona, IrACapa, Hola,
         // v45
-        CopiarColor, PegarColor
+        CopiarColor, PegarColor,
+        // v46
+        CuadroACuadro
     }
 
     // v43: los fondos que se pueden pedir por su nombre (el nombre exacto que tienen en Escenario).
@@ -134,6 +136,8 @@ public partial class ControlManos
           new[] { "suggest", "suggest camera", "frame it" }),
         C(ComandoVoz.ClaveCamara, "Clave de cámara", "Camera key", new[] { "clave de cámara", "clave cámara" }, new[] { "camera key" }),
         C(ComandoVoz.Cebolla, "Cebolla", "Onion skin", new[] { "cebolla", "papel cebolla" }, new[] { "onion", "onion skin" }),
+        C(ComandoVoz.CuadroACuadro, "Cuadro a cuadro", "Frame by frame", new[] { "cuadro a cuadro", "cuadro por cuadro" },
+          new[] { "frame by frame" }),
         C(ComandoVoz.SiguienteFondo, "Siguiente fondo", "Next background",
           new[] { "siguiente fondo", "otro fondo", "cambia fondo", "cambia el fondo" }, new[] { "next background", "change background" }),
         C(ComandoVoz.FondoNombre, "Roma", "Rome", new[] { "roma" }, new[] { "rome" }, 0),
@@ -415,6 +419,7 @@ public partial class ControlManos
             case ComandoVoz.SugiereCamara: CamaraEscena.SugerirVoz(); break;
             case ComandoVoz.ClaveCamara: CamaraEscena.AgregarClave(); break;
             case ComandoVoz.Cebolla: PapelCebolla.Alternar(); break;
+            case ComandoVoz.CuadroACuadro: dibujo.AlternarCuadroACuadro(); break;
             case ComandoVoz.En2D: dibujo.PonerPlano(true); break;
             case ComandoVoz.En3D: dibujo.PonerPlano(false); break;
             case ComandoVoz.SiguienteFondo: SiguienteFondoVoz(); break;
@@ -454,13 +459,16 @@ public partial class ControlManos
             case ComandoVoz.Mirada: Mirada.Alternar(); break;
             case ComandoVoz.Hola:
                 // v44: en el tutorial, la cabeza dice "hola"; si no, la boca de tus bocas dice "hola".
+                // v46: lo repite CON TU VOZ (la frase entera que dijiste). Mientras habla no se escucha a sí misma.
+                if (Time.time < Lipsync.HablandoHasta)
+                    break;
                 if (Tutorial.Instancia != null && Tutorial.Instancia.EsperaHola)
-                    Tutorial.Instancia.DecirHola();
+                    Tutorial.Instancia.DecirHolaConVoz();
                 else
                 {
                     var lip = FindFirstObjectByType<Lipsync>();
                     if (lip != null)
-                        lip.GenerarDePalabra(Idioma.Ingles ? "hello, how are you?" : "hola, ¿cómo estás?");
+                        lip.RepetirMiVoz(Idioma.Ingles ? "hello, how are you?" : "hola, ¿cómo estás?", null);
                 }
                 break;
             case ComandoVoz.Copiar: CopiarLineasVoz(); break;

@@ -171,6 +171,8 @@ public class Trazo : MonoBehaviour
     Mesh malla;
     Mesh mallaRelleno;
     MeshRenderer rellenoRenderer;
+    // v46: el relleno (para que la mirada lo haga titilar sin cambiarle la forma). null si no tiene.
+    public MeshRenderer RendererRelleno => rellenoRenderer != null && rellenoRenderer.gameObject.activeSelf ? rellenoRenderer : null;
     Material materialRelleno;
 
     Vector3 poliCentro, poliU, poliV, poliN;

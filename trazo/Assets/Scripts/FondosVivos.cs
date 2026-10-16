@@ -49,7 +49,7 @@ public class FondosVivos : MonoBehaviour
     public static string NombreAvanzar(int cual) => cual == Nubes ? "Volar" : "Avanzar";
     // El color de detrás (la cámara y el vidrio de los menús).
     public static Color ColorFondo(int cual) => cual == Nubes ? new Color(0.7f, 0.8f, 0.93f)
-                                               : cual == Desierto ? new Color(0.96f, 0.64f, 0.46f) : new Color(0.01f, 0.012f, 0.03f);
+                                               : cual == Desierto ? new Color(0.95f, 0.78f, 0.5f) : new Color(0.01f, 0.012f, 0.03f);
     // v45: el desierto no avanza (el viento ya se mueve solo).
     public static bool PuedeAvanzar(int cual) => cual == Universo || cual == Nubes;
 
@@ -261,7 +261,9 @@ public class FondosVivos : MonoBehaviour
         const int anillos = 64, lados = 180;
         const float rMin = 1.2f;
         Vector3 sol = SolDesierto.normalized;
-        Color luz = new Color(1f, 0.76f, 0.5f), sombra = new Color(0.56f, 0.37f, 0.43f), bruma = new Color(0.96f, 0.64f, 0.46f);
+        // v46: arena AMARILLA de desierto de verdad (antes casi del color del cielo): dorada al sol, ocre en la sombra
+        // (con apenas un toque violeta del cielo) y una bruma arenosa que se mezcla menos.
+        Color luz = new Color(1f, 0.86f, 0.5f), sombra = new Color(0.76f, 0.57f, 0.32f), bruma = new Color(0.95f, 0.78f, 0.5f);
         var v = new List<Vector3>((anillos + 1) * (lados + 1));
         var col = new List<Color32>(v.Capacity);
         for (int a = 0; a <= anillos; a++)
@@ -280,10 +282,10 @@ public class FondosVivos : MonoBehaviour
                 float l = Mathf.Clamp01(Vector3.Dot(n, sol) * 3f + 0.06f);
                 Color k = Color.Lerp(sombra, luz, l);
                 // Las crestas que miran al sol, un poquito más doradas; ondulitas de viento en la arena.
-                k += new Color(0.12f, 0.06f, 0f) * Mathf.Pow(l, 6f);
+                k += new Color(0.06f, 0.05f, 0f) * Mathf.Pow(l, 6f);
                 k *= 0.985f + 0.015f * Mathf.Sin(x * 2.3f + z * 0.9f + Mathf.PerlinNoise(x * 0.3f, z * 0.3f) * 4f);
-                float niebla = 1f - Mathf.Exp(-r / 42f);
-                k = Color.Lerp(k, bruma, niebla * 0.85f);
+                float niebla = 1f - Mathf.Exp(-r / 55f);
+                k = Color.Lerp(k, bruma, niebla * 0.6f);
                 k.a = 1f;
                 col.Add(k);
             }
@@ -328,7 +330,7 @@ public class FondosVivos : MonoBehaviour
                 if (d.y < duna)
                 {
                     float k = Mathf.Clamp01(Mathf.Sin(lon * 3f + 1f) * 0.5f + 0.5f);
-                    c = Color.Lerp(new Color(0.5f, 0.32f, 0.4f), new Color(0.98f, 0.7f, 0.47f), k);
+                    c = Color.Lerp(new Color(0.76f, 0.57f, 0.32f), new Color(1f, 0.86f, 0.5f), k);
                 }
                 else
                 {

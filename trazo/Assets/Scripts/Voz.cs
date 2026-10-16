@@ -267,6 +267,80 @@ public class Voz : MonoBehaviour
     }
 #endif
 
+    // ---------- v46: tu última frase, grabada por la oreja de TrazoVoz.java ----------
+    // (Para que la cara del tutorial repita "hola, ¿cómo estás?" con TU voz.) En el editor no hay: null / 0 / false.
+
+    public static float[] UltimaFrase()
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        if (Instancia != null && Instancia.java != null)
+        {
+            try
+            {
+                return Instancia.java.CallStatic<float[]>("fraseAudio");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning("TrazoVR voz: " + e.Message);
+            }
+        }
+#endif
+        return null;
+    }
+
+    public static int NumeroFrase()
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        if (Instancia != null && Instancia.java != null)
+        {
+            try
+            {
+                return Instancia.java.CallStatic<int>("numeroFrase");
+            }
+            catch (System.Exception)
+            {
+            }
+        }
+#endif
+        return 0;
+    }
+
+    public static bool Hablando()
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        if (Instancia != null && Instancia.java != null)
+        {
+            try
+            {
+                return Instancia.java.CallStatic<bool>("hablando");
+            }
+            catch (System.Exception)
+            {
+            }
+        }
+#endif
+        return false;
+    }
+
+    public static float SegundosDesdeFrase()
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        if (Instancia != null && Instancia.java != null)
+        {
+            try
+            {
+                return Instancia.java.CallStatic<float>("segundosDesdeFrase");
+            }
+            catch (System.Exception)
+            {
+            }
+        }
+#endif
+        return 9999f;
+    }
+
+    public const int MuestreoFrase = 16000;
+
     void OnApplicationPause(bool pausa)
     {
 #if UNITY_ANDROID && !UNITY_EDITOR

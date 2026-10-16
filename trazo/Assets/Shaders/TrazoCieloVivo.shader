@@ -146,7 +146,7 @@ Shader "TrazoVR/CieloVivo"
                 float polvo = Ruido(float2(ang * 1.2 + _Time.y * 0.012, h * 6.0)).b;
                 col = lerp(col, half3(1.0, 0.76, 0.56), smoothstep(0.07, 0.0, abs(h - 0.012)) * smoothstep(0.35, 0.8, polvo) * 0.5);
                 // Bajo el horizonte: la bruma (el mismo color de las dunas a lo lejos).
-                col = lerp(col, half3(0.96, 0.64, 0.46), smoothstep(0.015, -0.05, h));
+                col = lerp(col, half3(0.95, 0.78, 0.5), smoothstep(0.015, -0.05, h));   // v46: arena más amarilla
                 return col;
             }
 
