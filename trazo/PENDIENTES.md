@@ -21,7 +21,7 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 - [x] **Dedo manchado de tinta**: se quitó el "palito" de color por dentro del dedo. Ahora la **piel** de la punta del índice (hasta la mitad del dedo) se mancha, con borde irregular y brillo húmedo: es una pasada más (shader `TrazoVR/TintaDedo`) sobre la malla de la mano derecha, sea la de vidrio o la normal de Meta. Al pintar, la tinta se seca en un momento.
 - [x] **Videos más nítidos**: la calidad sube de ~3 Mbps a 8–24 Mbps (las líneas finas ya no salen borrosas).
-- [x] **Formato vertical 2K** (1440x2560): el botón de formato pasa Horizontal 16:9 → Vertical 9:16 → Vertical 2K. Si el visor no puede con 2K, el video sale en 1080x1920.
+- [x] **Tamaños a elegir dentro de Exportar**: al tocar **Exportar** sale ahí mismo una fila con **Horizontal 1080p**, **Vertical 1080p**, **Horizontal 2K** y **Vertical 2K**; al tocar uno, se hace el video en ese tamaño (se recuerda para la próxima y para la voz "video"). Ya no hay botón de formato aparte. Si el visor no puede con 2K, sale en Full HD.
 - [ ] Nota: WhatsApp achica los videos (a ~480x850). Para mandarlo completo: 📎 → **Documento**.
 - [ ] Si la tinta del dedo aún no se ve: el visor dibuja la mano con otro objeto que no encontramos; revisar el nombre de la malla de la mano.
 

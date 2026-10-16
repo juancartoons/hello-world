@@ -430,6 +430,11 @@ public static class Idioma
         // v46: cuadro a cuadro
         "Cuadro a cuadro", "Frame by frame",
         "Vertical 2K", "Vertical 2K",
+        "Horizontal 2K", "Horizontal 2K",
+        "Horizontal 1080p", "Horizontal 1080p",
+        "Vertical 1080p", "Vertical 1080p",
+        "Elige el tamaño del video", "Choose the video size",
+        "Tu visor no pudo con 2K: el video va en Full HD", "Your headset couldn't do 2K: the video is Full HD",
         "Video vertical 2K 1440x2560 (más nítido)", "Vertical 2K video 1440x2560 (sharper)",
         "Tu visor no pudo con 2K: el video va en 1080x1920", "Your headset couldn't do 2K: the video is 1080x1920",
         "Cuadro a cuadro: Sí", "Frame by frame: On",

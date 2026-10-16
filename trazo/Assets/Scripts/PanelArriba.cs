@@ -261,8 +261,7 @@ public class PanelArriba : MonoBehaviour
             // v47: horizontal → vertical → vertical 2K → horizontal...
             ExportadorVideo.SiguienteFormato();
             if (dibujo != null)
-                dibujo.Mensaje(ExportadorVideo.Formato == 2 ? "Video vertical 2K 1440x2560 (más nítido)"
-                               : ExportadorVideo.Vertical ? "Video vertical 1080x1920 (celular)" : "Video horizontal 1920x1080");
+                dibujo.Mensaje("Video: " + ExportadorVideo.NombreFormato);
             Refrescar();
         });
         Conectar(btnVerde, () =>
@@ -356,7 +355,7 @@ public class PanelArriba : MonoBehaviour
         {
             Conectar(btnVideoProceso, exportador.ExportarProceso);
             Conectar(btnVelocidad, exportador.CambiarVelocidad);
-            Conectar(btnVideoAnim, exportador.ExportarAnimacion);
+            Conectar(btnVideoAnim, TocarExportar);   // v47: primero salen los tamaños, ahí mismo
         }
         if (dibujo != null && dibujo.temblor != null)
         {
@@ -1204,6 +1203,58 @@ public class PanelArriba : MonoBehaviour
     }
 
     float xCabezal;            // v46: dónde va el cabezal (sigue al dedo con un poquito de peso)
+
+    // ---------- v47: los tamaños del video, dentro de Exportar ----------
+    // Tocar Exportar abre (o cierra) una fila con los 4 tamaños justo debajo; al tocar uno, se exporta en ese tamaño.
+    GameObject opcionesExportar;
+    readonly List<BotonTocable> botonesTamano = new List<BotonTocable>();
+    static readonly string[] NombresTamano = { "Horizontal 1080p", "Vertical 1080p", "Horizontal 2K", "Vertical 2K" };
+    static readonly int[] FormatoDeTamano = { 0, 1, 3, 2 };   // el orden de los botones → ExportadorVideo.Formato
+
+    void TocarExportar()
+    {
+        if (exportador == null || btnVideoAnim == null)
+            return;
+        if (opcionesExportar == null)
+            ArmarOpcionesExportar();
+        bool abrir = !opcionesExportar.activeSelf;
+        opcionesExportar.SetActive(abrir);
+        btnVideoAnim.Marcar(abrir);
+        if (abrir)
+        {
+            for (int i = 0; i < botonesTamano.Count; i++)
+                botonesTamano[i].Marcar(FormatoDeTamano[i] == ExportadorVideo.Formato);
+            if (dibujo != null)
+                dibujo.Mensaje("Elige el tamaño del video");
+        }
+    }
+
+    void ArmarOpcionesExportar()
+    {
+        opcionesExportar = new GameObject("OpcionesExportar");
+        opcionesExportar.transform.SetParent(btnVideoAnim.transform.parent, false);
+        Vector3 inicio = btnVideoAnim.transform.localPosition + new Vector3(0f, -0.034f, 0f);
+        for (int i = 0; i < NombresTamano.Length; i++)
+        {
+            int cual = i;
+            var b = PanelTutoriales.Boton(opcionesExportar.transform, Idioma.T(NombresTamano[i]), inicio + new Vector3(i * 0.115f, 0f, 0f),
+                                          new Vector2(0.11f, 0.024f), btnVideoAnim.materialNormal, btnVideoAnim.materialMarcado);
+            b.alTocar.AddListener(() => ElegirTamano(cual));
+            botonesTamano.Add(b);
+        }
+        opcionesExportar.SetActive(false);
+    }
+
+    void ElegirTamano(int boton)
+    {
+        ExportadorVideo.Formato = FormatoDeTamano[Mathf.Clamp(boton, 0, FormatoDeTamano.Length - 1)];
+        if (opcionesExportar != null)
+            opcionesExportar.SetActive(false);
+        btnVideoAnim.Marcar(false);
+        Refrescar();
+        if (exportador != null)
+            exportador.ExportarAnimacion();
+    }
     int cuadroCabezal = -10;
 
     // La clave de la capa activa más cerca del fotograma f (unos 1.3 cm de barra), o -1.
@@ -2006,7 +2057,7 @@ public class PanelArriba : MonoBehaviour
         Poner(d, btnPausaGrabar, "PAUSA / REANUDAR\nSolo aparece mientras grabas el proceso. Pausa deja de grabar un momento (ese tiempo no sale en el video); Reanudar sigue grabando. Lo que hagas en pausa aparece de una vez al reanudar.");
         Poner(d, btnVideoProceso, "VIDEO PROCESO\nConvierte tu grabación (botón Grabar) en un video MP4: líneas + manos en gris. Elige antes la velocidad con Vel.\nDÓNDE QUEDA: app Archivos del Quest → Descargas → JCartoons (también lo dice abajo en esta página).");
         Poner(d, btnVelocidad, "VEL x1 / x2 / x4 / x8\nQué tan rápido se ve el video del proceso.");
-        Poner(d, btnVideoAnim, "VIDEO ANIM\nExporta la animación como MP4 (1280x720), con el audio de las bocas si hay. Necesitas al menos 2 claves.\nDÓNDE QUEDA: app Archivos del Quest → Descargas → JCartoons.");
+        Poner(d, btnVideoAnim, "EXPORTAR\nTócalo y elige el tamaño ahí mismo: Horizontal 1080p (1920x1080), Vertical 1080p (1080x1920, para celular), Horizontal 2K o Vertical 2K (más nítidos, más pesados). Al elegir, se hace el MP4, con el audio de las bocas si hay. Necesitas al menos 2 claves.\nDÓNDE QUEDA: app Archivos del Quest → Descargas → JCartoons. (WhatsApp lo achica: mándalo como Documento.)");
         Poner(d, btnImagenMas, "IMAGEN +\nAbre las imágenes de tu Quest (Descargas, Cámara, capturas, WhatsApp, Facebook...). Toca una para verla en grande y elige: Importar (aparece frente a ti) o, si es una foto 360, Fondo 360. O pellízcala y sácala del panel: queda donde la sueltes.\nPara calcar: en Plano, suelta la imagen cerca del plano y se pega detrás.");
         Poner(d, btnImagenMenos, "IMAGEN -\nQuita la imagen seleccionada (la que tiene tono azul). Pellizca una imagen para elegirla.");
         Poner(d, btnImagenesVer, "IMÁGENES: VER / OCULTAS\nEsconde o muestra todas las imágenes de referencia a la vez.");

@@ -817,11 +817,12 @@ public static class ArmarEscenaTrazo
         panel.paginaMedios = null;
         panel.btnVideoAnim = BotonAncho(animar, "Exportar", new Vector3(-0.17f, 0.04f, 0f), matBoton, matBotonMarcado);
         // v43: el formato del video, el fondo verde (solo en el MP4) y el papel cebolla.
-        panel.btnFormato = BotonAncho(animar, "Horizontal 16:9", new Vector3(-0.055f, 0.04f, 0f), matBoton, matBotonMarcado);
-        panel.btnVerde = BotonAncho(animar, "Fondo verde: No", new Vector3(0.06f, 0.04f, 0f), matBoton, matBotonMarcado);
-        panel.btnCebolla = BotonAncho(animar, "Cebolla: No", new Vector3(0.175f, 0.04f, 0f), matBoton, matBotonMarcado);
-        // v46: capas cuadro a cuadro (cada cuadro empieza vacío), debajo de la cebolla.
-        panel.btnCuadros = BotonAncho(animar, "Cuadro a cuadro", new Vector3(0.175f, 0.006f, 0f), matBoton, matBotonMarcado);
+        // v47: el tamaño del video ya no es un botón aparte: sale al tocar Exportar (ver PanelArriba.TocarExportar).
+        panel.btnFormato = null;
+        panel.btnVerde = BotonAncho(animar, "Fondo verde: No", new Vector3(-0.055f, 0.04f, 0f), matBoton, matBotonMarcado);
+        panel.btnCebolla = BotonAncho(animar, "Cebolla: No", new Vector3(0.06f, 0.04f, 0f), matBoton, matBotonMarcado);
+        // v46: capas cuadro a cuadro (cada cuadro empieza vacío).
+        panel.btnCuadros = BotonAncho(animar, "Cuadro a cuadro", new Vector3(0.175f, 0.04f, 0f), matBoton, matBotonMarcado);
         panel.btnGrabar = null;
         panel.btnPausaGrabar = null;
         panel.btnVideoProceso = null;
