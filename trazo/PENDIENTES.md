@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 16 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v46***
+*Actualizado: 16 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v47***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,6 +16,14 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 4. **Build And Run**.
 
 ---
+
+## 0+. Hecho en la v47 (falta probarlo en el visor)
+
+- [x] **Dedo manchado de tinta**: se quitó el "palito" de color por dentro del dedo. Ahora la **piel** de la punta del índice (hasta la mitad del dedo) se mancha, con borde irregular y brillo húmedo: es una pasada más (shader `TrazoVR/TintaDedo`) sobre la malla de la mano derecha, sea la de vidrio o la normal de Meta. Al pintar, la tinta se seca en un momento.
+- [x] **Videos más nítidos**: la calidad sube de ~3 Mbps a 8–24 Mbps (las líneas finas ya no salen borrosas).
+- [x] **Formato vertical 2K** (1440x2560): el botón de formato pasa Horizontal 16:9 → Vertical 9:16 → Vertical 2K. Si el visor no puede con 2K, el video sale en 1080x1920.
+- [ ] Nota: WhatsApp achica los videos (a ~480x850). Para mandarlo completo: 📎 → **Documento**.
+- [ ] Si la tinta del dedo aún no se ve: el visor dibuja la mano con otro objeto que no encontramos; revisar el nombre de la malla de la mano.
 
 ## 0+. Hecho en la v46 (falta probarlo en el visor)
 

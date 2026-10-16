@@ -18,6 +18,8 @@ public partial class ControlManos
     public Material materialPolvo;
     [Tooltip("Manos de vidrio: shader TrazoVR/ManoVidrio (vacío = las manos de siempre)")]
     public Material materialManoVidrio;
+    [Tooltip("v47: la tinta del dedo jeringa: shader TrazoVR/TintaDedo (una segunda pasada sobre la mano derecha)")]
+    public Material materialTintaDedo;
     [Tooltip("Vidrio de los menús y la paleta: shader TrazoVR/Vidrio")]
     public Material materialVidrio;
     [Tooltip("v37: los colores de la paleta como perlas, sin aro negro: shader TrazoVR/Perla (vacío = como antes)")]
@@ -60,12 +62,19 @@ public partial class ControlManos
         ActualizarBrillo(ref brilloIzq, pi, luzIzq * 0.7f, 0.016f);
 
         // Las manos de vidrio (se revisa cada 2 segundos: las manos de Meta a veces se vuelven a crear).
-        if (materialManoVidrio != null && Time.time >= proximaManoVidrio)
+        // v47: y la tinta del dedo jeringa, como una pasada más sobre la mano derecha (sea cual sea su material).
+        if (materialTintaDedo == null)
+        {
+            var sh = Shader.Find("TrazoVR/TintaDedo");
+            if (sh != null)
+                materialTintaDedo = new Material(sh);
+        }
+        if ((materialManoVidrio != null || materialTintaDedo != null) && Time.time >= proximaManoVidrio)
         {
             proximaManoVidrio = Time.time + 2f;
             BuscarRenderersMano();
-            PonerManosVidrio(rendsIzq);
-            PonerManosVidrio(rendsDer);
+            PonerManosVidrio(rendsIzq, null);
+            PonerManosVidrio(rendsDer, materialTintaDedo);
         }
     }
 
@@ -117,23 +126,35 @@ public partial class ControlManos
     }
 
     // Solo las mallas de las manos (SkinnedMeshRenderer), no los menús que cuelgan de la muñeca.
-    void PonerManosVidrio(List<Renderer> lista)
+    // v47: "tinta" (solo la mano derecha) va al final, como una pasada más: mancha la piel de la punta del índice
+    // aunque la mano no sea la de vidrio.
+    void PonerManosVidrio(List<Renderer> lista, Material tinta)
     {
         foreach (var r in lista)
         {
             if (r == null || !(r is SkinnedMeshRenderer))
                 continue;
             var mats = r.sharedMaterials;
-            bool ya = mats.Length > 0;
+            // Los materiales de la mano (sin la tinta que ya se le hubiera puesto).
+            var base_ = new List<Material>(mats.Length);
             foreach (var m in mats)
-                if (m != materialManoVidrio)
-                    ya = false;
-            if (ya)
+                if (m != null && m != materialTintaDedo)
+                    base_.Add(m);
+            if (base_.Count == 0 && mats.Length > 0 && mats[0] != null && mats[0] != materialTintaDedo)
+                base_.Add(mats[0]);
+            int cuantos = Mathf.Max(1, base_.Count);
+            var nuevos = new List<Material>(cuantos + 1);
+            for (int i = 0; i < cuantos; i++)
+                nuevos.Add(materialManoVidrio != null ? materialManoVidrio : (i < base_.Count ? base_[i] : null));
+            if (tinta != null)
+                nuevos.Add(tinta);
+            bool igual = nuevos.Count == mats.Length;
+            for (int i = 0; igual && i < mats.Length; i++)
+                if (mats[i] != nuevos[i])
+                    igual = false;
+            if (igual || nuevos.Contains(null))
                 continue;
-            var nuevos = new Material[Mathf.Max(1, mats.Length)];
-            for (int i = 0; i < nuevos.Length; i++)
-                nuevos[i] = materialManoVidrio;
-            r.sharedMaterials = nuevos;
+            r.sharedMaterials = nuevos.ToArray();
         }
     }
 

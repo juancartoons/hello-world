@@ -10,8 +10,10 @@ using UnityEngine;
 //  - El cuentagotas (tocar una línea con la paleta abierta) y la voz ("copiar") también cargan el dedo.
 // (La cubeta sigue por ahora; si la jeringa funciona bien, se quita en la siguiente versión.)
 // v46: el color sigue las ARTICULACIONES del dedo (yema → falanges → nudillo), así se llena aunque el dedo esté
-// doblado; y por dentro va un "alma" de color (una línea fina por el centro del dedo) que se ve siempre, aunque
-// la mano sea otra (sin el shader de vidrio). Tocar líneas es más fácil (más margen) y funciona cerca de la paleta.
+// doblado. Tocar líneas es más fácil (más margen) y funciona cerca de la paleta.
+// v47: es la PIEL de la punta del dedo la que se mancha, como si lo metieras en tinta: el shader TrazoVR/TintaDedo va
+// como una pasada más sobre la malla de tu mano derecha (sea la de vidrio o la normal). Ya no hay "alma" por dentro.
+// Al pintar, la tinta se seca en un momento (baja hacia la yema y desaparece).
 public partial class ControlManos
 {
     const float LlenadoSegundos = 0.7f;
@@ -24,10 +26,9 @@ public partial class ControlManos
     Trazo jeringaCandidato;
     bool jeringaCandidatoLinea;
     Transform tuboJeringa, nudilloIndiceDer, yemaIndiceDer, distalIndiceDer, medioIndiceDer;
-    LineRenderer almaJeringa;
-    Material matAlma;
     readonly Vector3[] cadenaDedo = new Vector3[4];
-    readonly Vector3[] puntosAlma = new Vector3[4];
+    const float TintaHasta = 0.5f;          // v47: la tinta llega hasta la mitad del dedo (la punta y un poco más)
+    const float SecadoSegundos = 0.45f;
     static readonly int idJeringaPunta = Shader.PropertyToID("_JCJeringaPunta");
     static readonly int idJeringaNudillo = Shader.PropertyToID("_JCJeringaNudillo");
     static readonly int idJeringaColor = Shader.PropertyToID("_JCJeringaColor");
@@ -54,8 +55,6 @@ public partial class ControlManos
         if (nuevo)
             nivelJeringa = 0.05f;
         Shader.SetGlobalColor(idJeringaColor, colorJeringa);
-        if (matAlma != null)
-            PintarMaterial(matAlma, colorJeringa);
         proximaGota = Time.time + 0.8f;
     }
 
@@ -136,7 +135,10 @@ public partial class ControlManos
     void ActualizarJeringa()
     {
         float dt = Time.deltaTime;
-        bool ver = hayJeringa && Der.valida && !ocultarTodas && !ocultarDer && !ocultarDerPlano;
+        // v47: sin tinta, la que quedaba se seca (baja hacia la yema) y desaparece.
+        if (!hayJeringa)
+            nivelJeringa = Mathf.MoveTowards(nivelJeringa, 0f, dt / SecadoSegundos);
+        bool ver = (hayJeringa || nivelJeringa > 0.01f) && Der.valida && !ocultarTodas && !ocultarDer && !ocultarDerPlano;
         if (ver && tuboJeringa == null)
             ArmarJeringa();
         if (ver)
@@ -149,7 +151,8 @@ public partial class ControlManos
                 distalIndiceDer = ManosUtil.Hueso(Der.esqueleto, "Index3", "IndexDistal");
             if (yemaIndiceDer == null)
                 yemaIndiceDer = ManosUtil.Hueso(Der.esqueleto, "IndexTip");
-            nivelJeringa = Mathf.MoveTowards(nivelJeringa, 1f, dt / LlenadoSegundos);
+            if (hayJeringa)
+                nivelJeringa = Mathf.MoveTowards(nivelJeringa, 1f, dt / LlenadoSegundos);
             Vector3 punta = yemaIndiceDer != null ? yemaIndiceDer.position : Der.indice;
             Vector3 nudillo = nudilloIndiceDer != null ? nudilloIndiceDer.position : punta + Vector3.down * 0.07f;
             // La cadena del dedo: yema, falange de la punta, falange del medio, nudillo (si falta un hueso, en línea recta).
@@ -157,16 +160,15 @@ public partial class ControlManos
             cadenaDedo[1] = distalIndiceDer != null ? distalIndiceDer.position : Vector3.Lerp(punta, nudillo, 0.3f);
             cadenaDedo[2] = medioIndiceDer != null ? medioIndiceDer.position : Vector3.Lerp(punta, nudillo, 0.62f);
             cadenaDedo[3] = nudillo;
-            // Se llena hasta el 92 % (sin llegar a la palma).
-            float nivel = Mathf.SmoothStep(0f, 1f, nivelJeringa) * 0.92f;
+            // Se mancha desde la yema hasta la mitad del dedo.
+            float nivel = Mathf.SmoothStep(0f, 1f, nivelJeringa) * TintaHasta;
             Shader.SetGlobalVector(idJeringaPunta, new Vector4(punta.x, punta.y, punta.z, nivel));
             Shader.SetGlobalVector(idJeringaA, new Vector4(cadenaDedo[1].x, cadenaDedo[1].y, cadenaDedo[1].z, 0f));
             Shader.SetGlobalVector(idJeringaB, new Vector4(cadenaDedo[2].x, cadenaDedo[2].y, cadenaDedo[2].z, 0f));
             Shader.SetGlobalVector(idJeringaNudillo, new Vector4(nudillo.x, nudillo.y, nudillo.z, 1f));
-            PonerAlma(nivel);
             // Llevándolo cargado: de vez en cuando cae una gotita (o dos).
             float vel = dt > 1e-5f ? Vector3.Distance(Der.indice, puntaAntes) / dt : 0f;
-            if (nivelJeringa > 0.6f && vel > 0.12f && Time.time > proximaGota)
+            if (hayJeringa && nivelJeringa > 0.6f && vel > 0.12f && Time.time > proximaGota)
             {
                 SoltarGotas(punta, Random.value < 0.5f ? 1 : 2);
                 proximaGota = Time.time + Random.Range(1.2f, 2.6f);
@@ -175,8 +177,6 @@ public partial class ControlManos
         else
         {
             Shader.SetGlobalVector(idJeringaNudillo, Vector4.zero);
-            if (almaJeringa != null && almaJeringa.enabled)
-                almaJeringa.enabled = false;
         }
         puntaAntes = Der.indice;
         // Las gotas caen, se achican y desaparecen (nunca se ve dónde caen).
@@ -196,42 +196,6 @@ public partial class ControlManos
             float s = tamGota[i] * k;
             gotas[i].localScale = new Vector3(s * 0.85f, s * 1.25f, s * 0.85f);   // alargadita al caer
         }
-    }
-
-    // v46: el alma de color, por el centro del dedo, desde la yema hasta donde llega el líquido (sigue las falanges).
-    void PonerAlma(float nivel)
-    {
-        if (almaJeringa == null)
-            return;
-        float total = 0f;
-        for (int i = 0; i < 3; i++)
-            total += Vector3.Distance(cadenaDedo[i], cadenaDedo[i + 1]);
-        float falta = total * nivel;
-        int n = 1;
-        // La yema del hueso queda en la orilla del dedo: el alma empieza 4 mm más adentro.
-        puntosAlma[0] = Vector3.MoveTowards(cadenaDedo[0], cadenaDedo[1], 0.004f);
-        for (int i = 0; i < 3 && falta > 1e-4f; i++)
-        {
-            float largo = Vector3.Distance(cadenaDedo[i], cadenaDedo[i + 1]);
-            if (largo >= falta)
-            {
-                puntosAlma[n++] = Vector3.MoveTowards(cadenaDedo[i], cadenaDedo[i + 1], falta);
-                falta = 0f;
-            }
-            else
-            {
-                puntosAlma[n++] = cadenaDedo[i + 1];
-                falta -= largo;
-            }
-        }
-        bool ver = n >= 2 && nivel > 0.02f;
-        if (almaJeringa.enabled != ver)
-            almaJeringa.enabled = ver;
-        if (!ver)
-            return;
-        almaJeringa.positionCount = n;
-        for (int i = 0; i < n; i++)
-            almaJeringa.SetPosition(i, puntosAlma[i]);
     }
 
     void SoltarGotas(Vector3 punta, int cuantas)
@@ -272,24 +236,6 @@ public partial class ControlManos
                 rg.sharedMaterial = new Material(baseMat);
             g.SetActive(false);
             gotas[i] = g.transform;
-        }
-        // v46: el alma de color (fina, por dentro del dedo de vidrio).
-        var ga = new GameObject("AlmaJeringa");
-        ga.transform.SetParent(tuboJeringa, false);
-        almaJeringa = ga.AddComponent<LineRenderer>();
-        almaJeringa.useWorldSpace = true;
-        almaJeringa.numCapVertices = 4;
-        almaJeringa.numCornerVertices = 3;
-        almaJeringa.widthCurve = new AnimationCurve(new Keyframe(0f, 0.0062f), new Keyframe(1f, 0.0085f));
-        almaJeringa.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        almaJeringa.receiveShadows = false;
-        almaJeringa.positionCount = 0;
-        almaJeringa.enabled = false;
-        if (baseMat != null)
-        {
-            matAlma = new Material(baseMat);
-            PintarMaterial(matAlma, colorJeringa);
-            almaJeringa.sharedMaterial = matAlma;
         }
     }
 }

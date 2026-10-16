@@ -99,6 +99,9 @@ public static class ArmarEscenaTrazo
         var shaderManoVidrio = Shader.Find("TrazoVR/ManoVidrio");
         Material matPolvo = shaderPolvo != null ? Mat("Polvo", shaderPolvo, Color.white) : null;
         Material matManoVidrio = shaderManoVidrio != null ? Mat("ManoVidrio", shaderManoVidrio, new Color(0.72f, 0.86f, 1f)) : null;
+        // v47: la tinta del dedo jeringa (mancha la piel de la punta del índice derecho).
+        var shaderTintaDedo = Shader.Find("TrazoVR/TintaDedo");
+        Material matTintaDedo = shaderTintaDedo != null ? Mat("TintaDedo", shaderTintaDedo, Color.white) : null;
         var matBoton = Mat("Boton", unlit, new Color(0.86f, 0.87f, 0.9f));
         var matBotonMarcado = Mat("BotonMarcado", unlit, new Color(0.08f, 0.08f, 0.1f));
         // v38: el borrador en tonos finos: oro rosa (líneas) y champaña (rellenos), en vez del rojo fuerte.
@@ -253,6 +256,7 @@ public static class ArmarEscenaTrazo
         control.materialNodo = matNodo;
         control.materialPolvo = matPolvo;
         control.materialManoVidrio = matManoVidrio;
+        control.materialTintaDedo = matTintaDedo;
         control.materialVidrio = shaderVidrio != null ? matPanel : null;
         control.materialPerla = matPerla;
         control.materialIconos = matIconos;

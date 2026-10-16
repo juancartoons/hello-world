@@ -258,9 +258,11 @@ public class PanelArriba : MonoBehaviour
         BotonTocable.PonerVoz(btnCuadros, ControlManos.ComandoVoz.CuadroACuadro);
         Conectar(btnFormato, () =>
         {
-            ExportadorVideo.Vertical = !ExportadorVideo.Vertical;
+            // v47: horizontal → vertical → vertical 2K → horizontal...
+            ExportadorVideo.SiguienteFormato();
             if (dibujo != null)
-                dibujo.Mensaje(ExportadorVideo.Vertical ? "Video vertical 1080x1920 (celular)" : "Video horizontal 1920x1080");
+                dibujo.Mensaje(ExportadorVideo.Formato == 2 ? "Video vertical 2K 1440x2560 (más nítido)"
+                               : ExportadorVideo.Vertical ? "Video vertical 1080x1920 (celular)" : "Video horizontal 1920x1080");
             Refrescar();
         });
         Conectar(btnVerde, () =>
@@ -1555,7 +1557,7 @@ public class PanelArriba : MonoBehaviour
             texto = "Exportar: la animación en MP4 (" + ExportadorVideo.NombreFormato + "), en Descargas → JCartoons";
         textoMedios.text = Idioma.T(texto);
         if (btnFormato != null)
-            btnFormato.PonerTexto(ExportadorVideo.Vertical ? "Vertical 9:16" : "Horizontal 16:9");
+            btnFormato.PonerTexto(ExportadorVideo.NombreBotonFormato);
         if (btnVerde != null)
         {
             btnVerde.PonerTexto(ExportadorVideo.FondoVerde ? "Fondo verde: Sí" : "Fondo verde: No");

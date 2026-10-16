@@ -8,6 +8,7 @@ using UnityEngine.Rendering;
 // Videos MP4 (se guardan en Dibujos, junto a las fotos):
 //  - "Exportar" (antes "Video anim"): la animación (con el audio del lipsync, si hay).
 //    v43: en 1920x1080 (horizontal) o 1080x1920 (vertical, para celular), y con FONDO VERDE si quieres (solo en el
+//    (v47: también vertical 2K 1440x2560, y con mucha más calidad: las líneas finas salen nítidas)
 //    MP4, para recortarlo en un editor de video; en la app no cambia nada). Se recuerdan.
 //  - "Video proceso": repite lo que grabaste (líneas apareciendo + tus manos, con forma de mano de verdad).
 // Modo rápido: el color se convierte al formato del video en la tarjeta gráfica y se hacen varios cuadros
@@ -40,17 +41,34 @@ public class ExportadorVideo : MonoBehaviour
 
     // v43: el formato del video de la animación y el fondo verde (se recuerdan).
     const string ClaveVertical = "jcartoons_video_vertical", ClaveVerde = "jcartoons_video_verde";
+    // v47: tres formatos: 0 = horizontal 1920x1080, 1 = vertical 1080x1920, 2 = vertical 2K 1440x2560 (más nítido).
+    const string ClaveFormato = "jcartoons_video_formato";
+    public static int Formato
+    {
+        get => Mathf.Clamp(PlayerPrefs.GetInt(ClaveFormato, PlayerPrefs.GetInt(ClaveVertical, 0)), 0, 2);
+        set
+        {
+            PlayerPrefs.SetInt(ClaveFormato, Mathf.Clamp(value, 0, 2));
+            PlayerPrefs.SetInt(ClaveVertical, value >= 1 ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+    }
     public static bool Vertical
     {
-        get => PlayerPrefs.GetInt(ClaveVertical, 0) == 1;
-        set { PlayerPrefs.SetInt(ClaveVertical, value ? 1 : 0); PlayerPrefs.Save(); }
+        get => Formato >= 1;
+        set => Formato = value ? Mathf.Max(1, Formato) : 0;
     }
+    public static void SiguienteFormato()
+    {
+        Formato = (Formato + 1) % 3;
+    }
+    public static string NombreBotonFormato => Formato == 2 ? "Vertical 2K" : Formato == 1 ? "Vertical 9:16" : "Horizontal 16:9";
     public static bool FondoVerde
     {
         get => PlayerPrefs.GetInt(ClaveVerde, 0) == 1;
         set { PlayerPrefs.SetInt(ClaveVerde, value ? 1 : 0); PlayerPrefs.Save(); }
     }
-    public static string NombreFormato => Vertical ? "1080x1920" : "1920x1080";
+    public static string NombreFormato => Formato == 2 ? "1440x2560" : Formato == 1 ? "1080x1920" : "1920x1080";
     static readonly Color Verde = new Color(0f, 0.694f, 0.251f);   // el verde de croma de siempre (0, 177, 64)
 
     // Dedos de la mano (índices de GrabadorProceso.Huesos) dibujados como líneas.
@@ -127,7 +145,8 @@ public class ExportadorVideo : MonoBehaviour
         // v43: el formato. En vertical se abre la vista para que el dibujo quepa de lado a lado.
         bool vertical = Vertical;
         bool conCamara = CamaraEscena.Hay;   // v43: la cámara (con sus claves) manda
-        int anchoVideo = vertical ? 1080 : 1920, altoVideo = vertical ? 1920 : 1080;
+        int anchoVideo = Formato == 2 ? 1440 : vertical ? 1080 : 1920;
+        int altoVideo = Formato == 2 ? 2560 : vertical ? 1920 : 1080;
         if (vertical && !conCamara)
         {
             float t = Mathf.Tan(campoVision * 0.5f * Mathf.Deg2Rad) * altoVideo / anchoVideo;
@@ -137,10 +156,19 @@ public class ExportadorVideo : MonoBehaviour
         animacion.Pausar();
         dibujo.Seleccionar(null); // la línea seleccionada (azul) sale negra en el video
 
-        var codificador = new CodificadorVideo();
+        // v47: en 2K, si el visor no puede hacer el MP4 tan grande, se hace en 1080x1920 (no en fotos sueltas).
+        var codificador = new CodificadorVideo { SoloMp4 = anchoVideo * altoVideo > 1920 * 1080 };
+        bool ok = codificador.Iniciar(dibujo.CarpetaDibujos, NombreArchivo("animacion"), anchoVideo, altoVideo, fps, audio);
+        if (!ok && codificador.SoloMp4)
+        {
+            anchoVideo = 1080;
+            altoVideo = 1920;
+            codificador = new CodificadorVideo();
+            ok = codificador.Iniciar(dibujo.CarpetaDibujos, NombreArchivo("animacion"), anchoVideo, altoVideo, fps, audio);
+            Mensaje("Tu visor no pudo con 2K: el video va en 1080x1920");
+        }
         var captura = new Exportar.Captura(anchoVideo, altoVideo, dibujo.MascaraExportar, FondoVerde ? Verde : Color.white);
         captura.Poner(posicion, rotacion, campoVision);
-        bool ok = codificador.Iniciar(dibujo.CarpetaDibujos, NombreArchivo("animacion"), anchoVideo, altoVideo, fps, audio);
         var envio = new Envio(codificador, captura, materialNv12);
         Mensaje("Haciendo el video... no te muevas mucho");
         yield return null;

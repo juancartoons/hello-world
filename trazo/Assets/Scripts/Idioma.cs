@@ -429,6 +429,9 @@ public static class Idioma
         "Atardecer en el desierto", "Desert sunset",
         // v46: cuadro a cuadro
         "Cuadro a cuadro", "Frame by frame",
+        "Vertical 2K", "Vertical 2K",
+        "Video vertical 2K 1440x2560 (más nítido)", "Vertical 2K video 1440x2560 (sharper)",
+        "Tu visor no pudo con 2K: el video va en 1080x1920", "Your headset couldn't do 2K: the video is 1080x1920",
         "Cuadro a cuadro: Sí", "Frame by frame: On",
         "Capa cuadro a cuadro: cada cuadro empieza vacío (el anterior se ve rojizo, el siguiente verdoso)", "Frame-by-frame layer: each frame starts empty (previous one reddish, next one greenish)",
         "Capa normal otra vez (con morph entre claves)", "Normal layer again (morph between keys)",

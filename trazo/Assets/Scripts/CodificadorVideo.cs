@@ -11,6 +11,7 @@ public class CodificadorVideo
     public string Error { get; private set; } = "";
     public int Cuadros { get; private set; }
     public string RutaPublica { get; private set; } = ""; // copia en Download/JCartoons (app Archivos del Quest → Descargas)
+    public bool SoloMp4;   // v47: si el MP4 no se puede (por ejemplo, 2K), devuelve false en vez de hacer PNG
 
     int ancho, alto, fps;
 #if UNITY_ANDROID && !UNITY_EDITOR
@@ -30,7 +31,8 @@ public class CodificadorVideo
         {
             Ruta = Path.Combine(carpeta, nombreBase + ".mp4");
             java = new AndroidJavaObject("com.trazovr.TrazoCodificador");
-            int bitrate = Mathf.Clamp(ancho * alto * this.fps / 8, 2000000, 12000000);
+            // v47: mucha más calidad (antes ~3 Mbps a 12 cuadros): las líneas finas salen nítidas, sin cuadritos.
+            int bitrate = Mathf.Clamp(ancho * alto * this.fps / 2, 8000000, 24000000);
             if (java.Call<bool>("iniciar", Ruta, ancho, alto, this.fps, bitrate))
             {
                 if (audio != null && !java.Call<bool>("agregarAudio", AudioUtil.Pcm16(audio), audio.frequency, Mathf.Clamp(audio.channels, 1, 2)))
@@ -48,6 +50,8 @@ public class CodificadorVideo
             Debug.LogWarning("TrazoVR: no se pudo iniciar el MP4 (" + e.Message + "); uso PNG.");
             java = null;
         }
+        if (SoloMp4)
+            return false;
 #endif
         return IniciarPng(carpeta, nombreBase, audio);
     }
