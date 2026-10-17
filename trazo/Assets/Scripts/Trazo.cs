@@ -8,6 +8,77 @@ public enum EstiloLinea { Cinta = 0, Tubo = 1 }
 // los simplifica a pocos nodos (los "vectores" editables) unidos por curvas Bézier con asas.
 // Grosor con "valor de línea": grueso en el centro y en punta en los extremos.
 // Si la línea se cierra (sus puntas se unen), puede tener relleno de color.
+// v52: el ESTILO de una línea (lo guarda cada línea nueva al dibujarla: textura, vida, hebras, grosor vivo y los
+// ajustes del lápiz). Así cambiar el estilo en la paleta afecta a las líneas NUEVAS (y a las seleccionadas), no a
+// todas. Las líneas de archivos viejos no lo tienen: siguen el estilo de su capa.
+[System.Serializable]
+public class EstiloTrazo
+{
+    public int temblor;
+    public int hebras = 1;
+    public float grosorHebra = 0.5f;
+    public bool grosorVivo;
+    public bool ciclo3 = true;
+    public int suavidad = 1;
+    public int velocidad = 1;
+    public int texturaLinea;
+    // El lápiz (de 0 a 9; 5 = normal): grano, densidad, orilla borrosa, ancho y hervido.
+    public int lapizGrano = 5, lapizDensidad = 5, lapizBorde = 5, lapizAncho = 5, lapizHervido = 5;
+
+    public static EstiloTrazo DesdeCapa(DatosCapa c)
+    {
+        var e = new EstiloTrazo();
+        if (c == null)
+            return e;
+        e.temblor = c.temblor;
+        e.hebras = c.hebras;
+        e.grosorHebra = c.grosorHebra;
+        e.grosorVivo = c.grosorVivo;
+        e.ciclo3 = c.ciclo3;
+        e.suavidad = c.suavidad;
+        e.velocidad = c.velocidad;
+        e.texturaLinea = c.texturaLinea;
+        e.lapizGrano = c.lapizGrano;
+        e.lapizDensidad = c.lapizDensidad;
+        e.lapizBorde = c.lapizBorde;
+        e.lapizAncho = c.lapizAncho;
+        e.lapizHervido = c.lapizHervido;
+        return e;
+    }
+
+    // Lo pone en la capa (así las líneas nuevas salen con este estilo: "pegar estilo" sin nada seleccionado).
+    public void ACapa(DatosCapa c)
+    {
+        if (c == null)
+            return;
+        c.temblor = temblor;
+        c.hebras = hebras;
+        c.grosorHebra = grosorHebra;
+        c.grosorVivo = grosorVivo;
+        c.ciclo3 = ciclo3;
+        c.suavidad = suavidad;
+        c.velocidad = velocidad;
+        c.texturaLinea = texturaLinea;
+        c.lapizGrano = lapizGrano;
+        c.lapizDensidad = lapizDensidad;
+        c.lapizBorde = lapizBorde;
+        c.lapizAncho = lapizAncho;
+        c.lapizHervido = lapizHervido;
+    }
+
+    public EstiloTrazo Copia()
+    {
+        return (EstiloTrazo)MemberwiseClone();
+    }
+
+    // Los 5 ajustes del lápiz en un solo número (para la malla): grano + 10·densidad + 100·borde + 1000·ancho + 10000·hervido.
+    public float LapizEmpacado()
+    {
+        return Mathf.Clamp(lapizGrano, 0, 9) + 10 * Mathf.Clamp(lapizDensidad, 0, 9) + 100 * Mathf.Clamp(lapizBorde, 0, 9)
+               + 1000 * Mathf.Clamp(lapizAncho, 0, 9) + 10000 * Mathf.Clamp(lapizHervido, 0, 9);
+    }
+}
+
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class Trazo : MonoBehaviour
 {
@@ -108,11 +179,38 @@ public class Trazo : MonoBehaviour
         public Vector4 b;          // ciclo de 3 (1/0), frecuencia del ruido (suavidad)
     }
     public static System.Func<int, EstiloVivo> estiloCapa;
+    // v52: el estilo propio de esta línea (si lo tiene) y cómo se vuelve "estilo vivo" (lo pone el Dibujo).
+    public bool tieneEstilo;
+    public EstiloTrazo estiloTrazo;
+    public static System.Func<EstiloTrazo, EstiloVivo> estiloPropio;
+    // v52: nombres de nodos para la cabeza invisible ("3:punta de nariz"). Se mantienen al mover los nodos.
+    public List<string> nombresNodo = new List<string>();
+
+    public string NombreDeNodo(int i)
+    {
+        string pre = i + ":";
+        foreach (var n in nombresNodo)
+            if (n != null && n.StartsWith(pre))
+                return n.Substring(pre.Length);
+        return "";
+    }
+
+    public void NombrarNodo(int i, string nombre)
+    {
+        string pre = i + ":";
+        nombresNodo.RemoveAll(n => n == null || n.StartsWith(pre));
+        if (!string.IsNullOrEmpty(nombre))
+            nombresNodo.Add(pre + nombre);
+    }
 
     EstiloVivo Estilo()
     {
         EstiloVivo e;
-        if (estiloCapa != null)
+        if (tieneEstilo && estiloTrazo != null && estiloPropio != null)
+        {
+            e = estiloPropio(estiloTrazo);
+        }
+        else if (estiloCapa != null)
         {
             e = estiloCapa(capa);
         }
@@ -271,6 +369,9 @@ public class Trazo : MonoBehaviour
         hojaPunto = d.hojaPunto;
         hojaNormal = d.hojaNormal.sqrMagnitude > 1e-8f ? d.hojaNormal.normalized : Vector3.forward;
         orden = d.orden;
+        tieneEstilo = d.tieneEstilo && d.estiloTrazo != null;
+        nombresNodo = d.nombresNodo != null ? new List<string>(d.nombresNodo) : new List<string>();
+        estiloTrazo = d.estiloTrazo != null ? d.estiloTrazo.Copia() : null;
         texturaRelleno = Mathf.Clamp(d.texturaRelleno, 0, NombresTextura.Length - 1);
         velocidadTextura = Mathf.Clamp(d.velocidadTextura, 0, VelocidadesTextura.Length - 1);
         // escalaTextura 0 = archivo de antes: usa su escalón.
@@ -804,6 +905,9 @@ public class Trazo : MonoBehaviour
             hojaNormal = hojaNormal,
             orden = orden,
             texturaRelleno = texturaRelleno,
+            tieneEstilo = tieneEstilo && estiloTrazo != null,
+            nombresNodo = new List<string>(nombresNodo),
+            estiloTrazo = estiloTrazo != null ? estiloTrazo.Copia() : null,
             velocidadTextura = velocidadTextura,
             escalaTextura = escalaTextura,
             tamanoTextura = EscalonMasCercano(escalaTextura),

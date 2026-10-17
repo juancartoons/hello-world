@@ -5,6 +5,8 @@ using UnityEngine;
 // donde quieras; se queda mirándote. Mientras lo llevas, pellizca también con la izquierda y separa o junta las
 // manos = tamaño (como con el asa de la mesa de trabajo).
 // Lo usan Mis archivos, la ventanita de fondos 360 y el buscador de imágenes (la mesa de trabajo tiene lo suyo).
+// v52: también con el gesto de NODOS en la izquierda (medio + pulgar): toca el panel con el índice derecho y llévalo;
+// al soltar la izquierda, el panel se queda ahí.
 public class ArrastrePanel : MonoBehaviour
 {
     [Tooltip("Centro del área que se puede agarrar (coordenadas del panel)")]
@@ -14,7 +16,7 @@ public class ArrastrePanel : MonoBehaviour
     public System.Func<bool> puede;          // si ahora se puede agarrar (null = sí)
 
     static readonly List<ArrastrePanel> activos = new List<ArrastrePanel>();
-    bool agarrado, escalando;
+    bool agarrado, escalando, conNodos;
     Vector3 desfase;
     float escalaInicio = 1f, distanciaInicio;
 
@@ -52,6 +54,20 @@ public class ArrastrePanel : MonoBehaviour
             return;
         var der = control.Der;
         var izq = control.Izq;
+        if (conNodos)
+        {
+            if (control.GestoIzq != ControlManos.Gesto.Nodos)
+            {
+                conNodos = false;
+                control.Ocupado = false;
+                return;
+            }
+            if (!der.valida)
+                return;
+            transform.position = der.indice + desfase;
+            Mirarte(control);
+            return;
+        }
         if (agarrado)
         {
             if (!der.valida || !der.pellizco)
@@ -88,6 +104,14 @@ public class ArrastrePanel : MonoBehaviour
             }
             return;
         }
+        if (der.valida && !control.Ocupado && control.GestoIzq == ControlManos.Gesto.Nodos && !BotonTocable.DedoCerca
+            && (puede == null || puede()) && Dentro(der.indice))
+        {
+            conNodos = true;
+            desfase = transform.position - der.indice;
+            control.Ocupado = true;
+            return;
+        }
         if (!der.valida || !der.empezoPellizco || control.Ocupado || control.GestoIzq != ControlManos.Gesto.Ninguno)
             return;
         if (BotonTocable.DedoCerca || (puede != null && !puede()))
@@ -100,8 +124,25 @@ public class ArrastrePanel : MonoBehaviour
         control.Ocupado = true;
     }
 
+    void Mirarte(ControlManos control)
+    {
+        var cab = control.Cabeza;
+        if (cab == null)
+            return;
+        Vector3 mirar = transform.position - cab.position;
+        if (mirar.sqrMagnitude > 1e-6f)
+            transform.rotation = Quaternion.LookRotation(mirar, Vector3.up);
+    }
+
     void Soltar()
     {
+        if (conNodos)
+        {
+            conNodos = false;
+            var c = ControlManos.Instancia;
+            if (c != null)
+                c.Ocupado = false;
+        }
         if (!agarrado)
             return;
         agarrado = false;

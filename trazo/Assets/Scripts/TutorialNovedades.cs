@@ -30,7 +30,7 @@ public class TutorialNovedades : TarjetaTutorial
     readonly List<Vector3> otra = new List<Vector3>();
     readonly List<Vector3> tramo = new List<Vector3>();
 
-    protected override int Paginas => 16;
+    protected override int Paginas => 17;
 
     protected override void ArmarExtra()
     {
@@ -68,7 +68,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 12: return Tx("13 · Gaze and the syringe finger", "13 · La mirada y el dedo jeringa");
             case 13: return Tx("14 · Desert sunset and layers", "14 · Atardecer en el desierto y capas");
             case 14: return Tx("15 · Frame by frame and your voice", "15 · Cuadro a cuadro y tu voz");
-            default: return Tx("16 · Gradient, pencil and two hands", "16 · Degradado, lápiz y dos manos");
+            case 15: return Tx("16 · Gradient, pencil and two hands", "16 · Degradado, lápiz y dos manos");
+            default: return Tx("17 · Invisible head, Exit and timeline zoom", "17 · Cabeza invisible, Salir y zoom del timeline");
         }
     }
 
@@ -126,6 +127,10 @@ public class TutorialNovedades : TarjetaTutorial
                     "ATARDECER EN EL DESIERTO: un fondo vivo nuevo: dunas a tu alrededor con la luz dorada del sol bajito, sombras violeta, un cielo rosado y morado con nubes finas, las primeras estrellas y el viento levantando polvo a lo lejos. Di \"desierto\". CAPAS: cada una muestra su miniatura a la izquierda; di \"capa 2\" para ir a ella; deja el dedo quieto en el nombre para cambiarlo; borra con el basurerito (toca dos veces). La cámara es su propia capa (\"+ Cámara\" = otra). Las persianas se abren con cualquier mano, haga lo que haga la otra.");
             default:
                 return Tx(
+                    "INVISIBLE HEAD (Animate page): draw a head (front or profile) and turn it; \"Use this view\" moves YOUR SAME NODES into that view on the current frame, so two views MORPH. \"Save view\" keeps it in a library (like Flash's Ctrl+L). Name nodes by voice (\"nose tip\", \"chin\"...) or with \"Name node\"; \"Labels\" shows what the app recognizes (faint with \"?\" = guessed). EXIT (watch): saves and closes your drawing; with a blank sheet, it closes the app. \"+ New\" in My files. TIMELINE: pinch the two side handles with both hands and spread = bigger frames; cells shaded every 5. THICKNESS without circles: pinch with the right and drag up/down. Move any panel: left nodes gesture + touch it with your right index. Voice: \"frame 12\", \"delete frame 12\", \"delete layer 2\", \"back\", \"control z\", \"select all\", \"deselect\", \"turn off voice\", \"copy style\", \"paste style\".",
+                    "CABEZA INVISIBLE (página Animar): dibuja una cabeza (de frente o de perfil) y gírala; \"Usar esta vista\" lleva TUS MISMOS NODOS a esa vista en el fotograma actual, así entre dos vistas hay MORPH. \"Guardar vista\" la deja en una biblioteca (como Ctrl+L en Flash). Nombra nodos con la voz (\"punta de nariz\", \"barbilla\"...) o con \"Nombrar nodo\"; \"Etiquetas\" muestra lo que la app reconoce (clarito con \"?\" = adivinado). SALIR (reloj): guarda y cierra tu dibujo; con la hoja en blanco, cierra la app. \"+ Nuevo\" en Mis archivos. TIMELINE: pellizca las dos agarraderas de los lados con las dos manos y sepáralas = cuadros más grandes; casillas sombreadas cada 5. GROSOR sin círculos: pellizca con la derecha y arrastra arriba/abajo. Mover cualquier panel: gesto de nodos izquierdo + tócalo con el índice derecho. Voz: \"fotograma 12\", \"borra fotograma 12\", \"borra capa 2\", \"atrás\", \"control z\", \"selecciona todo\", \"quita la selección\", \"apaga la voz\", \"copiar estilo\", \"pegar estilo\".");
+            case 15:
+                return Tx(
                     "GRADIENT (replaces the bucket in FILL): pick a color, then another, and touch inside a shape: it goes from the first (top) to the second (bottom); tap again for center-to-edge. Line TEXTURE: Smooth, PENCIL (paper grain, rough edge, boiling like hand-drawn frames) or strands; LIFE: Still, Soft, Jittery, Strong. NODES: keep the left nodes gesture, choose nodes with a loop and PINCH with the right in the air: spread = size, turn = rotate, move both = move. In THICKNESS the right index also loops several nodes. \"Paste\" appears where you look. Camera keys (diamonds) can be dragged; twist your wrist while holding the camera to change where it aims.",
                     "DEGRADADO (reemplaza la cubeta en RELLENO): elige un color, luego otro, y toca dentro de una forma: va del primero (arriba) al segundo (abajo); tócalo otra vez para del centro hacia afuera. TEXTURA de la línea: Lisa, LÁPIZ (grano de papel, orilla irregular, hervida como cuadros a mano) o hebras; VIDA: Quieta, Suave, Nerviosa, Fuerte. NODOS: sin soltar la izquierda, elige nodos con un lazo y PELLIZCA con la derecha en el aire: separar = tamaño, girar = rotar, mover las dos = mover. En GROSOR el índice derecho también hace lazo de varios nodos. \"Pegar\" sale donde miras. Las claves de la cámara (rombitos) se arrastran; gira la muñeca al sostener la cámara para cambiar a dónde apunta.");
             case 14:
@@ -181,7 +186,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 12: AnimarVidrio(t); break;
             case 13: AnimarVivos(t); break;
             case 14: AnimarCuadros(t); break;
-            default: AnimarVidrio(t); break;
+            case 15: AnimarVidrio(t); break;
+            default: AnimarBarra(t); break;
         }
     }
 

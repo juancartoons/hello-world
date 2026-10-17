@@ -174,7 +174,9 @@ public class PanelArriba : MonoBehaviour
     bool plegado = true;   // las páginas guardadas: solo se asoman las pestañas
     const string ClavePlegado = "jcartoons_panel_plegado", ClavePagina = "jcartoons_panel_pagina";
 
-    int Ventana => Ventanas[zoom] <= 0 ? Animacion.TotalFotogramas : Mathf.Min(Ventanas[zoom], Animacion.TotalFotogramas);
+    int Ventana => ventanaLibre > 0 ? Mathf.Clamp(ventanaLibre, 5, Mathf.Max(5, Animacion.TotalFotogramas))
+                 : Ventanas[zoom] <= 0 ? Animacion.TotalFotogramas : Mathf.Min(Ventanas[zoom], Animacion.TotalFotogramas);
+    int ventanaLibre;      // v52: el zoom con las agarraderas (0 = el del botón Zoom)
 
     // ---------- Ayuda ----------
     // El botón "?" crea una copia exacta de este panel, abajo y en azul. En la copia, cada botón
@@ -607,6 +609,7 @@ public class PanelArriba : MonoBehaviour
     void CambiarZoom()
     {
         zoom = (zoom + 1) % Ventanas.Length;
+        ventanaLibre = 0;
         inicioVentana = 0;
         AjustarVentana(true);
         if (dibujo != null)
@@ -789,7 +792,7 @@ public class PanelArriba : MonoBehaviour
                 Seguir(cabeza);
             Colocar(cabeza, 1f - Mathf.Exp(-suavizado * Time.deltaTime));
         }
-        if (!arrastrando)
+        if (!arrastrando && !arrastrandoNodos && !RevisarZoomBarra())
             RevisarBarra();
         Refrescar();
     }
@@ -1012,6 +1015,34 @@ public class PanelArriba : MonoBehaviour
             return;
         var der = control.Der;
         var izq = control.Izq;
+        // v52: con el gesto de NODOS en la izquierda (medio + pulgar), toca la mesa con el índice derecho y llévala;
+        // al soltar la izquierda se queda ahí.
+        if (arrastrandoNodos)
+        {
+            if (control.GestoIzq != ControlManos.Gesto.Nodos)
+            {
+                arrastrandoNodos = false;
+                control.Ocupado = false;
+                return;
+            }
+            if (der.valida)
+            {
+                transform.position = der.indice + desfaseAsa;
+                Vector3 m = transform.position - cabeza.position;
+                if (m.sqrMagnitude > 1e-6f)
+                    transform.rotation = Quaternion.LookRotation(m, Vector3.up);
+            }
+            return;
+        }
+        if (!arrastrando && der.valida && !control.Ocupado && control.GestoIzq == ControlManos.Gesto.Nodos
+            && !BotonTocable.DedoCerca && Contiene(der.indice))
+        {
+            arrastrandoNodos = true;
+            anclado = true;
+            desfaseAsa = transform.position - der.indice;
+            control.Ocupado = true;
+            return;
+        }
         if (arrastrando)
         {
             if (!der.valida || !der.pellizco)
@@ -1080,8 +1111,11 @@ public class PanelArriba : MonoBehaviour
                && Mathf.Abs(l.y - a.y) < 0.025f && Mathf.Abs(l.z) < 0.05f;
     }
 
+    bool arrastrandoNodos;
+
     void SoltarAsa()
     {
+        arrastrandoNodos = false;
         arrastrando = false;
         escalando = false;
         if (control != null)
@@ -1090,7 +1124,7 @@ public class PanelArriba : MonoBehaviour
 
     void OnDisable()
     {
-        if (arrastrando)
+        if (arrastrando || arrastrandoNodos)
             SoltarAsa();
     }
 
@@ -1371,6 +1405,179 @@ public class PanelArriba : MonoBehaviour
         cabezal.localScale = barraSujeta ? new Vector3(escalaCabezal.x * 1.4f, escalaCabezal.y * 1.7f, escalaCabezal.z) : escalaCabezal;
     }
 
+    // ---------- v52: las AGARRADERAS del zoom y las CASILLAS (como en Flash) ----------
+    // Dos barritas verticales a los lados de la línea de tiempo. Pellízcalas con LAS DOS MANOS (una cada una) y
+    // sepáralas: los cuadros crecen (caben menos); júntalas: se achican (caben más). Mientras no abras los dos
+    // pellizcos, sigue agarrada aunque tus manos se alejen de la barra.
+    Transform agarraIzq, agarraDer;
+    bool zoomeando;
+    float zoomDistancia;
+    int zoomVentana;
+    Vector3 ultimoIzq, ultimoDer;
+    MeshFilter casillas;
+    int casillasInicio = -1, casillasVentana = -1;
+
+    bool RevisarZoomBarra()
+    {
+        if (esAyuda || barra == null || control == null || agarraIzq == null || !agarraIzq.gameObject.activeInHierarchy)
+            return false;
+        var izq = control.Izq;
+        var der = control.Der;
+        if (zoomeando)
+        {
+            barraCuadro = Time.frameCount;
+            bool i = izq.valida && izq.pellizco, d = der.valida && der.pellizco;
+            if (!i && !d)
+            {
+                zoomeando = false;
+                control.Ocupado = false;
+                return true;
+            }
+            if (i) ultimoIzq = izq.PuntoPellizco;
+            if (d) ultimoDer = der.PuntoPellizco;
+            float dist = Vector3.Distance(ultimoIzq, ultimoDer);
+            int v = Mathf.RoundToInt(zoomVentana * zoomDistancia / Mathf.Max(0.01f, dist));
+            v = Mathf.Clamp(v, 5, Mathf.Max(5, Animacion.TotalFotogramas));
+            if (v != Ventana || ventanaLibre == 0)
+            {
+                ventanaLibre = v;
+                int f = animacion != null ? animacion.Fotograma : 0;
+                inicioVentana = Mathf.Clamp(f - v / 2, 0, Mathf.Max(0, Animacion.TotalFotogramas - v));
+            }
+            return true;
+        }
+        if (!izq.valida || !der.valida || !izq.pellizco || !der.pellizco || !(izq.empezoPellizco || der.empezoPellizco))
+            return false;
+        const float cerca = 0.045f;
+        bool normal = Vector3.Distance(izq.PuntoPellizco, agarraIzq.position) < cerca && Vector3.Distance(der.PuntoPellizco, agarraDer.position) < cerca;
+        bool cruzado = Vector3.Distance(izq.PuntoPellizco, agarraDer.position) < cerca && Vector3.Distance(der.PuntoPellizco, agarraIzq.position) < cerca;
+        if (!normal && !cruzado)
+            return false;
+        zoomeando = true;
+        ultimoIzq = izq.PuntoPellizco;
+        ultimoDer = der.PuntoPellizco;
+        zoomDistancia = Mathf.Max(0.02f, Vector3.Distance(ultimoIzq, ultimoDer));
+        zoomVentana = Ventana;
+        control.Ocupado = true;
+        barraCuadro = Time.frameCount;
+        control.SonidoBurbuja(barra.position);
+        return true;
+    }
+
+    void RefrescarAgarraderas()
+    {
+        if (agarraIzq == null)
+        {
+            agarraIzq = Agarradera("AgarraderaIzq");
+            agarraDer = Agarradera("AgarraderaDer");
+        }
+        bool ver = barra.gameObject.activeInHierarchy;
+        if (agarraIzq.gameObject.activeSelf != ver)
+        {
+            agarraIzq.gameObject.SetActive(ver);
+            agarraDer.gameObject.SetActive(ver);
+        }
+        if (!ver)
+            return;
+        float lado = 0.014f / Mathf.Max(0.01f, barra.lossyScale.x);
+        agarraIzq.position = barra.TransformPoint(new Vector3(-0.5f - lado, 0f, 0f));
+        agarraDer.position = barra.TransformPoint(new Vector3(0.5f + lado, 0f, 0f));
+        float grande = zoomeando ? 1.3f : 1f;
+        agarraIzq.localScale = new Vector3(0.006f, 0.04f, 0.006f) * grande;
+        agarraDer.localScale = agarraIzq.localScale;
+    }
+
+    Transform Agarradera(string nombre)
+    {
+        var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        go.name = nombre;
+        Destroy(go.GetComponent<Collider>());
+        go.transform.SetParent(contenido.transform, false);
+        go.transform.localRotation = Quaternion.identity;
+        var r = go.GetComponent<Renderer>();
+        var rc = cabezal != null ? cabezal.GetComponent<Renderer>() : null;
+        if (rc != null)
+            r.sharedMaterial = rc.sharedMaterial;
+        else if (materialClave != null)
+            r.sharedMaterial = materialClave;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
+        return go.transform;
+    }
+
+    // Una casilla por cuadro (con rayitas entre ellas) y una sombreada cada 5, como en Flash. Con muchos cuadros
+    // (más de 150 en la barra) no caben: se esconden.
+    void RefrescarCasillas()
+    {
+        if (casillas == null)
+        {
+            var go = new GameObject("Casillas");
+            go.transform.SetParent(barra, false);
+            go.transform.localPosition = new Vector3(0f, 0f, -0.55f);
+            go.transform.localRotation = Quaternion.identity;
+            go.transform.localScale = Vector3.one;
+            casillas = go.AddComponent<MeshFilter>();
+            casillas.sharedMesh = new Mesh { name = "Casillas" };
+            var mr = go.AddComponent<MeshRenderer>();
+            var baseMat = barra.GetComponent<Renderer>().sharedMaterial;
+            var rayas = new Material(baseMat);
+            var sombra = new Material(baseMat);
+            PintarMaterial(rayas, new Color(0.35f, 0.35f, 0.4f));
+            PintarMaterial(sombra, new Color(0.72f, 0.72f, 0.76f));
+            mr.sharedMaterials = new[] { sombra, rayas };
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows = false;
+        }
+        int v = Ventana;
+        if (v == casillasVentana && inicioVentana == casillasInicio)
+            return;
+        casillasVentana = v;
+        casillasInicio = inicioVentana;
+        var mesh = casillas.sharedMesh;
+        mesh.Clear();
+        bool ver = v <= 150;
+        casillas.gameObject.SetActive(ver);
+        if (!ver)
+            return;
+        var verts = new List<Vector3>();
+        var sombras = new List<int>();
+        var rayasT = new List<int>();
+        float w = 1f / Mathf.Max(1, v - 1);
+        float grosor = Mathf.Min(w * 0.12f, 0.004f);
+        for (int k = 0; k < v; k++)
+        {
+            int f = inicioVentana + k;
+            float x = k * w - 0.5f;
+            float x0 = Mathf.Max(-0.5f, x - w * 0.5f), x1 = Mathf.Min(0.5f, x + w * 0.5f);
+            if ((f + 1) % 5 == 0)
+                Cuadro(verts, sombras, x0, x1, -0.5f, 0.5f);
+            if (k > 0)
+                Cuadro(verts, rayasT, x0 - grosor, x0 + grosor, -0.5f, 0.5f);
+        }
+        mesh.SetVertices(verts);
+        mesh.subMeshCount = 2;
+        mesh.SetTriangles(sombras, 0);
+        mesh.SetTriangles(rayasT, 1);
+        mesh.RecalculateBounds();
+    }
+
+    static void Cuadro(List<Vector3> verts, List<int> tris, float x0, float x1, float y0, float y1)
+    {
+        int b = verts.Count;
+        verts.Add(new Vector3(x0, y0, 0f));
+        verts.Add(new Vector3(x0, y1, 0f));
+        verts.Add(new Vector3(x1, y1, 0f));
+        verts.Add(new Vector3(x1, y0, 0f));
+        tris.Add(b); tris.Add(b + 1); tris.Add(b + 2);
+        tris.Add(b); tris.Add(b + 2); tris.Add(b + 3);
+    }
+
+    static void PintarMaterial(Material m, Color c)
+    {
+        if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
+        if (m.HasProperty("_Color")) m.SetColor("_Color", c);
+    }
+
     // La ventana sigue al cabezal: si se sale, se vuelve a centrar.
     void AjustarVentana(bool forzar)
     {
@@ -1482,13 +1689,15 @@ public class PanelArriba : MonoBehaviour
             for (int i = nc; i < marcasCamara.Count; i++)
                 if (marcasCamara[i].gameObject.activeSelf)
                     marcasCamara[i].gameObject.SetActive(false);
+            RefrescarCasillas();
+            RefrescarAgarraderas();
 
             if (textoFotograma != null)
             {
                 string texto = "Fotograma " + (animacion.Fotograma + 1) + " / " + Animacion.TotalFotogramas;
                 if (animacion.EsClave(animacion.Fotograma))
                     texto += "  (clave de " + (dibujo != null ? dibujo.CapaActual.nombre : "") + ")";
-                if (Ventanas[zoom] > 0)
+                if (Ventanas[zoom] > 0 || ventanaLibre > 0)
                     texto += "   ·   barra " + (inicioVentana + 1) + "-" + (inicioVentana + Ventana);
                 textoFotograma.text = Idioma.T(texto);
             }
@@ -1502,7 +1711,7 @@ public class PanelArriba : MonoBehaviour
                 btnFps.PonerTexto(animacion.fotogramasPorSegundo + " fps");
         }
         if (btnZoom != null)
-            btnZoom.PonerTexto(Ventanas[zoom] <= 0 ? "Zoom: todo" : "Zoom: " + Ventanas[zoom]);
+            btnZoom.PonerTexto(ventanaLibre > 0 ? "Zoom: " + Ventana : Ventanas[zoom] <= 0 ? "Zoom: todo" : "Zoom: " + Ventanas[zoom]);
         if (btnAyuda != null)
             btnAyuda.Marcar(ayuda != null && ayudaAbierta);
         if (btnSeguir != null)

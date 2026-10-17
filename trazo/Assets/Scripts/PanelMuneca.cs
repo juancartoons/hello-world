@@ -139,6 +139,7 @@ public class PanelMuneca : MonoBehaviour
             btnColores.PonerTexto("Paleta");                        // igual que su palabra de voz
 
         CrearIconoIman();
+        CrearBotonesV52();
         grabador = FindFirstObjectByType<GrabadorProceso>();
         CrearFilaRec();
         if (contenido != null)
@@ -433,5 +434,79 @@ public class PanelMuneca : MonoBehaviour
             ocultarAvisoEn = Time.time + 1.6f;
             ActualizarAviso();
         }
+    }
+
+    // ---------- v52: Salir y los iconos de copiar / pegar ----------
+    BotonTocable btnSalir;
+
+    void CrearBotonesV52()
+    {
+        if (contenido == null || btnColores == null)
+            return;
+        // SALIR: guarda y cierra el dibujo (queda una hoja nueva). Con la hoja en blanco, cierra la app.
+        btnSalir = BotonRec(contenido.transform, "Salir", new Vector3(0f, -0.139f, 0f), 0.06f);
+        btnSalir.alTocar.AddListener(Salir);
+        BotonTocable.PonerNombre(btnSalir, "Salir");
+        // Copiar y pegar: dos iconos pequeñitos arriba, entre el ? y la X.
+        var oscuro = new Material(btnColores.materialNormal);
+        Pintar(oscuro, new Color(0.22f, 0.22f, 0.26f));
+        var copiar = BotonIcono(new Vector3(-0.013f, 0.09f, 0f));
+        copiar.alTocar.AddListener(() => { if (control != null) control.CopiarBoton(); });
+        BotonTocable.PonerVoz(copiar, ControlManos.ComandoVoz.Copiar);
+        // Copiar: dos hojitas, una encima de la otra.
+        Marco(copiar.transform.parent, copiar.transform.localPosition + new Vector3(-0.0012f, 0.0012f, -0.0046f), 0.0062f, 0.0074f, oscuro);
+        Marco(copiar.transform.parent, copiar.transform.localPosition + new Vector3(0.0014f, -0.0014f, -0.0050f), 0.0062f, 0.0074f, oscuro);
+        var pegar = BotonIcono(new Vector3(0.013f, 0.09f, 0f));
+        pegar.alTocar.AddListener(() => { if (control != null) control.PegarBoton(); });
+        BotonTocable.PonerVoz(pegar, ControlManos.ComandoVoz.Pegar);
+        // Pegar: una tablita con su pinza arriba.
+        Marco(pegar.transform.parent, pegar.transform.localPosition + new Vector3(0f, -0.0006f, -0.0046f), 0.0074f, 0.0088f, oscuro);
+        Barra(pegar.transform.parent, pegar.transform.localPosition + new Vector3(0f, 0.0042f, -0.0048f), new Vector2(0.0036f, 0.0016f), oscuro);
+    }
+
+    BotonTocable BotonIcono(Vector3 pos)
+    {
+        var b = BotonRec(contenido.transform, "", pos, 0.016f);
+        b.transform.localScale = new Vector3(0.016f, 0.016f, 0.008f);
+        return b;
+    }
+
+    // Un cuadrito hueco (4 barritas).
+    static void Marco(Transform padre, Vector3 centro, float ancho, float alto, Material m)
+    {
+        const float g = 0.0009f;
+        Barra(padre, centro + new Vector3(0f, alto * 0.5f, 0f), new Vector2(ancho, g), m);
+        Barra(padre, centro - new Vector3(0f, alto * 0.5f, 0f), new Vector2(ancho, g), m);
+        Barra(padre, centro + new Vector3(ancho * 0.5f, 0f, 0f), new Vector2(g, alto), m);
+        Barra(padre, centro - new Vector3(ancho * 0.5f, 0f, 0f), new Vector2(g, alto), m);
+    }
+
+    static void Barra(Transform padre, Vector3 pos, Vector2 tam, Material m)
+    {
+        var cubo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        Destroy(cubo.GetComponent<Collider>());
+        cubo.name = "Icono";
+        cubo.transform.SetParent(padre, false);
+        cubo.transform.localPosition = pos;
+        cubo.transform.localScale = new Vector3(tam.x, tam.y, 0.0012f);
+        var r = cubo.GetComponent<Renderer>();
+        r.sharedMaterial = m;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
+    }
+
+    void Salir()
+    {
+        if (dibujo == null)
+            return;
+        if (dibujo.HayArchivoAbierto)
+        {
+            dibujo.ArchivoNuevo();
+            Refrescar();
+            return;
+        }
+        // Ya no hay nada abierto: cierra la app.
+        Mensaje(Idioma.T("Hasta pronto"));
+        Application.Quit();
     }
 }

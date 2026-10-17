@@ -41,6 +41,11 @@ public class DatosTrazo
     public int degradado;
     public Color colorFondo2;
     public Vector3 degradadoDir = Vector3.down;
+    // v52: el estilo propio de la línea (textura, vida, lápiz...). Sin él, sigue el de su capa.
+    public bool tieneEstilo;
+    public EstiloTrazo estiloTrazo;
+    // v52: nombres de nodos ("punta de nariz"...) para la cabeza invisible: "índice:nombre".
+    public List<string> nombresNodo = new List<string>();
 }
 
 [System.Serializable]
@@ -74,6 +79,8 @@ public class DatosCapa
     public bool cuadroACuadro;
     // v49: textura de la línea: 0 lisa (tinta), 1 lápiz (grano, orilla irregular, hervida).
     public int texturaLinea;
+    // v52: los ajustes del lápiz (de 0 a 9; 5 = normal), para las líneas nuevas de esta capa.
+    public int lapizGrano = 5, lapizDensidad = 5, lapizBorde = 5, lapizAncho = 5, lapizHervido = 5;
 
     public DatosCapa Copia()
     {
@@ -277,6 +284,7 @@ public class Dibujo : MonoBehaviour
         if (animacion == null)
             animacion = GetComponent<Animacion>();
         Trazo.estiloCapa = EstiloDe;
+        Trazo.estiloPropio = EstiloDesde;
         if (temblor == null)
             temblor = GetComponent<Temblor>();
         if (temblor == null)
@@ -716,7 +724,14 @@ public class Dibujo : MonoBehaviour
     // Cómo se ven las líneas vivas de una capa (lo usa Trazo al armar su malla).
     public Trazo.EstiloVivo EstiloDe(int capa)
     {
-        var c = DatosDeCapa(capa);
+        return EstiloDesde(EstiloTrazo.DesdeCapa(DatosDeCapa(capa)));
+    }
+
+    // v52: el estilo vivo desde un estilo de línea (el propio de la línea o el de su capa).
+    public Trazo.EstiloVivo EstiloDesde(EstiloTrazo c)
+    {
+        if (c == null)
+            c = new EstiloTrazo();
         var e = new Trazo.EstiloVivo();
         e.hebras = Mathf.Clamp(c.hebras, 1, 5);
         e.grosorHebra = e.hebras > 1 ? Mathf.Clamp(c.grosorHebra, 0.15f, 1f) : 1f;
@@ -726,7 +741,8 @@ public class Dibujo : MonoBehaviour
             c.grosorVivo ? 1f : 0f,
             Velocidades[Mathf.Clamp(c.velocidad, 0, Velocidades.Length - 1)]);
         // v49: b.z = textura de la línea (1 = lápiz).
-        e.b = new Vector4(c.ciclo3 ? 1f : 0f, Frecuencias[Mathf.Clamp(c.suavidad, 0, Frecuencias.Length - 1)], c.texturaLinea == 1 ? 1f : 0f, 0f);
+        e.b = new Vector4(c.ciclo3 ? 1f : 0f, Frecuencias[Mathf.Clamp(c.suavidad, 0, Frecuencias.Length - 1)], c.texturaLinea == 1 ? 1f : 0f,
+                          c.LapizEmpacado());   // v52: b.w = los ajustes del lápiz
         return e;
     }
 
@@ -1066,6 +1082,72 @@ public class Dibujo : MonoBehaviour
         grupo.Clear();
     }
 
+    // v52: "selecciona todo" (las líneas de la capa en la que estás) y "quita la selección".
+    public int SeleccionarTodo()
+    {
+        Seleccionar(null);
+        int n = 0;
+        foreach (var t in trazos)
+            if (Editable(t) && !t.oculto && t.capa == capaActual)
+            {
+                AlternarEnGrupo(t);
+                n++;
+            }
+        return n;
+    }
+
+    // v52: el estilo de la paleta (la capa) pasa a las líneas seleccionadas.
+    public int AplicarEstiloASeleccion()
+    {
+        var sel = Seleccionadas();
+        if (sel.Count == 0)
+            return 0;
+        var e = EstiloTrazo.DesdeCapa(CapaActual);
+        bool antes = Trazo.silenciar;
+        Trazo.silenciar = true;
+        foreach (var t in sel)
+        {
+            t.tieneEstilo = true;
+            t.estiloTrazo = e.Copia();
+            t.Reconstruir(false);
+        }
+        Trazo.silenciar = antes;
+        Trazo.huboCambio = false;
+        HayCambios = true;
+        return sel.Count;
+    }
+
+    // v52: pone un estilo en unas líneas (pegar estilo).
+    public void PonerEstilo(List<Trazo> lineas, EstiloTrazo e)
+    {
+        if (e == null || lineas == null || lineas.Count == 0)
+            return;
+        GuardarParaDeshacer();
+        bool antes = Trazo.silenciar;
+        Trazo.silenciar = true;
+        foreach (var t in lineas)
+            if (t != null)
+            {
+                t.tieneEstilo = true;
+                t.estiloTrazo = e.Copia();
+                t.Reconstruir(false);
+            }
+        Trazo.silenciar = antes;
+        Trazo.huboCambio = false;
+        HayCambios = true;
+        Avisar();
+    }
+
+    // El estilo con que se ve una línea (el suyo o el de su capa).
+    public EstiloTrazo EstiloDeLinea(Trazo t)
+    {
+        if (t == null)
+            return null;
+        if (t.tieneEstilo && t.estiloTrazo != null)
+            return t.estiloTrazo.Copia();
+        return EstiloTrazo.DesdeCapa(DatosDeCapa(t.capa));
+    }
+
     public void Seleccionar(Trazo t)
     {
         LimpiarGrupo();
@@ -1094,6 +1176,9 @@ public class Dibujo : MonoBehaviour
         t.id = siguienteId++;
         t.capa = capaActual;
         t.color = ColorNuevo;
+        // v52: la línea nueva guarda el estilo actual (cambiarlo después no la cambia, salvo si la seleccionas).
+        t.tieneEstilo = true;
+        t.estiloTrazo = EstiloTrazo.DesdeCapa(capas[capaActual]);
         // Dibujada en Plano 2D: queda encantada en la hoja de su capa. Las nuevas salen al frente.
         if (PlanoActivo)
             t.Encantar(planoPunto, planoNormal);
@@ -1145,6 +1230,11 @@ public class Dibujo : MonoBehaviour
         t.capa = capaActual;
         t.color = d.color;
         t.AplicarPropiedades(d);
+        if (!t.tieneEstilo)
+        {
+            t.tieneEstilo = true;
+            t.estiloTrazo = EstiloTrazo.DesdeCapa(capas[capaActual]);
+        }
         t.orden = SiguienteOrden(capaActual);
         AplicarCapaVisual(t);
         t.AplicarPose(d, null, 0f);
@@ -2101,6 +2191,32 @@ public class Dibujo : MonoBehaviour
         Mensaje("Borrado (el pulgar a la izquierda lo recupera)");
     }
 
+    // v52: ¿hay algo dibujado o un archivo abierto? (si no, el botón Salir cierra la app)
+    public bool HayArchivoAbierto =>
+        trazos.Count > 0 || !string.IsNullOrEmpty(NombreArchivo) || (hojas != null && hojas.HayAlgo) || (figuras != null && figuras.HayFiguras);
+
+    // v52: SALIR / "+ Nuevo": guarda el dibujo abierto (autoguardado, sin preguntar) y deja una hoja nueva en blanco.
+    public void ArchivoNuevo()
+    {
+        if (Titere.Activo)
+        {
+            Mensaje("Primero suelta los personajes");
+            return;
+        }
+        bool hayAlgo = trazos.Count > 0 || (hojas != null && hojas.HayAlgo) || (figuras != null && figuras.HayFiguras);
+        if (hayAlgo && (HayCambios || string.IsNullOrEmpty(NombreArchivo)))
+            GuardarProyecto(true);
+        string nombre = NombreArchivo;
+        Aplicar(new DatosDibujo(), false);
+        historial.Clear();
+        rehacer.Clear();
+        rehacerRespaldo.Clear();
+        NombreArchivo = "";
+        HayCambios = false;
+        Avisar();
+        Mensaje(hayAlgo && !string.IsNullOrEmpty(nombre) ? "Guardado: " + nombre + " · hoja nueva" : "Hoja nueva");
+    }
+
     // ---------- Tutorial ----------
     // Antes del tutorial se aparta TODO el dibujo (queda la hoja en blanco) y al terminar vuelve tal cual,
     // sin las líneas del tutorial y sin que "deshacer" las traiga de vuelta.
@@ -2160,7 +2276,7 @@ public class Dibujo : MonoBehaviour
     public bool HayCambios
     {
         get { return hayCambios; }
-        private set
+        set
         {
             hayCambios = value;
             if (value)

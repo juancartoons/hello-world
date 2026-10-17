@@ -64,6 +64,7 @@ Shader "TrazoVR/Linea"
                 float lado        : TEXCOORD3; // v49: de -1 a 1 a lo ancho de la cinta (0 = el centro)
                 float lapiz       : TEXCOORD4; // v49: 1 = textura de lápiz
                 float3 grano      : TEXCOORD5; // v49: dónde está (en el dibujo) para el grano del papel
+                float4 ajusteLapiz : TEXCOORD6; // v52: grano, densidad, orilla borrosa, hervido (de 0 a 1; 0.55 = normal)
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -92,9 +93,12 @@ Shader "TrazoVR/Linea"
                     float medio = abs(v.uv.x) * escala;
                     posWS += TrazoHebra(original, v.uv2.x, v.uv2.y, medio, v.vivoA, v.vivoB, fase);
                     float ancho = v.uv.x * escala * TrazoGrosorVivo(original, v.uv2.x, v.vivoA, v.vivoB, fase);
-                    // v50: el lápiz es un poco más ancho (sus orillas se deshacen en granitos).
+                    // v50: el lápiz es un poco más ancho (sus orillas se deshacen en granitos). v52: su ancho se ajusta.
                     if (v.vivoB.z > 0.5)
-                        ancho *= 1.35;
+                    {
+                        float anchoL = v.vivoB.w > 0.5 ? floor(fmod(v.vivoB.w / 1000.0, 10.0)) / 9.0 : 0.555;
+                        ancho *= lerp(1.0, 2.0, anchoL);
+                    }
                     // v40: la tapa del halo en las puntas (uv.y de 0.2 a 0.4) es solo del halo: aquí no se abre.
                     if (v.uv.y > 0.1)
                         ancho = 0.0;
@@ -119,6 +123,11 @@ Shader "TrazoVR/Linea"
                 o.lado = v.uv.y < 0.5 ? sign(v.uv.x) : 0.0;
                 o.lapiz = v.vivoB.z;
                 o.grano = v.positionOS.xyz;
+                // v52: los ajustes del lápiz (empacados en vivoB.w: grano + 10·densidad + 100·borde + 1000·ancho + 10000·hervido).
+                float w = v.vivoB.w;
+                o.ajusteLapiz = w > 0.5
+                    ? float4(fmod(w, 10.0), floor(fmod(w / 10.0, 10.0)), floor(fmod(w / 100.0, 10.0)), floor(fmod(w / 10000.0, 10.0))) / 9.0
+                    : float4(0.555, 0.555, 0.555, 0.555);
                 return o;
             }
 
@@ -135,7 +144,9 @@ Shader "TrazoVR/Linea"
                 // suave a 8 cuadros por segundo. Sin transparencia: el grano se hace con granitos de pixeles (tramado).
                 if (i.lapiz > 0.5)
                 {
-                    float cuadro = floor(_TrazoTiempo * 8.0);
+                    float4 aj = i.ajusteLapiz;
+                    // Hervido: de quieto (0) a 16 cuadros por segundo (el normal es unos 8).
+                    float cuadro = floor(_TrazoTiempo * aj.w * 16.0);
                     float borde = abs(i.lado);                       // 0 = centro, 1 = orilla
                     float largo = i.lugar * 420.0;                   // a lo largo de la línea
                     // Fibras: cambian rápido de lado a lado y despacio a lo largo (rayitas paralelas al trazo).
@@ -143,11 +154,12 @@ Shader "TrazoVR/Linea"
                     float fibra2 = TrazoRuido(float3(largo * 0.25, i.lado * 22.0, 11.0 + cuadro * 0.21));
                     // La presión del lápiz sube y baja a lo largo.
                     float presion = 0.72 + 0.28 * TrazoRuido(float3(largo * 0.012, 3.0, cuadro * 0.05));
-                    float cuerpo = 1.0 - smoothstep(0.25, 1.0, borde);
+                    float cuerpo = 1.0 - smoothstep(lerp(0.6, 0.02, aj.z), 1.0, borde);   // orilla más o menos borrosa
                     float densidad = cuerpo * presion * (0.45 + 0.4 * fibra + 0.25 * fibra2);
                     // Granitos del papel (por pixel, cambian con el hervido).
-                    float2 px = floor(i.positionCS.xy);
+                    float2 px = floor(i.positionCS.xy / (1.0 + aj.x * 3.0));            // granitos más grandes o finos
                     float granito = frac(sin(dot(px + cuadro * 1.7, float2(12.9898, 78.233))) * 43758.5453);
+                    densidad *= lerp(0.7, 1.4, aj.y);                                     // más o menos grafito
                     clip(densidad * 1.12 - granito * 0.8 - 0.02);
                     // Más oscuro donde hay más grafito; más claro en las orillas.
                     float tono = saturate(densidad * 1.15 - 0.05);

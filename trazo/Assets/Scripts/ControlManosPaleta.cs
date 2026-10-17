@@ -645,6 +645,24 @@ public partial class ControlManos
         };
         hijo.texto = () => Trazo.UnionesSuaves ? "Uniones: Suaves" : "Uniones: Rectas";
         hijo.tono = 0.95f;
+        // v52: AJUSTES DEL LÁPIZ (solo con la textura Lápiz): tres palancas con su perilla.
+        hijo = HijoLinea(7, null, negro);
+        var palancas = new List<Vector2[]>();
+        for (int k = 0; k < 3; k++)
+            BarraIcono(palancas, new Vector2(-0.22f, 0.16f - k * 0.16f), new Vector2(0.22f, 0.16f - k * 0.16f), 0.04f);
+        IconoPaleta(hijo.t, palancas, negro);
+        IconoPaleta(hijo.t, new List<Vector2[]> { Circulo(new Vector2(-0.08f, 0.16f), 0.06f), Circulo(new Vector2(0.1f, 0f), 0.06f),
+                                                   Circulo(new Vector2(-0.02f, -0.16f), 0.06f) }, ColorMaterial(new Color(0.96f, 0.76f, 0.2f)));
+        hijo.visible = () => dibujo.temblor != null && dibujo.temblor.Textura == 1;
+        hijo.alTocar = PanelLapiz.Abrir;
+        hijo.texto = () => "Ajustes del lápiz";
+        hijo.tono = 1.1f;
+        // v52: COLOR EN HEXADECIMAL (#FF6A00): un "#" que abre el teclado de la app.
+        hijo = HijoLinea(8, null, negro);
+        IconoPaleta(hijo.t, IconoNumeral(), negro);
+        hijo.alTocar = PedirHex;
+        hijo.texto = () => "Color hexadecimal (#)";
+        hijo.tono = 1f;
 
         // ---- RELLENO (a las 2): 3 facetas verdes.
         ramaRelleno = CrearRama("Relleno", AnguloRelleno, negro);
@@ -703,6 +721,45 @@ public partial class ControlManos
         hijo.alTocar = () => ElegirTextura(TexturaElegida, (VelocidadTexturaElegida + 1) % Trazo.VelocidadesTextura.Length);
         hijo.texto = () => "Velocidad: " + Trazo.NombresVelocidadTextura[VelocidadTexturaElegida];
         hijo.tono = 1.3f;
+        // v52: color del relleno en hexadecimal.
+        hijo = HijoRelleno(3, negro);
+        IconoPaleta(hijo.t, IconoNumeral(), negro);
+        hijo.alTocar = PedirHex;
+        hijo.texto = () => "Color hexadecimal (#)";
+        hijo.tono = 1f;
+    }
+
+    // Un "#".
+    static List<Vector2[]> IconoNumeral()
+    {
+        var n = new List<Vector2[]>();
+        BarraIcono(n, new Vector2(-0.08f, 0.24f), new Vector2(-0.12f, -0.24f), 0.06f);
+        BarraIcono(n, new Vector2(0.12f, 0.24f), new Vector2(0.08f, -0.24f), 0.06f);
+        BarraIcono(n, new Vector2(-0.22f, 0.09f), new Vector2(0.24f, 0.09f), 0.06f);
+        BarraIcono(n, new Vector2(-0.24f, -0.09f), new Vector2(0.22f, -0.09f), 0.06f);
+        return n;
+    }
+
+    // v52: escribe un color como #FF6A00 (o FF6A00): va a la línea o al relleno, según lo que esté abierto.
+    void PedirHex()
+    {
+        bool relleno = RellenoAbierto;
+        Color actual = relleno ? colorRellenoNuevo : dibujo.ColorNuevo;
+        TecladoVR.Abrir(relleno ? "Color del relleno (hexadecimal)" : "Color de la línea (hexadecimal)",
+                        "#" + ColorUtility.ToHtmlStringRGB(actual), texto =>
+        {
+            string t = (texto ?? "").Trim().Replace(" ", "");
+            if (!t.StartsWith("#"))
+                t = "#" + t;
+            Color c;
+            if (!ColorUtility.TryParseHtmlString(t, out c))
+            {
+                dibujo.Mensaje("Ese color no se entiende: escribe 6 letras o números, como #FF6A00");
+                return;
+            }
+            c.a = 1f;
+            ElegirColor(c, paleta != null ? paleta.position : Vector3.zero);
+        });
     }
 
     // Los hijos de LÍNEA bajan por la izquierda de la paleta; los de RELLENO, por la derecha.

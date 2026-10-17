@@ -875,6 +875,15 @@ public class NavegadorArchivos : MonoBehaviour
         btnMostrar.alTocar.AddListener(CambiarFiltro);
         var masImagen = Boton(fila2.transform, "+ Imagen", new Vector3(0.15f, 0.118f, 0f), new Vector2(0.08f, 0.026f));
         masImagen.alTocar.AddListener(TraerImagen);
+        // v52: "+ Nuevo": guarda el dibujo abierto y empieza una hoja en blanco.
+        var masNuevo = Boton(fila2.transform, "+ Nuevo", new Vector3(0.062f, 0.118f, 0f), new Vector2(0.08f, 0.026f));
+        masNuevo.alTocar.AddListener(() =>
+        {
+            if (dibujo == null)
+                return;
+            dibujo.ArchivoNuevo();
+            Cerrar();
+        });
         btnVerImagenes = Boton(fila2.transform, "Imágenes: ver", new Vector3(0.252f, 0.118f, 0f), new Vector2(0.1f, 0.026f));
         btnVerImagenes.alTocar.AddListener(() => { if (referencias != null) referencias.AlternarTodas(); });
 

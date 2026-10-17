@@ -247,6 +247,9 @@ public partial class ControlManos : MonoBehaviour
 
     // Gesto de grosor: grosor de las hebras (pellizco derecho en el aire) y suavizar figuras
     bool ajusteHebra;
+    // v52: grosor SIN círculos: pellizco derecho en el aire + arrastrar arriba (más grueso) o abajo (más delgado).
+    bool tintaPellizco, tintaConSeleccion, tintaCambio;
+    float alturaTinta, anchoTintaInicio, alturaBorrar;
     float hebraInicio;
     float alturaHebra;
     float suavizadoInicio;
@@ -772,6 +775,8 @@ public partial class ControlManos : MonoBehaviour
             if (!DibujoBloqueado)
                 dibujo.EmpezarGrosor();
             dialUsado = false;
+            tintaPellizco = false;
+            tintaCambio = false;
             dialPrevioValido = false;
             dialAngulo = 0f;
             dialCentro = Der.indice;
@@ -832,9 +837,11 @@ public partial class ControlManos : MonoBehaviour
         if (GestoIzq == Gesto.Grosor)
         {
             dibujo.TerminarGrosor();
-            if (dialUsado)
+            if (tintaCambio && !tintaConSeleccion)
                 dibujo.Mensaje("Líneas nuevas: " + Mathf.RoundToInt(dibujo.AnchoNuevoMundo * 1000f) + " mm");
             dialUsado = false;
+            tintaPellizco = false;
+            tintaCambio = false;
         }
         if (GestoIzq == Gesto.Transformar && caja != null)
         {
@@ -1426,6 +1433,34 @@ public partial class ControlManos : MonoBehaviour
             MostrarModoNodos(false, dibujo.Seleccion);
             return;
         }
+        if (tintaPellizco)
+        {
+            if (!Der.valida || !Der.pellizco)
+            {
+                tintaPellizco = false;
+                // Lo que se movió la izquierda mientras tanto no cuenta.
+                alturaInicialGrosor = Izq.pulgar.y - Mathf.Log(Mathf.Max(0.01f, factorGlobal)) / sensibilidadGrosor;
+            }
+            else
+            {
+                float f = Mathf.Exp((Der.PuntoPellizco.y - alturaTinta) * sensibilidadGrosor * 2f);
+                if (Mathf.Abs(Der.PuntoPellizco.y - alturaTinta) > 0.008f)
+                    tintaCambio = true;
+                if (tintaConSeleccion)
+                {
+                    // Con líneas elegidas: ellas (y la tinta nueva), como el grosor de siempre.
+                    factorGlobal = f;
+                    dibujo.AplicarFactorGrosor(f);
+                }
+                else
+                {
+                    // Sin nada elegido: solo la TINTA NUEVA (las líneas que ya están no cambian).
+                    dibujo.ElegirAnchoPincel(anchoTintaInicio * f);
+                }
+            }
+            MostrarModoNodos(false, dibujo.Seleccion);
+            return;
+        }
         if (grosorTrazo != null)
         {
             if (!Der.valida || !Der.pellizco || grosorIndice >= grosorTrazo.nodos.Count)
@@ -1477,30 +1512,24 @@ public partial class ControlManos : MonoBehaviour
                 // v49: con el índice derecho, una vuelta alrededor de varios nodos = elegirlos (como en nodos).
                 ActualizarLazo(Der.indice);
             }
-            else if (!cerca && Der.valida && Der.empezoPellizco && dibujo.temblor != null)
+            else if (!cerca && Der.valida && Der.empezoPellizco)
             {
-                if (dibujo.temblor.Hebras > 1)
+                // v52: pellizco en el aire = la tinta (sin selección, la nueva; con líneas elegidas, ellas).
+                CancelarLazo();
+                tintaPellizco = true;
+                tintaConSeleccion = dibujo.Seleccion != null;
+                alturaTinta = Der.PuntoPellizco.y;
+                anchoTintaInicio = dibujo.AnchoNuevoMundo;
+                if (!tintaConSeleccion && !Mathf.Approximately(factorGlobal, 1f))
                 {
-                    ajusteHebra = true;
-                    hebraInicio = dibujo.temblor.GrosorHebra;
-                    alturaHebra = Der.PuntoPellizco.y;
-                }
-                else
-                {
-                    dibujo.Mensaje("Primero activa las hebras (en la paleta de colores)");
+                    // Lo que se movió la mano izquierda antes no cuenta.
+                    factorGlobal = 1f;
+                    dibujo.AplicarFactorGrosor(1f);
                 }
             }
             else
             {
-                bool antes = dialUsado;
-                ActualizarDial();
-                if (dialUsado && !antes && !Mathf.Approximately(factorGlobal, 1f))
-                {
-                    // Empezaste a usar el dial: lo que se movió la mano izquierda no cuenta.
-                    factorGlobal = 1f;
-                    dibujo.AplicarFactorGrosor(1f);
-                }
-                if (!dialUsado && Izq.valida)
+                if (Izq.valida)
                 {
                     factorGlobal = Mathf.Exp((Izq.pulgar.y - alturaInicialGrosor) * sensibilidadGrosor);
                     dibujo.AplicarFactorGrosor(factorGlobal);
@@ -1544,8 +1573,7 @@ public partial class ControlManos : MonoBehaviour
         dialPrevioValido = true;
     }
 
-    // Dial del borrador: con el pellizco derecho, haz círculos pequeños (como un teléfono de disco).
-    // Como el reloj = más grande; al revés = más chico. Una vuelta = el doble.
+    // Tamaño del borrador: con el pellizco derecho, arrastra arriba (más grande) o abajo (más chico). (v52: sin círculos)
     void DialBorrador()
     {
         if (Cabeza == null)
@@ -1553,37 +1581,23 @@ public partial class ControlManos : MonoBehaviour
         Vector3 p = Der.PuntoPellizco;
         if (!dialBorrarActivo)
         {
-            // Solo al empezar el pellizco: aquí queda el centro del dial.
+            // Solo al empezar el pellizco: desde aquí se mide.
             dialBorrarActivo = true;
             dialBorrarPrevioValido = false;
             dialBorrarCentro = p;
             dialBorrarAngulo = 0f;
             tamanoBorradorInicio = tamanoBorrador;
+            alturaBorrar = p.y;
         }
-        dialBorrarCentro = Vector3.Lerp(dialBorrarCentro, p, 1f - Mathf.Exp(-1f * Time.deltaTime));
-        Vector3 eje = Cabeza.forward;
-        Vector3 r = Vector3.ProjectOnPlane(p - dialBorrarCentro, eje);
-        if (r.magnitude < 0.004f || r.magnitude > 0.08f)
+        // v52: SIN círculos: arriba = más grande, abajo = más chico.
+        float dy = p.y - alturaBorrar;
+        if (!dialBorrarUsado && Mathf.Abs(dy) > 0.008f)
+            dialBorrarUsado = true;
+        if (dialBorrarUsado)
         {
-            dialBorrarPrevioValido = false;
-            return;
+            tamanoBorrador = Mathf.Clamp(tamanoBorradorInicio * Mathf.Exp(dy * sensibilidadGrosor * 3f), 0.3f, 6f);
+            MostrarEtiqueta("Borrador x" + tamanoBorrador.ToString("0.0"));
         }
-        if (dialBorrarPrevioValido)
-        {
-            // SignedAngle es negativo cuando gira como el reloj (visto desde tus ojos).
-            float paso = -Vector3.SignedAngle(dialBorrarPrevio, r, eje);
-            if (Mathf.Abs(paso) < 45f)
-                dialBorrarAngulo += paso;
-            if (!dialBorrarUsado && Mathf.Abs(dialBorrarAngulo) > 30f)
-                dialBorrarUsado = true;
-            if (dialBorrarUsado)
-            {
-                tamanoBorrador = Mathf.Clamp(tamanoBorradorInicio * Mathf.Pow(2f, dialBorrarAngulo / 360f), 0.3f, 6f);
-                MostrarEtiqueta("Borrador x" + tamanoBorrador.ToString("0.0"));
-            }
-        }
-        dialBorrarPrevio = r;
-        dialBorrarPrevioValido = true;
     }
 
     // ---------- Borrador: puño izquierdo + tocar con el índice derecho ----------
@@ -1938,10 +1952,61 @@ public partial class ControlManos : MonoBehaviour
             lineasAsas.SetActive(hay);
         if (!hay)
             return;
+        ColorearAsas(selTrazo.color);
         mallaLineasAsas.Clear();
         mallaLineasAsas.SetVertices(puntosAsas);
         mallaLineasAsas.SetIndices(indicesAsas, MeshTopology.Lines, 0);
         mallaLineasAsas.RecalculateBounds();
+    }
+
+    // v52: los tiradores se dibujan AL FINAL (encima de todo, nunca tapados en 3D) y con un color que contrasta con
+    // la línea y con el naranja de lo elegido (verde; si la línea es verdosa, magenta, celeste o amarillo).
+    Material asaVivo;
+    static readonly Color[] ColoresAsa =
+    {
+        new Color(0.2f, 0.8f, 0.3f), new Color(1f, 0.2f, 0.8f), new Color(0.1f, 0.75f, 1f), new Color(1f, 0.92f, 0.1f)
+    };
+
+    void ColorearAsas(Color linea)
+    {
+        if (materialAsa == null)
+            return;
+        if (asaVivo == null)
+        {
+            asaVivo = new Material(materialAsa);
+            asaVivo.renderQueue = 4000;
+            foreach (var a in asasVisibles)
+                if (a != null)
+                    a.GetComponent<Renderer>().sharedMaterial = asaVivo;
+            if (lineasAsas != null)
+                lineasAsas.GetComponent<MeshRenderer>().sharedMaterial = asaVivo;
+        }
+        Color elegido = materialNodoActivo != null && materialNodoActivo.HasProperty("_BaseColor")
+            ? materialNodoActivo.GetColor("_BaseColor") : new Color(1f, 0.55f, 0.1f);
+        Color mejor = ColoresAsa[0];
+        float mejorDist = -1f;
+        foreach (var c in ColoresAsa)
+        {
+            float d = Mathf.Min(DistanciaColor(c, linea), DistanciaColor(c, elegido));
+            if (d > 0.35f)
+            {
+                mejor = c;   // el primero que contrasta bien (así casi siempre es el verde de siempre)
+                break;
+            }
+            if (d > mejorDist)
+            {
+                mejorDist = d;
+                mejor = c;
+            }
+        }
+        if (asaVivo.HasProperty("_BaseColor") && asaVivo.GetColor("_BaseColor") != mejor)
+            asaVivo.SetColor("_BaseColor", mejor);
+    }
+
+    static float DistanciaColor(Color a, Color b)
+    {
+        float dr = a.r - b.r, dg = a.g - b.g, db = a.b - b.b;
+        return Mathf.Sqrt(dr * dr * 0.3f + dg * dg * 0.59f + db * db * 0.11f) * 1.6f;
     }
 
     void OcultarModoNodos()
@@ -2857,10 +2922,11 @@ public partial class ControlManos : MonoBehaviour
                 texto = DibujoBloqueado ? "Bloqueado (doble toque)"
                       : !hayLinea && figuras != null && figuras.Seleccionada != null ? "Suavizar figura\n(sube o baja la izquierda)"
                       : ajusteHebra ? "Grosor de las hebras"
-                      : dialUsado ? "Líneas nuevas: " + Mathf.RoundToInt(dibujo.AnchoNuevoMundo * 1000f) + " mm"
-                      : hayLinea ? "Grosor (esta línea)\ngira el índice = líneas nuevas"
-                      : "Grosor (todo)\ngira el índice = líneas nuevas";
-                if (dialUsado)
+                      : tintaPellizco && !tintaConSeleccion ? "Líneas nuevas: " + Mathf.RoundToInt(dibujo.AnchoNuevoMundo * 1000f) + " mm"
+                      : tintaPellizco ? "Grosor (las elegidas)"
+                      : hayLinea ? "Grosor (esta línea)\npellizca y arrastra = tinta"
+                      : "Grosor\npellizca y arrastra = tinta nueva";
+                if (tintaPellizco)
                     sobre = Der;
                 break;
             case Gesto.Borrar: texto = DibujoBloqueado ? "Bloqueado (doble toque)" : "Borrar\n(frota la línea para borrarla entera)"; sobre = Der; break;

@@ -17,14 +17,12 @@ public class PapelCebolla : MonoBehaviour
     const int Cuantos = 2;
 
     static PapelCebolla instancia;
-    static int activo = -1;   // -1 = aún no leído
+    static int activo = 0;    // v52: siempre empieza APAGADO (no se recuerda de una sesión a otra)
 
     public static bool Activo
     {
         get
         {
-            if (activo < 0)
-                activo = PlayerPrefs.GetInt(ClaveGuardada, 0);
             return activo == 1;
         }
     }
@@ -32,8 +30,6 @@ public class PapelCebolla : MonoBehaviour
     public static void Alternar()
     {
         activo = Activo ? 0 : 1;
-        PlayerPrefs.SetInt(ClaveGuardada, activo);
-        PlayerPrefs.Save();
         Asegurar();
         var d = instancia != null ? instancia.dibujo : null;
         if (d != null)
@@ -151,6 +147,8 @@ public class PapelCebolla : MonoBehaviour
             p.relleno = false;
             p.rellenoAbierto = false;
             t.AplicarPose(p, null, 0f);
+            // v52: el color va en su MATERIAL (antes solo se guardaba en la línea y todas salían negras).
+            t.PonerMaterialLinea(dibujo.MaterialColor(color));
             p.relleno = relleno;
             p.rellenoAbierto = abierto;
             lineas.Add(t);

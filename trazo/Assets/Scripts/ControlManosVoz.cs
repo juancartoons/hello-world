@@ -36,7 +36,9 @@ public partial class ControlManos
         // v46
         CuadroACuadro,
         // v51
-        CabezaInvisible
+        CabezaInvisible,
+        // v52
+        IrAFotograma, BorraFotograma, BorraCapa, SeleccionaTodo, QuitaSeleccion, ApagaVoz, CopiarEstilo, PegarEstilo, PuntoClave
     }
 
     // v43: los fondos que se pueden pedir por su nombre (el nombre exacto que tienen en Escenario).
@@ -64,7 +66,8 @@ public partial class ControlManos
         C(ComandoVoz.Nodos, "Nodos", "Nodes", new[] { "nodos", "nodo", "edita", "editar" }, new[] { "nodes", "node", "edit" }),
         C(ComandoVoz.Recta, "Recta", "Straight", new[] { "recta", "línea recta", "raya" }, new[] { "straight", "straight line", "line" }),
         C(ComandoVoz.Ya, "Ya", "Stop", new[] { "ya", "listo", "para", "parar", "alto", "basta", "termina", "terminar" }, new[] { "stop", "done", "enough", "finish", "okay" }),
-        C(ComandoVoz.Deshaz, "Deshaz", "Undo", new[] { "deshaz", "deshacer", "deshace" }, new[] { "undo" }),
+        C(ComandoVoz.Deshaz, "Deshaz", "Undo", new[] { "deshaz", "deshacer", "deshace", "atrás", "control z", "control zeta" },
+          new[] { "undo", "back", "control z" }),
         C(ComandoVoz.Rehaz, "Rehaz", "Redo", new[] { "rehaz", "rehacer", "rehace" }, new[] { "redo" }),
         C(ComandoVoz.GiraIzquierda, "Gira izquierda", "Turn left",
           new[] { "gira izquierda", "gira a la izquierda", "girar izquierda", "girar a la izquierda", "gira izq", "izquierda" },
@@ -175,6 +178,34 @@ public partial class ControlManos
 
     // v44: lo que se arma solo: "línea roja" / "relleno rojo" (los 12 colores), "capa uno" ... "capa doce", y la mirada.
     // (Las listas van DENTRO: "Comandos" se arma antes que cualquier campo escrito más abajo en el archivo.)
+    // v52: los números en palabras (del 1 al 100), como los dice la voz.
+    static string NumeroEs(int n)
+    {
+        string[] u = { "cero", "uno", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez", "once", "doce", "trece",
+                       "catorce", "quince", "dieciséis", "diecisiete", "dieciocho", "diecinueve", "veinte", "veintiuno", "veintidós",
+                       "veintitrés", "veinticuatro", "veinticinco", "veintiséis", "veintisiete", "veintiocho", "veintinueve" };
+        string[] d = { "", "", "", "treinta", "cuarenta", "cincuenta", "sesenta", "setenta", "ochenta", "noventa" };
+        if (n < 30)
+            return u[n];
+        if (n >= 100)
+            return "cien";
+        int dd = n / 10, uu = n % 10;
+        return uu == 0 ? d[dd] : d[dd] + " y " + u[uu];
+    }
+
+    static string NumeroEn(int n)
+    {
+        string[] u = { "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen",
+                       "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen" };
+        string[] d = { "", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety" };
+        if (n < 20)
+            return u[n];
+        if (n >= 100)
+            return "one hundred";
+        int dd = n / 10, uu = n % 10;
+        return uu == 0 ? d[dd] : d[dd] + " " + u[uu];
+    }
+
     static FrasesComando[] ConExtras(FrasesComando[] base0)
     {
         string[] ColorMasc = { "negro", "blanco", "gris", "amarillo", "naranja", "rojo", "rosado", "morado", "azul", "verde", "café", "piel" };
@@ -213,6 +244,33 @@ public partial class ControlManos
         for (int i = 0; i < NumerosEs.Length; i++)
             l.Add(C(ComandoVoz.IrACapa, "Capa " + (i + 1), "Layer " + (i + 1),
                     new[] { "capa " + NumerosEs[i], "layer " + NumerosEs[i] }, new[] { "layer " + NumerosEn[i] }, i));
+        // v52: borrar una capa por su número ("borra capa tres").
+        for (int i = 0; i < NumerosEs.Length; i++)
+            l.Add(C(ComandoVoz.BorraCapa, "Borra capa " + (i + 1), "Delete layer " + (i + 1),
+                    new[] { "borra capa " + NumerosEs[i], "borrar capa " + NumerosEs[i] }, new[] { "delete layer " + NumerosEn[i] }, i));
+        // v52: ir a un fotograma ("fotograma cinco") o quitarle la clave ("borra fotograma cinco"), del 1 al 100.
+        for (int n = 1; n <= 100; n++)
+        {
+            string es = NumeroEs(n), en = NumeroEn(n);
+            l.Add(C(ComandoVoz.IrAFotograma, "Fotograma " + n, "Frame " + n, new[] { "fotograma " + es, "cuadro " + es },
+                    new[] { "frame " + en }, n - 1));
+            l.Add(C(ComandoVoz.BorraFotograma, "Borra fotograma " + n, "Delete frame " + n,
+                    new[] { "borra fotograma " + es, "borrar fotograma " + es }, new[] { "delete frame " + en }, n - 1));
+        }
+        l.Add(C(ComandoVoz.SeleccionaTodo, "Selecciona todo", "Select all", new[] { "selecciona todo", "seleccionar todo" },
+                new[] { "select all" }));
+        l.Add(C(ComandoVoz.QuitaSeleccion, "Quita la selección", "Deselect all",
+                new[] { "quita la selección", "quitar selección", "deselecciona", "deseleccionar todo" }, new[] { "deselect all", "select none", "deselect" }));
+        l.Add(C(ComandoVoz.ApagaVoz, "Apaga la voz", "Voice off", new[] { "apaga la voz", "apaga voz", "apagar voz", "apagar la voz" },
+                new[] { "voice off", "turn off voice", "stop listening" }));
+        l.Add(C(ComandoVoz.CopiarEstilo, "Copiar estilo", "Copy style", new[] { "copiar estilo", "copia estilo", "copia el estilo" },
+                new[] { "copy style", "copy the style" }));
+        l.Add(C(ComandoVoz.PegarEstilo, "Pegar estilo", "Paste style", new[] { "pegar estilo", "pega estilo", "pega el estilo" },
+                new[] { "paste style", "paste the style" }));
+        // v52: los puntos clave de la cabeza (nombran el nodo elegido o el que miras).
+        for (int i = 0; i < CabezaInvisible.PuntosEs.Length; i++)
+            l.Add(C(ComandoVoz.PuntoClave, CabezaInvisible.PuntosEs[i], CabezaInvisible.PuntosEn[i],
+                    CabezaInvisible.FrasesEs(i), new[] { CabezaInvisible.PuntosEn[i] }, i));
         return l.ToArray();
     }
 
@@ -425,6 +483,45 @@ public partial class ControlManos
             case ComandoVoz.Cebolla: PapelCebolla.Alternar(); break;
             case ComandoVoz.CuadroACuadro: dibujo.AlternarCuadroACuadro(); break;
             case ComandoVoz.CabezaInvisible: CabezaInvisible.Alternar(); break;
+            case ComandoVoz.IrAFotograma:
+                if (anim != null)
+                {
+                    anim.IrA(dato);
+                    dibujo.Mensaje("Fotograma " + (dato + 1));
+                }
+                break;
+            case ComandoVoz.BorraFotograma:
+                if (anim != null && !anim.QuitarClaveEn(dato))
+                    dibujo.Mensaje("En el fotograma " + (dato + 1) + " no hay clave de esta capa");
+                break;
+            case ComandoVoz.BorraCapa:
+                if (dato >= 0 && dato < dibujo.capas.Count)
+                {
+                    if (dibujo.BorrarCapa(dato))
+                        dibujo.Mensaje("Capa " + (dato + 1) + " borrada (deshacer la devuelve)");
+                }
+                else
+                {
+                    dibujo.Mensaje("Esa capa no existe (hay " + dibujo.capas.Count + ")");
+                }
+                break;
+            case ComandoVoz.SeleccionaTodo:
+            {
+                int n = dibujo.SeleccionarTodo();
+                dibujo.Mensaje(n > 0 ? n + (n == 1 ? " línea seleccionada" : " líneas seleccionadas") : "No hay líneas en esta capa");
+                break;
+            }
+            case ComandoVoz.QuitaSeleccion:
+                dibujo.Seleccionar(null);
+                dibujo.Mensaje("Sin selección");
+                break;
+            case ComandoVoz.ApagaVoz:
+                if (Voz.Instancia != null && Voz.Activa)
+                    Voz.Instancia.Alternar();
+                break;
+            case ComandoVoz.CopiarEstilo: CopiarEstiloVoz(); break;
+            case ComandoVoz.PegarEstilo: PegarEstiloVoz(); break;
+            case ComandoVoz.PuntoClave: NombrarNodoVoz(CabezaInvisible.PuntosEs[Mathf.Clamp(dato, 0, CabezaInvisible.PuntosEs.Length - 1)]); break;
             case ComandoVoz.En2D: dibujo.PonerPlano(true); break;
             case ComandoVoz.En3D: dibujo.PonerPlano(false); break;
             case ComandoVoz.SiguienteFondo: SiguienteFondoVoz(); break;
@@ -603,6 +700,10 @@ public partial class ControlManos
     // v45: "copiar" / "pegar" LÍNEAS: lo que está seleccionado (o lo que señala la mirada), con sus rellenos.
     readonly List<DatosTrazo> portapapeles = new List<DatosTrazo>();
 
+    // v52: los iconos de copiar y pegar de la muñeca hacen lo mismo que la voz.
+    public void CopiarBoton() { CopiarLineasVoz(); }
+    public void PegarBoton() { PegarLineasVoz(); }
+
     void CopiarLineasVoz()
     {
         var lista = dibujo.Seleccionadas();
@@ -667,6 +768,82 @@ public partial class ControlManos
         if (ultima != null)
             dibujo.Seleccionar(ultima);
         dibujo.Mensaje(portapapeles.Count == 1 ? "Línea pegada" : portapapeles.Count + " líneas pegadas");
+    }
+
+    // ---------- v52: estilos y nombres de nodos ----------
+
+    EstiloTrazo estiloCopiado;
+
+    // "Copiar estilo": el de lo que miras (o la línea seleccionada).
+    void CopiarEstiloVoz()
+    {
+        Trazo t = Mirada.Objetivo != null ? Mirada.Objetivo : dibujo.Seleccion;
+        if (t == null)
+        {
+            dibujo.Mensaje("Mira una línea (o selecciónala) y di \"copiar estilo\"");
+            return;
+        }
+        estiloCopiado = dibujo.EstiloDeLinea(t);
+        dibujo.Mensaje("Estilo copiado: " + Temblor.NombresTextura[Mathf.Clamp(estiloCopiado.texturaLinea == 1 ? 1 : estiloCopiado.hebras >= 5 ? 3 : estiloCopiado.hebras >= 3 ? 2 : 0, 0, 3)]
+                       + " · " + Temblor.NombresVida[Mathf.Clamp(estiloCopiado.temblor, 0, 3)]);
+    }
+
+    // "Pegar estilo": a lo que miras o a las seleccionadas; si no hay nada, a tus líneas nuevas.
+    void PegarEstiloVoz()
+    {
+        if (estiloCopiado == null)
+        {
+            dibujo.Mensaje("Primero di \"copiar estilo\" mirando una línea");
+            return;
+        }
+        var lineas = dibujo.Seleccionadas();
+        if (Mirada.Objetivo != null && !lineas.Contains(Mirada.Objetivo))
+        {
+            lineas.Clear();
+            lineas.Add(Mirada.Objetivo);
+        }
+        if (lineas.Count > 0)
+        {
+            dibujo.PonerEstilo(lineas, estiloCopiado);
+            dibujo.Mensaje(lineas.Count == 1 ? "Estilo pegado" : "Estilo pegado en " + lineas.Count + " líneas");
+        }
+        else
+        {
+            estiloCopiado.ACapa(dibujo.CapaActual);
+            dibujo.RefrescarCapa(dibujo.capaActual);
+            dibujo.Mensaje("Tus líneas nuevas salen con ese estilo");
+        }
+    }
+
+    // "Punta de nariz", "barbilla"...: nombra los nodos elegidos (lazo), el agarrado o el que miras.
+    void NombrarNodoVoz(string nombre)
+    {
+        int n = NombrarNodos(nombre);
+        dibujo.Mensaje(n > 0 ? "Nodo: " + nombre : "Elige un nodo (en Nodos) o míralo, y di su nombre");
+    }
+
+    public int NombrarNodos(string nombre)
+    {
+        int n = 0;
+        foreach (var g in elegidosLazo)
+            if (g.t != null && g.i < g.t.nodos.Count)
+            {
+                g.t.NombrarNodo(g.i, nombre);
+                n++;
+            }
+        if (n == 0 && SeleccionValida)
+        {
+            selTrazo.NombrarNodo(selIndice, nombre);
+            n++;
+        }
+        if (n == 0 && Mirada.NodoTrazo != null && Mirada.Nodo >= 0)
+        {
+            Mirada.NodoTrazo.NombrarNodo(Mirada.Nodo, nombre);
+            n++;
+        }
+        if (n > 0)
+            dibujo.HayCambios = true;
+        return n;
     }
 
     void BorraEstoVoz()

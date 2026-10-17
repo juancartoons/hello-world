@@ -47,7 +47,9 @@ public class Temblor : MonoBehaviour
         if (dibujo == null)
             return;
         dibujo.RefrescarCapa(dibujo.capaActual);
-        dibujo.Mensaje(dibujo.CapaActual.nombre + ": " + mensaje);
+        // v52: el cambio es para las líneas NUEVAS; si hay líneas seleccionadas, también para ellas.
+        int n = dibujo.AplicarEstiloASeleccion();
+        dibujo.Mensaje((n > 0 ? n + (n == 1 ? " línea" : " líneas") + " y las nuevas: " : "Líneas nuevas: ") + mensaje);
     }
 
     // ---------- v49: dos preguntas sencillas (la paleta ya no tiene 6 botones sueltos) ----------

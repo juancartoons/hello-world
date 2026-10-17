@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 16 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v51***
+*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v52***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -10,12 +10,29 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - Simulador de la paleta (a escala, igual que en el visor): https://claude.ai/artifact/2ekoCGCN2CACFTmDHhDyrn (y en el proyecto: `trazo/Herramientas/simulador-paleta.html`)
 
 **Cómo instalar cada versión en Unity**
-1. Copia las carpetas **Scripts**, **Shaders** y **Plugins** a tu proyecto.
+1. Copia las carpetas **Scripts**, **Shaders**, **Plugins** y **Resources** a tu proyecto.
 2. Menú **TrazoVR → ★ Armar escena** (siempre que la versión agregue botones o materiales).
 3. **Ctrl+S** para guardar la escena.
 4. **Build And Run**.
 
 ---
+
+## 0+. Hecho en la v52 (falta probarlo en el visor)
+
+- [x] **Salir** en el reloj: guarda y cierra el dibujo (queda una hoja nueva); con la hoja en blanco, cierra la app. **+ Nuevo** en Mis archivos.
+- [x] Iconos pequeñitos de **copiar** y **pegar** en el reloj (entre el ? y la X).
+- [x] **Timeline**: agarraderas a los lados (pellizco con las dos manos: separar = cuadros más grandes) y **casillas** por cuadro, sombreadas cada 5 (como Flash).
+- [x] **Voz**: "fotograma N", "borra fotograma N", "borra capa N", "atrás" / "control z" (deshacer), "selecciona todo", "quita la selección", "apaga la voz" (y sinónimos), "copiar estilo" / "pegar estilo", y los **puntos clave** de la cabeza ("punta de nariz", "barbilla"...) nombran el nodo elegido.
+- [x] **Papel cebolla** con su color de verdad (antes salía negro) y siempre empieza apagado. **Cuadro a cuadro** ya no se recuerda (solo las capas creadas así).
+- [x] **Grosor sin círculos**: borrador = pellizco derecho arriba/abajo; tinta = gesto de grosor + pellizco derecho arriba/abajo (sin selección, la tinta nueva; con líneas elegidas, ellas).
+- [x] **Tiradores Bézier** siempre encima y con color de contraste (si la línea es verde, salen magenta, celestes o amarillos).
+- [x] **Color hexadecimal** (#) en la paleta (Línea y Relleno) con el teclado.
+- [x] **Ajustes del lápiz** (panel arriba): grano, densidad, orilla, ancho y hervido, con muestra en vivo.
+- [x] **Estilos por línea**: cada línea nueva guarda el estilo del momento; cambiar el estilo afecta a las nuevas y a las seleccionadas, no a las demás.
+- [x] **Cabeza invisible v2**: "Usar esta vista" mueve TUS MISMOS NODOS (morph entre vistas), **biblioteca de vistas** (Guardar vista), **nombres de nodos** (voz o "Nombrar nodo") y **etiquetas** semitransparentes con lo que la app reconoce.
+- [x] **Mover paneles** con el gesto de nodos izquierdo + índice derecho (mesa, Archivos, fondos, buscador, ajustes del lápiz); al soltar la izquierda se quedan.
+- [ ] Probar: el ajuste de grosor de las HEBRAS se quitó del gesto de grosor (el pellizco ahora es la tinta). Si hace falta, ponerlo en la paleta.
+- [ ] Probar la cabeza con nodos: líneas con muchos nodos detrás (se pegan al vecino visible) y el contorno con pocos nodos.
 
 ## 0+. Hecho en la v51 (falta probarlo en el visor)
 
