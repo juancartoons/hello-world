@@ -2,25 +2,27 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
-// LA CABEZA INVISIBLE (v51, v52): dibujas la cabeza de tu personaje UNA vez (DE FRENTE o DE PERFIL) en una capa: el
-// contorno (la línea más grande) y los rasgos (ojos, nariz, boca, orejas; sin cabello por ahora). La app arma con eso
-// un HUEVO 3D invisible, pega cada rasgo en su superficie y te deja GIRARLA: de frente, 3/4 y perfil para los dos
-// lados (y un poco arriba/abajo). Se redibuja en 2D con tus mismas líneas (grosor y color).
-//  - Los botones Perfil / 3/4 / Frente la ponen en esa vista; o PELLIZCA con la derecha cerca de la cabeza y arrastra
-//    (de lado = girar, arriba/abajo = inclinar).
-//  - v52: "Usar esta vista" pone esa vista en el FOTOGRAMA actual con LOS MISMOS NODOS de tus líneas (se mueven, no se
-//    reemplazan): así queda una clave y entre dos vistas hay MORPH. Lo que queda atrás se pega a lo que sí se ve.
-//  - v52: BIBLIOTECA de vistas (como Ctrl+L en Flash): "Guardar vista" la agrega; tocar una vista guardada la pone en
-//    el fotograma donde estés. El modelo se queda mientras existan tus líneas ("Nueva cabeza" lo vuelve a armar).
-//  - v52: PUNTOS CLAVE (opcional): nombra nodos con la voz ("punta de nariz", "barbilla"...) o con el teclado
-//    ("Nombrar nodo"): así la app sabe qué es cada línea aunque tu estilo sea muy libre. "Etiquetas" muestra lo que la
-//    app reconoce (con "?" si lo adivinó) encima de cada parte, semitransparente.
+// LA CABEZA INVISIBLE (v51, v52, v53): dibujas la cabeza de tu personaje UNA vez (DE FRENTE o DE PERFIL) en una capa:
+// el contorno y los rasgos (ojos, nariz, boca, orejas; sin cabello por ahora). La app arma con eso un HUEVO 3D invisible,
+// pega cada rasgo en su superficie y te deja GIRARLA (frente, 3/4 y perfil para los dos lados, y un poco arriba/abajo).
+//  - v53: la vista que DIBUJASTE se ve IDÉNTICA (son tus líneas de verdad) y TU ORIGINAL NUNCA CAMBIA: queda como clave
+//    en su fotograma (y como "Original" en la biblioteca). "Usar esta vista" la pone en OTRO fotograma (6 más adelante
+//    si estás en el del original) con LOS MISMOS NODOS: entre las vistas hay morph.
+//  - v53: la vista previa al girar usa líneas iguales a las tuyas (mismo grosor, color, textura y vida), no un dibujo
+//    de prueba. Las otras vistas son una propuesta: retócalas con Nodos y toca "Guardar vista": la biblioteca guarda TU
+//    versión retocada (como un símbolo de Flash).
+//  - v53: ETIQUETAS con botones: cada parte que la app reconoce tiene su cartelito ("boca?") con un visto verde
+//    (confirmar), una X roja (quitar) y un cuadrito azul (cambiar el nombre: con el teclado o diciéndolo con la voz).
+//  - v53: VOCABULARIO a la derecha: todas las palabras que la app entiende. Pellizca una y arrástrala a tu dibujo:
+//    nombra el nodo donde la sueltas (o los nodos que elegiste con el lazo).
+//  - v53: un MINITUTORIAL paso a paso (se puede quitar con "No mostrar más"; "Ayuda" lo vuelve a abrir).
+//  - Con la cabeza abierta, la voz entiende "boca", "nariz", "ojo", "ceja", "oreja", "contorno" (nombran los nodos
+//    elegidos con el lazo, aunque ya soltaste la izquierda) y los puntos clave ("punta de nariz", "barbilla"...).
 //  - Trampas del 2D: dibujada de PERFIL, el ojo (y la oreja) se copian al otro lado para la vista de frente; la nariz
-//    y la boca van en la línea del centro (la nariz sobresale; la boca se abre a lo ancho). Dibujada DE FRENTE, la
-//    nariz sobresale un poquito y las orejas (fuera del contorno) son discos a los lados.
+//    y la boca van en la línea del centro. Dibujada DE FRENTE, la nariz sobresale y las orejas son discos a los lados.
 public class CabezaInvisible : MonoBehaviour
 {
-    // ---------- Puntos clave ----------
+    // ---------- Puntos clave y palabras ----------
     public static readonly string[] PuntosEs =
     {
         "punta de nariz", "puente de la nariz", "ojo izquierdo", "ojo derecho", "párpado", "ceja", "entrecejo",
@@ -36,6 +38,16 @@ public class CabezaInvisible : MonoBehaviour
     // 0 nariz, 1 ojo, 2 boca, 3 contorno, 4 oreja
     static readonly int[] CategoriaPunto = { 0, 0, 1, 1, 1, 1, 0, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4 };
     static readonly string[] NombresCategoria = { "nariz", "ojo", "boca", "contorno", "oreja" };
+    // Las palabras CORTAS (lo que se guarda) y cómo se pueden decir.
+    static readonly string[] Cortas = { "boca", "nariz", "ojo", "ceja", "oreja", "contorno", "mejilla" };
+    static readonly string[][] CortasDichas =
+    {
+        new[] { "boca", "labios", "mouth", "lips" }, new[] { "nariz", "nose" }, new[] { "ojo", "ojos", "eye", "eyes" },
+        new[] { "ceja", "cejas", "eyebrow", "eyebrows" }, new[] { "oreja", "orejas", "ear", "ears" },
+        new[] { "contorno", "outline" }, new[] { "mejilla", "cheek" }
+    };
+    static readonly string[] CortasEn = { "mouth", "nose", "eye", "eyebrow", "ear", "outline", "cheek" };
+    const string ClaveTutorial = "jcartoons_tuto_cabeza";
 
     public static string[] FrasesEs(int i)
     {
@@ -47,7 +59,18 @@ public class CabezaInvisible : MonoBehaviour
         return new[] { p };
     }
 
-    // La categoría de un nombre (también para los escritos con el teclado: busca palabras conocidas).
+    // v53: una palabra corta dicha (ya sin acentos ni mayúsculas) → lo que se guarda ("boca"...). null si no es.
+    public static string PalabraCorta(string dicho)
+    {
+        dicho = (dicho ?? "").Trim();
+        for (int g = 0; g < CortasDichas.Length; g++)
+            foreach (var p in CortasDichas[g])
+                if (dicho == p)
+                    return Cortas[g];
+        return null;
+    }
+
+    // La categoría de un nombre (también los escritos con el teclado: busca palabras conocidas).
     static int CategoriaDeNombre(string n)
     {
         if (string.IsNullOrEmpty(n))
@@ -65,13 +88,33 @@ public class CabezaInvisible : MonoBehaviour
         if (n.Contains("oreja") || n.Contains("ear") || n.Contains("lóbulo") || n.Contains("lobulo"))
             return 4;
         if (n.Contains("barbilla") || n.Contains("chin") || n.Contains("mandíbula") || n.Contains("jaw") || n.Contains("frente")
-            || n.Contains("forehead") || n.Contains("nuca") || n.Contains("coronilla") || n.Contains("pómulo") || n.Contains("sien"))
+            || n.Contains("forehead") || n.Contains("nuca") || n.Contains("coronilla") || n.Contains("pómulo") || n.Contains("sien")
+            || n.Contains("contorno") || n.Contains("outline") || n.Contains("mejilla") || n.Contains("cheek"))
             return 3;
         return -1;
     }
 
     static CabezaInvisible instancia;
     public static bool Activa => instancia != null && instancia.estado != Estado.Nada;
+
+    // v53: el cuadrito de una etiqueta espera un nombre: el que digas con la voz (o escribas) va a esa línea.
+    public static bool NombrarPendiente(string nombre)
+    {
+        if (!Activa || instancia.pendiente == 0 || string.IsNullOrEmpty(nombre))
+            return false;
+        int id = instancia.pendiente;
+        instancia.pendiente = 0;
+        TecladoVR.Cerrar();
+        instancia.NombrarLinea(id, nombre);
+        return true;
+    }
+
+    // v53: alguien nombró nodos (voz o teclado): la cabeza vuelve a mirar qué es cada línea.
+    public static void AlNombrar()
+    {
+        if (Activa)
+            instancia.AlCambiarNombres();
+    }
 
     enum Estado { Nada, Preguntando, Girando }
     enum Tipo { Rasgo, Centro, Boca, Oreja, OjoPerfil, NarizFrente }
@@ -81,21 +124,22 @@ public class CabezaInvisible : MonoBehaviour
     {
         public int idOrigen;               // la línea tuya
         public bool espejo;                // la copia del otro lado (dibujada de perfil)
-        public int idEspejo;               // la línea creada para la copia (0 = aún no existe)
         public Tipo tipo;
         public bool nombrada;              // su tipo viene de un nombre (no adivinado)
         public Vector2 c;                  // su centro (en tu dibujo)
         public float x0, x1;
-        public readonly List<Vector3> pts = new List<Vector3>();        // la curva (para la vista previa)
-        public readonly List<Vector3> nodos = new List<Vector3>();      // sus nodos (para usar la vista)
+        public readonly List<Vector3> nodos = new List<Vector3>();      // sus nodos sobre el huevo
         public readonly List<Vector3> asaE = new List<Vector3>(), asaS = new List<Vector3>();  // punta de cada tirador
         public readonly List<bool> manual = new List<bool>();
+        public readonly List<float> prof = new List<float>();           // cuánto se salía de tu plano (dibujos en 3D)
     }
 
     class VistaGuardada
     {
         public string nombre;
         public float giro, inclina;
+        public bool esOriginal;
+        public List<DatosTrazo> pose;      // TU versión (retocada); null = solo el ángulo
     }
 
     Estado estado;
@@ -103,10 +147,14 @@ public class CabezaInvisible : MonoBehaviour
     Dibujo dibujo;
     int capaCabeza = -1;
     readonly List<int> idsOriginales = new List<int>();
-    readonly List<Renderer> apagados = new List<Renderer>();
+    // Tu dibujo tal como estaba al empezar (el modelo SIEMPRE se arma con esto, estés en el fotograma que estés).
+    readonly Dictionary<int, DatosTrazo> datosOriginales = new Dictionary<int, DatosTrazo>();
+    readonly Dictionary<int, int> espejos = new Dictionary<int, int>();   // línea tuya → su copia del otro lado
     readonly List<Linea> lineas = new List<Linea>();
     int idContorno;
-    readonly List<float> angulosContorno = new List<float>();   // el ángulo de cada nodo del contorno (en tu dibujo)
+    readonly List<float> angulosContorno = new List<float>();
+    readonly List<Vector2> contornoOrig = new List<Vector2>();
+    readonly List<float> contornoProf = new List<float>();
     Vector3 centro, derecha, arriba, haciaTi;
     Vector2 centro2D;
     float semiX, semiY, semiZ;
@@ -119,16 +167,53 @@ public class CabezaInvisible : MonoBehaviour
     float giroInicio, inclinaInicio;
     bool verEtiquetas = true;
     readonly List<VistaGuardada> vistas = new List<VistaGuardada>();
-
-    // La vista previa y el panel.
-    Transform raiz, panel;
-    Material normal, marcado;
-    readonly List<LineRenderer> trazosVista = new List<LineRenderer>();
-    readonly List<TextMeshPro> etiquetas = new List<TextMeshPro>();
-    readonly Dictionary<Color, Material> materiales = new Dictionary<Color, Material>();
-    readonly List<GameObject> filaPregunta = new List<GameObject>(), filaGiro = new List<GameObject>(), filaVistas = new List<GameObject>();
-    readonly List<Vector3> silueta = new List<Vector3>();
+    int fotogramaOriginal;
+    bool mostrandoReal = true;        // se ven tus líneas de verdad (no la vista previa)
+    int fotogramaVisto = -1;
+    int pendiente;                    // la línea cuyo nombre se espera (el cuadrito de su etiqueta)
+    readonly HashSet<int> sinEtiqueta = new HashSet<int>();
     bool sucio = true;
+
+    // La vista previa: líneas sueltas iguales a las tuyas.
+    readonly List<Trazo> clones = new List<Trazo>();
+    Trazo cloneContorno;
+    readonly List<Renderer> apagados = new List<Renderer>();
+    readonly List<Vector3> silueta = new List<Vector3>();
+
+    // El panel, las etiquetas, el vocabulario y el tutorial.
+    Transform raiz, panel;
+    Material normal, marcado, matPanel, matSi, matNo, matCambiar;
+    readonly List<GameObject> filaPregunta = new List<GameObject>(), filaGiro = new List<GameObject>(), filaVistas = new List<GameObject>();
+
+    class Chip
+    {
+        public Transform t;
+        public TextMeshPro texto;
+        public GameObject botones;
+        public int id;
+        public string palabra;   // lo que se confirma con "Sí"
+    }
+    readonly List<Chip> chips = new List<Chip>();
+
+    Transform vocabulario;
+    readonly List<TextMeshPro> palabrasVista = new List<TextMeshPro>();
+    readonly List<string> palabras = new List<string>();
+    int arrastrando = -1;
+    TextMeshPro palabraFlotante;
+    Transform marcaDestino;
+
+    Transform tarjeta;
+    TextMeshPro tarjetaTitulo, tarjetaTexto;
+    int paso;
+    static readonly string[] PasosTitulo = { "Dibuja la cabeza", "¿De frente o de perfil?", "Revisa las etiquetas", "Gira y usa la vista", "Retoca y guarda" };
+    static readonly string[] PasosTexto =
+    {
+        "En una capa normal, dibuja el CONTORNO de la cabeza y sus rasgos: ojos, nariz, boca y orejas (sin cabello). Luego vuelve a tocar Cabeza invisible.",
+        "Toca \"De frente\" o \"De perfil\" según como la dibujaste. Esa vista queda IDÉNTICA a tu dibujo y tu original nunca cambia.",
+        "Cada parte tiene su cartelito con 3 botones: el visto verde = confirmar, la X roja = quitar, el cuadrito azul = cambiar el nombre (con el teclado o dilo). También puedes arrastrar una palabra de la lista de la derecha a tu dibujo, o elegir nodos con el lazo y decir \"boca\", \"nariz\"...",
+        "Gírala con los botones (Perfil, 3/4, Frente) o pellizcando la cabeza con la derecha. Toca \"Usar esta vista\": se pone en OTRO fotograma, con tus mismos nodos (morph). Tu original sigue en el suyo.",
+        "Las otras vistas son una propuesta: retócalas con Nodos y toca \"Guardar vista\". La biblioteca guarda TU versión; tócala en cualquier fotograma. \"Original\" siempre vuelve a tu dibujo."
+    };
 
     // ---------- Entrar / salir ----------
 
@@ -156,12 +241,13 @@ public class CabezaInvisible : MonoBehaviour
             if (dibujo.capaActual != capaCabeza)
                 dibujo.SeleccionarCapa(capaCabeza);
             ArmarPanel();
-            Esconder();
             Mostrar(filaPregunta, false);
             Mostrar(filaGiro, true);
             RefrescarVistas();
             estado = Estado.Girando;
+            mostrandoReal = true;
             sucio = true;
+            TutorialAlAbrir(3);
             dibujo.Mensaje("Cabeza invisible: tu cabeza y sus vistas guardadas");
             return;
         }
@@ -188,24 +274,49 @@ public class CabezaInvisible : MonoBehaviour
         return l;
     }
 
+    // Todas las líneas de la cabeza: las tuyas y las copias del otro lado.
+    List<Trazo> LineasCabeza()
+    {
+        var l = Originales();
+        foreach (var kv in espejos)
+        {
+            var t = dibujo.BuscarPorId(kv.Value);
+            if (t != null && !l.Contains(t))
+                l.Add(t);
+        }
+        return l;
+    }
+
     void Empezar()
     {
         hayModelo = false;
         vistas.Clear();
+        espejos.Clear();
+        sinEtiqueta.Clear();
         idsOriginales.Clear();
+        datosOriginales.Clear();
+        BorrarClones();
+        if (dibujo.EsCuadroACuadro(dibujo.capaActual))
+        {
+            dibujo.Mensaje("La cabeza invisible usa una capa normal (con morph), no una cuadro a cuadro");
+            return;
+        }
         var originales = new List<Trazo>();
         foreach (var t in dibujo.trazos)
             if (Dibujo.Editable(t) && !t.oculto && t.capa == dibujo.capaActual && t.curva.Count >= 2 && t.nodos.Count >= 2)
             {
                 originales.Add(t);
                 idsOriginales.Add(t.id);
+                datosOriginales[t.id] = t.CrearDatos();
             }
         if (originales.Count < 2)
         {
             dibujo.Mensaje("Cabeza invisible: dibuja en esta capa el contorno de la cabeza y sus rasgos (ojos, nariz, boca, orejas)");
+            AvanzarTutorial(0);
             return;
         }
         capaCabeza = dibujo.capaActual;
+        fotogramaOriginal = dibujo.animacion != null ? dibujo.animacion.Fotograma : 0;
         Vector3 suma = Vector3.zero;
         int n = 0;
         foreach (var t in originales)
@@ -267,47 +378,78 @@ public class CabezaInvisible : MonoBehaviour
         Mostrar(filaGiro, false);
         Mostrar(filaVistas, false);
         estado = Estado.Preguntando;
+        mostrandoReal = true;
+        sucio = true;
+        TutorialAlAbrir(1);
         dibujo.Mensaje("Cabeza invisible: ¿la dibujaste de frente o de perfil?");
     }
 
     void Cerrar()
     {
+        SoltarPalabra(false);
         Desesconder();
+        BorrarClones();
         estado = Estado.Nada;
         agarrada = false;
+        pendiente = 0;
         if (raiz != null)
             raiz.gameObject.SetActive(false);
+        if (tarjeta != null)
+            tarjeta.gameObject.SetActive(false);
         if (control != null && control.Ocupado)
             control.Ocupado = false;
     }
 
-    void Esconder()
-    {
-        foreach (var t in Originales())
-            EsconderTrazo(t);
-        foreach (var l in lineas)
-            if (l.espejo && l.idEspejo != 0)
-                EsconderTrazo(dibujo.BuscarPorId(l.idEspejo));
-    }
+    // ---------- Esconder tus líneas mientras se ve la vista previa ----------
 
-    void EsconderTrazo(Trazo t)
+    // Cada cuadro (una línea que se redibuja se vuelve a prender sola: por eso antes se veían dos caras).
+    void EsconderOriginales()
     {
-        if (t == null)
-            return;
-        foreach (var r in t.GetComponentsInChildren<Renderer>())
-            if (!r.forceRenderingOff)
-            {
-                r.forceRenderingOff = true;
-                apagados.Add(r);
-            }
+        foreach (var t in LineasCabeza())
+            foreach (var r in t.GetComponentsInChildren<Renderer>())
+                if (!r.forceRenderingOff)
+                {
+                    r.forceRenderingOff = true;
+                    if (!apagados.Contains(r))
+                        apagados.Add(r);
+                }
     }
 
     void Desesconder()
     {
+        if (apagados.Count == 0)
+            return;
         foreach (var r in apagados)
             if (r != null)
                 r.forceRenderingOff = false;
         apagados.Clear();
+        // Cada línea vuelve a decidir qué se ve (las líneas "hueso" u ocultas siguen ocultas).
+        bool antes = Trazo.silenciar;
+        Trazo.silenciar = true;
+        foreach (var t in LineasCabeza())
+            t.Reconstruir(true);
+        Trazo.silenciar = antes;
+        Trazo.huboCambio = false;
+    }
+
+    void BorrarClones()
+    {
+        foreach (var c in clones)
+            if (c != null)
+                Destroy(c.gameObject);
+        clones.Clear();
+        if (cloneContorno != null)
+            Destroy(cloneContorno.gameObject);
+        cloneContorno = null;
+    }
+
+    void OcultarClones()
+    {
+        foreach (var c in clones)
+            if (c != null && c.gameObject.activeSelf)
+                c.gameObject.SetActive(false);
+        if (cloneContorno != null && cloneContorno.gameObject.activeSelf)
+            cloneContorno.gameObject.SetActive(false);
     }
 
     // ---------- Armar el modelo ----------
@@ -326,14 +468,78 @@ public class CabezaInvisible : MonoBehaviour
         return -1;
     }
 
+    static string PrimerNombre(Trazo t)
+    {
+        foreach (var n in t.nombresNodo)
+        {
+            if (string.IsNullOrEmpty(n))
+                continue;
+            int dos = n.IndexOf(':');
+            string s = dos >= 0 ? n.Substring(dos + 1) : n;
+            if (s.Length > 0)
+                return s;
+        }
+        return "";
+    }
+
     void Elegir(bool dePerfil)
+    {
+        if (!ArmarModelo(dePerfil))
+            return;
+        // Tu original queda guardado como clave en SU fotograma (y como "Original" en la biblioteca): nunca se toca.
+        var anim = dibujo.animacion;
+        if (anim != null && anim.Fotograma == fotogramaOriginal)
+            anim.GuardarClaveEn(fotogramaOriginal, capaCabeza);
+        vistas.Clear();
+        var original = new VistaGuardada { nombre = "Original", esOriginal = true, pose = new List<DatosTrazo>() };
+        foreach (var d in datosOriginales.Values)
+            original.pose.Add(d);
+        vistas.Add(original);
+        giro = 0f;
+        inclina = 0f;
+        mostrandoReal = true;
+        Mostrar(filaPregunta, false);
+        Mostrar(filaGiro, true);
+        RefrescarVistas();
+        estado = Estado.Girando;
+        sucio = true;
+        AvanzarTutorial(2);
+        dibujo.Mensaje("Gírala: Perfil / 3/4 / Frente, o pellízcala con la derecha y arrastra");
+    }
+
+    bool ArmarModelo(bool dePerfil)
+    {
+        // Líneas temporales con la forma de tu ORIGINAL (y los nombres de ahora): con ellas se arma el modelo.
+        var temporales = new List<Trazo>();
+        Trazo contorno = null;
+        bool antesSilencio = Trazo.silenciar;
+        Trazo.silenciar = true;
+        foreach (int id in idsOriginales)
+        {
+            DatosTrazo d;
+            var viva = dibujo.BuscarPorId(id);
+            if (viva == null || !datosOriginales.TryGetValue(id, out d))
+                continue;
+            d.nombresNodo = new List<string>(viva.nombresNodo);
+            var tmp = dibujo.CrearTrazoSuelto(d, capaCabeza);
+            tmp.id = id;
+            tmp.gameObject.SetActive(false);
+            temporales.Add(tmp);
+            if (id == idContorno)
+                contorno = tmp;
+        }
+        Trazo.silenciar = antesSilencio;
+        Trazo.huboCambio = false;
+        bool ok = contorno != null && ArmarModeloCon(dePerfil, temporales, contorno);
+        foreach (var t in temporales)
+            Destroy(t.gameObject);
+        return ok;
+    }
+
+    bool ArmarModeloCon(bool dePerfil, List<Trazo> originales, Trazo contorno)
     {
         perfil = dePerfil;
         lineas.Clear();
-        var originales = Originales();
-        Trazo contorno = dibujo.BuscarPorId(idContorno);
-        if (contorno == null)
-            return;
         if (perfil)
         {
             float sx = 0f;
@@ -355,10 +561,15 @@ public class CabezaInvisible : MonoBehaviour
         ArmarProporcion(contorno);
         // El contorno: el ángulo de cada uno de sus nodos (en cada vista va a la silueta, al mismo ángulo).
         angulosContorno.Clear();
+        contornoOrig.Clear();
+        contornoProf.Clear();
         foreach (var p in contorno.nodos)
         {
-            Vector2 q = Plano(contorno.transform.TransformPoint(p));
+            Vector3 m = contorno.transform.TransformPoint(p);
+            Vector2 q = Plano(m);
             angulosContorno.Add(Mathf.Atan2(q.y, q.x));
+            contornoOrig.Add(q);
+            contornoProf.Add(Vector3.Dot(m - centro, haciaTi));
         }
         foreach (var t in originales)
         {
@@ -371,25 +582,31 @@ public class CabezaInvisible : MonoBehaviour
                 continue;
             var l = new Linea { idOrigen = t.id };
             Clasificar(t, plano, l);
-            Llenar(l, t, plano);
+            Llenar(l, t);
             lineas.Add(l);
             if (perfil && (l.tipo == Tipo.OjoPerfil || l.tipo == Tipo.Oreja))
             {
                 var e = new Linea { idOrigen = t.id, espejo = true, tipo = l.tipo, nombrada = l.nombrada, c = l.c, x0 = l.x0, x1 = l.x1 };
-                Llenar(e, t, plano);
+                Llenar(e, t);
                 lineas.Add(e);
             }
         }
         hayModelo = true;
-        Esconder();
-        giro = 0f;
-        inclina = 0f;
-        Mostrar(filaPregunta, false);
-        Mostrar(filaGiro, true);
-        RefrescarVistas();
-        estado = Estado.Girando;
+        BorrarClones();
+        return true;
+    }
+
+    // Volver a mirar qué es cada línea (después de nombrar algo), sin perder el giro.
+    void AlCambiarNombres()
+    {
         sucio = true;
-        dibujo.Mensaje("Gírala: Perfil / 3/4 / Frente, o pellízcala con la derecha y arrastra");
+        if (estado == Estado.Girando && hayModelo)
+        {
+            float g = giro, inc = inclina;
+            ArmarModelo(perfil);
+            giro = g;
+            inclina = inc;
+        }
     }
 
     // Qué es cada línea: por su nombre (si nombraste un nodo) o adivinando por dónde está.
@@ -431,9 +648,8 @@ public class CabezaInvisible : MonoBehaviour
         }
         float uc = c.x / semiX, vc = c.y / semiY;
         int borde = 0;
-        float m = dePerfil ? mira : 1f;
         foreach (var q in plano)
-            if (K(q) <= 0f || q.x / semiX * m > 0.7f)
+            if (K(q) <= 0f || q.x / semiX * mira > 0.7f)
                 borde++;
         if (borde > plano.Count / 2)
             return vc < -0.2f ? Tipo.Boca : Tipo.Centro;
@@ -442,19 +658,18 @@ public class CabezaInvisible : MonoBehaviour
         return Tipo.OjoPerfil;
     }
 
-    // Los puntos 3D de la línea: su curva (vista previa) y sus nodos y tiradores (para usar la vista).
-    void Llenar(Linea l, Trazo t, List<Vector2> plano)
+    // Los nodos de la línea sobre el huevo (y la punta de sus tiradores).
+    void Llenar(Linea l, Trazo t)
     {
-        for (int i = 0; i < plano.Count; i++)
-            l.pts.Add(Espejar(l, Mapear(l, plano[i], i / (float)Mathf.Max(1, plano.Count - 1))));
         int n = t.nodos.Count;
         t.AsegurarAsas();
         for (int j = 0; j < n; j++)
         {
             float f = j / (float)Mathf.Max(1, n - 1);
             Vector3 nodoLocal = t.nodos[j];
-            Vector2 q = Plano(t.transform.TransformPoint(nodoLocal));
-            l.nodos.Add(Espejar(l, Mapear(l, q, f)));
+            Vector3 m = t.transform.TransformPoint(nodoLocal);
+            l.nodos.Add(Espejar(l, Mapear(l, Plano(m), f)));
+            l.prof.Add(Vector3.Dot(m - centro, haciaTi));
             bool man = j < t.asaManual.Count && t.asaManual[j];
             l.manual.Add(man);
             Vector3 e = j < t.asaEntrada.Count ? t.asaEntrada[j] : Vector3.zero;
@@ -470,6 +685,7 @@ public class CabezaInvisible : MonoBehaviour
     }
 
     // Un punto de tu dibujo sobre el huevo, según qué es su línea. "f" = dónde va en la línea (0 a 1).
+    // v53: sin girar, cada punto queda EXACTAMENTE donde lo dibujaste (x e y no cambian; solo se inventa la profundidad).
     Vector3 Mapear(Linea l, Vector2 q, float f)
     {
         float k = K(q);
@@ -481,7 +697,7 @@ public class CabezaInvisible : MonoBehaviour
                 // La oreja: un disco al lado, inclinado hacia atrás (de perfil se ve como oreja, no como una raya).
                 float lado = l.c.x > 0f ? 1f : -1f;
                 float dx = q.x - l.c.x;
-                return new Vector3(l.c.x + dx * 0.71f, q.y, -0.1f * semiZ - dx * lado * 0.71f);
+                return new Vector3(q.x, q.y, -0.1f * semiZ - dx * lado);
             }
             float z = k > 0f ? semiZ * Mathf.Sqrt(k) : -0.05f * semiZ;
             if (l.tipo == Tipo.NarizFrente)
@@ -495,14 +711,11 @@ public class CabezaInvisible : MonoBehaviour
             case Tipo.Centro:
                 return new Vector3(q.x, q.y, 0f);
             case Tipo.Boca:
-            {
-                float z = (f - 0.5f) * 0.7f * semiZ;
-                return new Vector3(q.x - Mathf.Abs(z) * 0.3f * mira, q.y, z);
-            }
+                return new Vector3(q.x, q.y, (f - 0.5f) * 0.7f * semiZ);
             case Tipo.Oreja:
             {
                 float dx = q.x - l.c.x;
-                return new Vector3(l.c.x + dx * 0.71f, q.y, semiZ * 0.9f - dx * mira * 0.71f);
+                return new Vector3(q.x, q.y, semiZ * 0.9f - dx * mira);
             }
             default:
             {
@@ -599,17 +812,48 @@ public class CabezaInvisible : MonoBehaviour
     {
         if (estado == Estado.Nada || control == null || dibujo == null)
             return;
+        bool palabra = RevisarPalabras();
         if (estado == Estado.Girando)
         {
-            RevisarAgarre();
-            if (sucio)
-                Dibujar();
+            if (!palabra)
+                RevisarAgarre();
+            // Si cambias de fotograma, se ven tus líneas de verdad (las de ese fotograma).
+            var anim = dibujo.animacion;
+            int f = anim != null ? anim.Fotograma : 0;
+            if (f != fotogramaVisto)
+            {
+                fotogramaVisto = f;
+                if (!agarrada)
+                    mostrandoReal = true;
+                sucio = true;
+            }
+            bool real = mostrandoReal || Peso() < 0.001f;
+            if (real)
+            {
+                Desesconder();
+                OcultarClones();
+            }
+            else
+            {
+                EsconderOriginales();
+                if (sucio)
+                    ActualizarClones();
+            }
         }
-        else if (estado == Estado.Preguntando && sucio)
+        // Las etiquetas siguen a tus líneas aunque las muevas (cada cuarto de segundo).
+        if (Time.time >= proximaEtiqueta)
         {
-            EtiquetasPregunta();
+            proximaEtiqueta = Time.time + 0.25f;
+            sucio = true;
+        }
+        if (sucio)
+        {
+            sucio = false;
+            PonerEtiquetas();
         }
     }
+
+    float proximaEtiqueta;
 
     void RevisarAgarre()
     {
@@ -625,11 +869,12 @@ public class CabezaInvisible : MonoBehaviour
             Vector3 d = der.PuntoPellizco - agarreInicio;
             giro = giroInicio - Vector3.Dot(d, derecha) * 300f;
             inclina = Mathf.Clamp(inclinaInicio + Vector3.Dot(d, arriba) * 200f, -40f, 40f);
+            mostrandoReal = false;
             sucio = true;
             return;
         }
-        if (der.valida && der.empezoPellizco && !BotonTocable.DedoCerca
-            && Vector3.Distance(der.PuntoPellizco, centro) < Mathf.Max(semiX, semiY) + 0.12f)
+        if (der.valida && der.empezoPellizco && !BotonTocable.DedoCerca && !control.Ocupado
+            && Vector3.Distance(der.PuntoPellizco, centro) < Mathf.Max(semiX, semiY) + 0.06f)
         {
             agarrada = true;
             agarreInicio = der.PuntoPellizco;
@@ -640,6 +885,12 @@ public class CabezaInvisible : MonoBehaviour
     }
 
     Quaternion Giro => Quaternion.Euler(inclina, giro, 0f);
+
+    // Qué tan lejos estás de la vista que dibujaste (0 = esa misma: tus líneas tal cual; 1 = ya es otra vista).
+    float Peso()
+    {
+        return Mathf.Clamp01(Mathf.Max(Mathf.Abs(Mathf.DeltaAngle(giro, 0f)) / 40f, Mathf.Abs(inclina) / 25f));
+    }
 
     // La silueta del huevo girado, con la forma de tu contorno (en el plano de tu dibujo).
     void Silueta(Quaternion q)
@@ -688,275 +939,195 @@ public class CabezaInvisible : MonoBehaviour
         return n.sqrMagnitude < 1e-12f || n.normalized.z > -0.12f;
     }
 
-    void Dibujar()
-    {
-        sucio = false;
-        Quaternion q = Giro;
-        Silueta(q);
-        int k = 0;
-        Trazo contorno = dibujo.BuscarPorId(idContorno);
-        PonerTrazoVista(k++, silueta, contorno);
-        int et = 0;
-        foreach (var l in lineas)
-        {
-            Trazo origen = dibujo.BuscarPorId(l.idOrigen);
-            var corrida = new List<Vector3>();
-            Vector3 suma = Vector3.zero;
-            int visibles = 0;
-            foreach (var p in l.pts)
-            {
-                Vector3 pr = q * p;
-                if (Visible(q, p))
-                {
-                    corrida.Add(new Vector3(pr.x, pr.y, 0f));
-                    suma += pr;
-                    visibles++;
-                }
-                else
-                {
-                    if (corrida.Count >= 2)
-                        PonerTrazoVista(k++, corrida, origen);
-                    corrida = new List<Vector3>();
-                }
-            }
-            if (corrida.Count >= 2)
-                PonerTrazoVista(k++, corrida, origen);
-            // Su etiqueta (lo que la app reconoce), encima de la línea.
-            if (verEtiquetas && visibles > 0 && !l.espejo)
-                PonerEtiqueta(et++, Mundo(suma / visibles) + arriba * 0.012f, NombreTipo(l), l.nombrada);
-        }
-        // Los nodos con nombre (sólidos).
-        if (verEtiquetas)
-            foreach (var l in lineas)
-            {
-                if (l.espejo)
-                    continue;
-                var t = dibujo.BuscarPorId(l.idOrigen);
-                if (t == null)
-                    continue;
-                for (int j = 0; j < l.nodos.Count; j++)
-                {
-                    string nombre = t.NombreDeNodo(j);
-                    if (nombre.Length > 0 && Visible(q, l.nodos[j]))
-                        PonerEtiqueta(et++, Mundo(q * l.nodos[j]) + haciaTi * 0.003f, "• " + nombre, true);
-                }
-            }
-        for (int i = k; i < trazosVista.Count; i++)
-            trazosVista[i].positionCount = 0;
-        for (int i = et; i < etiquetas.Count; i++)
-            etiquetas[i].gameObject.SetActive(false);
-    }
-
-    string NombreTipo(Linea l)
-    {
-        string n;
-        switch (l.tipo)
-        {
-            case Tipo.Centro: n = l.c.y / semiY < -0.2f ? "boca" : "nariz"; break;
-            case Tipo.NarizFrente: n = "nariz"; break;
-            case Tipo.Boca: n = "boca"; break;
-            case Tipo.Oreja: n = "oreja"; break;
-            case Tipo.OjoPerfil: n = "ojo"; break;
-            default:
-            {
-                float v = l.c.y / semiY;
-                n = v > 0.05f ? "ojo" : v < -0.3f ? "boca" : "nariz";
-                break;
-            }
-        }
-        return Idioma.T(n) + (l.nombrada ? "" : "?");
-    }
-
-    // Antes de elegir frente/perfil: lo que la app cree que es cada línea (con "?"), y los nodos con nombre.
-    void EtiquetasPregunta()
-    {
-        sucio = false;
-        int et = 0;
-        if (verEtiquetas)
-        {
-            foreach (var t in Originales())
-            {
-                var plano = new List<Vector2>();
-                foreach (var p in t.curva)
-                    plano.Add(Plano(t.transform.TransformPoint(p)));
-                if (plano.Count < 2)
-                    continue;
-                Vector2 c = Medio(plano);
-                string texto;
-                bool nombrada = CategoriaDeLinea(t) >= 0;
-                if (t.id == idContorno)
-                    texto = Idioma.T("contorno");
-                else if (nombrada)
-                    texto = Idioma.T(NombresCategoria[CategoriaDeLinea(t)]);
-                else
-                {
-                    var l = new Linea { c = c, tipo = Adivinar(plano, c, perfilAdivinado) };
-                    texto = NombreTipo(l);
-                }
-                if (t.id == idContorno)
-                    c = new Vector2(0f, semiY);
-                PonerEtiqueta(et++, Mundo(new Vector3(c.x, c.y, 0f)) + arriba * 0.012f, texto, nombrada);
-                for (int j = 0; j < t.nodos.Count; j++)
-                {
-                    string nombre = t.NombreDeNodo(j);
-                    if (nombre.Length > 0)
-                        PonerEtiqueta(et++, t.transform.TransformPoint(t.nodos[j]) + haciaTi * 0.003f, "• " + nombre, true);
-                }
-            }
-        }
-        for (int i = et; i < etiquetas.Count; i++)
-            etiquetas[i].gameObject.SetActive(false);
-    }
-
-    void PonerEtiqueta(int i, Vector3 pos, string texto, bool segura)
-    {
-        while (etiquetas.Count <= i)
-        {
-            var t = PanelTutoriales.Texto(raiz, "", Vector3.zero, new Vector2(0.08f, 0.012f), 0.09f, null);
-            t.fontStyle = FontStyles.Bold;
-            t.outlineWidth = 0.2f;
-            t.outlineColor = new Color32(255, 255, 255, 200);
-            etiquetas.Add(t);
-        }
-        var e = etiquetas[i];
-        e.gameObject.SetActive(true);
-        e.text = texto;
-        e.color = segura ? new Color(0.1f, 0.35f, 0.75f, 1f) : new Color(0.1f, 0.35f, 0.75f, 0.45f);
-        e.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(-haciaTi, arriba));
-    }
-
-    void PonerTrazoVista(int i, List<Vector3> pts, Trazo origen)
-    {
-        var lr = TrazoVista(i);
-        lr.positionCount = pts.Count;
-        for (int j = 0; j < pts.Count; j++)
-            lr.SetPosition(j, Mundo(pts[j]));
-        float ancho = origen != null ? origen.ancho * dibujo.EscalaMundo : 0.004f;
-        lr.widthMultiplier = Mathf.Max(0.0015f, ancho);
-        lr.sharedMaterial = MaterialColor(origen != null ? origen.color : Color.black);
-    }
-
-    Vector3 Mundo(Vector3 p)
+    Vector3 Mundo(Vector3 p, float prof)
     {
         Vector2 q = new Vector2(p.x, p.y) + centro2D;
-        return centro + derecha * q.x + arriba * q.y + haciaTi * 0.001f;
+        return centro + derecha * q.x + arriba * q.y + haciaTi * prof;
     }
 
-    LineRenderer TrazoVista(int i)
+    static Vector3 Plano3(Vector3 p)
     {
-        while (trazosVista.Count <= i)
+        return new Vector3(p.x, p.y, 0f);
+    }
+
+    // La forma del contorno en este giro: cada nodo a la silueta (en su mismo ángulo), mezclado con tu contorno.
+    DatosTrazo PoseContorno(Trazo contorno, float w)
+    {
+        var d = contorno.CrearDatos();
+        if (angulosContorno.Count != d.nodos.Count || contornoOrig.Count != d.nodos.Count)
+            return null;
+        var raizD = dibujo.transform;
+        for (int j = 0; j < d.nodos.Count; j++)
         {
-            var go = new GameObject("CabezaLinea");
-            go.transform.SetParent(raiz, false);
-            var lr = go.AddComponent<LineRenderer>();
-            lr.useWorldSpace = true;
-            lr.numCapVertices = 4;
-            lr.numCornerVertices = 3;
-            lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            lr.receiveShadows = false;
-            trazosVista.Add(lr);
+            Vector2 p = Vector2.Lerp(contornoOrig[j], EnSilueta(angulosContorno[j]), w);
+            d.nodos[j] = raizD.InverseTransformPoint(Mundo(new Vector3(p.x, p.y, 0f), contornoProf[j] * (1f - w)));
         }
-        return trazosVista[i];
+        if (w > 0.001f)
+            for (int j = 0; j < d.asaManual.Count; j++)
+                d.asaManual[j] = false;   // sus tiradores se recalculan solos (curva suave)
+        return d;
     }
 
-    Material MaterialColor(Color c)
+    // La forma de una línea en este giro, con LOS MISMOS nodos. Los que quedan atrás se pegan al vecino que sí se ve.
+    DatosTrazo PoseLinea(Linea l, Trazo baseT, Quaternion q, float w)
     {
-        Material m;
-        if (materiales.TryGetValue(c, out m) && m != null)
-            return m;
-        m = control.materialNodo != null ? new Material(control.materialNodo) : new Material(Shader.Find("Universal Render Pipeline/Unlit"));
-        if (m.HasProperty("_BaseColor"))
-            m.SetColor("_BaseColor", c);
-        if (m.HasProperty("_Color"))
-            m.SetColor("_Color", c);
-        materiales[c] = m;
-        return m;
+        DatosTrazo d = baseT.CrearDatos();
+        int n = l.nodos.Count;
+        if (d.nodos.Count != n)
+            return null;   // cambiaste los nodos de la línea: esta ya no se gira
+        var raizD = dibujo.transform;
+        var vis = new bool[n];
+        var pos = new Vector3[n];
+        int cuantosVis = 0;
+        for (int j = 0; j < n; j++)
+        {
+            vis[j] = Visible(q, l.nodos[j]);
+            pos[j] = Plano3(q * l.nodos[j]);
+            if (vis[j])
+                cuantosVis++;
+        }
+        for (int j = 0; j < n; j++)
+        {
+            if (vis[j] || cuantosVis == 0)
+                continue;
+            for (int dd = 1; dd < n; dd++)
+            {
+                if (j - dd >= 0 && vis[j - dd]) { pos[j] = pos[j - dd]; break; }
+                if (j + dd < n && vis[j + dd]) { pos[j] = pos[j + dd]; break; }
+            }
+        }
+        float conservar = l.espejo ? 0f : 1f - w;
+        for (int j = 0; j < n; j++)
+        {
+            d.nodos[j] = raizD.InverseTransformPoint(Mundo(pos[j], l.prof[j] * conservar));
+            if (j < d.asaManual.Count && l.manual[j] && vis[j])
+            {
+                d.asaEntrada[j] = raizD.InverseTransformPoint(Mundo(Plano3(q * l.asaE[j]), l.prof[j] * conservar)) - d.nodos[j];
+                d.asaSalida[j] = raizD.InverseTransformPoint(Mundo(Plano3(q * l.asaS[j]), l.prof[j] * conservar)) - d.nodos[j];
+            }
+            else if (j < d.asaManual.Count)
+            {
+                d.asaManual[j] = false;
+            }
+        }
+        d.oculto = cuantosVis == 0;
+        return d;
     }
 
-    // ---------- Usar una vista: tus líneas (los MISMOS nodos) toman esa forma en el fotograma actual ----------
+    // La vista previa: líneas sueltas IGUALES a las tuyas, en la forma de este giro.
+    void ActualizarClones()
+    {
+        float w = Peso();
+        Quaternion q = Giro;
+        Silueta(q);
+        bool antes = Trazo.silenciar;
+        Trazo.silenciar = true;
+        Trazo contorno = dibujo.BuscarPorId(idContorno);
+        if (contorno != null)
+        {
+            var dc = PoseContorno(contorno, w);
+            if (dc != null)
+            {
+                if (cloneContorno == null)
+                    cloneContorno = dibujo.CrearTrazoSuelto(dc, capaCabeza);
+                else
+                    cloneContorno.AplicarPose(dc, null, 0f);
+                if (!cloneContorno.gameObject.activeSelf)
+                    cloneContorno.gameObject.SetActive(true);
+            }
+        }
+        for (int i = 0; i < lineas.Count; i++)
+        {
+            while (clones.Count <= i)
+                clones.Add(null);
+            var l = lineas[i];
+            Trazo origen = dibujo.BuscarPorId(l.idOrigen);
+            DatosTrazo d = origen != null ? PoseLinea(l, origen, q, w) : null;
+            if (d == null)
+            {
+                if (clones[i] != null)
+                    clones[i].gameObject.SetActive(false);
+                continue;
+            }
+            if (clones[i] == null)
+                clones[i] = dibujo.CrearTrazoSuelto(d, capaCabeza);
+            else
+                clones[i].AplicarPose(d, null, 0f);
+            if (!clones[i].gameObject.activeSelf)
+                clones[i].gameObject.SetActive(true);
+        }
+        Trazo.silenciar = antes;
+        Trazo.huboCambio = false;
+    }
+
+    // ---------- Usar una vista: tus líneas (los MISMOS nodos) toman esa forma en OTRO fotograma ----------
+
+    // Dónde va la vista: donde estás, salvo en el fotograma de tu original (ese nunca se toca): 6 más adelante.
+    int Destino(Animacion anim)
+    {
+        int f = anim.Fotograma;
+        if (f != fotogramaOriginal)
+            return f;
+        f = fotogramaOriginal + 6;
+        if (f > Animacion.TotalFotogramas - 1)
+            f = Mathf.Max(0, fotogramaOriginal - 6);
+        return f;
+    }
 
     void Usar()
     {
         if (estado != Estado.Girando || !hayModelo)
             return;
+        float w = Peso();
+        if (w < 0.001f)
+        {
+            dibujo.Mensaje("Esa es la vista que dibujaste: gírala primero (tu original no se toca)");
+            return;
+        }
         var anim = dibujo.animacion;
         if (dibujo.capaActual != capaCabeza)
             dibujo.SeleccionarCapa(capaCabeza);
         Desesconder();
         dibujo.GuardarParaDeshacer();
+        if (anim != null)
+        {
+            int destino = Destino(anim);
+            if (destino != anim.Fotograma)
+                anim.IrA(destino);
+        }
         Quaternion q = Giro;
         Silueta(q);
-        var raizDibujo = dibujo.transform;
         var nuevos = new List<int>();
         bool antes = Trazo.silenciar;
         Trazo.silenciar = true;
-        // El contorno: cada nodo a la silueta, en su mismo ángulo.
         Trazo contorno = dibujo.BuscarPorId(idContorno);
-        if (contorno != null && angulosContorno.Count == contorno.nodos.Count)
+        if (contorno != null)
         {
-            var d = contorno.CrearDatos();
-            for (int j = 0; j < d.nodos.Count; j++)
-            {
-                Vector2 p = EnSilueta(angulosContorno[j]);
-                d.nodos[j] = raizDibujo.InverseTransformPoint(Mundo(new Vector3(p.x, p.y, 0f)));
-            }
-            // Sus tiradores se recalculan solos (curva suave).
-            for (int j = 0; j < d.asaManual.Count; j++)
-                d.asaManual[j] = false;
-            contorno.AplicarPose(d, null, 0f);
+            var dc = PoseContorno(contorno, w);
+            if (dc != null)
+                contorno.AplicarPose(dc, null, 0f);
         }
         foreach (var l in lineas)
         {
             Trazo origen = dibujo.BuscarPorId(l.idOrigen);
             if (origen == null)
                 continue;
-            Trazo t = l.espejo ? (l.idEspejo != 0 ? dibujo.BuscarPorId(l.idEspejo) : null) : origen;
-            DatosTrazo d = (t != null ? t : origen).CrearDatos();
-            int n = l.nodos.Count;
-            if (d.nodos.Count != n)
-                continue;   // cambiaste los nodos de la línea: esta ya no se gira
-            // Dónde queda cada nodo; los de atrás se pegan al vecino que sí se ve (así no cambia el número de nodos).
-            var vis = new bool[n];
-            var pos = new Vector3[n];
-            int cuantosVis = 0;
-            for (int j = 0; j < n; j++)
+            Trazo t = origen;
+            if (l.espejo)
             {
-                vis[j] = Visible(q, l.nodos[j]);
-                Vector3 pr = q * l.nodos[j];
-                pos[j] = new Vector3(pr.x, pr.y, 0f);
-                if (vis[j])
-                    cuantosVis++;
+                int idE;
+                t = espejos.TryGetValue(l.idOrigen, out idE) ? dibujo.BuscarPorId(idE) : null;
             }
-            for (int j = 0; j < n; j++)
-            {
-                if (vis[j] || cuantosVis == 0)
-                    continue;
-                for (int dd = 1; dd < n; dd++)
-                {
-                    if (j - dd >= 0 && vis[j - dd]) { pos[j] = pos[j - dd]; break; }
-                    if (j + dd < n && vis[j + dd]) { pos[j] = pos[j + dd]; break; }
-                }
-            }
-            for (int j = 0; j < n; j++)
-            {
-                Vector3 nodoMundo = Mundo(pos[j]);
-                d.nodos[j] = raizDibujo.InverseTransformPoint(nodoMundo);
-                if (j < d.asaManual.Count && l.manual[j] && vis[j])
-                {
-                    d.asaEntrada[j] = raizDibujo.InverseTransformPoint(Mundo(Plano3(q * l.asaE[j]))) - d.nodos[j];
-                    d.asaSalida[j] = raizDibujo.InverseTransformPoint(Mundo(Plano3(q * l.asaS[j]))) - d.nodos[j];
-                }
-                else if (j < d.asaManual.Count)
-                {
-                    d.asaManual[j] = false;
-                }
-            }
-            d.oculto = cuantosVis == 0;
+            DatosTrazo d = PoseLinea(l, t != null ? t : origen, q, w);
+            if (d == null)
+                continue;
             if (t == null)
             {
                 d.id = 0;
+                // La copia del otro lado no lleva los nombres de los nodos (no confunde a las etiquetas).
+                d.nombresNodo = new List<string>();
                 t = dibujo.AgregarTrazo(d);
-                l.idEspejo = t.id;
+                espejos[l.idOrigen] = t.id;
                 nuevos.Add(t.id);
             }
             else
@@ -966,11 +1137,22 @@ public class CabezaInvisible : MonoBehaviour
         }
         Trazo.silenciar = antes;
         Trazo.huboCambio = false;
-        // La clave en este fotograma (así entre dos vistas hay morph).
+        GuardarClave(nuevos);
+        mostrandoReal = true;
+        OcultarClones();
+        int f = anim != null ? anim.Fotograma + 1 : 1;
+        dibujo.Mensaje("Vista puesta en el fotograma " + f + " (tu original sigue en el " + (fotogramaOriginal + 1) + "). Retócala y toca Guardar vista");
+        AvanzarTutorial(4);
+        sucio = true;
+    }
+
+    // La clave en este fotograma (así entre vistas hay morph). Las copias nuevas no existían en las otras claves: allá ocultas.
+    void GuardarClave(List<int> nuevos)
+    {
+        var anim = dibujo.animacion;
         if (anim != null)
         {
             anim.GuardarClaveEn(anim.Fotograma, capaCabeza);
-            // Las copias nuevas (el otro ojo...) no existían en las otras claves: allá quedan ocultas.
             if (nuevos.Count > 0)
                 foreach (var c in anim.claves)
                 {
@@ -984,39 +1166,100 @@ public class CabezaInvisible : MonoBehaviour
         }
         dibujo.HayCambios = true;
         dibujo.Avisar();
-        int f = anim != null ? anim.Fotograma + 1 : 1;
-        dibujo.Mensaje("Vista puesta en el fotograma " + f + " (mismos nodos: hace morph con las otras claves)");
-        Esconder();
-        sucio = true;
-    }
-
-    static Vector3 Plano3(Vector3 p)
-    {
-        return new Vector3(p.x, p.y, 0f);
     }
 
     // ---------- La biblioteca de vistas ----------
 
-    void GuardarVista()
+    string NombreAngulo()
     {
-        if (vistas.Count >= 6)
-            vistas.RemoveAt(0);
         float rel = giro - (perfil ? (mira > 0f ? -90f : 90f) : 0f);
         rel = Mathf.Repeat(rel + 180f, 360f) - 180f;
-        string nombre = Mathf.Abs(rel) < 15f ? "Frente" : Mathf.Abs(rel) > 70f ? (rel > 0f ? "Perfil der" : "Perfil izq") : (rel > 0f ? "3/4 der" : "3/4 izq");
-        vistas.Add(new VistaGuardada { nombre = (vistas.Count + 1) + " · " + Idioma.T(nombre), giro = giro, inclina = inclina });
+        return Mathf.Abs(rel) < 15f ? "Frente" : Mathf.Abs(rel) > 70f ? (rel > 0f ? "Perfil der" : "Perfil izq") : (rel > 0f ? "3/4 der" : "3/4 izq");
+    }
+
+    // Guarda TU versión de este fotograma (con tus retoques). Si aún no la usaste, guarda solo el ángulo.
+    void GuardarVista()
+    {
+        var anim = dibujo.animacion;
+        var v = new VistaGuardada { giro = giro, inclina = inclina };
+        bool tuya = anim != null && anim.Fotograma != fotogramaOriginal && anim.EsClave(anim.Fotograma, capaCabeza) && mostrandoReal;
+        if (tuya)
+        {
+            v.pose = new List<DatosTrazo>();
+            foreach (var t in LineasCabeza())
+                v.pose.Add(t.CrearDatos());
+        }
+        int propias = vistas.Count - 1;
+        if (propias >= 6)
+            vistas.RemoveAt(1);
+        v.nombre = vistas.Count + " · " + Idioma.T(NombreAngulo());
+        vistas.Add(v);
         RefrescarVistas();
-        dibujo.Mensaje("Vista guardada en la biblioteca: tócala en cualquier fotograma");
+        dibujo.Mensaje(tuya ? "Tu versión quedó en la biblioteca: tócala en cualquier fotograma"
+                            : "Ángulo guardado en la biblioteca (usa la vista y retócala para guardar TU versión)");
     }
 
     void UsarVista(int i)
     {
         if (i < 0 || i >= vistas.Count)
             return;
-        giro = vistas[i].giro;
-        inclina = vistas[i].inclina;
+        var v = vistas[i];
+        giro = v.giro;
+        inclina = v.inclina;
+        if (v.pose == null)
+        {
+            mostrandoReal = false;
+            sucio = true;
+            Usar();
+            return;
+        }
+        var anim = dibujo.animacion;
+        if (dibujo.capaActual != capaCabeza)
+            dibujo.SeleccionarCapa(capaCabeza);
+        if (v.esOriginal && anim != null && anim.Fotograma == fotogramaOriginal)
+        {
+            mostrandoReal = true;
+            sucio = true;
+            dibujo.Mensaje("Aquí está tu original (este fotograma nunca cambia)");
+            return;
+        }
+        Desesconder();
+        dibujo.GuardarParaDeshacer();
+        if (anim != null && !v.esOriginal)
+        {
+            int destino = Destino(anim);
+            if (destino != anim.Fotograma)
+                anim.IrA(destino);
+        }
+        var porId = new Dictionary<int, DatosTrazo>();
+        foreach (var d in v.pose)
+            if (d != null)
+                porId[d.id] = d;
+        bool antes = Trazo.silenciar;
+        Trazo.silenciar = true;
+        foreach (var t in LineasCabeza())
+        {
+            DatosTrazo d;
+            if (porId.TryGetValue(t.id, out d))
+            {
+                if (d.nodos.Count == t.nodos.Count)
+                    t.AplicarPose(d, null, 0f);
+            }
+            else
+            {
+                // Esta línea no estaba en esa vista (la copia del otro ojo en tu original, por ejemplo): oculta.
+                var o = t.CrearDatos();
+                o.oculto = true;
+                t.AplicarPose(o, null, 0f);
+            }
+        }
+        Trazo.silenciar = antes;
+        Trazo.huboCambio = false;
+        GuardarClave(new List<int>());
+        mostrandoReal = true;
         sucio = true;
-        Usar();
+        int f = anim != null ? anim.Fotograma + 1 : 1;
+        dibujo.Mensaje(Idioma.T(v.esOriginal ? "Original" : "Tu vista") + " · " + Idioma.T("fotograma") + " " + f);
     }
 
     void RefrescarVistas()
@@ -1030,8 +1273,519 @@ public class CabezaInvisible : MonoBehaviour
         for (int i = 0; i < vistas.Count; i++)
         {
             int k = i;
-            Boton(filaVistas, vistas[i].nombre, new Vector3(-0.155f + i * 0.062f, -0.052f, 0f), 0.058f, false, () => UsarVista(k));
+            string nombre = vistas[i].esOriginal ? "Original" : vistas[i].nombre + (vistas[i].pose != null ? " *" : "");
+            Boton(filaVistas, nombre, new Vector3(-0.171f + i * 0.057f, -0.052f, 0f), 0.054f, vistas[i].esOriginal, () => UsarVista(k));
         }
+    }
+
+    // ---------- Etiquetas con botones (Sí / X / cuadrito) ----------
+
+    // Lo que la app cree que es una línea: (texto, palabra para confirmar, ¿ya es seguro?).
+    void QueEs(Trazo t, Linea l, out string texto, out string palabra, out bool segura)
+    {
+        string nombre = PrimerNombre(t);
+        if (nombre.Length > 0)
+        {
+            texto = nombre;
+            palabra = nombre;
+            segura = true;
+            return;
+        }
+        if (t.id == idContorno)
+        {
+            palabra = "contorno";
+        }
+        else if (l != null)
+        {
+            palabra = NombreTipo(l);
+        }
+        else
+        {
+            var plano = new List<Vector2>();
+            foreach (var p in t.curva)
+                plano.Add(Plano(t.transform.TransformPoint(p)));
+            Vector2 c = Medio(plano);
+            var guess = new Linea { c = c, tipo = Adivinar(plano, c, perfilAdivinado) };
+            palabra = NombreTipo(guess);
+        }
+        texto = Idioma.T(palabra) + "?";
+        segura = false;
+    }
+
+    string NombreTipo(Linea l)
+    {
+        switch (l.tipo)
+        {
+            case Tipo.Centro: return l.c.y / semiY < -0.2f ? "boca" : "nariz";
+            case Tipo.NarizFrente: return "nariz";
+            case Tipo.Boca: return "boca";
+            case Tipo.Oreja: return "oreja";
+            case Tipo.OjoPerfil: return "ojo";
+            default:
+            {
+                float v = l.c.y / semiY;
+                return v > 0.05f ? "ojo" : v < -0.3f ? "boca" : "nariz";
+            }
+        }
+    }
+
+    // Dónde se ve una línea ahora (tu línea de verdad o su vista previa): el centro de sus nodos.
+    static Vector3 CentroDe(Trazo t)
+    {
+        Vector3 s = Vector3.zero;
+        foreach (var p in t.nodos)
+            s += t.transform.TransformPoint(p);
+        return s / Mathf.Max(1, t.nodos.Count);
+    }
+
+    // La línea que se ve en pantalla para una línea tuya (la vista previa si está girada).
+    Trazo Mostrada(Trazo original)
+    {
+        if (estado != Estado.Girando || mostrandoReal || Peso() < 0.001f)
+            return original;
+        if (original.id == idContorno)
+            return cloneContorno != null && cloneContorno.gameObject.activeSelf ? cloneContorno : original;
+        for (int i = 0; i < lineas.Count && i < clones.Count; i++)
+            if (!lineas[i].espejo && lineas[i].idOrigen == original.id && clones[i] != null)
+                return clones[i].gameObject.activeSelf ? clones[i] : null;
+        return original;
+    }
+
+    void PonerEtiquetas()
+    {
+        int k = 0;
+        if (verEtiquetas && raiz != null)
+        {
+            var porId = new Dictionary<int, Linea>();
+            foreach (var l in lineas)
+                if (!l.espejo)
+                    porId[l.idOrigen] = l;
+            foreach (var t in Originales())
+            {
+                if (sinEtiqueta.Contains(t.id))
+                    continue;
+                var visto = Mostrada(t);
+                if (visto == null || visto.oculto)
+                    continue;
+                Linea l;
+                porId.TryGetValue(t.id, out l);
+                string texto, palabra;
+                bool segura;
+                QueEs(t, estado == Estado.Girando ? l : null, out texto, out palabra, out segura);
+                Vector3 pos = t.id == idContorno
+                    ? Mundo(new Vector3(0f, semiY * 1.08f, 0f), 0f)
+                    : CentroDe(visto) + arriba * 0.016f;
+                PonerChip(k++, t.id, texto, palabra, segura, pos + haciaTi * 0.012f);
+            }
+        }
+        for (int i = k; i < chips.Count; i++)
+            if (chips[i].t.gameObject.activeSelf)
+                chips[i].t.gameObject.SetActive(false);
+    }
+
+    void PonerChip(int i, int id, string texto, string palabra, bool segura, Vector3 pos)
+    {
+        while (chips.Count <= i)
+            chips.Add(CrearChip(chips.Count));
+        var c = chips[i];
+        c.id = id;
+        c.palabra = palabra;
+        c.t.gameObject.SetActive(true);
+        c.t.SetPositionAndRotation(pos, Quaternion.LookRotation(-haciaTi, arriba));
+        c.texto.text = texto;
+        // Lo que adivinó: clarito. Lo confirmado (o nombrado por ti): firme.
+        c.texto.color = segura ? new Color(0.1f, 0.35f, 0.75f, 1f) : new Color(0.1f, 0.35f, 0.75f, 0.55f);
+    }
+
+    Chip CrearChip(int k)
+    {
+        var c = new Chip();
+        c.t = new GameObject("Etiqueta" + k).transform;
+        c.t.SetParent(raiz, false);
+        c.texto = PanelTutoriales.Texto(c.t, "", new Vector3(0f, 0.004f, 0f), new Vector2(0.07f, 0.011f), 0.09f, null);
+        c.texto.fontStyle = FontStyles.Bold;
+        c.texto.outlineWidth = 0.2f;
+        c.texto.outlineColor = new Color32(255, 255, 255, 200);
+        c.botones = new GameObject("Botones").gameObject;
+        c.botones.transform.SetParent(c.t, false);
+        // Sí (confirmar)
+        var si = BotonChip(c, new Vector3(-0.013f, -0.008f, 0f), matSi, () => ConfirmarChip(c));
+        Barra(c.botones.transform, si + new Vector3(-0.0028f, 0.0002f, -0.0046f), si + new Vector3(-0.0008f, -0.0018f, -0.0046f), 0.0012f, matSi);
+        Barra(c.botones.transform, si + new Vector3(-0.0008f, -0.0018f, -0.0046f), si + new Vector3(0.0028f, 0.0024f, -0.0046f), 0.0012f, matSi);
+        // X (quitar)
+        var no = BotonChip(c, new Vector3(0f, -0.008f, 0f), matNo, () => QuitarChip(c));
+        Barra(c.botones.transform, no + new Vector3(-0.0024f, -0.0024f, -0.0046f), no + new Vector3(0.0024f, 0.0024f, -0.0046f), 0.0012f, matNo);
+        Barra(c.botones.transform, no + new Vector3(-0.0024f, 0.0024f, -0.0046f), no + new Vector3(0.0024f, -0.0024f, -0.0046f), 0.0012f, matNo);
+        // Cuadrito (cambiar el nombre)
+        var cam = BotonChip(c, new Vector3(0.013f, -0.008f, 0f), matCambiar, () => CambiarChip(c));
+        Barra(c.botones.transform, cam + new Vector3(-0.0024f, 0.0024f, -0.0046f), cam + new Vector3(0.0024f, 0.0024f, -0.0046f), 0.001f, matCambiar);
+        Barra(c.botones.transform, cam + new Vector3(-0.0024f, -0.0024f, -0.0046f), cam + new Vector3(0.0024f, -0.0024f, -0.0046f), 0.001f, matCambiar);
+        Barra(c.botones.transform, cam + new Vector3(-0.0024f, -0.0024f, -0.0046f), cam + new Vector3(-0.0024f, 0.0024f, -0.0046f), 0.001f, matCambiar);
+        Barra(c.botones.transform, cam + new Vector3(0.0024f, -0.0024f, -0.0046f), cam + new Vector3(0.0024f, 0.0024f, -0.0046f), 0.001f, matCambiar);
+        return c;
+    }
+
+    Vector3 BotonChip(Chip c, Vector3 pos, Material icono, UnityEngine.Events.UnityAction accion)
+    {
+        var b = PanelTutoriales.Boton(c.botones.transform, "", pos, new Vector2(0.0095f, 0.0095f), normal, marcado);
+        b.pausa = 0.4f;
+        b.alTocar.AddListener(accion);
+        return pos;
+    }
+
+    static void Barra(Transform padre, Vector3 a, Vector3 b, float grosor, Material m)
+    {
+        var cubo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        Destroy(cubo.GetComponent<Collider>());
+        cubo.name = "Icono";
+        cubo.transform.SetParent(padre, false);
+        Vector3 d = b - a;
+        cubo.transform.localPosition = (a + b) * 0.5f;
+        cubo.transform.localRotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg);
+        cubo.transform.localScale = new Vector3(d.magnitude + grosor * 0.5f, grosor, 0.001f);
+        var r = cubo.GetComponent<Renderer>();
+        if (m != null)
+            r.sharedMaterial = m;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
+    }
+
+    void ConfirmarChip(Chip c)
+    {
+        var t = dibujo.BuscarPorId(c.id);
+        if (t == null)
+            return;
+        if (PrimerNombre(t).Length == 0)
+            NombrarLinea(c.id, c.palabra);
+        else
+            dibujo.Mensaje("Ya está confirmado: " + PrimerNombre(t));
+    }
+
+    void QuitarChip(Chip c)
+    {
+        var t = dibujo.BuscarPorId(c.id);
+        if (t == null)
+            return;
+        if (PrimerNombre(t).Length > 0)
+        {
+            for (int j = 0; j < t.nodos.Count; j++)
+                t.NombrarNodo(j, null);
+            dibujo.HayCambios = true;
+            dibujo.Mensaje("Nombre quitado (la app vuelve a adivinar)");
+        }
+        else
+        {
+            sinEtiqueta.Add(c.id);
+            dibujo.Mensaje("Etiqueta quitada");
+        }
+        AlCambiarNombres();
+    }
+
+    void CambiarChip(Chip c)
+    {
+        int id = c.id;
+        var t = dibujo.BuscarPorId(id);
+        if (t == null)
+            return;
+        pendiente = id;
+        dibujo.Mensaje("Escribe el nombre o DILO con la voz (\"boca\", \"punta de nariz\"...)");
+        TecladoVR.Abrir("Nombre de esta parte (o dilo)", PrimerNombre(t), nombre =>
+        {
+            if (pendiente == id)
+                pendiente = 0;
+            if (!string.IsNullOrEmpty(nombre))
+                NombrarLinea(id, nombre.ToLowerInvariant());
+        });
+    }
+
+    // Nombra una línea entera: su nodo del medio lleva el nombre (los otros nombres se quitan).
+    void NombrarLinea(int id, string nombre)
+    {
+        var t = dibujo.BuscarPorId(id);
+        if (t == null || t.nodos.Count == 0)
+            return;
+        for (int j = 0; j < t.nodos.Count; j++)
+            t.NombrarNodo(j, null);
+        t.NombrarNodo(t.nodos.Count / 2, nombre);
+        sinEtiqueta.Remove(id);
+        dibujo.HayCambios = true;
+        dibujo.Mensaje("Es: " + nombre);
+        AlCambiarNombres();
+    }
+
+    void AlternarEtiquetas()
+    {
+        verEtiquetas = !verEtiquetas;
+        if (vocabulario != null)
+            vocabulario.gameObject.SetActive(verEtiquetas);
+        sucio = true;
+        dibujo.Mensaje(verEtiquetas ? "Etiquetas: Sí" : "Etiquetas: No");
+    }
+
+    // ---------- El vocabulario (a la derecha): pellizca una palabra y llévala a tu dibujo ----------
+
+    void ArmarVocabulario()
+    {
+        if (vocabulario != null)
+            return;
+        vocabulario = new GameObject("Vocabulario").transform;
+        vocabulario.SetParent(raiz, false);
+        palabras.Clear();
+        palabras.AddRange(Cortas);
+        palabras.AddRange(PuntosEs);
+        int porColumna = Mathf.CeilToInt(palabras.Count / 2f);
+        float alto = porColumna * 0.0125f + 0.03f;
+        var fondo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        Destroy(fondo.GetComponent<Collider>());
+        fondo.transform.SetParent(vocabulario, false);
+        fondo.transform.localPosition = new Vector3(0f, -alto * 0.5f + 0.012f, 0.004f);
+        fondo.transform.localScale = new Vector3(0.17f, alto, 0.003f);
+        var rf = fondo.GetComponent<Renderer>();
+        if (matPanel != null)
+            rf.sharedMaterial = matPanel;
+        rf.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        var titulo = PanelTutoriales.Texto(vocabulario, Idioma.T("Arrastra una palabra a tu dibujo"), new Vector3(0f, 0.004f, -0.001f),
+                                           new Vector2(0.16f, 0.01f), 0.08f, null);
+        titulo.fontStyle = FontStyles.Bold;
+        for (int i = 0; i < palabras.Count; i++)
+        {
+            int col = i / porColumna, fila = i % porColumna;
+            string vista = i < Cortas.Length ? (Idioma.Ingles ? CortasEn[i] : Cortas[i])
+                                             : (Idioma.Ingles ? PuntosEn[i - Cortas.Length] : PuntosEs[i - Cortas.Length]);
+            var t = PanelTutoriales.Texto(vocabulario, vista, new Vector3(-0.042f + col * 0.084f, -0.01f - fila * 0.0125f, -0.001f),
+                                          new Vector2(0.08f, 0.0105f), 0.07f, null);
+            t.color = i < Cortas.Length ? new Color(0.1f, 0.3f, 0.7f) : new Color(0.2f, 0.2f, 0.28f);
+            if (i < Cortas.Length)
+                t.fontStyle = FontStyles.Bold;
+            palabrasVista.Add(t);
+        }
+        palabraFlotante = PanelTutoriales.Texto(raiz, "", Vector3.zero, new Vector2(0.09f, 0.013f), 0.1f, null);
+        palabraFlotante.fontStyle = FontStyles.Bold;
+        palabraFlotante.color = new Color(0.1f, 0.35f, 0.75f);
+        palabraFlotante.outlineWidth = 0.25f;
+        palabraFlotante.outlineColor = new Color32(255, 255, 255, 230);
+        palabraFlotante.gameObject.SetActive(false);
+        var marca = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        Destroy(marca.GetComponent<Collider>());
+        marca.transform.SetParent(raiz, false);
+        marca.transform.localScale = Vector3.one * 0.009f;
+        var rm = marca.GetComponent<Renderer>();
+        if (matSi != null)
+            rm.sharedMaterial = matSi;
+        rm.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        marcaDestino = marca.transform;
+        marcaDestino.gameObject.SetActive(false);
+    }
+
+    void ColocarVocabulario()
+    {
+        if (vocabulario == null)
+            return;
+        Vector3 pos = Mundo(new Vector3(semiX + 0.14f, semiY, 0f), 0f) + haciaTi * 0.02f;
+        vocabulario.SetPositionAndRotation(pos, Quaternion.LookRotation(-haciaTi, arriba));
+        vocabulario.gameObject.SetActive(verEtiquetas);
+    }
+
+    // Devuelve true si el pellizco derecho es de una palabra (así no gira la cabeza).
+    bool RevisarPalabras()
+    {
+        var der = control.Der;
+        if (arrastrando >= 0)
+        {
+            if (!der.valida || !der.pellizco)
+            {
+                SoltarPalabra(true);
+                return true;
+            }
+            Vector3 p = der.PuntoPellizco;
+            palabraFlotante.transform.SetPositionAndRotation(p + haciaTi * 0.012f + arriba * 0.012f, Quaternion.LookRotation(-haciaTi, arriba));
+            // Dónde caería: el nodo más cercano (o los del lazo).
+            Trazo t;
+            int j;
+            if (!control.HayNodosElegidos && NodoCercano(p, out t, out j))
+            {
+                var visto = Mostrada(t);
+                if (visto == null || j >= visto.nodos.Count)
+                    visto = t;
+                marcaDestino.gameObject.SetActive(true);
+                marcaDestino.position = visto.transform.TransformPoint(visto.nodos[j]) + haciaTi * 0.003f;
+            }
+            else
+            {
+                marcaDestino.gameObject.SetActive(false);
+            }
+            return true;
+        }
+        if (vocabulario == null || !vocabulario.gameObject.activeInHierarchy || !der.valida || !der.empezoPellizco || control.Ocupado)
+            return false;
+        int mejor = -1;
+        float dMejor = 0.014f;
+        for (int i = 0; i < palabrasVista.Count; i++)
+        {
+            float d = Vector3.Distance(der.PuntoPellizco, palabrasVista[i].transform.position);
+            if (d < dMejor)
+            {
+                dMejor = d;
+                mejor = i;
+            }
+        }
+        if (mejor < 0)
+            return false;
+        arrastrando = mejor;
+        palabraFlotante.text = palabrasVista[mejor].text;
+        palabraFlotante.gameObject.SetActive(true);
+        control.Ocupado = true;
+        control.SonidoBurbuja(der.PuntoPellizco);
+        return true;
+    }
+
+    void SoltarPalabra(bool nombrar)
+    {
+        if (arrastrando < 0)
+            return;
+        string palabra = palabras[arrastrando];
+        arrastrando = -1;
+        if (palabraFlotante != null)
+            palabraFlotante.gameObject.SetActive(false);
+        if (marcaDestino != null)
+            marcaDestino.gameObject.SetActive(false);
+        if (control != null)
+            control.Ocupado = false;
+        if (!nombrar || control == null)
+            return;
+        // Los nodos elegidos con el lazo; si no, el nodo donde la soltaste.
+        int n = control.NombrarNodosElegidos(palabra);
+        if (n == 0)
+        {
+            Trazo t;
+            int j;
+            if (NodoCercano(control.Der.PuntoPellizco, out t, out j))
+            {
+                t.NombrarNodo(j, palabra);
+                dibujo.HayCambios = true;
+                n = 1;
+            }
+        }
+        dibujo.Mensaje(n > 0 ? "Es: " + palabra : "Suéltala sobre un nodo de tu dibujo (o elige nodos con el lazo)");
+        if (n > 0)
+            AlCambiarNombres();
+    }
+
+    // El nodo de tu dibujo más cercano a ese punto (en la línea que se ve: si es la vista previa, el de tu línea).
+    bool NodoCercano(Vector3 p, out Trazo trazo, out int indice)
+    {
+        trazo = null;
+        indice = -1;
+        float mejor = 0.045f;
+        foreach (var t in Originales())
+        {
+            var visto = Mostrada(t);
+            if (visto == null)
+                continue;
+            for (int j = 0; j < visto.nodos.Count; j++)
+            {
+                float d = Vector3.Distance(p, visto.transform.TransformPoint(visto.nodos[j]));
+                if (d < mejor && j < t.nodos.Count)
+                {
+                    mejor = d;
+                    trazo = t;
+                    indice = j;
+                }
+            }
+        }
+        return trazo != null;
+    }
+
+    // ---------- El minitutorial (paso a paso, se puede quitar) ----------
+
+    // El tutorial sigue solo al paso que toca (si no lo quitaste con "No mostrar más").
+    void AvanzarTutorial(int p)
+    {
+        if (PlayerPrefs.GetInt(ClaveTutorial, 0) != 0 || p < paso)
+            return;
+        ArmarTarjeta();
+        MostrarTarjeta(p);
+    }
+
+    void TutorialAlAbrir(int pasoInicial)
+    {
+        if (PlayerPrefs.GetInt(ClaveTutorial, 0) != 0)
+            return;
+        ArmarTarjeta();
+        MostrarTarjeta(Mathf.Max(paso, pasoInicial));
+    }
+
+    void ArmarTarjeta()
+    {
+        if (tarjeta != null)
+            return;
+        if (normal == null)
+        {
+            var nav = FindFirstObjectByType<NavegadorArchivos>(FindObjectsInactive.Include);
+            normal = nav != null ? nav.materialBoton : null;
+            marcado = nav != null ? nav.materialBotonMarcado : null;
+            matPanel = nav != null ? nav.materialPanel : null;
+        }
+        tarjeta = new GameObject("TutorialCabeza").transform;
+        var fondo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        Destroy(fondo.GetComponent<Collider>());
+        fondo.transform.SetParent(tarjeta, false);
+        fondo.transform.localPosition = new Vector3(0f, 0f, 0.004f);
+        fondo.transform.localScale = new Vector3(0.22f, 0.15f, 0.003f);
+        var rf = fondo.GetComponent<Renderer>();
+        if (matPanel != null)
+            rf.sharedMaterial = matPanel;
+        rf.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        tarjetaTitulo = PanelTutoriales.Texto(tarjeta, "", new Vector3(0f, 0.058f, -0.001f), new Vector2(0.2f, 0.016f), 0.13f, null);
+        tarjetaTitulo.fontStyle = FontStyles.Bold;
+        tarjetaTexto = PanelTutoriales.Texto(tarjeta, "", new Vector3(0f, 0.008f, -0.001f), new Vector2(0.2f, 0.075f), 0.09f, null);
+        tarjetaTexto.alignment = TextAlignmentOptions.TopLeft;
+        BotonTarjeta("< " + Idioma.T("Atrás"), new Vector3(-0.075f, -0.056f, 0f), 0.05f, () => MostrarTarjeta(paso - 1));
+        BotonTarjeta(Idioma.T("Siguiente") + " >", new Vector3(-0.02f, -0.056f, 0f), 0.055f, () => MostrarTarjeta(paso + 1));
+        BotonTarjeta(Idioma.T("No mostrar más"), new Vector3(0.045f, -0.056f, 0f), 0.068f, () =>
+        {
+            PlayerPrefs.SetInt(ClaveTutorial, 1);
+            PlayerPrefs.Save();
+            tarjeta.gameObject.SetActive(false);
+            if (dibujo != null)
+                dibujo.Mensaje("Listo: \"Ayuda\" lo vuelve a mostrar");
+        });
+        BotonTarjeta("X", new Vector3(0.095f, -0.056f, 0f), 0.02f, () => tarjeta.gameObject.SetActive(false));
+        tarjeta.gameObject.SetActive(false);
+    }
+
+    void BotonTarjeta(string texto, Vector3 pos, float ancho, UnityEngine.Events.UnityAction accion)
+    {
+        var b = PanelTutoriales.Boton(tarjeta, texto, pos, new Vector2(ancho, 0.022f), normal, marcado);
+        b.alTocar.AddListener(accion);
+    }
+
+    void MostrarTarjeta(int p)
+    {
+        if (tarjeta == null)
+            ArmarTarjeta();
+        paso = Mathf.Clamp(p, 0, PasosTitulo.Length - 1);
+        tarjetaTitulo.text = Idioma.T("Paso") + " " + (paso + 1) + " / " + PasosTitulo.Length + " · " + Idioma.T(PasosTitulo[paso]);
+        tarjetaTexto.text = Idioma.T(PasosTexto[paso]);
+        tarjeta.gameObject.SetActive(true);
+        // Arriba a la izquierda de lo que miras (no tapa tu dibujo).
+        var cab = control != null ? control.Cabeza : null;
+        if (cab != null)
+        {
+            Vector3 adelante = Vector3.ProjectOnPlane(cab.forward, Vector3.up);
+            if (adelante.sqrMagnitude < 1e-4f)
+                adelante = Vector3.forward;
+            adelante.Normalize();
+            Vector3 lado = Vector3.Cross(Vector3.up, adelante).normalized;
+            Vector3 pos = cab.position + adelante * 0.5f - lado * 0.3f + Vector3.up * 0.08f;
+            tarjeta.SetPositionAndRotation(pos, Quaternion.LookRotation(pos - cab.position, Vector3.up));
+        }
+    }
+
+    void Ayuda()
+    {
+        ArmarTarjeta();
+        MostrarTarjeta(estado == Estado.Preguntando ? 1 : Mathf.Max(2, paso));
     }
 
     // ---------- El panel: debajo de la cabeza ----------
@@ -1044,13 +1798,18 @@ public class CabezaInvisible : MonoBehaviour
             var nav = FindFirstObjectByType<NavegadorArchivos>(FindObjectsInactive.Include);
             normal = nav != null ? nav.materialBoton : null;
             marcado = nav != null ? nav.materialBotonMarcado : null;
+            matPanel = nav != null ? nav.materialPanel : null;
+            matSi = MaterialColor(new Color(0.15f, 0.65f, 0.3f));
+            matNo = MaterialColor(new Color(0.85f, 0.2f, 0.2f));
+            matCambiar = MaterialColor(new Color(0.15f, 0.35f, 0.8f));
             panel = new GameObject("PanelCabeza").transform;
             panel.SetParent(raiz, false);
-            Boton(filaPregunta, "De frente", new Vector3(-0.1f, 0f, 0f), 0.06f, false, () => Elegir(false));
-            Boton(filaPregunta, "De perfil", new Vector3(-0.035f, 0f, 0f), 0.06f, false, () => Elegir(true));
-            Boton(filaPregunta, "Nombrar nodo", new Vector3(0.035f, 0f, 0f), 0.07f, false, NombrarConTeclado);
-            Boton(filaPregunta, "Etiquetas", new Vector3(0.1f, 0f, 0f), 0.05f, false, AlternarEtiquetas);
-            Boton(filaPregunta, "Cerrar", new Vector3(0.155f, 0f, 0f), 0.05f, false, Cerrar);
+            Boton(filaPregunta, "De frente", new Vector3(-0.15f, 0f, 0f), 0.055f, false, () => Elegir(false));
+            Boton(filaPregunta, "De perfil", new Vector3(-0.092f, 0f, 0f), 0.055f, false, () => Elegir(true));
+            Boton(filaPregunta, "Nombrar nodo", new Vector3(-0.028f, 0f, 0f), 0.068f, false, NombrarConTeclado);
+            Boton(filaPregunta, "Etiquetas", new Vector3(0.035f, 0f, 0f), 0.052f, false, AlternarEtiquetas);
+            Boton(filaPregunta, "Ayuda", new Vector3(0.09f, 0f, 0f), 0.05f, false, Ayuda);
+            Boton(filaPregunta, "Cerrar", new Vector3(0.145f, 0f, 0f), 0.05f, false, Cerrar);
             string[] nombresVista = { "Perfil izq", "3/4 izq", "Frente", "3/4 der", "Perfil der" };
             float[] angulos = { -90f, -45f, 0f, 45f, 90f };
             for (int i = 0; i < nombresVista.Length; i++)
@@ -1058,15 +1817,19 @@ public class CabezaInvisible : MonoBehaviour
                 float a = angulos[i];
                 Boton(filaGiro, nombresVista[i], new Vector3(-0.124f + i * 0.062f, 0.02f, 0f), 0.058f, false, () => Vista(a));
             }
-            Boton(filaGiro, "Usar esta vista", new Vector3(-0.13f, -0.016f, 0f), 0.075f, true, Usar);
-            Boton(filaGiro, "Guardar vista", new Vector3(-0.053f, -0.016f, 0f), 0.07f, false, GuardarVista);
-            Boton(filaGiro, "Etiquetas", new Vector3(0.014f, -0.016f, 0f), 0.055f, false, AlternarEtiquetas);
-            Boton(filaGiro, "Nueva cabeza", new Vector3(0.08f, -0.016f, 0f), 0.068f, false, () => { Desesconder(); Empezar(); });
-            Boton(filaGiro, "Cerrar", new Vector3(0.145f, -0.016f, 0f), 0.05f, false, Cerrar);
+            Boton(filaGiro, "Usar esta vista", new Vector3(-0.163f, -0.016f, 0f), 0.068f, true, Usar);
+            Boton(filaGiro, "Guardar vista", new Vector3(-0.095f, -0.016f, 0f), 0.062f, false, GuardarVista);
+            Boton(filaGiro, "Etiquetas", new Vector3(-0.035f, -0.016f, 0f), 0.052f, false, AlternarEtiquetas);
+            Boton(filaGiro, "Nombrar nodo", new Vector3(0.027f, -0.016f, 0f), 0.066f, false, NombrarConTeclado);
+            Boton(filaGiro, "Ayuda", new Vector3(0.082f, -0.016f, 0f), 0.04f, false, Ayuda);
+            Boton(filaGiro, "Nueva cabeza", new Vector3(0.133f, -0.016f, 0f), 0.056f, false, () => { Desesconder(); Empezar(); });
+            Boton(filaGiro, "Cerrar", new Vector3(0.183f, -0.016f, 0f), 0.04f, false, Cerrar);
         }
         raiz.gameObject.SetActive(true);
         Vector3 pos = centro + arriba * (centro2D.y - semiY - 0.06f) + derecha * centro2D.x + haciaTi * 0.02f;
         panel.SetPositionAndRotation(pos, Quaternion.LookRotation(-haciaTi, arriba));
+        ArmarVocabulario();
+        ColocarVocabulario();
         sucio = true;
     }
 
@@ -1090,14 +1853,21 @@ public class CabezaInvisible : MonoBehaviour
                 g.SetActive(ver);
     }
 
-    void AlternarEtiquetas()
+    readonly List<Material> materialesPropios = new List<Material>();
+
+    Material MaterialColor(Color c)
     {
-        verEtiquetas = !verEtiquetas;
-        sucio = true;
-        dibujo.Mensaje(verEtiquetas ? "Etiquetas: Sí" : "Etiquetas: No");
+        var baseM = control != null ? control.materialNodo : null;
+        var m = baseM != null ? new Material(baseM) : new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+        if (m.HasProperty("_BaseColor"))
+            m.SetColor("_BaseColor", c);
+        if (m.HasProperty("_Color"))
+            m.SetColor("_Color", c);
+        materialesPropios.Add(m);
+        return m;
     }
 
-    // "Nombrar nodo": el teclado de la app, para el nodo elegido en Nodos (o el que miras).
+    // "Nombrar nodo": el teclado de la app, para los nodos del lazo (aunque ya soltaste la izquierda) o el que miras.
     void NombrarConTeclado()
     {
         TecladoVR.Abrir("Nombre del nodo (ej. punta de nariz)", "", nombre =>
@@ -1106,7 +1876,8 @@ public class CabezaInvisible : MonoBehaviour
                 return;
             int n = control.NombrarNodos(nombre.ToLowerInvariant());
             dibujo.Mensaje(n > 0 ? "Nodo: " + nombre : "Primero elige un nodo (en Nodos) o míralo");
-            sucio = true;
+            if (n > 0)
+                AlCambiarNombres();
         });
     }
 
@@ -1115,12 +1886,13 @@ public class CabezaInvisible : MonoBehaviour
         float frente = perfil ? (mira > 0f ? -90f : 90f) : 0f;
         giro = frente + angulo;
         inclina = 0f;
+        mostrandoReal = false;
         sucio = true;
     }
 
     void OnDestroy()
     {
-        foreach (var m in materiales.Values)
+        foreach (var m in materialesPropios)
             if (m != null)
                 Destroy(m);
         if (instancia == this)

@@ -30,7 +30,7 @@ public class TutorialNovedades : TarjetaTutorial
     readonly List<Vector3> otra = new List<Vector3>();
     readonly List<Vector3> tramo = new List<Vector3>();
 
-    protected override int Paginas => 17;
+    protected override int Paginas => 18;
 
     protected override void ArmarExtra()
     {
@@ -69,7 +69,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 13: return Tx("14 · Desert sunset and layers", "14 · Atardecer en el desierto y capas");
             case 14: return Tx("15 · Frame by frame and your voice", "15 · Cuadro a cuadro y tu voz");
             case 15: return Tx("16 · Gradient, pencil and two hands", "16 · Degradado, lápiz y dos manos");
-            default: return Tx("17 · Invisible head, Exit and timeline zoom", "17 · Cabeza invisible, Salir y zoom del timeline");
+            case 16: return Tx("17 · Invisible head, Exit and timeline zoom", "17 · Cabeza invisible, Salir y zoom del timeline");
+            default: return Tx("18 · Your head, untouched; pencil grains", "18 · Tu cabeza intacta y granos de lápiz");
         }
     }
 
@@ -126,6 +127,10 @@ public class TutorialNovedades : TarjetaTutorial
                     "DESERT SUNSET: a new living background: dunes all around you lit by a low golden sun, violet shadows, a pink and purple sky with thin clouds, the first stars and the wind lifting dust far away. Say \"desert\". LAYERS: each one shows a thumbnail on its left; say \"layer 2\" to jump to it; leave your finger still on the name to rename it; delete with the little trash can (tap twice). The camera is a layer of its own (\"+ Camera\" = another one). The panels open with either hand, whatever the other one is doing.",
                     "ATARDECER EN EL DESIERTO: un fondo vivo nuevo: dunas a tu alrededor con la luz dorada del sol bajito, sombras violeta, un cielo rosado y morado con nubes finas, las primeras estrellas y el viento levantando polvo a lo lejos. Di \"desierto\". CAPAS: cada una muestra su miniatura a la izquierda; di \"capa 2\" para ir a ella; deja el dedo quieto en el nombre para cambiarlo; borra con el basurerito (toca dos veces). La cámara es su propia capa (\"+ Cámara\" = otra). Las persianas se abren con cualquier mano, haga lo que haga la otra.");
             default:
+                return Tx(
+                    "INVISIBLE HEAD: the view you drew now looks IDENTICAL and your original NEVER changes: \"Use this view\" puts the new view on another frame (6 frames ahead if you are on the original's). While you turn it, the preview uses lines exactly like yours. Labels have 3 buttons: green check = confirm, red X = remove, blue square = rename (keyboard or voice). On the right, the VOCABULARY: pinch a word and drop it on a node. With the head open, say \"mouth\", \"nose\", \"eye\"... (the loop nodes stay chosen even after you let go). \"Save view\" keeps YOUR touched-up version. A step-by-step mini tutorial (\"Help\"). PENCIL: grain shapes (squares, round, asteroids, blurry, hairs), live changes and the panel opens by itself. The \"#\" is now one of the main colors. Onion skin turns on and off instantly.",
+                    "CABEZA INVISIBLE: la vista que dibujaste ahora se ve IDÉNTICA y tu original NUNCA cambia: \"Usar esta vista\" pone la vista nueva en otro fotograma (6 más adelante si estás en el del original). Mientras la giras, la vista previa usa líneas iguales a las tuyas. Las etiquetas tienen 3 botones: visto verde = confirmar, X roja = quitar, cuadrito azul = cambiar el nombre (teclado o voz). A la derecha, el VOCABULARIO: pellizca una palabra y suéltala sobre un nodo. Con la cabeza abierta, di \"boca\", \"nariz\", \"ojo\"... (los nodos del lazo siguen elegidos aunque sueltes). \"Guardar vista\" guarda TU versión retocada. Un minitutorial paso a paso (\"Ayuda\"). LÁPIZ: formas de grano (cuadritos, redondos, asteroides, borrosos, pelos), cambios en vivo y el panel se abre solo. El \"#\" ahora es uno más de los colores principales. El papel cebolla se prende y se apaga al instante.");
+            case 16:
                 return Tx(
                     "INVISIBLE HEAD (Animate page): draw a head (front or profile) and turn it; \"Use this view\" moves YOUR SAME NODES into that view on the current frame, so two views MORPH. \"Save view\" keeps it in a library (like Flash's Ctrl+L). Name nodes by voice (\"nose tip\", \"chin\"...) or with \"Name node\"; \"Labels\" shows what the app recognizes (faint with \"?\" = guessed). EXIT (watch): saves and closes your drawing; with a blank sheet, it closes the app. \"+ New\" in My files. TIMELINE: pinch the two side handles with both hands and spread = bigger frames; cells shaded every 5. THICKNESS without circles: pinch with the right and drag up/down. Move any panel: left nodes gesture + touch it with your right index. Voice: \"frame 12\", \"delete frame 12\", \"delete layer 2\", \"back\", \"control z\", \"select all\", \"deselect\", \"turn off voice\", \"copy style\", \"paste style\".",
                     "CABEZA INVISIBLE (página Animar): dibuja una cabeza (de frente o de perfil) y gírala; \"Usar esta vista\" lleva TUS MISMOS NODOS a esa vista en el fotograma actual, así entre dos vistas hay MORPH. \"Guardar vista\" la deja en una biblioteca (como Ctrl+L en Flash). Nombra nodos con la voz (\"punta de nariz\", \"barbilla\"...) o con \"Nombrar nodo\"; \"Etiquetas\" muestra lo que la app reconoce (clarito con \"?\" = adivinado). SALIR (reloj): guarda y cierra tu dibujo; con la hoja en blanco, cierra la app. \"+ Nuevo\" en Mis archivos. TIMELINE: pellizca las dos agarraderas de los lados con las dos manos y sepáralas = cuadros más grandes; casillas sombreadas cada 5. GROSOR sin círculos: pellizca con la derecha y arrastra arriba/abajo. Mover cualquier panel: gesto de nodos izquierdo + tócalo con el índice derecho. Voz: \"fotograma 12\", \"borra fotograma 12\", \"borra capa 2\", \"atrás\", \"control z\", \"selecciona todo\", \"quita la selección\", \"apaga la voz\", \"copiar estilo\", \"pegar estilo\".");
@@ -187,7 +192,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 13: AnimarVivos(t); break;
             case 14: AnimarCuadros(t); break;
             case 15: AnimarVidrio(t); break;
-            default: AnimarBarra(t); break;
+            case 16: AnimarBarra(t); break;
+            default: AnimarVidrio(t); break;
         }
     }
 

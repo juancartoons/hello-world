@@ -38,7 +38,8 @@ public partial class ControlManos
         // v51
         CabezaInvisible,
         // v52
-        IrAFotograma, BorraFotograma, BorraCapa, SeleccionaTodo, QuitaSeleccion, ApagaVoz, CopiarEstilo, PegarEstilo, PuntoClave
+        IrAFotograma, BorraFotograma, BorraCapa, SeleccionaTodo, QuitaSeleccion, ApagaVoz, CopiarEstilo, PegarEstilo, PuntoClave,
+        PuntoCorto   // v53: "nariz", "oreja"... (con la cabeza invisible abierta)
     }
 
     // v43: los fondos que se pueden pedir por su nombre (el nombre exacto que tienen en Escenario).
@@ -271,6 +272,9 @@ public partial class ControlManos
         for (int i = 0; i < CabezaInvisible.PuntosEs.Length; i++)
             l.Add(C(ComandoVoz.PuntoClave, CabezaInvisible.PuntosEs[i], CabezaInvisible.PuntosEn[i],
                     CabezaInvisible.FrasesEs(i), new[] { CabezaInvisible.PuntosEn[i] }, i));
+        // v53: las palabras cortas (para que la voz las entienda; "boca" y "ojo" ya estaban). Solo sirven con la cabeza abierta.
+        l.Add(C(ComandoVoz.PuntoCorto, "Nariz", "Nose", new[] { "nariz", "oreja", "orejas", "ceja", "cejas", "contorno", "labios", "ojos", "mejilla" },
+                new[] { "nose", "ear", "ears", "eyebrow", "eyebrows", "outline", "lips", "eyes", "cheek" }));
         return l.ToArray();
     }
 
@@ -338,6 +342,19 @@ public partial class ControlManos
     {
         string n = " " + Normalizar(texto) + " ";
         bool ingles = Idioma.Ingles;
+        // v53: con la cabeza invisible abierta, las palabras cortas ("boca", "nariz", "ojo"...) nombran los nodos
+        // elegidos (antes "boca" abría la página de Bocas).
+        if (CabezaInvisible.Activa)
+        {
+            string corta = CabezaInvisible.PalabraCorta(Normalizar(texto));
+            if (corta != null)
+            {
+                UltimoComandoVoz = corta;
+                UltimoComandoHora = Time.time;
+                NombrarNodoVoz(corta);
+                return;
+            }
+        }
         int mejor = -1, largo = 0;
         for (int i = 0; i < Comandos.Length; i++)
             foreach (var f in ingles ? Comandos[i].en : Comandos[i].es)
@@ -521,6 +538,9 @@ public partial class ControlManos
                 break;
             case ComandoVoz.CopiarEstilo: CopiarEstiloVoz(); break;
             case ComandoVoz.PegarEstilo: PegarEstiloVoz(); break;
+            case ComandoVoz.PuntoCorto:
+                dibujo.Mensaje("Esa palabra es para la cabeza invisible (ábrela y elige nodos)");
+                break;
             case ComandoVoz.PuntoClave: NombrarNodoVoz(CabezaInvisible.PuntosEs[Mathf.Clamp(dato, 0, CabezaInvisible.PuntosEs.Length - 1)]); break;
             case ComandoVoz.En2D: dibujo.PonerPlano(true); break;
             case ComandoVoz.En3D: dibujo.PonerPlano(false); break;
@@ -820,17 +840,39 @@ public partial class ControlManos
     {
         int n = NombrarNodos(nombre);
         dibujo.Mensaje(n > 0 ? "Nodo: " + nombre : "Elige un nodo (en Nodos) o míralo, y di su nombre");
+        if (n > 0)
+            CabezaInvisible.AlNombrar();
     }
 
-    public int NombrarNodos(string nombre)
+    // v53: ¿hay nodos elegidos con el lazo (ahora, o hace menos de 60 s aunque ya soltaste la izquierda)?
+    public bool HayNodosElegidos => elegidosLazo.Count > 0 || (ultimoLazo.Count > 0 && Time.time - ultimoLazoHora < 60f);
+
+    // v53: nombra SOLO los nodos del lazo (no el que miras). Devuelve cuántos.
+    public int NombrarNodosElegidos(string nombre)
     {
         int n = 0;
-        foreach (var g in elegidosLazo)
+        var lista = elegidosLazo.Count > 0 ? elegidosLazo : (Time.time - ultimoLazoHora < 60f ? ultimoLazo : null);
+        if (lista == null)
+            return 0;
+        foreach (var g in lista)
             if (g.t != null && g.i < g.t.nodos.Count)
             {
                 g.t.NombrarNodo(g.i, nombre);
                 n++;
             }
+        if (n > 0)
+        {
+            ultimoLazo.Clear();
+            dibujo.HayCambios = true;
+        }
+        return n;
+    }
+
+    public int NombrarNodos(string nombre)
+    {
+        if (CabezaInvisible.NombrarPendiente(nombre))
+            return 1;
+        int n = NombrarNodosElegidos(nombre);
         if (n == 0 && SeleccionValida)
         {
             selTrazo.NombrarNodo(selIndice, nombre);

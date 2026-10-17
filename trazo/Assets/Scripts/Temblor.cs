@@ -73,6 +73,11 @@ public class Temblor : MonoBehaviour
         Capa.texturaLinea = t == 1 ? 1 : 0;
         Capa.hebras = t == 2 ? 3 : t == 3 ? 5 : 1;
         Cambio("textura " + NombresTextura[t]);
+        // v53: al elegir Lápiz se abren solos sus ajustes (con la muestra en vivo).
+        if (t == 1)
+            PanelLapiz.Abrir();
+        else
+            PanelLapiz.Cerrar();
     }
 
     // VIDA de la línea (el temblor, con su suavidad, velocidad y ciclo ya elegidos): Quieta → Suave → Nerviosa → Fuerte.

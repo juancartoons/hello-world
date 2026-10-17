@@ -5,8 +5,8 @@ using UnityEngine;
 // CLAVE ANTERIOR (rojizas) y de la SIGUIENTE (verdosas) de la capa en la que dibujas. Así calcas el movimiento.
 //  - Solo se ven: no se tocan, no se borran y no salen en fotos ni videos.
 //  - Se prende y se apaga con el botón "Cebolla" de la página Animar (la mesa) o la voz ("cebolla"). Se recuerda.
-//  - v46: en una capa CUADRO A CUADRO se ve SIEMPRE (ahí es donde más se usa: cada cuadro empieza vacío y calcas
-//    el anterior). El botón "Cebolla" es para las capas normales.
+//  - v53: el botón "Cebolla" MANDA SIEMPRE (también en cuadro a cuadro: antes ahí se veía siempre y el botón parecía
+//    no hacer nada). Al volver una capa cuadro a cuadro, la cebolla se prende sola. Prender/apagar se ve al instante.
 public class PapelCebolla : MonoBehaviour
 {
     const string ClaveGuardada = "jcartoons_cebolla";
@@ -27,10 +27,21 @@ public class PapelCebolla : MonoBehaviour
         }
     }
 
+    // v53: para las capas cuadro a cuadro (ahí casi siempre se quiere ver).
+    public static void Encender()
+    {
+        Asegurar();
+        activo = 1;
+        if (instancia != null)
+            instancia.firmaPuesta = int.MinValue;
+    }
+
     public static void Alternar()
     {
         activo = Activo ? 0 : 1;
         Asegurar();
+        if (instancia != null)
+            instancia.firmaPuesta = int.MinValue;   // se rehace YA (no espera a que cambie otra cosa)
         var d = instancia != null ? instancia.dibujo : null;
         if (d != null)
             d.Mensaje(activo == 1 ? "Papel cebolla: Sí (antes: rojo y naranja · después: verde y azul)" : "Papel cebolla: No");
@@ -55,8 +66,7 @@ public class PapelCebolla : MonoBehaviour
         if (dibujo == null)
             dibujo = FindFirstObjectByType<Dibujo>();
         var anim = dibujo != null ? dibujo.animacion : null;
-        bool cuadros = dibujo != null && dibujo.EsCuadroACuadro(dibujo.capaActual);
-        bool ver = (Activo || cuadros) && anim != null && anim.claves.Count > 0 && !anim.Reproduciendo && !ExportadorVideo.Exportando
+        bool ver = Activo && dibujo != null && anim != null && anim.claves.Count > 0 && !anim.Reproduciendo && !ExportadorVideo.Exportando
                    && !Tutorial.EnCurso;
         int capa = ver ? dibujo.capaActual : -1;
         int f = ver ? anim.Fotograma : -1;
@@ -68,9 +78,9 @@ public class PapelCebolla : MonoBehaviour
         unchecked
         {
             foreach (var k in nuevasAntes)
-                firma = firma * 31 + k.GetHashCode() + k.trazos.Count;
+                firma = firma * 31 + Firma(k);
             foreach (var k in nuevasDespues)
-                firma = firma * 37 + k.GetHashCode() + k.trazos.Count;
+                firma = firma * 37 + Firma(k);
         }
         if (firma == firmaPuesta && capa == capaPuesta && f == fotogramaPuesto)
             return;
@@ -82,6 +92,24 @@ public class PapelCebolla : MonoBehaviour
         capaPuesta = capa;
         fotogramaPuesto = f;
         Armar();
+    }
+
+    // Lo que tiene una clave (si cambias su dibujo, la cebolla se rehace aunque tenga las mismas líneas).
+    static int Firma(Clave k)
+    {
+        unchecked
+        {
+            int h = k.GetHashCode() * 7 + k.trazos.Count;
+            foreach (var p in k.trazos)
+            {
+                if (p == null || p.nodos == null)
+                    continue;
+                h = h * 31 + p.nodos.Count + (p.oculto ? 1 : 0);
+                if (p.nodos.Count > 0)
+                    h = h * 31 + p.nodos[0].GetHashCode() + p.nodos[p.nodos.Count - 1].GetHashCode();
+            }
+            return h;
+        }
     }
 
     // Las claves de antes (la más cercana primero) y las de después, de esa capa (hasta 2 de cada lado).

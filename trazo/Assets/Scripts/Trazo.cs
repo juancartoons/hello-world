@@ -24,6 +24,7 @@ public class EstiloTrazo
     public int texturaLinea;
     // El lápiz (de 0 a 9; 5 = normal): grano, densidad, orilla borrosa, ancho y hervido.
     public int lapizGrano = 5, lapizDensidad = 5, lapizBorde = 5, lapizAncho = 5, lapizHervido = 5;
+    public int lapizForma = 1;   // v53: forma de los granitos: 0 cuadritos, 1 redondos, 2 asteroides, 3 borrosos, 4 pelos
 
     public static EstiloTrazo DesdeCapa(DatosCapa c)
     {
@@ -43,6 +44,7 @@ public class EstiloTrazo
         e.lapizBorde = c.lapizBorde;
         e.lapizAncho = c.lapizAncho;
         e.lapizHervido = c.lapizHervido;
+        e.lapizForma = c.lapizForma;
         return e;
     }
 
@@ -64,6 +66,7 @@ public class EstiloTrazo
         c.lapizBorde = lapizBorde;
         c.lapizAncho = lapizAncho;
         c.lapizHervido = lapizHervido;
+        c.lapizForma = lapizForma;
     }
 
     public EstiloTrazo Copia()
@@ -75,7 +78,8 @@ public class EstiloTrazo
     public float LapizEmpacado()
     {
         return Mathf.Clamp(lapizGrano, 0, 9) + 10 * Mathf.Clamp(lapizDensidad, 0, 9) + 100 * Mathf.Clamp(lapizBorde, 0, 9)
-               + 1000 * Mathf.Clamp(lapizAncho, 0, 9) + 10000 * Mathf.Clamp(lapizHervido, 0, 9);
+               + 1000 * Mathf.Clamp(lapizAncho, 0, 9) + 10000 * Mathf.Clamp(lapizHervido, 0, 9)
+               + 100000 * Mathf.Clamp(lapizForma, 0, 4);
     }
 }
 

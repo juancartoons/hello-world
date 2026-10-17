@@ -78,6 +78,7 @@ public partial class ControlManos
 
     Transform paleta;
     readonly List<Transform> botonesColor = new List<Transform>();
+    Transform botonHex;   // v53: el "#" es uno más de los colores principales (para la línea o el relleno)
     readonly List<Material> materialesPaleta = new List<Material>();
     readonly List<BotonPaleta> botonesPaleta = new List<BotonPaleta>();
     RamaPaleta ramaLinea, ramaRelleno, ramaAbierta;
@@ -190,6 +191,14 @@ public partial class ControlManos
         {
             dedoEnColor = false;
             dedoEnLinea = false;
+            return;
+        }
+        // v53: ¿tocó el "#"? (el teclado para escribir el color: va a la línea o al relleno, según lo abierto)
+        if (botonHex != null && pellizcoTrazo == null && Vector3.Distance(punta, botonHex.position) < 0.014f)
+        {
+            if (!dedoEnColor)
+                PedirHex();
+            dedoEnColor = true;
             return;
         }
         // ¿Tocó un color?
@@ -485,9 +494,10 @@ public partial class ControlManos
         ArmarBotonesPaleta(negro);
         ArmarBurbujaSecreta();
         ArmarDatosPaleta();
+        int lugares = ColoresPaleta.Length + 1;   // v53: + el "#"
         for (int i = 0; i < ColoresPaleta.Length; i++)
         {
-            float ang = Mathf.PI * 0.5f - i * Mathf.PI * 2f / ColoresPaleta.Length;
+            float ang = Mathf.PI * 0.5f - i * Mathf.PI * 2f / lugares;
             var b = new GameObject("Color" + i).transform;
             b.SetParent(paleta, false);
             b.localPosition = new Vector3(Mathf.Cos(ang) * RadioPaleta, Mathf.Sin(ang) * RadioPaleta, -0.001f);
@@ -497,6 +507,20 @@ public partial class ControlManos
                 DiscoPaleta(b, negro, 1.18f, new Vector3(0f, 0f, 0.02f)); // sin perlas: con su aro negro, como antes
             DiscoPaleta(b, perla ?? ColorMaterial(ColoresPaleta[i]), 1f, Vector3.zero);
             botonesColor.Add(b);
+        }
+        {
+            // v53: el "#" (color escrito, como #FF6A00): una perla blanca con su numeral, junto a los demás colores.
+            float ang = Mathf.PI * 0.5f - ColoresPaleta.Length * Mathf.PI * 2f / lugares;
+            botonHex = new GameObject("ColorHex").transform;
+            botonHex.SetParent(paleta, false);
+            botonHex.localPosition = new Vector3(Mathf.Cos(ang) * RadioPaleta, Mathf.Sin(ang) * RadioPaleta, -0.001f);
+            botonHex.localScale = Vector3.one * TamColor;
+            var blancoHex = new Color(0.97f, 0.97f, 0.97f);
+            var perlaHex = MaterialPerla(blancoHex);
+            if (perlaHex == null)
+                DiscoPaleta(botonHex, negro, 1.18f, new Vector3(0f, 0f, 0.02f));
+            DiscoPaleta(botonHex, perlaHex ?? ColorMaterial(blancoHex), 1f, Vector3.zero);
+            IconoPaleta(botonHex, IconoNumeral(), negro);
         }
         go.SetActive(false);
     }
@@ -657,12 +681,6 @@ public partial class ControlManos
         hijo.alTocar = PanelLapiz.Abrir;
         hijo.texto = () => "Ajustes del lápiz";
         hijo.tono = 1.1f;
-        // v52: COLOR EN HEXADECIMAL (#FF6A00): un "#" que abre el teclado de la app.
-        hijo = HijoLinea(8, null, negro);
-        IconoPaleta(hijo.t, IconoNumeral(), negro);
-        hijo.alTocar = PedirHex;
-        hijo.texto = () => "Color hexadecimal (#)";
-        hijo.tono = 1f;
 
         // ---- RELLENO (a las 2): 3 facetas verdes.
         ramaRelleno = CrearRama("Relleno", AnguloRelleno, negro);
@@ -721,12 +739,6 @@ public partial class ControlManos
         hijo.alTocar = () => ElegirTextura(TexturaElegida, (VelocidadTexturaElegida + 1) % Trazo.VelocidadesTextura.Length);
         hijo.texto = () => "Velocidad: " + Trazo.NombresVelocidadTextura[VelocidadTexturaElegida];
         hijo.tono = 1.3f;
-        // v52: color del relleno en hexadecimal.
-        hijo = HijoRelleno(3, negro);
-        IconoPaleta(hijo.t, IconoNumeral(), negro);
-        hijo.alTocar = PedirHex;
-        hijo.texto = () => "Color hexadecimal (#)";
-        hijo.tono = 1f;
     }
 
     // Un "#".

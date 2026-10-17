@@ -68,6 +68,16 @@ public partial class ControlManos
                 nombre = NombreColor(ColoresPaleta[i]);
             }
         }
+        if (botonHex != null)
+        {
+            float d = Vector3.Distance(punta, botonHex.position);
+            if (d < 0.014f + CercaBoton * 0.6f && d < mejorD)
+            {
+                mejorD = d;
+                mejor = botonHex;
+                nombre = "Color hexadecimal (#)";
+            }
+        }
         if (mejor == null)
             return;
         string palabra;

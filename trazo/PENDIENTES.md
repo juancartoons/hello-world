@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v52***
+*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v53***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,6 +16,20 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 4. **Build And Run**.
 
 ---
+
+## 0+. Hecho en la v53 (falta probarlo en el visor)
+
+- [x] **Cabeza invisible**: la vista dibujada se ve **idéntica** (son tus líneas) y **el original nunca cambia** (queda como clave en su fotograma y como "Original" en la biblioteca; "Usar esta vista" va a otro fotograma, 6 más adelante si estás en el del original).
+- [x] Vista previa con líneas **iguales a las tuyas** (grosor, color, textura, vida) y sin la "doble cara" (tus líneas se vuelven a esconder cada cuadro).
+- [x] **Etiquetas con botones**: visto verde (confirmar), X roja (quitar), cuadrito azul (cambiar nombre con teclado o voz).
+- [x] **Vocabulario** a la derecha: pellizca una palabra y suéltala sobre un nodo (o nombra los nodos del lazo).
+- [x] Voz con la cabeza abierta: "boca", "nariz", "ojo", "ceja", "oreja", "contorno", "mejilla" (ya no abre Bocas). El lazo se recuerda 60 s después de soltar la izquierda.
+- [x] **Guardar vista** guarda TU versión retocada (marcada con *). **Minitutorial** de 5 pasos ("No mostrar más"; "Ayuda" lo reabre).
+- [x] **Lápiz**: formas de grano (cuadritos, redondos, asteroides, borrosos, pelos), panel con cambios **en vivo** (muestra grande + líneas seleccionadas; Cancelar revierte) y se abre solo al elegir Lápiz.
+- [x] El **#** es uno más de los colores principales de la paleta (va a la línea o al relleno, según lo abierto).
+- [x] **Papel cebolla**: el botón manda siempre (también en cuadro a cuadro) y se ve al instante; al crear una capa cuadro a cuadro se prende sola.
+- [ ] Probar la vista previa de la cabeza con dibujos en 3D (no planos) y con muchas líneas.
+- [ ] Guardar la biblioteca de vistas dentro del archivo (hoy dura mientras la app está abierta).
 
 ## 0+. Hecho en la v52 (falta probarlo en el visor)
 

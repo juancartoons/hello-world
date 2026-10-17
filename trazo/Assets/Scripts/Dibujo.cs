@@ -81,6 +81,7 @@ public class DatosCapa
     public int texturaLinea;
     // v52: los ajustes del lápiz (de 0 a 9; 5 = normal), para las líneas nuevas de esta capa.
     public int lapizGrano = 5, lapizDensidad = 5, lapizBorde = 5, lapizAncho = 5, lapizHervido = 5;
+    public int lapizForma = 1;   // v53: 0 cuadritos, 1 redondos, 2 asteroides, 3 borrosos, 4 pelos
 
     public DatosCapa Copia()
     {
@@ -493,6 +494,7 @@ public class Dibujo : MonoBehaviour
         if (n < 0)
             return -1;
         capas[n].cuadroACuadro = true;
+        PapelCebolla.Encender();
         if (animacion != null)
             animacion.MostrarFotograma();
         Avisar();
@@ -532,6 +534,7 @@ public class Dibujo : MonoBehaviour
         }
         GuardarParaDeshacer();
         capas[capa].cuadroACuadro = true;
+        PapelCebolla.Encender();   // v53: en cuadro a cuadro casi siempre se quiere ver (y el botón lo apaga)
         HayCambios = true;
         Avisar();
         Mensaje("Capa cuadro a cuadro: cada cuadro empieza vacío (el anterior se ve rojizo, el siguiente verdoso)");
@@ -1317,6 +1320,24 @@ public class Dibujo : MonoBehaviour
         go.transform.SetParent(transform, false);
         var t = go.AddComponent<Trazo>();
         t.Configurar(materialLinea, materialRelleno, ancho, EstiloLinea.Cinta);
+        return t;
+    }
+
+    // v53: una línea SUELTA, igualita a las tuyas (mismo material, estilo y capa), pero que NO es del dibujo: no se
+    // guarda, no se elige ni se borra. La usa la vista previa de la cabeza invisible. Quien la crea la destruye.
+    public Trazo CrearTrazoSuelto(DatosTrazo d, int capa)
+    {
+        var t = CrearTrazo(d.ancho > 0f ? d.ancho : AnchoNuevoLocal());
+        t.name = "TrazoVistaPrevia";
+        t.id = 0;
+        t.capa = capa;
+        t.color = d.color;
+        bool antes = Trazo.silenciar;
+        Trazo.silenciar = true;
+        t.AplicarPropiedades(d);
+        AplicarCapaVisual(t);
+        t.AplicarPose(d, null, 0f);
+        Trazo.silenciar = antes;
         return t;
     }
 

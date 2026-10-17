@@ -50,6 +50,9 @@ public partial class ControlManos
 
     readonly List<NodoGrupo> grupo = new List<NodoGrupo>();          // los que se están moviendo juntos
     readonly List<NodoGrupo> elegidosLazo = new List<NodoGrupo>();   // los elegidos con el lazo
+    // v53: al soltar la izquierda, los del lazo se recuerdan un rato (para nombrarlos con la voz, el teclado o una palabra).
+    readonly List<NodoGrupo> ultimoLazo = new List<NodoGrupo>();
+    float ultimoLazoHora = -100f;
     readonly HashSet<Trazo> trazosGrupo = new HashSet<Trazo>();
     bool moviendoGrupo, deshacerGrupoPendiente, grupoPlastilina, grupoGira, dedoListoNodos, esperarSalirLinea;
     Vector3 grupoInicioLocal, grupoDesfase, grupoCentro;
@@ -87,6 +90,12 @@ public partial class ControlManos
             Trazo.huboCambio = true;
         dosManosNodos = false;
         grupo.Clear();
+        if (elegidosLazo.Count > 0)
+        {
+            ultimoLazo.Clear();
+            ultimoLazo.AddRange(elegidosLazo);
+            ultimoLazoHora = Time.time;
+        }
         elegidosLazo.Clear();
         CancelarLazo();
         esperaDesde = -1f;
