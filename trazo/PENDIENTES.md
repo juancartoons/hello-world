@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 16 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v49***
+*Actualizado: 16 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v50***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,6 +16,15 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 4. **Build And Run**.
 
 ---
+
+## 0+. Hecho en la v50 (falta probarlo en el visor)
+
+- [x] **Teclado propio** de la app (el del sistema del Quest no salía): botón **Nombre** en la tarjeta de la capa y en Archivos.
+- [x] **Logo con volumen 3D** (9 capas más oscuras detrás) y las letras **ondulan** después de aparecer.
+- [x] **Papel cebolla con un color por cuadro**: antes rojo y naranja, después verde y azul (los más lejanos, más clarito).
+- [x] **Lápiz más natural**: fibras de grafito a lo largo del trazo, orillas que se deshacen en granitos, presión variable, hervido suave.
+- [ ] Textura de PASTEL/crayón para los rellenos (como la mejilla y la mano de las referencias).
+- [ ] v51: experimento **Cabeza invisible** (ojos, nariz, boca y orejas; sin cabello) en vez de las manos.
 
 ## 0+. Hecho en la v49 (falta probarlo en el visor)
 

@@ -77,6 +77,7 @@ public class CapasProfundidad : MonoBehaviour
     BotonTocable btn2D, btn3D, btnBorrar;                // v43 (v44: Borrar es un basurerito)
     BotonTocable btnMasCamara, btnSugiere;               // v44: en la tarjeta de una capa de cámara
     BotonTocable btnCuadros;                             // v46: "Cuadro a cuadro"
+    BotonTocable btnNombre;                              // v50: cambiar el nombre (teclado de la app)
     Transform iconoCamara;                               // v44
     Material matMini;
     RenderTexture rtMini;
@@ -207,7 +208,11 @@ public class CapasProfundidad : MonoBehaviour
         // v45: la tarjeta es más ancha a la izquierda: ahí va la miniatura, DENTRO de la tarjeta.
         Quad(tarjeta, "Fondo", new Vector3(-ExtraIzq * 0.5f, 0f, 0f), new Vector2(Ancho + ExtraIzq, Alto), materialPanel);
         Marco(tarjeta, materialBotonMarcado, 0.0018f, -0.0004f);
-        nombre = Texto(tarjeta, "Capa 1", new Vector3(-0.035f, 0.024f, -0.002f), new Vector2(0.15f, 0.02f), 0.26f, Color.black);
+        nombre = Texto(tarjeta, "Capa 1", new Vector3(-0.06f, 0.024f, -0.002f), new Vector2(0.11f, 0.02f), 0.26f, Color.black);
+        // v50: "Nombre" es un BOTÓN (tocar el nombre empujaba la capa): abre el teclado de la app.
+        btnNombre = Boton(tarjeta, "Nombre", new Vector3(Ancho * 0.5f - 0.103f, 0.026f, 0f), new Vector2(0.04f, 0.018f));
+        btnNombre.alTocar.AddListener(AbrirTeclado);
+        BotonTocable.PonerNombre(btnNombre, "Cambiar el nombre de la capa");
         nombre.fontStyle = FontStyles.Bold;
         btnMas = Boton(tarjeta, "+ Capa", new Vector3(Ancho * 0.5f - 0.055f, 0.026f, 0f), new Vector2(0.05f, 0.018f));
         btnCerrar = Boton(tarjeta, "X", new Vector3(Ancho * 0.5f - 0.015f, 0.028f, 0f), new Vector2(0.022f, 0.022f)); // v37: más grande
@@ -573,15 +578,18 @@ public class CapasProfundidad : MonoBehaviour
     void AbrirTeclado()
     {
         Tocado();
-        if (!TouchScreenKeyboard.isSupported)
-        {
-            dibujo.Mensaje("El teclado sale después de TrazoVR > ★ Armar escena (y Build)");
-            return;
-        }
-        capaTeclado = Actual;
-        var c = dibujo.capas[capaTeclado];
+        // v50: el teclado propio de la app (el del sistema del Quest no salía).
+        int capa = Actual;
+        var c = dibujo.capas[capa];
         string actual = c.nombre != null && c.nombre.StartsWith("Capa ") ? "" : c.nombre;
-        teclado = TouchScreenKeyboard.Open(actual ?? "", TouchScreenKeyboardType.Default, false, false, false, false, "Nombre de la capa");
+        TecladoVR.Abrir("Nombre de la capa", actual ?? "", nombre =>
+        {
+            if (dibujo != null && capa >= 0 && capa < dibujo.capas.Count)
+            {
+                dibujo.RenombrarCapa(capa, nombre);
+                proximoRefresco = 0f;
+            }
+        });
     }
 
     void RevisarTeclado()

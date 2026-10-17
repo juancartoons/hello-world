@@ -92,6 +92,9 @@ Shader "TrazoVR/Linea"
                     float medio = abs(v.uv.x) * escala;
                     posWS += TrazoHebra(original, v.uv2.x, v.uv2.y, medio, v.vivoA, v.vivoB, fase);
                     float ancho = v.uv.x * escala * TrazoGrosorVivo(original, v.uv2.x, v.vivoA, v.vivoB, fase);
+                    // v50: el lápiz es un poco más ancho (sus orillas se deshacen en granitos).
+                    if (v.vivoB.z > 0.5)
+                        ancho *= 1.35;
                     // v40: la tapa del halo en las puntas (uv.y de 0.2 a 0.4) es solo del halo: aquí no se abre.
                     if (v.uv.y > 0.1)
                         ancho = 0.0;
@@ -127,22 +130,29 @@ Shader "TrazoVR/Linea"
                 float luz = saturate(dot(normalize(i.normalWS), normalize(float3(0.3, 0.9, -0.3))));
                 float k = step(0.5, i.esTubo) * luz * luz;
                 float3 col = lerp(_BaseColor.rgb, _ColorLuz.rgb, k);
-                // v49: lápiz.
+                // v50: LÁPIZ natural (como grafito o pastel sobre papel): fibras finas A LO LARGO del trazo, orillas que se
+                // deshacen en granitos (no un corte), más oscuro al centro, presión que cambia a lo largo y un "hervido"
+                // suave a 8 cuadros por segundo. Sin transparencia: el grano se hace con granitos de pixeles (tramado).
                 if (i.lapiz > 0.5)
                 {
                     float cuadro = floor(_TrazoTiempo * 8.0);
-                    float3 q = i.grano * 1400.0 + cuadro * 13.7;
-                    float g = TrazoRuido(q) * 0.6 + TrazoRuido(q * 2.9 + 5.1) * 0.4;
-                    float borde = abs(i.lado);
-                    // La orilla: irregular a lo largo de la línea (y cambia con cada cuadro).
-                    float orilla = TrazoRuido(float3(i.lugar * 260.0, cuadro * 3.1, 7.0));
-                    clip(0.72 + 0.28 * orilla - borde);
-                    // Huequitos del papel, más hacia las orillas.
-                    clip(g - 0.22 * smoothstep(0.15, 0.95, borde) - 0.08);
-                    float presion = 1.0 - smoothstep(0.15, 1.0, borde) * 0.5;
-                    float tono = saturate(presion * (0.5 + 0.65 * g));
-                    float3 grafito = lerp(col, float3(0.6, 0.6, 0.64), 0.55);
-                    col = lerp(grafito, col, tono);
+                    float borde = abs(i.lado);                       // 0 = centro, 1 = orilla
+                    float largo = i.lugar * 420.0;                   // a lo largo de la línea
+                    // Fibras: cambian rápido de lado a lado y despacio a lo largo (rayitas paralelas al trazo).
+                    float fibra = TrazoRuido(float3(largo * 0.08, borde * 9.0 + i.lado * 3.0, cuadro * 0.37));
+                    float fibra2 = TrazoRuido(float3(largo * 0.25, i.lado * 22.0, 11.0 + cuadro * 0.21));
+                    // La presión del lápiz sube y baja a lo largo.
+                    float presion = 0.72 + 0.28 * TrazoRuido(float3(largo * 0.012, 3.0, cuadro * 0.05));
+                    float cuerpo = 1.0 - smoothstep(0.25, 1.0, borde);
+                    float densidad = cuerpo * presion * (0.45 + 0.4 * fibra + 0.25 * fibra2);
+                    // Granitos del papel (por pixel, cambian con el hervido).
+                    float2 px = floor(i.positionCS.xy);
+                    float granito = frac(sin(dot(px + cuadro * 1.7, float2(12.9898, 78.233))) * 43758.5453);
+                    clip(densidad * 1.12 - granito * 0.8 - 0.02);
+                    // Más oscuro donde hay más grafito; más claro en las orillas.
+                    float tono = saturate(densidad * 1.15 - 0.05);
+                    float3 claro = lerp(col, float3(0.6, 0.6, 0.62), 0.6);
+                    col = lerp(claro, col, tono);
                 }
                 // Se materializa: un destello de luz recorre la línea de punta a punta (unos 0.55 segundos).
                 if (_JCDestello > 0.0)

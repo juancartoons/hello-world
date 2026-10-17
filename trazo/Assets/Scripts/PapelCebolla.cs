@@ -10,8 +10,11 @@ using UnityEngine;
 public class PapelCebolla : MonoBehaviour
 {
     const string ClaveGuardada = "jcartoons_cebolla";
-    static readonly Color ColorAntes = new Color(0.95f, 0.5f, 0.5f);
-    static readonly Color ColorDespues = new Color(0.45f, 0.82f, 0.55f);
+    // v50: un COLOR POR CUADRO (como los programas de animación): 2 antes y 2 después, cada uno distinto, y los más
+    // lejanos más clarito. Así se sabe cuál es cuál.
+    static readonly Color[] ColoresAntes = { new Color(0.92f, 0.36f, 0.36f), new Color(0.97f, 0.66f, 0.3f) };    // rojo, naranja
+    static readonly Color[] ColoresDespues = { new Color(0.28f, 0.72f, 0.42f), new Color(0.3f, 0.55f, 0.95f) }; // verde, azul
+    const int Cuantos = 2;
 
     static PapelCebolla instancia;
     static int activo = -1;   // -1 = aún no leído
@@ -34,7 +37,7 @@ public class PapelCebolla : MonoBehaviour
         Asegurar();
         var d = instancia != null ? instancia.dibujo : null;
         if (d != null)
-            d.Mensaje(activo == 1 ? "Papel cebolla: Sí (clave anterior en rojo, siguiente en verde)" : "Papel cebolla: No");
+            d.Mensaje(activo == 1 ? "Papel cebolla: Sí (antes: rojo y naranja · después: verde y azul)" : "Papel cebolla: No");
     }
 
     public static void Asegurar()
@@ -47,8 +50,9 @@ public class PapelCebolla : MonoBehaviour
     Dibujo dibujo;
     Transform raiz;
     readonly List<Trazo> lineas = new List<Trazo>();
-    Clave antes, despues;
-    int capaPuesta = -1, fotogramaPuesto = -1, cuantasAntes = -1, cuantasDespues = -1;
+    readonly List<Clave> antes = new List<Clave>(), despues = new List<Clave>();
+    readonly List<Clave> nuevasAntes = new List<Clave>(), nuevasDespues = new List<Clave>();
+    int capaPuesta = -1, fotogramaPuesto = -1, firmaPuesta = -1;
 
     void LateUpdate()
     {
@@ -58,37 +62,46 @@ public class PapelCebolla : MonoBehaviour
         bool cuadros = dibujo != null && dibujo.EsCuadroACuadro(dibujo.capaActual);
         bool ver = (Activo || cuadros) && anim != null && anim.claves.Count > 0 && !anim.Reproduciendo && !ExportadorVideo.Exportando
                    && !Tutorial.EnCurso;
-        Clave a = null, b = null;
         int capa = ver ? dibujo.capaActual : -1;
         int f = ver ? anim.Fotograma : -1;
+        nuevasAntes.Clear();
+        nuevasDespues.Clear();
         if (ver)
-            Buscar(anim, capa, f, out a, out b);
-        int na = a != null ? a.trazos.Count : -1, nb = b != null ? b.trazos.Count : -1;
-        if (a == antes && b == despues && capa == capaPuesta && f == fotogramaPuesto && na == cuantasAntes && nb == cuantasDespues)
+            Buscar(anim, capa, f, nuevasAntes, nuevasDespues);
+        int firma = 17;
+        unchecked
+        {
+            foreach (var k in nuevasAntes)
+                firma = firma * 31 + k.GetHashCode() + k.trazos.Count;
+            foreach (var k in nuevasDespues)
+                firma = firma * 37 + k.GetHashCode() + k.trazos.Count;
+        }
+        if (firma == firmaPuesta && capa == capaPuesta && f == fotogramaPuesto)
             return;
-        antes = a;
-        despues = b;
+        antes.Clear();
+        antes.AddRange(nuevasAntes);
+        despues.Clear();
+        despues.AddRange(nuevasDespues);
+        firmaPuesta = firma;
         capaPuesta = capa;
         fotogramaPuesto = f;
-        cuantasAntes = na;
-        cuantasDespues = nb;
         Armar();
     }
 
-    // La clave anterior (antes de este fotograma) y la siguiente (después) de esa capa.
-    static void Buscar(Animacion anim, int capa, int f, out Clave a, out Clave b)
+    // Las claves de antes (la más cercana primero) y las de después, de esa capa (hasta 2 de cada lado).
+    static void Buscar(Animacion anim, int capa, int f, List<Clave> a, List<Clave> b)
     {
-        a = null;
-        b = null;
         foreach (var c in anim.claves)
         {
             if (c == null || c.capa != capa)
                 continue;
             if (c.fotograma < f)
-                a = c;
-            else if (c.fotograma > f && b == null)
-                b = c;
+                a.Insert(0, c);
+            else if (c.fotograma > f && b.Count < Cuantos)
+                b.Add(c);
         }
+        while (a.Count > Cuantos)
+            a.RemoveAt(a.Count - 1);
     }
 
     void Armar()
@@ -97,7 +110,7 @@ public class PapelCebolla : MonoBehaviour
             if (t != null)
                 Destroy(t.gameObject);
         lineas.Clear();
-        if (antes == null && despues == null)
+        if (antes.Count == 0 && despues.Count == 0)
             return;
         if (raiz == null)
         {
@@ -111,8 +124,11 @@ public class PapelCebolla : MonoBehaviour
         raiz.localScale = Vector3.one;
         bool silencio = Trazo.silenciar;
         Trazo.silenciar = true;
-        Poner(antes, ColorAntes);
-        Poner(despues, ColorDespues);
+        // Los más lejanos primero y más clarito.
+        for (int i = antes.Count - 1; i >= 0; i--)
+            Poner(antes[i], Color.Lerp(ColoresAntes[i], Color.white, i * 0.3f));
+        for (int i = despues.Count - 1; i >= 0; i--)
+            Poner(despues[i], Color.Lerp(ColoresDespues[i], Color.white, i * 0.3f));
         Trazo.silenciar = silencio;
     }
 

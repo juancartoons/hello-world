@@ -141,6 +141,8 @@ public class Tutorial : MonoBehaviour
     TextMeshPro eslogan;
     Transform logo;          // v49: el logo (si está): reemplaza a las letras, que siguen marcando el ritmo invisibles
     Material matLogo;
+    readonly List<Material> matsLogoFondo = new List<Material>();   // v50: las capas de atrás (el volumen 3D)
+    Mesh mallaLogo;
     MunecoGuia munecoTitulo;
     float tituloDesde;
 
@@ -475,18 +477,27 @@ public class Tutorial : MonoBehaviour
         {
             matLogo = new Material(materialLogo);
             matLogo.SetTexture("_BaseMap", texLogo);
-            var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            Destroy(q.GetComponent<Collider>());
-            q.name = "Logo";
+            // v50: una malla con muchos cuadritos (así las letras pueden ondular) y, detrás, copias más oscuras que
+            // le dan VOLUMEN 3D (como las letras de bloque de antes).
+            mallaLogo = MallaLogo(48, 6);
+            float ancho = total * 1.12f;
+            var q = new GameObject("Logo");
             logo = q.transform;
             logo.SetParent(titulo, false);
-            float ancho = total * 1.12f;
             logo.localPosition = new Vector3(0f, -0.02f, 0f);
             logo.localScale = new Vector3(ancho, ancho * texLogo.height / (float)texLogo.width, 1f);
-            var rq = q.GetComponent<Renderer>();
-            rq.sharedMaterial = matLogo;
-            rq.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            rq.receiveShadows = false;
+            PiezaLogo(logo, Vector3.zero, matLogo);
+            const int capasLogo = 9;
+            for (int k = capasLogo; k >= 1; k--)
+            {
+                var m = new Material(materialLogo);
+                m.SetTexture("_BaseMap", texLogo);
+                float osc = Mathf.Lerp(0.55f, 0.28f, k / (float)capasLogo);
+                m.SetColor("_Tinte", new Color(osc * 0.9f, osc * 0.75f, osc * 1.1f, 1f));
+                matsLogoFondo.Add(m);
+                // Hacia atrás y un poquito abajo y a la derecha (en unidades del logo).
+                PiezaLogo(logo, new Vector3(0.0035f * k / ancho, -0.006f * k / logo.localScale.y * 0.5f, 0.004f * k), m);
+            }
             matLogo.SetFloat("_Revela", 0f);
             eslogan.gameObject.SetActive(false);
         }
@@ -553,8 +564,16 @@ public class Tutorial : MonoBehaviour
             }
             float fin = Sonidos.InicioNotas + letras.Count * Sonidos.PasoNotas + 0.3f;
             float r = Mathf.Clamp01((t - Sonidos.InicioNotas) / Mathf.Max(0.1f, fin - Sonidos.InicioNotas));
+            float ola = 0.004f * Mathf.Clamp01((t - fin) / 0.6f) / Mathf.Max(0.01f, logo.localScale.y);
+            foreach (var m in matsLogoFondo)
+            {
+                m.SetFloat("_Revela", r);
+                m.SetFloat("_Alfa", f);
+                m.SetFloat("_Ola", ola);
+            }
             matLogo.SetFloat("_Revela", r);
             matLogo.SetFloat("_Alfa", f);
+            matLogo.SetFloat("_Ola", ola);
             float pop = Rebote(Mathf.Clamp01((t - Sonidos.InicioNotas) / 0.5f));
             logo.localRotation = Quaternion.Euler(0f, 0f, (1f - pop) * -4f);
         }
@@ -594,6 +613,46 @@ public class Tutorial : MonoBehaviour
             TerminarTitulo();
     }
 
+    // v50: un rectángulo de 1x1 hecho de muchos cuadritos (para que el logo pueda ondular).
+    static Mesh MallaLogo(int nx, int ny)
+    {
+        var v = new List<Vector3>();
+        var uv = new List<Vector2>();
+        var tri = new List<int>();
+        for (int y = 0; y <= ny; y++)
+            for (int x = 0; x <= nx; x++)
+            {
+                float u = x / (float)nx, w = y / (float)ny;
+                v.Add(new Vector3(u - 0.5f, w - 0.5f, 0f));
+                uv.Add(new Vector2(u, w));
+            }
+        for (int y = 0; y < ny; y++)
+            for (int x = 0; x < nx; x++)
+            {
+                int a = y * (nx + 1) + x, b = a + 1, c = a + nx + 1, d = c + 1;
+                tri.Add(a); tri.Add(c); tri.Add(b);
+                tri.Add(b); tri.Add(c); tri.Add(d);
+            }
+        var m = new Mesh { name = "Logo" };
+        m.SetVertices(v);
+        m.SetUVs(0, uv);
+        m.SetTriangles(tri, 0);
+        m.RecalculateBounds();
+        return m;
+    }
+
+    void PiezaLogo(Transform padre, Vector3 pos, Material m)
+    {
+        var go = new GameObject("PiezaLogo");
+        go.transform.SetParent(padre, false);
+        go.transform.localPosition = pos;
+        go.AddComponent<MeshFilter>().sharedMesh = mallaLogo;
+        var r = go.AddComponent<MeshRenderer>();
+        r.sharedMaterial = m;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
+    }
+
     Vector3 Arriba(int i)
     {
         i = Mathf.Clamp(i, 0, letrasPos.Count - 1);
@@ -618,6 +677,13 @@ public class Tutorial : MonoBehaviour
         if (matLogo != null)
             Destroy(matLogo);
         matLogo = null;
+        foreach (var m in matsLogoFondo)
+            if (m != null)
+                Destroy(m);
+        matsLogoFondo.Clear();
+        if (mallaLogo != null)
+            Destroy(mallaLogo);
+        mallaLogo = null;
     }
 
     void TerminarTitulo()

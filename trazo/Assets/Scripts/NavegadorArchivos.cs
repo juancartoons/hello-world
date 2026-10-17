@@ -649,12 +649,15 @@ public class NavegadorArchivos : MonoBehaviour
 
     void AbrirTeclado()
     {
-        if (!TouchScreenKeyboard.isSupported)
+        // v50: el teclado propio de la app (el del sistema del Quest no salía).
+        TecladoVR.Abrir("Nombre del dibujo", dibujo.NombreArchivo ?? "", nombre =>
         {
-            dibujo.Mensaje("Este visor no tiene teclado aquí (vuelve a tocar ★ Armar escena en Unity)");
-            return;
-        }
-        teclado = TouchScreenKeyboard.Open(dibujo.NombreArchivo ?? "", TouchScreenKeyboardType.Default, false, false, false, false, Idioma.T("Nombre del dibujo"));
+            if (dibujo == null || string.IsNullOrEmpty(nombre))
+                return;
+            dibujo.Renombrar(nombre);
+            Listar();
+            Mostrar();
+        });
     }
 
     void Guardar()

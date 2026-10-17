@@ -429,6 +429,15 @@ public static class Idioma
         "Atardecer en el desierto", "Desert sunset",
         // v46: cuadro a cuadro
         "Cuadro a cuadro", "Frame by frame",
+        // v50: el teclado de la app
+        "Espacio", "Space",
+        "Cancelar", "Cancel",
+        "Listo", "Done",
+        "Mayús", "Shift",
+        "Nombre de la capa", "Layer name",
+        "Nombre del dibujo", "Drawing name",
+        "Cambiar el nombre de la capa", "Rename the layer",
+        "Papel cebolla: Sí (antes: rojo y naranja · después: verde y azul)", "Onion skin: On (before: red and orange · after: green and blue)",
         // v49
         "Textura: ", "Texture: ",
         "Vida: ", "Life: ",
