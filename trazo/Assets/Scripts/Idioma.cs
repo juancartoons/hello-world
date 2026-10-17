@@ -429,6 +429,17 @@ public static class Idioma
         "Atardecer en el desierto", "Desert sunset",
         // v46: cuadro a cuadro
         "Cuadro a cuadro", "Frame by frame",
+        // v51: la cabeza invisible
+        "Cabeza invisible", "Invisible head",
+        "De frente", "Front",
+        "De perfil", "Profile",
+        "Perfil izq", "Left profile",
+        "3/4 izq", "Left 3/4",
+        "Frente", "Front",
+        "3/4 der", "Right 3/4",
+        "Perfil der", "Right profile",
+        "Usar esta vista", "Use this view",
+        "Cerrar", "Close",
         // v50: el teclado de la app
         "Espacio", "Space",
         "Cancelar", "Cancel",

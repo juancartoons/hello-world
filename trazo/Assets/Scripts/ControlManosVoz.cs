@@ -34,7 +34,9 @@ public partial class ControlManos
         // v45
         CopiarColor, PegarColor,
         // v46
-        CuadroACuadro
+        CuadroACuadro,
+        // v51
+        CabezaInvisible
     }
 
     // v43: los fondos que se pueden pedir por su nombre (el nombre exacto que tienen en Escenario).
@@ -138,6 +140,8 @@ public partial class ControlManos
         C(ComandoVoz.Cebolla, "Cebolla", "Onion skin", new[] { "cebolla", "papel cebolla" }, new[] { "onion", "onion skin" }),
         C(ComandoVoz.CuadroACuadro, "Cuadro a cuadro", "Frame by frame", new[] { "cuadro a cuadro", "cuadro por cuadro" },
           new[] { "frame by frame" }),
+        C(ComandoVoz.CabezaInvisible, "Cabeza invisible", "Invisible head", new[] { "cabeza invisible", "gira la cabeza", "cabeza en tres de" },
+          new[] { "invisible head", "turn the head", "head in three d" }),
         C(ComandoVoz.SiguienteFondo, "Siguiente fondo", "Next background",
           new[] { "siguiente fondo", "otro fondo", "cambia fondo", "cambia el fondo" }, new[] { "next background", "change background" }),
         C(ComandoVoz.FondoNombre, "Roma", "Rome", new[] { "roma" }, new[] { "rome" }, 0),
@@ -420,6 +424,7 @@ public partial class ControlManos
             case ComandoVoz.ClaveCamara: CamaraEscena.AgregarClave(); break;
             case ComandoVoz.Cebolla: PapelCebolla.Alternar(); break;
             case ComandoVoz.CuadroACuadro: dibujo.AlternarCuadroACuadro(); break;
+            case ComandoVoz.CabezaInvisible: CabezaInvisible.Alternar(); break;
             case ComandoVoz.En2D: dibujo.PonerPlano(true); break;
             case ComandoVoz.En3D: dibujo.PonerPlano(false); break;
             case ComandoVoz.SiguienteFondo: SiguienteFondoVoz(); break;

@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 16 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v50***
+*Actualizado: 16 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v51***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,6 +16,13 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 4. **Build And Run**.
 
 ---
+
+## 0+. Hecho en la v51 (falta probarlo en el visor)
+
+- [x] **Cabeza invisible** (botón en la página Animar de la mesa, o voz "cabeza invisible"): dibuja en una capa la cabeza DE FRENTE o DE PERFIL (contorno + ojos, nariz, boca, orejas). Elige cómo la dibujaste y gírala: Perfil / 3/4 / Frente para los dos lados, o pellizca y arrastra (también inclina arriba/abajo). "Usar esta vista" cambia tus líneas por esa vista (deshacer la devuelve).
+  - Trampas: de perfil, ojo y oreja se copian al otro lado; nariz al centro (sobresale) y la boca se abre a lo ancho de frente. De frente, la nariz sobresale y las orejas son discos inclinados a los lados.
+- [ ] Probar con caras reales del usuario y ajustar (ojos de perfil, orejas, bocas abiertas).
+- [ ] Siguiente paso: cabello (mechones como "calcomanías" con volumen) y claves automáticas al girar.
 
 ## 0+. Hecho en la v50 (falta probarlo en el visor)
 

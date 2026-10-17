@@ -86,6 +86,7 @@ public class PanelArriba : MonoBehaviour
     // v43: en la página Animar: el formato del video, el fondo verde y el papel cebolla.
     public BotonTocable btnFormato, btnVerde, btnCebolla;
     public BotonTocable btnCuadros;   // v46: "Cuadro a cuadro" (capas donde cada cuadro empieza vacío)
+    public BotonTocable btnCabeza;    // v51: "Cabeza invisible" (girar una cabeza dibujada)
     readonly List<Transform> marcasCamara = new List<Transform>();
 
     [Header("Bocas")]
@@ -257,6 +258,8 @@ public class PanelArriba : MonoBehaviour
         BotonTocable.PonerNombre(btnVerde, "Fondo verde (solo en el video)");
         BotonTocable.PonerVoz(btnCebolla, ControlManos.ComandoVoz.Cebolla);
         BotonTocable.PonerVoz(btnCuadros, ControlManos.ComandoVoz.CuadroACuadro);
+        BotonTocable.PonerVoz(btnCabeza, ControlManos.ComandoVoz.CabezaInvisible);
+        Conectar(btnCabeza, CabezaInvisible.Alternar);
         Conectar(btnFormato, () =>
         {
             // v47: horizontal → vertical → vertical 2K → horizontal...
@@ -2083,6 +2086,7 @@ public class PanelArriba : MonoBehaviour
         // Pestañas y barra de arriba
         Poner(d, btnPaginaAnimar, "ANIMAR (página)\nLas pestañas se asoman arriba del panel, como en un archivador (debajo, si la mesa está arriba): toca una para abrir su página y tócala otra vez para guardarla.\nVideo anim: tu animación en MP4 (también en Mis archivos → Compartir).");
         Poner(d, btnCebolla, "PAPEL CEBOLLA\nEn pausa ves clarito la clave anterior (rojiza) y la siguiente (verdosa) de tu capa, para calcar el movimiento. No sale en fotos ni videos. En las capas Cuadro a cuadro sale siempre.");
+        Poner(d, btnCabeza, "CABEZA INVISIBLE\nDibuja en una capa la cabeza de tu personaje DE FRENTE o DE PERFIL: el contorno (la línea más grande) y los rasgos (ojos, nariz, boca, orejas; sin cabello). Toca esto y di cómo la dibujaste: la app la vuelve un huevo 3D invisible y la puedes GIRAR: Perfil, 3/4 y Frente para los dos lados (o pellízcala con la derecha y arrastra). \"Usar esta vista\" cambia tus líneas por esa vista (deshacer la devuelve).");
         Poner(d, btnCuadros, "CUADRO A CUADRO\nLa única excepción de la app: en estas capas cada cuadro es un dibujo propio y un cuadro nuevo empieza VACÍO (como los programas de animación de siempre). Ves el cuadro anterior en rojizo y el siguiente en verdoso.\nAvanza con > y dibuja; cada dibujo dura hasta el siguiente. Si tu capa ya tiene dibujo, se crea una capa nueva \"Cuadros\" (así no se mezclan). Voz: \"cuadro a cuadro\".");
         if (btnLiberarCapa != null)
             foreach (var b in btnLiberarCapa)
