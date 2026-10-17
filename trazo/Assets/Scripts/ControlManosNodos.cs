@@ -22,6 +22,9 @@ using UnityEngine;
 //    al abrir el pellizco se queda así (rombito morado). Los rombitos se mueven con el índice, como los nodos.
 //    (Ver ControlManosTela.cs.)
 //  - Al entrar al modo, si el dedo ya estaba sobre algo, no agarra nada hasta que salga y vuelva a tocar.
+// v49: DOS MANOS sobre los nodos del lazo: SIN soltar la izquierda (pulgar + medio), PELLIZCA con la derecha en el
+//    aire: separar o juntar las manos = más grande o más chico; girar las manos = rotar; mover las dos = trasladar.
+//    En 2D se queda dentro de su hoja. (Ya no se gira con la V: la V sobre un nodo del lazo solo lo mueve.)
 // Al abrir la mano izquierda todo se suelta y se deseleccionan los del lazo.
 // (Respaldo de la versión con pellizco: trazo/Respaldos/nodos-con-pellizco-v26.)
 public partial class ControlManos
@@ -66,6 +69,7 @@ public partial class ControlManos
         dedoListoNodos = false;
         esperarSalirLinea = false;
         moviendoGrupo = false;
+        dosManosNodos = false;
         grupo.Clear();
         elegidosLazo.Clear();
         CancelarLazo();
@@ -79,6 +83,9 @@ public partial class ControlManos
         moviendoGrupo = false;
         grupoPlastilina = false;
         grupoGira = false;
+        if (dosManosNodos)
+            Trazo.huboCambio = true;
+        dosManosNodos = false;
         grupo.Clear();
         elegidosLazo.Clear();
         CancelarLazo();
@@ -138,6 +145,16 @@ public partial class ControlManos
             asaPorPellizco = true;
             EmpezarArrastre(Objetivo.Asa, selTrazo, selIndice, salidaPellizco, punta);
             MostrarModoNodos(true, dibujo.Seleccion);
+            return;
+        }
+
+        // 1a2. v49: dos manos sobre los nodos del lazo (pellizco derecho en el aire).
+        if (dosManosNodos || (elegidosLazo.Count > 0 && Der.empezoPellizco))
+        {
+            CancelarLazo();
+            esperaDesde = -1f;
+            DosManosNodos();
+            MostrarModoNodos(true, solo);
             return;
         }
 
@@ -221,8 +238,8 @@ public partial class ControlManos
             esperaDesde = -1f;
             if (EnLazo(t, i))
             {
-                // Con la V (índice y medio estirados) el grupo además gira con tu muñeca.
-                EmpezarGrupo(t, i, punta, false, Der.DosDedos);
+                // v49: el grupo se mueve con el dedo; girar y cambiar el tamaño, con las dos manos (pellizco derecho).
+                EmpezarGrupo(t, i, punta, false, false);
             }
             else if (Der.DosDedos)
             {
@@ -437,6 +454,85 @@ public partial class ControlManos
             {
                 g.t.asaEntrada[g.i] = g.t.ProyectarVectorEnHoja(giro * g.entrada);
                 g.t.asaSalida[g.i] = g.t.ProyectarVectorEnHoja(giro * g.salida);
+            }
+            trazosGrupo.Add(g.t);
+        }
+        foreach (var tr in trazosGrupo)
+            tr.Reconstruir();
+    }
+
+    // ---------- v49: dos manos sobre los nodos del lazo ----------
+
+    bool dosManosNodos;
+    Vector3 dmA0, dmB0;
+    readonly List<NodoGrupo> dmGrupo = new List<NodoGrupo>();
+
+    // El punto de la izquierda: donde se tocan el pulgar y el medio (el gesto de nodos).
+    Vector3 PuntoNodosIzq => (Izq.pulgar + Izq.medio) * 0.5f;
+
+    void DosManosNodos()
+    {
+        if (!dosManosNodos)
+        {
+            dmGrupo.Clear();
+            foreach (var g in elegidosLazo)
+                if (Dibujo.Editable(g.t) && g.i < g.t.nodos.Count)
+                {
+                    g.t.AsegurarAsas();
+                    dmGrupo.Add(new NodoGrupo
+                    {
+                        t = g.t, i = g.i, inicio = g.t.nodos[g.i], peso = 1f,
+                        entrada = g.t.asaEntrada[g.i], salida = g.t.asaSalida[g.i]
+                    });
+                }
+            if (dmGrupo.Count == 0 || !Izq.valida)
+                return;
+            dmA0 = PuntoNodosIzq;
+            dmB0 = Der.PuntoPellizco;
+            dosManosNodos = true;
+            dibujo.GuardarParaDeshacer();
+            MostrarEtiqueta("Dos manos: separa = tamaño · gira · mueve");
+            Burbuja(dmB0, 0.8f);
+            return;
+        }
+        if (!Der.valida || !Der.pellizco || !Izq.valida)
+        {
+            // Se suelta: los elegidos siguen elegidos (en su lugar nuevo), para seguir trabajando con ellos.
+            dosManosNodos = false;
+            for (int k = 0; k < elegidosLazo.Count; k++)
+            {
+                var g = elegidosLazo[k];
+                if (g.t != null && g.i < g.t.nodos.Count)
+                {
+                    g.inicio = g.t.nodos[g.i];
+                    elegidosLazo[k] = g;
+                }
+            }
+            Trazo.huboCambio = true;
+            return;
+        }
+        Vector3 a = PuntoNodosIzq, b = Der.PuntoPellizco;
+        Vector3 v0 = dmB0 - dmA0, v1 = b - a;
+        if (v0.magnitude < 0.01f || v1.magnitude < 0.005f)
+            return;
+        float escala = Mathf.Clamp(v1.magnitude / v0.magnitude, 0.05f, 20f);
+        Quaternion giro = Quaternion.FromToRotation(v0, v1);
+        Vector3 m0 = (dmA0 + dmB0) * 0.5f, m1 = (a + b) * 0.5f;
+        var raiz = dibujo.transform;
+        Quaternion giroLocal = Quaternion.Inverse(raiz.rotation) * giro * raiz.rotation;
+        trazosGrupo.Clear();
+        foreach (var g in dmGrupo)
+        {
+            if (g.t == null || g.i >= g.t.nodos.Count)
+                continue;
+            Vector3 w = raiz.TransformPoint(g.inicio);
+            Vector3 nuevo = m1 + giro * ((w - m0) * escala);
+            g.t.MoverNodoSinReconstruir(g.i, g.t.ProyectarEnHoja(raiz.InverseTransformPoint(nuevo)));
+            // Los tiradores hechos a mano giran y crecen con su nodo (los automáticos se recalculan solos).
+            if (g.i < g.t.asaManual.Count && g.t.asaManual[g.i])
+            {
+                g.t.asaEntrada[g.i] = g.t.ProyectarVectorEnHoja(giroLocal * g.entrada * escala);
+                g.t.asaSalida[g.i] = g.t.ProyectarVectorEnHoja(giroLocal * g.salida * escala);
             }
             trazosGrupo.Add(g.t);
         }

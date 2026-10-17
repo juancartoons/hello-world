@@ -34,6 +34,8 @@ public class Tutorial : MonoBehaviour
     [Header("Materiales")]
     [Tooltip("Manos guía (shader TrazoVR/Guia)")]
     public Material materialGuia;
+    [Tooltip("v49: el logo de la entrada (shader TrazoVR/Logo; la imagen está en Resources/LogoJCartoons.png)")]
+    public Material materialLogo;
     [Tooltip("Papelitos de celebración (shader TrazoVR/Brillo, Suave = 0)")]
     public Material materialConfeti;
     [Tooltip("Escarcha (shader TrazoVR/Brillo, Suave = 1)")]
@@ -137,6 +139,8 @@ public class Tutorial : MonoBehaviour
     readonly List<float> letrasArriba = new List<float>();
     readonly List<bool> letrasChispa = new List<bool>();
     TextMeshPro eslogan;
+    Transform logo;          // v49: el logo (si está): reemplaza a las letras, que siguen marcando el ritmo invisibles
+    Material matLogo;
     MunecoGuia munecoTitulo;
     float tituloDesde;
 
@@ -465,6 +469,28 @@ public class Tutorial : MonoBehaviour
         eslogan.fontStyle = FontStyles.Italic | FontStyles.Bold;
         eslogan.alpha = 0f;
 
+        // v49: el LOGO (con su eslogan): se revela de izquierda a derecha al ritmo del arpa; las letras quedan invisibles.
+        var texLogo = Resources.Load<Texture2D>("LogoJCartoons");
+        if (texLogo != null && materialLogo != null)
+        {
+            matLogo = new Material(materialLogo);
+            matLogo.SetTexture("_BaseMap", texLogo);
+            var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            Destroy(q.GetComponent<Collider>());
+            q.name = "Logo";
+            logo = q.transform;
+            logo.SetParent(titulo, false);
+            float ancho = total * 1.12f;
+            logo.localPosition = new Vector3(0f, -0.02f, 0f);
+            logo.localScale = new Vector3(ancho, ancho * texLogo.height / (float)texLogo.width, 1f);
+            var rq = q.GetComponent<Renderer>();
+            rq.sharedMaterial = matLogo;
+            rq.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            rq.receiveShadows = false;
+            matLogo.SetFloat("_Revela", 0f);
+            eslogan.gameObject.SetActive(false);
+        }
+
         munecoTitulo = new MunecoGuia(titulo, materialNegro, 0.0048f);
         munecoTitulo.escala = 0.22f;
         munecoTitulo.temblor = 0.003f;
@@ -516,6 +542,22 @@ public class Tutorial : MonoBehaviour
         }
         if (eslogan != null)
             eslogan.alpha = Mathf.Clamp01((t - 1.65f) / 0.6f) * f;
+        if (logo != null && matLogo != null)
+        {
+            // Las letras siguen marcando el ritmo (chispas, muñequito), pero no se ven: se ve el logo.
+            for (int i = 0; i < letras.Count; i++)
+            {
+                letras[i].alpha = 0f;
+                foreach (var c in letrasFondo[i])
+                    c.alpha = 0f;
+            }
+            float fin = Sonidos.InicioNotas + letras.Count * Sonidos.PasoNotas + 0.3f;
+            float r = Mathf.Clamp01((t - Sonidos.InicioNotas) / Mathf.Max(0.1f, fin - Sonidos.InicioNotas));
+            matLogo.SetFloat("_Revela", r);
+            matLogo.SetFloat("_Alfa", f);
+            float pop = Rebote(Mathf.Clamp01((t - Sonidos.InicioNotas) / 0.5f));
+            logo.localRotation = Quaternion.Euler(0f, 0f, (1f - pop) * -4f);
+        }
 
         // El muñequito salta de letra en letra (y se va por la derecha).
         if (munecoTitulo != null && letras.Count > 0)
@@ -572,6 +614,10 @@ public class Tutorial : MonoBehaviour
         letrasArriba.Clear();
         letrasChispa.Clear();
         eslogan = null;
+        logo = null;
+        if (matLogo != null)
+            Destroy(matLogo);
+        matLogo = null;
     }
 
     void TerminarTitulo()

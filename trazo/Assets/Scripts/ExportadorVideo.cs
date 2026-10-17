@@ -135,7 +135,7 @@ public class ExportadorVideo : MonoBehaviour
             Mensaje("No se pudo exportar (falta el dibujo)");
             return;
         }
-        if (animacion.claves.Count < 2 || animacion.UltimaClave <= 0)
+        if (!animacion.HayAnimacion || animacion.UltimaClave <= 0)
         {
             Mensaje("Necesitas al menos 2 claves para el video");
             return;

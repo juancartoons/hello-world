@@ -82,7 +82,7 @@ public partial class ControlManos
     readonly List<BotonPaleta> botonesPaleta = new List<BotonPaleta>();
     RamaPaleta ramaLinea, ramaRelleno, ramaAbierta;
     BotonPaleta botonInvisible;
-    Material materialCentroPaleta, materialCursorColor, gotaCubeta;
+    Material materialCentroPaleta, materialCursorColor, gotaCubeta, degradadoAntes;
     TMP_Text textoCentro;
     Transform centroRelleno;
     Mesh mallaCentroRelleno;
@@ -573,33 +573,23 @@ public partial class ControlManos
         ramaLinea.raiz.alTocar = () => AbrirRama(ramaLinea);
         ramaLinea.raiz.texto = () => ramaAbierta == ramaLinea ? "Línea" : "";
 
+        // v49: la línea en pocas preguntas claras: TEXTURA (lisa, lápiz, hebras) y VIDA (quieta, suave, nerviosa,
+        // fuerte: ya trae su velocidad y su suavidad). Después: grosor vivo, imán, uniones, halo y cómo sigue el lápiz.
         var iconos = IconosTemblor();
-        var hijo = HijoLinea(0, iconos[0], negro);
-        hijo.amarillo = () => CapaPaleta() != null && CapaPaleta().temblor > 0;
-        hijo.alTocar = () => { if (dibujo.temblor != null) dibujo.temblor.Siguiente(); };
-        hijo.texto = () => dibujo.temblor != null && CapaPaleta() != null ? "Temblor " + CapaPaleta().temblor + " · " + dibujo.temblor.NombreNivel : "";
-        hijo = HijoLinea(1, iconos[1], negro);
-        hijo.amarillo = () => CapaPaleta() != null && CapaPaleta().hebras > 1;
-        hijo.alTocar = () => { if (dibujo.temblor != null) dibujo.temblor.SiguienteHebras(); };
-        hijo.texto = () => dibujo.temblor != null ? "Hebras " + dibujo.temblor.Hebras : "";
+        var hijo = HijoLinea(0, iconos[1], negro);
+        hijo.amarillo = () => dibujo.temblor != null && dibujo.temblor.Textura > 0;
+        hijo.alTocar = () => { if (dibujo.temblor != null) dibujo.temblor.SiguienteTextura(); };
+        hijo.texto = () => dibujo.temblor != null ? "Textura: " + Temblor.NombresTextura[dibujo.temblor.Textura] : "";
+        hijo = HijoLinea(1, iconos[0], negro);
+        hijo.amarillo = () => dibujo.temblor != null && dibujo.temblor.Vida > 0;
+        hijo.alTocar = () => { if (dibujo.temblor != null) dibujo.temblor.SiguienteVida(); };
+        hijo.texto = () => dibujo.temblor != null ? "Vida: " + Temblor.NombresVida[dibujo.temblor.Vida] : "";
         hijo = HijoLinea(2, iconos[2], negro);
         hijo.amarillo = () => CapaPaleta() != null && CapaPaleta().grosorVivo;
         hijo.alTocar = () => { if (dibujo.temblor != null) dibujo.temblor.AlternarGrosor(); };
         hijo.texto = () => dibujo.temblor != null && dibujo.temblor.GrosorVivo ? "Grosor vivo: Sí" : "Grosor vivo: No";
-        hijo = HijoLinea(3, iconos[3], negro);
-        hijo.amarillo = () => CapaPaleta() != null && !CapaPaleta().ciclo3;
-        hijo.alTocar = () => { if (dibujo.temblor != null) dibujo.temblor.AlternarCiclo(); };
-        hijo.texto = () => dibujo.temblor == null || dibujo.temblor.Ciclo3 ? "Ciclo de 3" : "Libre";
-        hijo = HijoLinea(4, iconos[4], negro);
-        hijo.amarillo = () => CapaPaleta() != null && CapaPaleta().suavidad != 1;
-        hijo.alTocar = () => { if (dibujo.temblor != null) dibujo.temblor.SiguienteSuavidad(); };
-        hijo.texto = () => dibujo.temblor != null && CapaPaleta() != null ? "Suavidad " + (Mathf.Clamp(CapaPaleta().suavidad, 0, 2) + 1) + " · " + dibujo.temblor.NombreSuavidad : "";
-        hijo = HijoLinea(5, iconos[5], negro);
-        hijo.amarillo = () => CapaPaleta() != null && CapaPaleta().velocidad != 1;
-        hijo.alTocar = () => { if (dibujo.temblor != null) dibujo.temblor.SiguienteVelocidad(); };
-        hijo.texto = () => dibujo.temblor != null ? Mathf.RoundToInt(dibujo.temblor.CambiosPorSegundo) + " cambios/s" : "";
         // Imán: una herradura roja con las puntas grises.
-        hijo = HijoLinea(6, null, negro);
+        hijo = HijoLinea(3, null, negro);
         var u2 = new List<Vector2[]>();
         LineaIcono(u2, new[] { new Vector2(-0.17f, 0.12f), new Vector2(-0.17f, -0.06f), new Vector2(-0.1f, -0.2f),
                                new Vector2(0f, -0.24f), new Vector2(0.1f, -0.2f), new Vector2(0.17f, -0.06f), new Vector2(0.17f, 0.12f) }, 0.11f);
@@ -613,7 +603,7 @@ public partial class ControlManos
         hijo.texto = () => CapaPaleta() != null && CapaPaleta().iman ? "Imán: Sí" : "Imán: No";
         hijo.tono = 1.2f;
         // Halo (solo con un fondo 360 o la realidad): una raya negra con su brillo gris detrás.
-        hijo = HijoLinea(7, null, negro);
+        hijo = HijoLinea(5, null, negro);
         var brillo = new List<Vector2[]>();
         BarraIcono(brillo, new Vector2(-0.2f, -0.2f), new Vector2(0.2f, 0.2f), 0.3f);
         IconoPaleta(hijo.t, brillo, ColorMaterial(new Color(0.68f, 0.7f, 0.75f)));
@@ -627,7 +617,7 @@ public partial class ControlManos
         hijo.texto = () => dibujo.HaloEncendido ? "Halo: Sí" : "Halo: No";
         hijo.tono = 1.1f;
         // Lápiz (solo en una capa de boceto 2D): cómo sigue a tu dedo. Un lápiz amarillo con su punta.
-        hijo = HijoLinea(8, null, negro);
+        hijo = HijoLinea(6, null, negro);
         Vector2 dirLapiz = new Vector2(0.7071f, -0.7071f), ladoLapiz = new Vector2(0.7071f, 0.7071f);
         Vector2 finCuerpo = new Vector2(0.05f, -0.05f), puntaLapiz = finCuerpo + dirLapiz * 0.2f;
         var cuerpo = new List<Vector2[]>();
@@ -640,10 +630,10 @@ public partial class ControlManos
         hijo.visible = () => dibujo.UsaHoja;
         hijo.amarillo = () => ModoLapiz != 0;
         hijo.alTocar = SiguienteModoLapiz;
-        hijo.texto = () => "Lápiz: " + NombresModoLapiz[ModoLapiz];
+        hijo.texto = () => "Sigue al dedo: " + NombresModoLapiz[ModoLapiz];
         hijo.tono = 1f;
         // v40: Uniones (al unir líneas o cerrar figuras): en ESQUINA (por defecto) o suaves. Una "V" de dos rectas.
-        hijo = HijoLinea(9, null, negro);
+        hijo = HijoLinea(4, null, negro);
         var ve = new List<Vector2[]>();
         LineaIcono(ve, new[] { new Vector2(-0.22f, 0.2f), new Vector2(0f, -0.2f), new Vector2(0.22f, 0.2f) }, 0.08f);
         IconoPaleta(hijo.t, ve, negro);
@@ -683,27 +673,26 @@ public partial class ControlManos
         hijo.alTocar = () => ElegirTextura((TexturaElegida + 1) % Trazo.NombresTextura.Length, VelocidadTexturaElegida);
         hijo.texto = () => "Textura " + TexturaElegida + " · " + Trazo.NombresTextura[TexturaElegida];
         hijo.tono = 1.15f;
-        // Cubeta: un balde con su asa y una gota del color de relleno.
+        // v49: DEGRADADO (reemplaza a la cubeta): tres franjas, del color de antes (arriba) al de ahora (abajo).
+        if (CubetaActiva)
+            CubetaActiva = false;   // la cubeta ya no tiene botón: que no quede prendida de antes
         hijo = HijoRelleno(1, negro);
-        var balde = new List<Vector2[]>
-        {
-            new[] { new Vector2(-0.24f, 0.08f), new Vector2(0.16f, 0.08f), new Vector2(0.11f, -0.28f), new Vector2(-0.19f, -0.28f) },
-        };
-        LineaIcono(balde, new[] { new Vector2(-0.22f, 0.1f), new Vector2(-0.16f, 0.27f), new Vector2(0.08f, 0.27f), new Vector2(0.14f, 0.1f) }, 0.05f);
-        IconoPaleta(hijo.t, balde, negro);
         gotaCubeta = ColorMaterial(ColorDeRelleno);
-        IconoPaleta(hijo.t, new List<Vector2[]>
-        {
-            Circulo(new Vector2(0.27f, -0.14f), 0.09f),
-            new[] { new Vector2(0.27f, 0.03f), new Vector2(0.19f, -0.11f), new Vector2(0.35f, -0.11f) },
-        }, gotaCubeta);
-        hijo.amarillo = () => CubetaActiva;
+        degradadoAntes = ColorMaterial(rellenoAnterior);
+        IconoPaleta(hijo.t, new List<Vector2[]> { new[] { new Vector2(-0.24f, 0.26f), new Vector2(0.24f, 0.26f), new Vector2(0.24f, 0.1f), new Vector2(-0.24f, 0.1f) } },
+                    degradadoAntes);
+        IconoPaleta(hijo.t, new List<Vector2[]> { new[] { new Vector2(-0.24f, 0.08f), new Vector2(0.24f, 0.08f), new Vector2(0.24f, -0.08f), new Vector2(-0.24f, -0.08f) } },
+                    ColorMaterial(new Color(0.72f, 0.72f, 0.78f)));
+        IconoPaleta(hijo.t, new List<Vector2[]> { new[] { new Vector2(-0.24f, -0.1f), new Vector2(0.24f, -0.1f), new Vector2(0.24f, -0.26f), new Vector2(-0.24f, -0.26f) } },
+                    gotaCubeta);
+        hijo.amarillo = () => ModoDegradado > 0;
         hijo.alTocar = () =>
         {
-            CubetaActiva = !CubetaActiva;
-            MostrarEtiqueta(CubetaActiva ? "Cubeta: Sí" : "Cubeta: No");
+            ModoDegradado = (ModoDegradado + 1) % NombresDegradado.Length;
+            MostrarEtiqueta("Degradado: " + NombresDegradado[ModoDegradado]
+                            + (ModoDegradado > 0 ? " · elige dos colores y toca dentro de una forma" : ""));
         };
-        hijo.texto = () => CubetaActiva ? "Cubeta: Sí" : "Cubeta: No";
+        hijo.texto = () => "Degradado: " + NombresDegradado[ModoDegradado];
         hijo.tono = 1.1f;
         // Velocidad de la textura (solo con textura): ">>".
         hijo = HijoRelleno(2, negro);
@@ -767,6 +756,8 @@ public partial class ControlManos
         if (botonInvisible != null)
             botonInvisible.t.localScale = Vector3.one * botonInvisible.tamano * (marcado < 0 ? 1.3f : 1f);
         PonerColorMaterial(gotaCubeta, ColorDeRelleno);
+        if (degradadoAntes != null)
+            PonerColorMaterial(degradadoAntes, rellenoAnterior);
         RefrescarBurbujaSecreta();
     }
 
@@ -1045,7 +1036,7 @@ public partial class ControlManos
         datosAhora[9] = "Relleno: " + (cr.a < 0.01f ? "Sin relleno" : NombreColor(cr)) + " · " + Trazo.NombresTextura[tex]
                         + (tex > 0 ? " · " + Trazo.NombresVelocidadTextura[Mathf.Clamp(vel, 0, Trazo.VelocidadesTextura.Length - 1)]
                                    + " · x" + Trazo.LimitarEscala(esc).ToString("0.0") : "");
-        datosAhora[10] = (CubetaActiva ? "Cubeta: Sí" : "Cubeta: No") + (capa != null ? (capa.iman ? " · Imán: Sí" : " · Imán: No") : "");
+        datosAhora[10] = ("Degradado: " + NombresDegradado[ModoDegradado]) + (capa != null ? (capa.iman ? " · Imán: Sí" : " · Imán: No") : "");
         datosAhora[11] = dibujo.HaloDisponible ? (dibujo.HaloEncendido ? "Halo: Sí" : "Halo: No") : "";
         for (int i = 0; i < datosAhora.Length; i++)
         {

@@ -7,6 +7,8 @@ Shader "TrazoVR/Linea"
     // Compatible con URP, SRP Batcher y estéreo de Meta Quest (multiview / single-pass instanced).
     // v39: la cinta nunca es más fina que un pixel de la pantalla: así la punta fina se ve entera hasta el final
     // (antes, con poco detalle, la puntita desaparecía y la línea se veía cortada).
+    // v49: TEXTURA LÁPIZ (vivoB.z = 1): grano de papel, orilla irregular, más oscura al centro (presión) y "hervida"
+    // a 8 cuadros por segundo (el grano y la orilla cambian, como animación cuadro a cuadro, aunque la línea no se mueva).
     // v36: al terminarla, un destello la recorre de punta a punta (_JCDestello = cuándo empezó); y al deshacer se
     // "rebobina" (_JCCorte: lo que pasa de ahí no se dibuja). (v37: la luz del dedo ya no ilumina las líneas.)
     Properties
@@ -59,6 +61,9 @@ Shader "TrazoVR/Linea"
                 float3 normalWS   : TEXCOORD0;
                 float esTubo      : TEXCOORD1;
                 float lugar       : TEXCOORD2; // 0 al empezar la línea, 1 al terminarla
+                float lado        : TEXCOORD3; // v49: de -1 a 1 a lo ancho de la cinta (0 = el centro)
+                float lapiz       : TEXCOORD4; // v49: 1 = textura de lápiz
+                float3 grano      : TEXCOORD5; // v49: dónde está (en el dibujo) para el grano del papel
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -108,6 +113,9 @@ Shader "TrazoVR/Linea"
                 o.normalWS = nWS;
                 o.esTubo = v.uv.y;
                 o.lugar = v.uv2.y;
+                o.lado = v.uv.y < 0.5 ? sign(v.uv.x) : 0.0;
+                o.lapiz = v.vivoB.z;
+                o.grano = v.positionOS.xyz;
                 return o;
             }
 
@@ -119,6 +127,23 @@ Shader "TrazoVR/Linea"
                 float luz = saturate(dot(normalize(i.normalWS), normalize(float3(0.3, 0.9, -0.3))));
                 float k = step(0.5, i.esTubo) * luz * luz;
                 float3 col = lerp(_BaseColor.rgb, _ColorLuz.rgb, k);
+                // v49: lápiz.
+                if (i.lapiz > 0.5)
+                {
+                    float cuadro = floor(_TrazoTiempo * 8.0);
+                    float3 q = i.grano * 1400.0 + cuadro * 13.7;
+                    float g = TrazoRuido(q) * 0.6 + TrazoRuido(q * 2.9 + 5.1) * 0.4;
+                    float borde = abs(i.lado);
+                    // La orilla: irregular a lo largo de la línea (y cambia con cada cuadro).
+                    float orilla = TrazoRuido(float3(i.lugar * 260.0, cuadro * 3.1, 7.0));
+                    clip(0.72 + 0.28 * orilla - borde);
+                    // Huequitos del papel, más hacia las orillas.
+                    clip(g - 0.22 * smoothstep(0.15, 0.95, borde) - 0.08);
+                    float presion = 1.0 - smoothstep(0.15, 1.0, borde) * 0.5;
+                    float tono = saturate(presion * (0.5 + 0.65 * g));
+                    float3 grafito = lerp(col, float3(0.6, 0.6, 0.64), 0.55);
+                    col = lerp(grafito, col, tono);
+                }
                 // Se materializa: un destello de luz recorre la línea de punta a punta (unos 0.55 segundos).
                 if (_JCDestello > 0.0)
                 {

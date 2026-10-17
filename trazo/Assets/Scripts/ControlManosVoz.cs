@@ -626,7 +626,8 @@ public partial class ControlManos
             dibujo.Mensaje("Estás en la capa de la cámara: elige otra capa para pegar");
             return;
         }
-        // Dónde: un poquito corrida a tu derecha (5 cm). Si lo copiado no está delante de ti, sale delante de ti.
+        // v49: sale JUSTO DONDE MIRAS (el centro de tu vista), a la misma distancia de ti que lo copiado (entre 35 cm
+        // y 1.2 m). Voltea a la derecha, arriba o abajo y di "pegar": aparece allá. Con o sin la mirada prendida.
         var raiz = dibujo.transform;
         Vector3 centro = Vector3.zero;
         int n = 0;
@@ -637,9 +638,12 @@ public partial class ControlManos
                 n++;
             }
         centro = n > 0 ? raiz.TransformPoint(centro / n) : raiz.position;
-        Vector3 mundo = Cabeza != null ? Cabeza.right * 0.05f : Vector3.right * 0.05f;
-        if (Cabeza != null && Vector3.Dot(centro - Cabeza.position, Cabeza.forward) < 0.15f)
-            mundo = Cabeza.position + Cabeza.forward * 0.45f - centro;
+        Vector3 mundo = Vector3.right * 0.05f;
+        if (Cabeza != null)
+        {
+            float distancia = Mathf.Clamp(Vector3.Distance(centro, Cabeza.position), 0.35f, 1.2f);
+            mundo = Cabeza.position + Cabeza.forward * distancia - centro;
+        }
         Vector3 local = raiz.InverseTransformVector(mundo);
         dibujo.GuardarParaDeshacer();
         Trazo ultima = null;

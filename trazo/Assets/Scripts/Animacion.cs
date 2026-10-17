@@ -99,6 +99,7 @@ public class Animacion : MonoBehaviour
     }
 
     // La última clave (de cualquier capa). 0 si no hay.
+    // v49: las claves de la CÁMARA cuentan igual que las del dibujo (Play y el video llegan hasta la última de todas).
     public int UltimaClave
     {
         get
@@ -106,9 +107,12 @@ public class Animacion : MonoBehaviour
             int fin = 0;
             foreach (var c in claves)
                 fin = Mathf.Max(fin, c.fotograma);
-            return fin;
+            return Mathf.Max(fin, CamaraEscena.UltimaClave);
         }
     }
+
+    // v49: ¿hay algo que animar? (2 claves del dibujo, o 2 de la cámara).
+    public bool HayAnimacion => claves.Count >= 2 || CamaraEscena.Claves.Count >= 2;
 
     public int UltimoFotograma()
     {
@@ -355,7 +359,7 @@ public class Animacion : MonoBehaviour
             Pausar();
             return;
         }
-        if (claves.Count < 2)
+        if (!HayAnimacion)
         {
             dibujo.Mensaje("Necesitas al menos 2 claves");
             return;

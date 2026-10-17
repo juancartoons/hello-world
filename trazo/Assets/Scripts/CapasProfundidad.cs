@@ -271,6 +271,14 @@ public class CapasProfundidad : MonoBehaviour
         AsegurarFantasmas(Actual);
     }
 
+    bool ManoAbiertaCerca(ManoSeguida m)
+    {
+        if (m == null || !m.valida || tarjeta == null)
+            return false;
+        bool abierta = m.estiradoIndice > 1.5f && m.estiradoMedio > 1.5f && m.estiradoAnular > 1.5f && m.estiradoMenique > 1.5f;
+        return abierta && Vector3.Distance(m.indice, tarjeta.position) < 0.25f;
+    }
+
     int Actual => Mathf.Clamp(dibujo.capaActual, 0, Mathf.Max(0, dibujo.capas.Count - 1));
 
     // Un fantasma por capa. Los nuevos empiezan en su lugar (contando desde la capa "cur").
@@ -759,6 +767,10 @@ public class CapasProfundidad : MonoBehaviour
         // v43: los botones, solo con todo quieto (y un momento después).
         if (empujando || Mathf.Abs(sActual) > 0.03f || Mathf.Abs(z) > 0.002f)
             quietoDesde = Time.time;
+        // v49: "mano de empujar" vs "dedo de tocar": con una mano ABIERTA (los cuatro dedos estirados) cerca de las
+        // capas, los botones se apagan; vuelven cuando cierras la mano y señalas con el índice solo.
+        if (ManoAbiertaCerca(control.Der) || ManoAbiertaCerca(control.Izq))
+            quietoDesde = Mathf.Max(quietoDesde, Time.time - EsperaBotones + 0.35f);
         MostrarBotones(Time.time - quietoDesde > EsperaBotones);
 
         if (Time.time > avisoHasta && avisoHasta > 0f)

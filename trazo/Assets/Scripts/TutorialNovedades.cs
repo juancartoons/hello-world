@@ -30,7 +30,7 @@ public class TutorialNovedades : TarjetaTutorial
     readonly List<Vector3> otra = new List<Vector3>();
     readonly List<Vector3> tramo = new List<Vector3>();
 
-    protected override int Paginas => 15;
+    protected override int Paginas => 16;
 
     protected override void ArmarExtra()
     {
@@ -67,7 +67,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 11: return Tx("12 · The camera", "12 · La cámara");
             case 12: return Tx("13 · Gaze and the syringe finger", "13 · La mirada y el dedo jeringa");
             case 13: return Tx("14 · Desert sunset and layers", "14 · Atardecer en el desierto y capas");
-            default: return Tx("15 · Frame by frame and your voice", "15 · Cuadro a cuadro y tu voz");
+            case 14: return Tx("15 · Frame by frame and your voice", "15 · Cuadro a cuadro y tu voz");
+            default: return Tx("16 · Gradient, pencil and two hands", "16 · Degradado, lápiz y dos manos");
         }
     }
 
@@ -125,6 +126,10 @@ public class TutorialNovedades : TarjetaTutorial
                     "ATARDECER EN EL DESIERTO: un fondo vivo nuevo: dunas a tu alrededor con la luz dorada del sol bajito, sombras violeta, un cielo rosado y morado con nubes finas, las primeras estrellas y el viento levantando polvo a lo lejos. Di \"desierto\". CAPAS: cada una muestra su miniatura a la izquierda; di \"capa 2\" para ir a ella; deja el dedo quieto en el nombre para cambiarlo; borra con el basurerito (toca dos veces). La cámara es su propia capa (\"+ Cámara\" = otra). Las persianas se abren con cualquier mano, haga lo que haga la otra.");
             default:
                 return Tx(
+                    "GRADIENT (replaces the bucket in FILL): pick a color, then another, and touch inside a shape: it goes from the first (top) to the second (bottom); tap again for center-to-edge. Line TEXTURE: Smooth, PENCIL (paper grain, rough edge, boiling like hand-drawn frames) or strands; LIFE: Still, Soft, Jittery, Strong. NODES: keep the left nodes gesture, choose nodes with a loop and PINCH with the right in the air: spread = size, turn = rotate, move both = move. In THICKNESS the right index also loops several nodes. \"Paste\" appears where you look. Camera keys (diamonds) can be dragged; twist your wrist while holding the camera to change where it aims.",
+                    "DEGRADADO (reemplaza la cubeta en RELLENO): elige un color, luego otro, y toca dentro de una forma: va del primero (arriba) al segundo (abajo); tócalo otra vez para del centro hacia afuera. TEXTURA de la línea: Lisa, LÁPIZ (grano de papel, orilla irregular, hervida como cuadros a mano) o hebras; VIDA: Quieta, Suave, Nerviosa, Fuerte. NODOS: sin soltar la izquierda, elige nodos con un lazo y PELLIZCA con la derecha en el aire: separar = tamaño, girar = rotar, mover las dos = mover. En GROSOR el índice derecho también hace lazo de varios nodos. \"Pegar\" sale donde miras. Las claves de la cámara (rombitos) se arrastran; gira la muñeca al sostener la cámara para cambiar a dónde apunta.");
+            case 14:
+                return Tx(
                     "FRAME BY FRAME: the one exception of the app. Tap \"Frame by frame\" (Animate page of the desk, or on the layer card) or say \"frame by frame\": you get a layer where each new frame starts EMPTY, like classic animation programs. You see the previous drawing in reddish and the next one in greenish (onion skin, always on here). Each drawing lasts until the next one. YOUR VOICE: say \"hello, how are you?\" and the head (or your mouths) repeats it with YOUR voice while its mouth moves. Also: the skin of your fingertip gets stained with ink (like dipping it in an inkwell) and it paints lines more easily; videos are much sharper (and there is vertical 2K); what you look at blinks softly; golden desert sand; the timeline feels a bit heavier when you drag it.",
                     "CUADRO A CUADRO: la única excepción de la app. Toca \"Cuadro a cuadro\" (página Animar de la mesa, o en la tarjeta de la capa) o di \"cuadro a cuadro\": tienes una capa donde cada cuadro nuevo empieza VACÍO, como los programas de animación de siempre. Ves el dibujo anterior rojizo y el siguiente verdoso (papel cebolla, aquí siempre prendido). Cada dibujo dura hasta el siguiente. TU VOZ: di \"hola, ¿cómo estás?\" y la cabeza (o tus bocas) lo repite con TU voz mientras mueve la boca. Además: la piel de la punta de tu dedo se mancha de tinta (como si lo metieras en un tintero) y pinta líneas más fácil; los videos salen mucho más nítidos (y hay vertical 2K); lo que miras titila suave; arena dorada en el desierto; el timeline se siente un poquito más pesado al arrastrarlo.");
             case 11:
@@ -158,7 +163,7 @@ public class TutorialNovedades : TarjetaTutorial
         SinRelleno();
         dedo.gameObject.SetActive(false);
         dedo.localScale = Vector3.one * 0.009f;
-        PonerColor(matGris, p == Paginas - 1 ? new Color(0.95f, 0.55f, 0.55f) : new Color(0.72f, 0.74f, 0.8f));   // v46: cebolla rojiza
+        PonerColor(matGris, p == 14 ? new Color(0.95f, 0.55f, 0.55f) : new Color(0.72f, 0.74f, 0.8f));   // v46: cebolla rojiza
         switch (p)
         {
             case 0: AnimarPersianaArriba(t); break;
@@ -175,7 +180,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 11: AnimarRespira(t); break;
             case 12: AnimarVidrio(t); break;
             case 13: AnimarVivos(t); break;
-            default: AnimarCuadros(t); break;
+            case 14: AnimarCuadros(t); break;
+            default: AnimarVidrio(t); break;
         }
     }
 

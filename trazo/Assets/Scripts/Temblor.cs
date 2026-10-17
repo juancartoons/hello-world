@@ -50,6 +50,47 @@ public class Temblor : MonoBehaviour
         dibujo.Mensaje(dibujo.CapaActual.nombre + ": " + mensaje);
     }
 
+    // ---------- v49: dos preguntas sencillas (la paleta ya no tiene 6 botones sueltos) ----------
+    // TEXTURA de la línea: Lisa → Lápiz → 3 hebras → 5 hebras.
+    public static readonly string[] NombresTextura = { "Lisa", "Lápiz", "3 hebras", "5 hebras" };
+    public int Textura
+    {
+        get
+        {
+            if (Capa == null) return 0;
+            if (Capa.hebras >= 5) return 3;
+            if (Capa.hebras >= 3) return 2;
+            return Capa.texturaLinea == 1 ? 1 : 0;
+        }
+    }
+
+    public void SiguienteTextura()
+    {
+        if (Capa == null) return;
+        int t = (Textura + 1) % NombresTextura.Length;
+        Capa.texturaLinea = t == 1 ? 1 : 0;
+        Capa.hebras = t == 2 ? 3 : t == 3 ? 5 : 1;
+        Cambio("textura " + NombresTextura[t]);
+    }
+
+    // VIDA de la línea (el temblor, con su suavidad, velocidad y ciclo ya elegidos): Quieta → Suave → Nerviosa → Fuerte.
+    public static readonly string[] NombresVida = { "Quieta", "Suave", "Nerviosa", "Fuerte" };
+    public int Vida => Capa != null ? Mathf.Clamp(Capa.temblor, 0, 3) : 0;
+
+    public void SiguienteVida()
+    {
+        if (Capa == null) return;
+        int v = (Vida + 1) % NombresVida.Length;
+        Capa.temblor = v;
+        switch (v)
+        {
+            case 1: Capa.suavidad = 0; Capa.velocidad = 1; Capa.ciclo3 = true; break;    // suave: lenta, en ciclo de 3
+            case 2: Capa.suavidad = 2; Capa.velocidad = 2; Capa.ciclo3 = false; break;   // nerviosa: rápida y libre
+            case 3: Capa.suavidad = 1; Capa.velocidad = 1; Capa.ciclo3 = true; break;    // fuerte: más amplia
+        }
+        Cambio("línea " + NombresVida[v]);
+    }
+
     public void Siguiente()
     {
         if (Capa == null) return;

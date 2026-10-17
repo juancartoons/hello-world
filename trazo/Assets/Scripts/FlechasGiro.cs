@@ -140,7 +140,9 @@ public class FlechasGiro : MonoBehaviour
             Vector3 p;
             Quaternion q;
             // v45: más al centro (antes, en las columnas del micrófono y del parlante, quedaban muy al borde).
-            PanelesFlexibles.PoseOrilla(cab, false, (i == 0 ? BotonVoz.Lugar.x : BotonSonido.Lugar.x) * 0.55f, out p, out q);
+            // v49: aún más al centro y un poquito más abajo.
+            PanelesFlexibles.PoseOrilla(cab, false, (i == 0 ? BotonVoz.Lugar.x : BotonSonido.Lugar.x) * 0.4f, out p, out q);
+            p -= q * Vector3.up * 0.018f;
             flechas[i].t.SetPositionAndRotation(p, q);
             flechas[i].t.localScale = Vector3.one * Mathf.Lerp(0.85f, 1f, ver) * (activa == i ? 1.1f : 1f);
             Color c = activa == i ? Activa : Normal;

@@ -429,6 +429,17 @@ public static class Idioma
         "Atardecer en el desierto", "Desert sunset",
         // v46: cuadro a cuadro
         "Cuadro a cuadro", "Frame by frame",
+        // v49
+        "Textura: ", "Texture: ",
+        "Vida: ", "Life: ",
+        "Lisa", "Smooth",
+        "Quieta", "Still",
+        "Nerviosa", "Jittery",
+        "Degradado: ", "Gradient: ",
+        "De arriba a abajo", "Top to bottom",
+        "Del centro hacia afuera", "Center to edge",
+        "Sigue al dedo: ", "Follows your finger: ",
+        "Dos manos: separa = tamaño · gira · mueve", "Two hands: spread = size · turn · move",
         "Vertical 2K", "Vertical 2K",
         "Horizontal 2K", "Horizontal 2K",
         "Horizontal 1080p", "Horizontal 1080p",

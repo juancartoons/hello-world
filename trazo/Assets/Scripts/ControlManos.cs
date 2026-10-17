@@ -761,6 +761,10 @@ public partial class ControlManos : MonoBehaviour
             EmpezarModoNodos();
         if (g == Gesto.Grosor)
         {
+            // v49: el lazo del grosor empieza vacío.
+            elegidosLazo.Clear();
+            grosorGrupo.Clear();
+            CancelarLazo();
             alturaInicialGrosor = Izq.pulgar.y;
             factorGlobal = 1f;
             grosorTrazo = null;
@@ -846,6 +850,12 @@ public partial class ControlManos : MonoBehaviour
         }
         if (GestoIzq == Gesto.Nodos)
             TerminarModoNodos();
+        if (GestoIzq == Gesto.Grosor)
+        {
+            CancelarLazo();
+            elegidosLazo.Clear();
+            grosorGrupo.Clear();
+        }
         TerminarRectaLapiz(true);
         SoltarLapizAtrapado();
         if (dibujo.hojas != null)
@@ -1395,6 +1405,8 @@ public partial class ControlManos : MonoBehaviour
 
     // ---------- Grosor (todo, o un nodo) ----------
 
+    readonly List<NodoGrupo> grosorGrupo = new List<NodoGrupo>();   // v49: los nodos del lazo, con su grosor al empezar
+
     void CambiarGrosor()
     {
         if (figuras != null && figuras.Seleccionada != null && dibujo.Seleccion == null)
@@ -1424,8 +1436,18 @@ public partial class ControlManos : MonoBehaviour
             }
             else
             {
-                float m = grosorNodoInicio * Mathf.Exp((Der.PuntoPellizco.y - alturaDerGrosor) * sensibilidadGrosor);
-                grosorTrazo.PonerGrosorNodo(grosorIndice, m);
+                float f = Mathf.Exp((Der.PuntoPellizco.y - alturaDerGrosor) * sensibilidadGrosor);
+                if (grosorGrupo.Count > 0)
+                {
+                    // v49: todos los nodos elegidos con el lazo cambian juntos (cada uno desde su grosor).
+                    foreach (var g in grosorGrupo)
+                        if (g.t != null && g.i < g.t.nodos.Count)
+                            g.t.PonerGrosorNodo(g.i, g.peso * f);
+                }
+                else
+                {
+                    grosorTrazo.PonerGrosorNodo(grosorIndice, grosorNodoInicio * f);
+                }
             }
         }
         else
@@ -1442,6 +1464,18 @@ public partial class ControlManos : MonoBehaviour
                 grosorIndice = i;
                 grosorNodoInicio = t.GrosorDeNodo(i);
                 alturaDerGrosor = Der.PuntoPellizco.y;
+                CancelarLazo();
+                // v49: si es uno de los elegidos con el lazo, cambian todos juntos.
+                grosorGrupo.Clear();
+                if (EnLazo(t, i))
+                    foreach (var g in elegidosLazo)
+                        if (Dibujo.Editable(g.t) && g.i < g.t.nodos.Count)
+                            grosorGrupo.Add(new NodoGrupo { t = g.t, i = g.i, peso = g.t.GrosorDeNodo(g.i) });
+            }
+            else if (!cerca && Der.valida && !Der.pellizco && !dialUsado)
+            {
+                // v49: con el índice derecho, una vuelta alrededor de varios nodos = elegirlos (como en nodos).
+                ActualizarLazo(Der.indice);
             }
             else if (!cerca && Der.valida && Der.empezoPellizco && dibujo.temblor != null)
             {

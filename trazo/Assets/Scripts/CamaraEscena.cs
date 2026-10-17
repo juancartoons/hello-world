@@ -32,8 +32,9 @@ public class DatosCamara
 //    MONITOR que muestra en vivo lo que ve, con sus botones: Clave, Quita, Sugiere, + (acerca), − (aleja) y Quitar.
 //  - PELLIZCA la camarita con la DERECHA y muévela: gira alrededor de lo que está mirando (siempre lo mira).
 //    Con la IZQUIERDA: se mueve sin cambiar hacia dónde mira (para correrla de lado, subirla o acercarla).
-//  - v48: botón "Libre" (en el monitor): con él prendido, la DERECHA la sostiene como una cámara de verdad: gira con
-//    tu mano y apunta a donde quieras. Apagado (lo normal), siempre mira a lo que dibujaste.
+//  - v49: con la DERECHA siempre tiende a mirar lo que dibujaste (gira alrededor), PERO si giras la muñeca mientras
+//    la sostienes, le cambias el eje (apunta a donde quieras); al soltarla, sigue girando alrededor de lo que mira
+//    ahora. Las dos cosas a la vez, sin botones. Sus claves (rombitos) se corren en la línea de tiempo.
 //  - v48: al entrar a la capa de cámara, apareces justo DETRÁS de ella (mirando hacia donde mira).
 //  - En 2D, al ponerla, apunta de frente al plano de tu capa.
 //  - SUGIERE: la app prueba muchos ángulos (de frente, de tres cuartos, desde arriba, desde abajo) y elige los 3 en los
@@ -80,6 +81,39 @@ public class CamaraEscena : MonoBehaviour
         }
     }
     public static List<ClaveCamara> Claves => datos.claves;
+
+    // v49: la última clave de la cámara (0 si no hay): cuenta igual que las del dibujo para Play y el video.
+    public static int UltimaClave
+    {
+        get
+        {
+            int fin = 0;
+            foreach (var k in Claves)
+                if (k != null)
+                    fin = Mathf.Max(fin, k.fotograma);
+            return fin;
+        }
+    }
+
+    // v49: correr una clave de la cámara en la línea de tiempo (pellizcando su rombito), como las del dibujo.
+    public static void MoverClave(int desde, int hasta)
+    {
+        var d = ElDibujo;
+        hasta = Mathf.Clamp(hasta, 0, Animacion.TotalFotogramas - 1);
+        var lista = datos.claves;
+        int i = lista.FindIndex(k => k.fotograma == desde);
+        if (d == null || i < 0 || desde == hasta)
+            return;
+        d.GuardarParaDeshacer();
+        lista.RemoveAll(k => k.fotograma == hasta);
+        i = lista.FindIndex(k => k.fotograma == desde);
+        lista[i].fotograma = hasta;
+        lista.Sort((a, b) => a.fotograma.CompareTo(b.fotograma));
+        d.Avisar();
+        if (d.animacion != null)
+            d.animacion.IrA(hasta);
+        Mensaje("Clave de cámara movida al fotograma " + (hasta + 1));
+    }
 
     static Dibujo ElDibujo
     {
@@ -336,14 +370,9 @@ public class CamaraEscena : MonoBehaviour
     readonly List<Sugerencia> sugerencias = new List<Sugerencia>();
     float minisHasta;
     bool armada, verticalPuesto, agarrada, conIzquierda, intentoAuto;
-    // v48: apuntar libre (se recuerda) y ponerte detrás de la cámara al entrar a su capa.
-    const string ClaveLibre = "jcartoons_camara_libre";
-    static bool Libre
-    {
-        get => PlayerPrefs.GetInt(ClaveLibre, 0) == 1;
-        set { PlayerPrefs.SetInt(ClaveLibre, value ? 1 : 0); PlayerPrefs.Save(); }
-    }
+    // v48: ponerte detrás de la cámara al entrar a su capa. v49: el giro de tu muñeca cambia su eje.
     Quaternion manoInicio = Quaternion.identity;
+    const float GiroMuertoGrados = 10f;   // menos que esto de giro de muñeca no cuenta (la mano siempre se mueve un poco)
     bool estabaEnCapa, ponerDetras;
     Vector3 desfase, objetivo, poseViva;
     Quaternion rotViva, rotInicio;
@@ -398,7 +427,7 @@ public class CamaraEscena : MonoBehaviour
         if (matMonitor != null)
             materiales.Add(matMonitor);
         monitor = Pieza(PrimitiveType.Quad, panel, Vector3.zero, Quaternion.identity, Vector3.one, matMonitor);
-        string[] nombres = { "Clave", "Quita", "Sugiere", "+", "−", "Quitar", "Libre" };
+        string[] nombres = { "Clave", "Quita", "Sugiere", "+", "−", "Quitar" };
         for (int i = 0; i < nombres.Length; i++)
         {
             var b = Boton(panel, nombres[i], Vector3.zero, new Vector2(i >= 3 && i <= 4 ? 0.02f : 0.03f, 0.016f));
@@ -411,14 +440,7 @@ public class CamaraEscena : MonoBehaviour
         botones[3].alTocar.AddListener(() => Zoom(1f / 1.2f));
         botones[4].alTocar.AddListener(() => Zoom(1.2f));
         botones[5].alTocar.AddListener(Quitar);
-        botones[6].alTocar.AddListener(() =>
-        {
-            Libre = !Libre;
-            botones[6].Marcar(Libre);
-            Mensaje(Libre ? "Cámara libre: pellízcala con la derecha y apúntala a donde quieras (gira con tu mano)"
-                          : "Cámara: siempre mira a tu dibujo");
-        });
-        BotonTocable.PonerNombre(botones[6], "Apuntar libre (gira con tu mano)");
+
         BotonTocable.PonerVoz(botones[0], ControlManos.ComandoVoz.ClaveCamara);
         BotonTocable.PonerNombre(botones[1], "Quitar la clave de cámara");
         BotonTocable.PonerVoz(botones[2], ControlManos.ComandoVoz.SugiereCamara);
@@ -510,12 +532,11 @@ public class CamaraEscena : MonoBehaviour
         rtMonitor.Create();
         PonerTextura(matMonitor, rtMonitor);
         float yBotones = -h * 0.5f - 0.016f;
-        float[] xs = { -0.069f, -0.036f, -0.003f, 0.025f, 0.048f, 0.077f, 0f };
+        float[] xs = { -0.069f, -0.036f, -0.003f, 0.025f, 0.048f, 0.077f };
         for (int i = 0; i < botones.Count; i++)
         {
             var b = botones[i];
-            // v48: "Libre" va en una segunda fila, al centro.
-            Vector3 p = new Vector3(xs[i], i == 6 ? yBotones - 0.02f : yBotones, 0f);
+            Vector3 p = new Vector3(xs[i], yBotones, 0f);
             b.transform.localPosition = p;
             b.etiqueta.transform.localPosition = p + new Vector3(0f, 0f, -0.0036f);
         }
@@ -615,8 +636,7 @@ public class CamaraEscena : MonoBehaviour
             ponerDetras = false;
             PonermeDetras(cab);
         }
-        if (botones.Count > 6)
-            botones[6].Marcar(Libre);
+
 
         // El cuadro: un rectángulo adelante del lente, del tamaño de lo que ve.
         float altoMedio = Mathf.Tan(campo * 0.5f * Mathf.Deg2Rad) * DistanciaCuadro;
@@ -671,14 +691,7 @@ public class CamaraEscena : MonoBehaviour
                 return;
             }
             poseViva = m.PuntoPellizco + desfase;
-            if (!conIzquierda && Libre && der.hand != null)
-            {
-                // v48: libre: la cámara gira con tu mano, como si la sostuvieras.
-                Quaternion giro = der.hand.transform.rotation * Quaternion.Inverse(manoInicio);
-                poseViva = m.PuntoPellizco + giro * desfase;
-                rotViva = giro * rotInicio;
-            }
-            else if (conIzquierda)
+            if (conIzquierda)
             {
                 rotViva = rotInicio;
             }
@@ -689,6 +702,19 @@ public class CamaraEscena : MonoBehaviour
                 {
                     rotViva = Quaternion.LookRotation(hacia, Vector3.up);
                     distanciaViva = hacia.magnitude;
+                }
+                // v49: girar la muñeca mientras la sostienes le cambia el eje (encima de mirar al dibujo).
+                if (der.hand != null)
+                {
+                    Quaternion giro = der.hand.transform.rotation * Quaternion.Inverse(manoInicio);
+                    float angulo;
+                    Vector3 eje;
+                    giro.ToAngleAxis(out angulo, out eje);
+                    if (angulo > 180f)
+                        angulo -= 360f;
+                    float util = Mathf.Sign(angulo) * Mathf.Max(0f, Mathf.Abs(angulo) - GiroMuertoGrados);
+                    if (Mathf.Abs(util) > 0.01f && eje.sqrMagnitude > 1e-6f)
+                        rotViva = Quaternion.AngleAxis(util, eje) * rotViva;
                 }
             }
             return;

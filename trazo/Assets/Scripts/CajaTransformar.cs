@@ -108,7 +108,8 @@ public class CajaTransformar : MonoBehaviour
         ActualizarVolante(a, b);
 
         Vector3 v = b - a;
-        if (vectorInicio.magnitude < 0.02f || v.magnitude < 0.02f)
+        // v49: se puede juntar más las manos (antes, a menos de 2 cm se congelaba y no achicaba más).
+        if (vectorInicio.magnitude < 0.02f || v.magnitude < 0.006f)
             return;
         float s = v.magnitude / vectorInicio.magnitude;
         Quaternion giroSolo = Quaternion.FromToRotation(vectorInicio, v);
@@ -124,7 +125,7 @@ public class CajaTransformar : MonoBehaviour
         }
         if (solos.Count > 0)
         {
-            s = Mathf.Clamp(s, 0.05f, 20f);
+            s = Mathf.Clamp(s, 0.01f, 50f);
             Transform r = dibujo.transform;
             // Líneas encantadas en su hoja 2D: giran solo dentro de la hoja y se mueven sobre ella.
             var hoja = solos[0] != null && solos[0].EnHoja ? solos[0] : null;
@@ -141,7 +142,8 @@ public class CajaTransformar : MonoBehaviour
                     solos[k].TransformarDesde(origenes[k], m, s);
             return;
         }
-        float nueva = Mathf.Clamp(escalaInicio * s, 0.02f, 50f);
+        // v49: límites mucho más amplios (antes, después de achicar varias veces, el dibujo topaba en 0.02 y no bajaba más).
+        float nueva = Mathf.Clamp(escalaInicio * s, 0.001f, 500f);
         s = nueva / escalaInicio;
         Quaternion giro = Quaternion.FromToRotation(vectorInicio, v);
         Vector3 medio = (a + b) * 0.5f;

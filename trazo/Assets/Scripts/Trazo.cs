@@ -43,6 +43,10 @@ public class Trazo : MonoBehaviour
     public bool rellenoAbierto;
     // Color del relleno elegido en la paleta (si es transparente, se usa Paleta[colorRelleno]).
     public Color colorFondo;
+    // v49: degradado del relleno (ver DatosTrazo).
+    public int degradado;
+    public Color colorFondo2;
+    public Vector3 degradadoDir = Vector3.down;
     // Tinta invisible: la línea no se ve (pero su relleno sí). Se ve gris clarito mientras editas.
     public bool Invisible => color.a < 0.01f;
     public static bool verInvisibles;
@@ -792,6 +796,9 @@ public class Trazo : MonoBehaviour
             color = color,
             rellenoAbierto = rellenoAbierto && !cerrado,
             colorFondo = colorFondo,
+            degradado = degradado,
+            colorFondo2 = colorFondo2,
+            degradadoDir = degradadoDir,
             enHoja = EnHoja,
             hojaPunto = hojaPunto,
             hojaNormal = hojaNormal,
@@ -863,6 +870,9 @@ public class Trazo : MonoBehaviour
         rellenoAbierto = a.rellenoAbierto && !cerrado;
         relleno = a.relleno && (cerrado || rellenoAbierto);
         colorFondo = a.colorFondo;
+        degradado = a.degradado;
+        colorFondo2 = a.colorFondo2;
+        degradadoDir = a.degradadoDir.sqrMagnitude > 1e-8f ? a.degradadoDir : Vector3.down;
         oculto = a.oculto;
         colorRelleno = a.colorRelleno;
         ancho = mezclar ? Mathf.Lerp(a.ancho, b.ancho, u) : a.ancho;
@@ -1226,6 +1236,24 @@ public class Trazo : MonoBehaviour
             MeterBordeBajoLinea(vertices, poli2D, poli3D.Count);
         }
         Color c = ColorDelRelleno;
+        // v49: degradado: de dónde a dónde va el cambio de color (en los puntos del relleno).
+        float degMin = 0f, degMax = 1f;
+        bool hayDegradado = degradado > 0 && vertices.Count > 0;
+        if (hayDegradado)
+        {
+            degMin = float.MaxValue;
+            degMax = float.MinValue;
+            for (int i = 0; i < vertices.Count; i++)
+            {
+                float v = degradado == 2 ? Vector3.Distance(vertices[i], poliCentro) : Vector3.Dot(vertices[i] - poliCentro, degradadoDir);
+                degMin = Mathf.Min(degMin, v);
+                degMax = Mathf.Max(degMax, v);
+            }
+            if (degradado == 2)
+                degMin = 0f;
+            if (degMax - degMin < 1e-6f)
+                hayDegradado = false;
+        }
         var estiloVivo = Estilo();
         uvs3.Clear();
         uvs4.Clear();
@@ -1239,7 +1267,18 @@ public class Trazo : MonoBehaviour
         float nv = NivelVisual;
         for (int i = 0; i < vertices.Count; i++)
         {
-            colores.Add(c);
+            if (hayDegradado)
+            {
+                float v = degradado == 2 ? Vector3.Distance(vertices[i], poliCentro) : Vector3.Dot(vertices[i] - poliCentro, degradadoDir);
+                float u = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(degMin, degMax, v));
+                Color cg = Color.Lerp(c, colorFondo2, u);
+                cg.a = c.a;
+                colores.Add(cg);
+            }
+            else
+            {
+                colores.Add(c);
+            }
             uvs3.Add(estiloVivo.a);
             uvs4.Add(estiloVivo.b);
             Vector3 d = vertices[i] - poliCentro;

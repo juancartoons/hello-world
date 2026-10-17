@@ -151,6 +151,7 @@ public class PanelArriba : MonoBehaviour
     Quaternion giro = Quaternion.identity;
     readonly List<Transform> marcas = new List<Transform>();
     int claveArrastrada = -1;
+    int claveCamaraArrastrada = -1;   // v49: un rombito de la cámara agarrado (se corre como las claves del dibujo)
     // v40: la línea de tiempo con gestos. Con el gesto de BORRAR (puño izquierdo) tocar una clave la quita; con el de
     // DIBUJAR (pulgar + índice izquierdos) tocar la barra pone una clave ahí. Y la BARRA SUJETA: mientras arrastras
     // el cabezal (o una clave), un doble toque izquierdo hace que la barra siga tu dedo solo de lado, aunque el dedo se
@@ -1102,6 +1103,19 @@ public class PanelArriba : MonoBehaviour
         if (barraSujeta)
             barraCuadro = Time.frameCount;
 
+        // v49: arrastrando un rombito de la cámara.
+        if (claveCamaraArrastrada >= 0)
+        {
+            barraCuadro = Time.frameCount;
+            if (!der.valida || !der.pellizco)
+            {
+                CamaraEscena.MoverClave(claveCamaraArrastrada, destinoClave);
+                claveCamaraArrastrada = -1;
+                return;
+            }
+            destinoClave = FotogramaEn(barra.InverseTransformPoint(der.PuntoPellizco).x);
+            return;
+        }
         if (claveArrastrada >= 0)
         {
             if (barraSujeta)
@@ -1138,6 +1152,32 @@ public class PanelArriba : MonoBehaviour
                     {
                         tolerancia = d;
                         mejor = c.fotograma;
+                    }
+                }
+                // v49: las claves de la cámara (rombitos) también se pellizcan y se corren. En la capa de cámara,
+                // o si no hay una clave del dibujo ahí, mandan las de la cámara.
+                bool enCamara = dibujo != null && dibujo.EsCamara(dibujo.capaActual);
+                if (mejor < 0 || enCamara)
+                {
+                    int mejorCam = -1;
+                    int tolCam = Mathf.Max(1, Mathf.RoundToInt(0.03f * Ventana));
+                    foreach (var k in CamaraEscena.Claves)
+                    {
+                        if (k == null || !EnVentana(k.fotograma))
+                            continue;
+                        int d = Mathf.Abs(k.fotograma - f);
+                        if (d <= tolCam)
+                        {
+                            tolCam = d;
+                            mejorCam = k.fotograma;
+                        }
+                    }
+                    if (mejorCam >= 0)
+                    {
+                        claveCamaraArrastrada = mejorCam;
+                        destinoClave = mejorCam;
+                        control.SonidoBurbuja(der.PuntoPellizco);
+                        return;
                     }
                 }
                 if (mejor >= 0)
@@ -1305,7 +1345,7 @@ public class PanelArriba : MonoBehaviour
     }
 
     // ¿El doble toque izquierdo es para la barra? (si la estás usando ahora, o si ya está sujeta: para soltarla)
-    public bool QuiereSujetar => visible && !esAyuda && (barraSujeta || claveArrastrada >= 0 || Time.time - ultimoEnBarra < 0.8f);
+    public bool QuiereSujetar => visible && !esAyuda && (barraSujeta || claveArrastrada >= 0 || claveCamaraArrastrada >= 0 || Time.time - ultimoEnBarra < 0.8f);
 
     public void AlternarSujeta()
     {
@@ -1432,7 +1472,9 @@ public class PanelArriba : MonoBehaviour
                 var mc = marcasCamara[nc++];
                 if (!mc.gameObject.activeSelf)
                     mc.gameObject.SetActive(true);
-                mc.localPosition = PosicionEnBarra(k.fotograma, -0.005f) + new Vector3(0f, 0.022f, 0f);
+                int fk = k.fotograma == claveCamaraArrastrada ? destinoClave : k.fotograma;
+                mc.localPosition = PosicionEnBarra(fk, -0.005f) + new Vector3(0f, 0.022f, 0f);
+                mc.localScale = Vector3.one * (k.fotograma == claveCamaraArrastrada ? 0.011f : 0.007f) + new Vector3(0f, 0f, -0.003f);
             }
             for (int i = nc; i < marcasCamara.Count; i++)
                 if (marcasCamara[i].gameObject.activeSelf)

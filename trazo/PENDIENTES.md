@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 16 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v48***
+*Actualizado: 16 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v49***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,6 +16,22 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 4. **Build And Run**.
 
 ---
+
+## 0+. Hecho en la v49 (falta probarlo en el visor)
+
+- [x] **Logo nuevo** en la entrada (con el degradado pop art, de rojo a granate): se revela al ritmo del arpa. Imagen en `Assets/Resources/LogoJCartoons.png`.
+- [x] **Pegar donde miras** (centro de tu vista, a la misma distancia), con o sin la mirada.
+- [x] **Dos manos sobre nodos del lazo**: izquierda en nodos + pellizco derecho = tamaño, giro y mover (en 2D dentro de su hoja). Se quitó girar con la V.
+- [x] **Grosor de varios nodos**: en el gesto de grosor, el índice derecho hace lazo; pellizcar uno de ellos los cambia todos.
+- [x] Flechas de girar más al centro y más abajo.
+- [x] **Capas**: con la mano ABIERTA cerca, los botones de la tarjeta se apagan (solo el índice solo los toca).
+- [x] **Degradado** en RELLENO (reemplaza la cubeta): del color anterior al de ahora; de arriba a abajo o del centro hacia afuera.
+- [x] **Textura Lápiz** de línea (grano, orilla irregular, presión, hervida a 8 cuadros/s).
+- [x] **Paleta de línea más clara**: Textura · Vida · Grosor vivo · Imán · Uniones · (Halo) · (Sigue al dedo).
+- [x] **Achicar**: límites mucho más amplios (antes topaba).
+- [x] **Cámara**: sin botón Libre: siempre tiende a mirar el dibujo y girar la muñeca al sostenerla cambia su eje. Sus claves (rombitos) se arrastran en el timeline. Play y el video cuentan las claves de la cámara igual que las del dibujo.
+- [ ] v50: **Manos invisibles** (biblioteca de manos del personaje desde tu mano real).
+- [ ] Después del concurso: **Cuerpo invisible** (inflar el personaje).
 
 ## 0+. Hecho en la v48 (falta probarlo en el visor)
 

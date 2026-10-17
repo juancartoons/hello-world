@@ -352,6 +352,9 @@ public static class ArmarEscenaTrazo
         tutorial.materialConfeti = matConfeti;
         tutorial.materialChispa = matEscarcha;
         tutorial.materialNegro = matTutNegro;
+        // v49: el logo de la entrada (imagen en Resources/LogoJCartoons.png).
+        var shaderLogo = Shader.Find("TrazoVR/Logo");
+        tutorial.materialLogo = shaderLogo != null ? Mat("Logo", shaderLogo, Color.white) : null;
         tutorial.materialBlanco = matBlanco;
         tutorial.materialVerde = matTutVerde;
         tutorial.materialAzul = matTutAzul;

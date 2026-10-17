@@ -44,8 +44,16 @@ public partial class ControlManos
     // El color con el que se rellena: el elegido para el relleno; si es tinta invisible, el último que se veía.
     Color ColorDeRelleno => colorRellenoNuevo.a > 0.01f ? colorRellenoNuevo : ultimoRellenoVisible;
 
+    // v49: el DEGRADADO (reemplaza a la cubeta en la paleta): 0 = no, 1 = lineal (de arriba a abajo, como lo ves),
+    // 2 = radial (del centro hacia afuera). Va del color de relleno que elegiste ANTES al que elegiste AHORA.
+    public int ModoDegradado;
+    public static readonly string[] NombresDegradado = { "No", "De arriba a abajo", "Del centro hacia afuera" };
+    Color rellenoAnterior = Color.white;
+
     void PonerColorRellenoNuevo(Color c)
     {
+        if (c.a > 0.01f && colorRellenoNuevo.a > 0.01f && c != colorRellenoNuevo)
+            rellenoAnterior = colorRellenoNuevo;
         colorRellenoNuevo = c;
         if (c.a > 0.01f)
             ultimoRellenoVisible = c;
@@ -199,6 +207,16 @@ public partial class ControlManos
             return;
         dedoEnRelleno = true;
         bool quitar = colorRellenoNuevo.a < 0.01f;
+        if (!quitar && ModoDegradado > 0)
+        {
+            // v49: degradado del color anterior al de ahora ("abajo" = hacia abajo de tu vista).
+            Vector3 abajo = Cabeza != null ? -Cabeza.up : Vector3.down;
+            dibujo.RellenarDegradado(dentro, rellenoAnterior, colorRellenoNuevo, ModoDegradado, abajo,
+                                     TexturaElegida, VelocidadTexturaElegida, EscalaTexturaElegida);
+            Burbuja(punta, 1.2f);
+            MostrarEtiqueta("Degradado: " + NombreColor(rellenoAnterior) + " → " + NombreColor(colorRellenoNuevo));
+            return;
+        }
         dibujo.RellenarConColor(dentro, colorRellenoNuevo, TexturaElegida, VelocidadTexturaElegida, EscalaTexturaElegida);
         Burbuja(punta, 1.2f);
         MostrarEtiqueta(quitar ? "Relleno quitado" : "Relleno");

@@ -36,6 +36,11 @@ public class DatosTrazo
     // v34: puntos de tela (relieve suave dentro del relleno)
     public List<Vector3> telaBase = new List<Vector3>();
     public List<Vector3> telaMovida = new List<Vector3>();
+    // v49: DEGRADADO del relleno: 0 no, 1 lineal (de colorFondo a colorFondo2 en la dirección degradadoDir), 2 radial
+    // (del centro, colorFondo, hacia afuera, colorFondo2).
+    public int degradado;
+    public Color colorFondo2;
+    public Vector3 degradadoDir = Vector3.down;
 }
 
 [System.Serializable]
@@ -67,6 +72,8 @@ public class DatosCapa
     // empieza VACÍO (con el papel cebolla del anterior y el siguiente), las líneas no pasan de una clave a otra y
     // no hay morph: cada dibujo se sostiene hasta la clave siguiente (como los programas de animación normales).
     public bool cuadroACuadro;
+    // v49: textura de la línea: 0 lisa (tinta), 1 lápiz (grano, orilla irregular, hervida).
+    public int texturaLinea;
 
     public DatosCapa Copia()
     {
@@ -718,7 +725,8 @@ public class Dibujo : MonoBehaviour
             e.hebras > 1 ? SeparacionHebras : 0f,
             c.grosorVivo ? 1f : 0f,
             Velocidades[Mathf.Clamp(c.velocidad, 0, Velocidades.Length - 1)]);
-        e.b = new Vector4(c.ciclo3 ? 1f : 0f, Frecuencias[Mathf.Clamp(c.suavidad, 0, Frecuencias.Length - 1)], 0f, 0f);
+        // v49: b.z = textura de la línea (1 = lápiz).
+        e.b = new Vector4(c.ciclo3 ? 1f : 0f, Frecuencias[Mathf.Clamp(c.suavidad, 0, Frecuencias.Length - 1)], c.texturaLinea == 1 ? 1f : 0f, 0f);
         return e;
     }
 
@@ -768,6 +776,7 @@ public class Dibujo : MonoBehaviour
         if (t == null)
             return;
         GuardarParaDeshacer();
+        t.degradado = 0;   // v49: rellenar con un color quita el degradado (RellenarDegradado lo vuelve a poner)
         t.texturaRelleno = Mathf.Clamp(textura, 0, Trazo.NombresTextura.Length - 1);
         t.velocidadTextura = Mathf.Clamp(velocidad, 0, Trazo.VelocidadesTextura.Length - 1);
         t.escalaTextura = Trazo.LimitarEscala(escala);
@@ -872,6 +881,24 @@ public class Dibujo : MonoBehaviour
     }
 
     // Pinta una línea (se puede deshacer si antes se guardó "deshacer").
+    // v49: relleno en DEGRADADO: de "a" a "b". tipo 1 = lineal (de arriba hacia "abajoMundo"), 2 = radial (centro → orilla).
+    public void RellenarDegradado(Trazo t, Color a, Color b, int tipo, Vector3 abajoMundo, int textura, int velocidad, float escala)
+    {
+        if (t == null)
+            return;
+        RellenarConColor(t, a, textura, velocidad, escala);
+        if (!t.relleno)
+            return;
+        t.degradado = Mathf.Clamp(tipo, 1, 2);
+        t.colorFondo2 = new Color(b.r, b.g, b.b, 1f);
+        Vector3 dir = t.transform.InverseTransformDirection(abajoMundo);
+        t.degradadoDir = dir.sqrMagnitude > 1e-8f ? dir.normalized : Vector3.down;
+        t.Reconstruir();
+        Trazo.huboCambio = false;
+        HayCambios = true;
+        Avisar();
+    }
+
     public void PonerColor(Trazo t, Color c)
     {
         if (t == null)
@@ -1438,6 +1465,9 @@ public class Dibujo : MonoBehaviour
             a.relleno = true;
             a.rellenoAbierto = b.rellenoAbierto;
             a.colorFondo = b.colorFondo;
+            a.degradado = b.degradado;
+            a.colorFondo2 = b.colorFondo2;
+            a.degradadoDir = b.degradadoDir;
             a.colorRelleno = b.colorRelleno;
             a.texturaRelleno = b.texturaRelleno;
             a.velocidadTextura = b.velocidadTextura;
