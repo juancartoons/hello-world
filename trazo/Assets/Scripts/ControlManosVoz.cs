@@ -39,7 +39,8 @@ public partial class ControlManos
         CabezaInvisible,
         // v52
         IrAFotograma, BorraFotograma, BorraCapa, SeleccionaTodo, QuitaSeleccion, ApagaVoz, CopiarEstilo, PegarEstilo, PuntoClave,
-        PuntoCorto   // v53: "nariz", "oreja"... (con la cabeza invisible abierta)
+        PuntoCorto,   // v53: "nariz", "oreja"... (con la cabeza invisible abierta)
+        CaraPerfil, CaraFrente, FinDictado, ParteDictado   // v55: el dictado de la cabeza
     }
 
     // v43: los fondos que se pueden pedir por su nombre (el nombre exacto que tienen en Escenario).
@@ -273,6 +274,14 @@ public partial class ControlManos
             l.Add(C(ComandoVoz.PuntoClave, CabezaInvisible.PuntosEs[i], CabezaInvisible.PuntosEn[i],
                     CabezaInvisible.FrasesEs(i), new[] { CabezaInvisible.PuntosEn[i] }, i));
         // v53: las palabras cortas (para que la voz las entienda; "boca" y "ojo" ya estaban). Solo sirven con la cabeza abierta.
+        // v55: EL DICTADO: "cara de perfil" / "cara de frente" y, antes de cada parte, su nombre ("nariz", "mandíbula"...).
+        l.Add(C(ComandoVoz.CaraPerfil, "Cara de perfil", "Profile face",
+                new[] { "cara de perfil", "cara lateral", "cara de lado", "cabeza de perfil" }, new[] { "profile face", "side face", "face in profile" }));
+        l.Add(C(ComandoVoz.CaraFrente, "Cara de frente", "Front face",
+                new[] { "cara de frente", "cara frontal", "cabeza de frente" }, new[] { "front face", "face from the front" }));
+        l.Add(C(ComandoVoz.FinDictado, "Fin del dictado", "End dictation",
+                new[] { "fin del dictado", "termina el dictado", "terminar dictado", "listo la cara" }, new[] { "end dictation", "stop dictation" }));
+        l.Add(C(ComandoVoz.ParteDictado, "Parte de la cara", "Face part", CabezaInvisible.FrasesDictado(false), CabezaInvisible.FrasesDictado(true)));
         l.Add(C(ComandoVoz.PuntoCorto, "Nariz", "Nose", new[] { "nariz", "oreja", "orejas", "ceja", "cejas", "contorno", "labios", "ojos", "mejilla" },
                 new[] { "nose", "ear", "ears", "eyebrow", "eyebrows", "outline", "lips", "eyes", "cheek" }));
         return l.ToArray();
@@ -342,6 +351,13 @@ public partial class ControlManos
     {
         string n = " " + Normalizar(texto) + " ";
         bool ingles = Idioma.Ingles;
+        // v55: dictando la cara, las partes ("nariz", "boca exterior", "mandíbula"...) dicen qué vas a dibujar ahora.
+        if (CabezaInvisible.Dictando && CabezaInvisible.DictarParte(Normalizar(texto)))
+        {
+            UltimoComandoVoz = texto;
+            UltimoComandoHora = Time.time;
+            return;
+        }
         // v53: con la cabeza invisible abierta, las palabras cortas ("boca", "nariz", "ojo"...) nombran los nodos
         // elegidos (antes "boca" abría la página de Bocas).
         if (CabezaInvisible.Activa)
@@ -538,6 +554,12 @@ public partial class ControlManos
                 break;
             case ComandoVoz.CopiarEstilo: CopiarEstiloVoz(); break;
             case ComandoVoz.PegarEstilo: PegarEstiloVoz(); break;
+            case ComandoVoz.CaraPerfil: CabezaInvisible.EmpezarDictado(true); break;
+            case ComandoVoz.CaraFrente: CabezaInvisible.EmpezarDictado(false); break;
+            case ComandoVoz.FinDictado: CabezaInvisible.TerminarDictado(); break;
+            case ComandoVoz.ParteDictado:
+                dibujo.Mensaje("Primero di \"cara de perfil\" o \"cara de frente\" (y luego el nombre de cada parte antes de dibujarla)");
+                break;
             case ComandoVoz.PuntoCorto:
                 dibujo.Mensaje("Esa palabra es para la cabeza invisible (ábrela y elige nodos)");
                 break;

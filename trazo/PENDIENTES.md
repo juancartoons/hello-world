@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v54***
+*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v55***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,6 +16,17 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 4. **Build And Run**.
 
 ---
+
+## 0+. Hecho en la v55 (falta probarlo en el visor)
+
+- [x] **Dictado de la cara**: "cara de perfil" / "cara de frente", luego el nombre de cada parte ANTES de dibujarla ("nariz", "boca exterior", "mandíbula", "oreja", "cabeza arriba", "nuca", "ojo", "ceja", "ojo uno"...). Todos los nodos quedan nombrados; "fin del dictado". Cartelito junto a la mano con la parte actual. La capa recuerda la vista (se guarda en el archivo).
+- [x] Al **unir líneas** se conservan los nombres de cada nodo.
+- [x] **Silueta por piezas**: cabeza arriba, nuca, mandíbula (y de frente la frente y la barbilla) giran juntas como borde; de perfil, nariz, frente, boca exterior y barbilla van en la línea central.
+- [x] **De perfil sabe el lado**: la nariz dice hacia dónde mira; "ojo" se muestra como derecho o izquierdo.
+- [x] **Dibujitos de referencia** (frente y perfil) con zonas de colores y su leyenda; debajo, solo las palabras que sobran. Todas se pueden tocar como sello.
+- [x] **Gira**: la cabeza gira sola (va y viene). Menos botones (sin "Nombrar nodo").
+- [ ] Probar el dictado con la voz real (que Vosk entienda "boca exterior", "cabeza arriba", "ojo uno").
+- [ ] Guardar la biblioteca de vistas en el archivo.
 
 ## 0+. Hecho en la v54 (falta probarlo en el visor)
 

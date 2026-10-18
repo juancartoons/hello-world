@@ -2,24 +2,23 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
-// LA CABEZA INVISIBLE (v51, v52, v53): dibujas la cabeza de tu personaje UNA vez (DE FRENTE o DE PERFIL) en una capa:
-// el contorno y los rasgos (ojos, nariz, boca, orejas; sin cabello por ahora). La app arma con eso un HUEVO 3D invisible,
-// pega cada rasgo en su superficie y te deja GIRARLA (frente, 3/4 y perfil para los dos lados, y un poco arriba/abajo).
-//  - v53: la vista que DIBUJASTE se ve IDÉNTICA (son tus líneas de verdad) y TU ORIGINAL NUNCA CAMBIA: queda como clave
-//    en su fotograma (y como "Original" en la biblioteca). "Usar esta vista" la pone en OTRO fotograma (6 más adelante
-//    si estás en el del original) con LOS MISMOS NODOS: entre las vistas hay morph.
-//  - v53: la vista previa al girar usa líneas iguales a las tuyas (mismo grosor, color, textura y vida), no un dibujo
-//    de prueba. Las otras vistas son una propuesta: retócalas con Nodos y toca "Guardar vista": la biblioteca guarda TU
-//    versión retocada (como un símbolo de Flash).
-//  - v53: ETIQUETAS con botones: cada parte que la app reconoce tiene su cartelito ("boca?") con un visto verde
-//    (confirmar), una X roja (quitar) y un cuadrito azul (cambiar el nombre: con el teclado o diciéndolo con la voz).
-//  - v53: VOCABULARIO a la derecha: todas las palabras que la app entiende. Pellizca una y arrástrala a tu dibujo:
-//    nombra el nodo donde la sueltas (o los nodos que elegiste con el lazo).
-//  - v53: un MINITUTORIAL paso a paso (se puede quitar con "No mostrar más"; "Ayuda" lo vuelve a abrir).
-//  - Con la cabeza abierta, la voz entiende "boca", "nariz", "ojo", "ceja", "oreja", "contorno" (nombran los nodos
-//    elegidos con el lazo, aunque ya soltaste la izquierda) y los puntos clave ("punta de nariz", "barbilla"...).
-//  - Trampas del 2D: dibujada de PERFIL, el ojo (y la oreja) se copian al otro lado para la vista de frente; la nariz
-//    y la boca van en la línea del centro. Dibujada DE FRENTE, la nariz sobresale y las orejas son discos a los lados.
+// LA CABEZA INVISIBLE (v51 a v55): dibujas la cabeza de tu personaje UNA vez (DE FRENTE o DE PERFIL) en una capa y la
+// app arma con eso un HUEVO 3D invisible, pega cada parte en su superficie y te deja GIRARLA (frente, 3/4 y perfil para
+// los dos lados, y un poco arriba/abajo). Pura geometría y reglas: no usa IA.
+//  - v55: EL DICTADO. Antes de dibujar di "cara de perfil" (o "cara de frente") y, ANTES de cada parte, su nombre:
+//    "nariz", "boca exterior", "mandíbula", "oreja", "cabeza arriba", "nuca", "ojo", "ceja"... Todo lo que dibujes
+//    después queda con ese nombre (todos sus nodos), aunque se una con otra línea. Así la app NO adivina nada: sabe la
+//    vista, el lado (de perfil, la nariz dice hacia dónde mira) y qué es cada nodo. "fin del dictado" lo termina.
+//  - v55: SILUETA POR PIEZAS: cabeza arriba, nuca, mandíbula (y de frente también la frente y la barbilla) forman el
+//    BORDE: al girar, todas esas piezas van juntas a la silueta, cada una en su zona. De perfil, la nariz, la frente,
+//    la boca exterior y la barbilla van en la línea del centro de la cara.
+//  - v55: a la derecha, DOS DIBUJITOS (de frente y de perfil) con cada zona de un color y su nombre; debajo, solo las
+//    palabras que sobran. Toca una palabra (de los dibujitos o de la lista) para usarla como SELLO.
+//  - v55: "Gira" la hace girar sola (para probar la vista sin agarrarla).
+//  - La vista que DIBUJASTE se ve IDÉNTICA (son tus líneas) y TU ORIGINAL NUNCA CAMBIA: queda como clave en su
+//    fotograma y como "Original" en la biblioteca. "Usar esta vista" la pone en OTRO fotograma con LOS MISMOS NODOS.
+//  - Etiquetas con botones: visto verde (confirmar), X roja (quitar), cuadrito azul (3 palabras probables o teclado).
+//  - El sello: toca una palabra, toca nodos o líneas (verdes) y pellizca con la izquierda para confirmar.
 public class CabezaInvisible : MonoBehaviour
 {
     // ---------- Puntos clave y palabras ----------
@@ -28,7 +27,7 @@ public class CabezaInvisible : MonoBehaviour
         "punta de nariz", "puente de la nariz", "ojo izquierdo", "ojo derecho", "párpado", "ceja", "entrecejo",
         "comisura izquierda", "comisura derecha", "labio superior", "labio inferior", "barbilla", "mandíbula", "pómulo",
         "frente", "coronilla", "nuca", "sien", "oreja", "lóbulo",
-        "ceja izquierda", "ceja derecha", "oreja izquierda", "oreja derecha"   // v54
+        "ceja izquierda", "ceja derecha", "oreja izquierda", "oreja derecha"
     };
     public static readonly string[] PuntosEn =
     {
@@ -37,9 +36,6 @@ public class CabezaInvisible : MonoBehaviour
         "forehead", "crown", "nape", "temple", "ear", "earlobe",
         "left eyebrow", "right eyebrow", "left ear", "right ear"
     };
-    // 0 nariz, 1 ojo, 2 boca, 3 contorno, 4 oreja
-    static readonly int[] CategoriaPunto = { 0, 0, 1, 1, 1, 1, 0, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 1, 1, 4, 4 };
-    static readonly string[] NombresCategoria = { "nariz", "ojo", "boca", "contorno", "oreja" };
     // Las palabras CORTAS (lo que se guarda) y cómo se pueden decir.
     static readonly string[] Cortas = { "boca", "nariz", "ojo", "ceja", "oreja", "contorno", "mejilla" };
     static readonly string[][] CortasDichas =
@@ -49,6 +45,9 @@ public class CabezaInvisible : MonoBehaviour
         new[] { "contorno", "outline" }, new[] { "mejilla", "cheek" }
     };
     static readonly string[] CortasEn = { "mouth", "nose", "eye", "eyebrow", "ear", "outline", "cheek" };
+    // Otras partes con nombre propio (para mostrarlas en inglés).
+    static readonly string[] OtrasEs = { "boca exterior", "cabeza arriba", "cuello", "cabello", "ojo 1", "ojo 2", "ceja 1", "ceja 2", "oreja 1", "oreja 2" };
+    static readonly string[] OtrasEn = { "outer mouth", "top of head", "neck", "hair", "eye 1", "eye 2", "eyebrow 1", "eyebrow 2", "ear 1", "ear 2" };
     const string ClaveTutorial = "jcartoons_tuto_cabeza";
 
     public static string[] FrasesEs(int i)
@@ -72,34 +71,234 @@ public class CabezaInvisible : MonoBehaviour
         return null;
     }
 
-    // La categoría de un nombre (también los escritos con el teclado: busca palabras conocidas).
-    static int CategoriaDeNombre(string n)
+    static string Normalizar(string s)
+    {
+        s = (s ?? "").ToLowerInvariant().Trim();
+        s = s.Replace('á', 'a').Replace('é', 'e').Replace('í', 'i').Replace('ó', 'o').Replace('ú', 'u').Replace('ü', 'u');
+        while (s.Contains("  "))
+            s = s.Replace("  ", " ");
+        return s;
+    }
+
+    // ---------- v55: EL DICTADO ----------
+    class Parte
+    {
+        public string guardar;
+        public string[] es, en;
+    }
+
+    static Parte P(string guardar, string[] es, string[] en)
+    {
+        return new Parte { guardar = guardar, es = es, en = en };
+    }
+
+    static readonly Parte[] Partes =
+    {
+        P("nariz", new[] { "nariz" }, new[] { "nose" }),
+        P("boca", new[] { "boca" }, new[] { "mouth" }),
+        P("boca exterior", new[] { "boca exterior", "boca de lado" }, new[] { "outer mouth" }),
+        P("mandíbula", new[] { "mandíbula", "quijada" }, new[] { "jaw" }),
+        P("barbilla", new[] { "barbilla", "mentón" }, new[] { "chin" }),
+        P("oreja", new[] { "oreja" }, new[] { "ear" }),
+        P("cabeza arriba", new[] { "cabeza arriba", "cráneo", "parte de arriba" }, new[] { "top of head", "skull" }),
+        P("nuca", new[] { "nuca" }, new[] { "nape", "back of head" }),
+        P("frente", new[] { "frente" }, new[] { "forehead" }),
+        P("ojo", new[] { "ojo" }, new[] { "eye" }),
+        P("ceja", new[] { "ceja" }, new[] { "eyebrow" }),
+        P("mejilla", new[] { "mejilla" }, new[] { "cheek" }),
+        P("cuello", new[] { "cuello" }, new[] { "neck" }),
+        P("cabello", new[] { "cabello", "pelo" }, new[] { "hair" }),
+        P("contorno", new[] { "contorno" }, new[] { "outline" }),
+        P("ojo 1", new[] { "ojo uno" }, new[] { "eye one" }),
+        P("ojo 2", new[] { "ojo dos" }, new[] { "eye two" }),
+        P("ceja 1", new[] { "ceja uno" }, new[] { "eyebrow one" }),
+        P("ceja 2", new[] { "ceja dos" }, new[] { "eyebrow two" }),
+        P("oreja 1", new[] { "oreja uno" }, new[] { "ear one" }),
+        P("oreja 2", new[] { "oreja dos" }, new[] { "ear two" }),
+    };
+
+    // Las frases del dictado (para que la voz las entienda).
+    public static string[] FrasesDictado(bool ingles)
+    {
+        var l = new List<string>();
+        foreach (var p in Partes)
+            foreach (var f in ingles ? p.en : p.es)
+                if (!l.Contains(f))
+                    l.Add(f);
+        for (int i = 0; i < PuntosEs.Length; i++)
+        {
+            string f = ingles ? PuntosEn[i] : PuntosEs[i];
+            if (!l.Contains(f))
+                l.Add(f);
+        }
+        return l.ToArray();
+    }
+
+    static int capaDictado = -1;
+    static string parteDictada = "";
+    public static bool Dictando => capaDictado >= 0;
+
+    static void Asegurar()
+    {
+        if (instancia == null)
+            instancia = new GameObject("CabezaInvisible").AddComponent<CabezaInvisible>();
+    }
+
+    static Dibujo ElDibujo()
+    {
+        return ControlManos.Instancia != null && ControlManos.Instancia.dibujo != null ? ControlManos.Instancia.dibujo : FindFirstObjectByType<Dibujo>();
+    }
+
+    // "cara de perfil" / "cara de frente": la capa recuerda la vista y empieza el dictado.
+    public static void EmpezarDictado(bool dePerfil)
+    {
+        var d = ElDibujo();
+        if (d == null)
+            return;
+        d.CapaActual.vistaCabeza = dePerfil ? 2 : 1;
+        d.HayCambios = true;
+        capaDictado = d.capaActual;
+        parteDictada = "";
+        Asegurar();
+        d.Mensaje(dePerfil
+            ? "Cara de perfil: di qué vas a dibujar (\"nariz\", \"boca exterior\", \"mandíbula\", \"oreja\", \"cabeza arriba\"...) y dibújalo"
+            : "Cara de frente: di qué vas a dibujar (\"ojo 1\", \"nariz\", \"boca\", \"oreja 1\", \"cabeza arriba\"...) y dibújalo");
+    }
+
+    public static void TerminarDictado()
+    {
+        bool estaba = Dictando;
+        capaDictado = -1;
+        parteDictada = "";
+        var d = ElDibujo();
+        if (d != null)
+            d.Mensaje(estaba ? "Dictado terminado: toca Cabeza invisible para girarla" : "No estabas dictando una cara");
+    }
+
+    // Una parte dicha ("nariz"...): lo que dibujes desde ahora es eso. false si no es una parte.
+    public static bool DictarParte(string dicho)
+    {
+        dicho = Normalizar(dicho);
+        string guardar = null;
+        foreach (var p in Partes)
+        {
+            foreach (var f in p.es)
+                if (Normalizar(f) == dicho)
+                    guardar = p.guardar;
+            foreach (var f in p.en)
+                if (Normalizar(f) == dicho)
+                    guardar = p.guardar;
+        }
+        for (int i = 0; i < PuntosEs.Length && guardar == null; i++)
+            if (Normalizar(PuntosEs[i]) == dicho || Normalizar(PuntosEn[i]) == dicho)
+                guardar = PuntosEs[i];
+        if (guardar == null)
+            return false;
+        parteDictada = guardar;
+        var d = ElDibujo();
+        if (d != null)
+            d.Mensaje(Idioma.T("Ahora dibuja: ") + Mostrar(guardar));
+        return true;
+    }
+
+    // Dibujo.TerminarTrazo la llama: la línea nueva queda nombrada (todos sus nodos) con la parte dictada.
+    public static void AlTerminarLinea(Trazo t)
+    {
+        if (!Dictando || t == null || t.capa != capaDictado || parteDictada.Length == 0)
+            return;
+        for (int j = 0; j < t.nodos.Count; j++)
+            t.NombrarNodo(j, parteDictada);
+        if (Activa)
+            instancia.AlCambiarNombres();
+    }
+
+    // ---------- v55: QUÉ ES CADA NODO ----------
+    enum Clase { Ninguna, Borde, PerfilCara, Nariz, Ojo, Boca, Oreja, Otro }
+
+    static Clase ClaseDe(string n)
     {
         if (string.IsNullOrEmpty(n))
-            return -1;
+            return Clase.Ninguna;
         n = n.ToLowerInvariant();
-        for (int i = 0; i < PuntosEs.Length; i++)
-            if (n == PuntosEs[i] || n == PuntosEn[i])
-                return CategoriaPunto[i];
+        if (n.StartsWith("boca exterior") || n == "outer mouth" || n.StartsWith("frente") || n == "forehead"
+            || n.StartsWith("barbilla") || n == "chin")
+            return Clase.PerfilCara;
+        if (n.Contains("cabeza arriba") || n.Contains("cráneo") || n.Contains("craneo") || n.Contains("nuca") || n.Contains("mandíbula")
+            || n.Contains("mandibula") || n.Contains("contorno") || n.Contains("coronilla") || n.Contains("cabello") || n.Contains("pelo")
+            || n.Contains("skull") || n.Contains("top of head") || n.Contains("jaw") || n.Contains("nape") || n.Contains("outline")
+            || n.Contains("crown") || n.Contains("hair"))
+            return Clase.Borde;
         if (n.Contains("nariz") || n.Contains("nose") || n.Contains("entrecejo"))
-            return 0;
+            return Clase.Nariz;
         if (n.Contains("ojo") || n.Contains("eye") || n.Contains("ceja") || n.Contains("párpado") || n.Contains("parpado"))
-            return 1;
+            return Clase.Ojo;
         if (n.Contains("boca") || n.Contains("mouth") || n.Contains("labio") || n.Contains("lip") || n.Contains("comisura"))
-            return 2;
-        if (n.Contains("oreja") || n.Contains("ear") || n.Contains("lóbulo") || n.Contains("lobulo"))
-            return 4;
-        if (n.Contains("barbilla") || n.Contains("chin") || n.Contains("mandíbula") || n.Contains("jaw") || n.Contains("frente")
-            || n.Contains("forehead") || n.Contains("nuca") || n.Contains("coronilla") || n.Contains("pómulo") || n.Contains("sien")
-            || n.Contains("contorno") || n.Contains("outline") || n.Contains("mejilla") || n.Contains("cheek"))
-            return 3;
-        return -1;
+            return Clase.Boca;
+        if (n.Contains("oreja") || n.Contains("lóbulo") || n.Contains("lobulo") || n == "ear" || n.StartsWith("ear ") || n.Contains("earlobe")
+            || n.EndsWith(" ear"))
+            return Clase.Oreja;
+        return Clase.Otro;
+    }
+
+    // Cómo va un nodo en el huevo: en el BORDE (la silueta) o pegado con su tipo.
+    static void QueTipo(string nombre, bool dePerfil, out bool borde, out Tipo tipo)
+    {
+        borde = false;
+        tipo = Tipo.Rasgo;
+        switch (ClaseDe(nombre))
+        {
+            case Clase.Borde:
+                borde = true;
+                return;
+            case Clase.PerfilCara:
+                if (dePerfil)
+                {
+                    tipo = Tipo.Centro;   // de perfil: la línea del centro de la cara
+                    return;
+                }
+                if (nombre.StartsWith("boca") || nombre == "outer mouth")
+                    return;
+                borde = true;             // de frente: la frente y la barbilla son parte del borde
+                return;
+            case Clase.Nariz: tipo = dePerfil ? Tipo.Centro : Tipo.NarizFrente; return;
+            case Clase.Ojo: tipo = dePerfil ? Tipo.OjoPerfil : Tipo.Rasgo; return;
+            case Clase.Boca: tipo = dePerfil ? Tipo.Boca : Tipo.Rasgo; return;
+            case Clase.Oreja: tipo = Tipo.Oreja; return;
+        }
+    }
+
+    // El nombre de cada nodo; los nodos sin nombre toman el del nodo con nombre más cercano en la línea.
+    static string[] NombresPropagados(Trazo t)
+    {
+        int n = t.nodos.Count;
+        var r = new string[n];
+        bool alguno = false;
+        for (int j = 0; j < n; j++)
+        {
+            r[j] = t.NombreDeNodo(j);
+            if (r[j].Length > 0)
+                alguno = true;
+        }
+        if (!alguno)
+            return r;
+        var copia = (string[])r.Clone();
+        for (int j = 0; j < n; j++)
+        {
+            if (copia[j].Length > 0)
+                continue;
+            for (int d = 1; d < n; d++)
+            {
+                if (j - d >= 0 && copia[j - d].Length > 0) { r[j] = copia[j - d]; break; }
+                if (j + d < n && copia[j + d].Length > 0) { r[j] = copia[j + d]; break; }
+            }
+        }
+        return r;
     }
 
     static CabezaInvisible instancia;
     public static bool Activa => instancia != null && instancia.estado != Estado.Nada;
 
-    // v53: el cuadrito de una etiqueta espera un nombre: el que digas con la voz (o escribas) va a esa línea.
+    // v53: el cuadrito de una etiqueta espera un nombre: el que digas con la voz (o escribas) va a esa parte.
     public static bool NombrarPendiente(string nombre)
     {
         if (!Activa || instancia.pendiente == 0 || string.IsNullOrEmpty(nombre))
@@ -107,7 +306,7 @@ public class CabezaInvisible : MonoBehaviour
         int id = instancia.pendiente;
         instancia.pendiente = 0;
         TecladoVR.Cerrar();
-        instancia.NombrarLinea(id, nombre);
+        instancia.NombrarRango(id, instancia.pendienteDesde, instancia.pendienteHasta, nombre);
         return true;
     }
 
@@ -118,22 +317,46 @@ public class CabezaInvisible : MonoBehaviour
             instancia.AlCambiarNombres();
     }
 
+    // v54: "mirar y decir": la línea que miras (con la mirada) toma ese nombre entera.
+    public static bool NombrarMirada(string nombre)
+    {
+        if (!Activa || Mirada.Objetivo == null || string.IsNullOrEmpty(nombre))
+            return false;
+        int id = Mirada.Objetivo.id;
+        foreach (var kv in instancia.espejos)
+            if (kv.Value == id)
+                id = kv.Key;
+        if (!instancia.idsOriginales.Contains(id))
+            return false;
+        instancia.NombrarLinea(id, nombre);
+        return true;
+    }
+
     enum Estado { Nada, Preguntando, Girando }
     enum Tipo { Rasgo, Centro, Boca, Oreja, OjoPerfil, NarizFrente }
+
+    // Lo que se sabe de cada nodo para pegarlo en el huevo.
+    struct NodoInfo
+    {
+        public bool borde;
+        public Tipo tipo;
+        public Vector2 c;       // centro de su parte (en tu dibujo)
+        public float x0, x1;    // de dónde a dónde va su parte (de lado)
+        public float f;         // dónde va en su parte (0 a 1)
+    }
 
     // Una línea del modelo (en el espacio de tu dibujo original, respecto al centro de la cabeza).
     class Linea
     {
         public int idOrigen;               // la línea tuya
         public bool espejo;                // la copia del otro lado (dibujada de perfil)
-        public Tipo tipo;
-        public bool nombrada;              // su tipo viene de un nombre (no adivinado)
-        public Vector2 c;                  // su centro (en tu dibujo)
-        public float x0, x1;
-        public readonly List<Vector3> nodos = new List<Vector3>();      // sus nodos sobre el huevo
+        public readonly List<bool> borde = new List<bool>();             // nodos de la silueta
+        public readonly List<Vector2> orig = new List<Vector2>();        // cada nodo en tu dibujo
+        public readonly List<float> ang = new List<float>();             // su ángulo alrededor del centro
+        public readonly List<Vector3> nodos = new List<Vector3>();       // sus nodos sobre el huevo
         public readonly List<Vector3> asaE = new List<Vector3>(), asaS = new List<Vector3>();  // punta de cada tirador
         public readonly List<bool> manual = new List<bool>();
-        public readonly List<float> prof = new List<float>();           // cuánto se salía de tu plano (dibujos en 3D)
+        public readonly List<float> prof = new List<float>();            // cuánto se salía de tu plano (dibujos en 3D)
     }
 
     class VistaGuardada
@@ -153,16 +376,13 @@ public class CabezaInvisible : MonoBehaviour
     readonly Dictionary<int, DatosTrazo> datosOriginales = new Dictionary<int, DatosTrazo>();
     readonly Dictionary<int, int> espejos = new Dictionary<int, int>();   // línea tuya → su copia del otro lado
     readonly List<Linea> lineas = new List<Linea>();
-    int idContorno;
-    readonly List<float> angulosContorno = new List<float>();
-    readonly List<Vector2> contornoOrig = new List<Vector2>();
-    readonly List<float> contornoProf = new List<float>();
+    int idContorno = -1;                   // si no nombraste el borde: la línea más grande hace de contorno
     Vector3 centro, derecha, arriba, haciaTi;
     Vector2 centro2D;
     float semiX, semiY, semiZ;
     readonly float[] proporcion = new float[72];
-    bool perfil, perfilAdivinado, hayModelo;
-    float mira = 1f;
+    bool perfil, perfilAdivinado, hayModelo, vistaDictada;
+    float mira = 1f, miraAdivinada = 1f;
     float giro, inclina;
     bool agarrada;
     Vector3 agarreInicio;
@@ -172,48 +392,46 @@ public class CabezaInvisible : MonoBehaviour
     int fotogramaOriginal;
     bool mostrandoReal = true;        // se ven tus líneas de verdad (no la vista previa)
     int fotogramaVisto = -1;
-    int pendiente;                    // la línea cuyo nombre se espera (el cuadrito de su etiqueta)
+    int pendiente, pendienteDesde, pendienteHasta;   // la parte cuyo nombre se espera (el cuadrito de su etiqueta)
     readonly HashSet<int> sinEtiqueta = new HashSet<int>();
     bool sucio = true;
+    float proximaEtiqueta;
+    bool animando;                    // v55: "Gira": gira sola
+    float animandoDesde;
 
     // La vista previa: líneas sueltas iguales a las tuyas.
     readonly List<Trazo> clones = new List<Trazo>();
-    Trazo cloneContorno;
     readonly List<Renderer> apagados = new List<Renderer>();
     readonly List<Vector3> silueta = new List<Vector3>();
 
     // El panel, las etiquetas, el vocabulario y el tutorial.
     Transform raiz, panel;
-    Material normal, marcado, matPanel, matSi, matNo, matCambiar;
+    Material normal, marcado, matPanel, matSi, matNo, matCambiar, matPunto;
     readonly List<GameObject> filaPregunta = new List<GameObject>(), filaGiro = new List<GameObject>(), filaVistas = new List<GameObject>();
+    BotonTocable btnGira;
+    TextMeshPro cartelDictado;
 
     class Chip
     {
         public Transform t;
         public TextMeshPro texto;
         public GameObject botones;
-        public int id;
-        public string palabra;   // lo que se confirma con "Sí"
+        public int id, desde, hasta;
+        public string palabra;
+        public bool segura;
     }
     readonly List<Chip> chips = new List<Chip>();
-
-    Transform vocabulario;
-    readonly List<TextMeshPro> palabrasVista = new List<TextMeshPro>();
-    readonly List<string> palabras = new List<string>();
-    int arrastrando = -1;
-    TextMeshPro palabraFlotante;
-    Transform marcaDestino;
 
     Transform tarjeta;
     TextMeshPro tarjetaTitulo, tarjetaTexto;
     int paso;
-    static readonly string[] PasosTitulo = { "Dibuja la cabeza", "¿De frente o de perfil?", "Revisa las etiquetas", "Gira y usa la vista", "Retoca y guarda" };
+    static readonly string[] PasosTitulo = { "Dicta la cara", "¿De frente o de perfil?", "Revisa las etiquetas", "Gira y usa la vista", "Retoca y guarda" };
     static readonly string[] PasosTexto =
     {
-        "En una capa normal, dibuja el CONTORNO de la cabeza y sus rasgos: ojos, nariz, boca y orejas (sin cabello). Luego vuelve a tocar Cabeza invisible.",
-        "Toca \"De frente\" o \"De perfil\" según como la dibujaste. Esa vista queda IDÉNTICA a tu dibujo y tu original nunca cambia.",
-        "Cada parte tiene su cartelito: visto verde = confirmar, X roja = quitar, cuadrito azul = las 3 palabras más probables o el teclado. EL SELLO: toca una palabra de la lista de la derecha, toca los nodos (o las líneas) que son eso y haz un pellizco con la izquierda para confirmar. También: mira una línea y di su nombre.",
-        "Gírala con los botones (Perfil, 3/4, Frente) o pellizcando la cabeza con la derecha. Toca \"Usar esta vista\": se pone en OTRO fotograma, con tus mismos nodos (morph). Tu original sigue en el suyo.",
+        "Antes de dibujar, di \"cara de perfil\" (o \"cara de frente\"). Luego, ANTES de cada parte, di su nombre y dibújala: \"nariz\", \"boca exterior\", \"mandíbula\", \"oreja\", \"cabeza arriba\", \"ojo\"... Los dibujitos de la derecha muestran cada zona con su color. Al terminar di \"fin del dictado\" y toca Cabeza invisible.",
+        "Si la dictaste, la app ya sabe la vista. Si no, toca \"De frente\" o \"De perfil\" según como la dibujaste. Esa vista queda IDÉNTICA a tu dibujo y tu original nunca cambia.",
+        "Cada parte tiene su cartelito: visto verde = confirmar, X roja = quitar, cuadrito azul = las 3 palabras más probables o el teclado. EL SELLO: toca una palabra (de los dibujitos o de la lista), toca los nodos (o las líneas) que son eso y haz un pellizco con la izquierda para confirmar.",
+        "Toca \"Gira\" para verla girar sola (o Perfil, 3/4, Frente, o pellízcala con la derecha). Toca \"Usar esta vista\": se pone en OTRO fotograma, con tus mismos nodos (morph). Tu original sigue en el suyo.",
         "Las otras vistas son una propuesta: retócalas con Nodos y toca \"Guardar vista\". La biblioteca guarda TU versión; tócala en cualquier fotograma. \"Original\" siempre vuelve a tu dibujo."
     };
 
@@ -226,8 +444,7 @@ public class CabezaInvisible : MonoBehaviour
             instancia.Cerrar();
             return;
         }
-        if (instancia == null)
-            instancia = new GameObject("CabezaInvisible").AddComponent<CabezaInvisible>();
+        Asegurar();
         instancia.Abrir();
     }
 
@@ -292,6 +509,7 @@ public class CabezaInvisible : MonoBehaviour
     void Empezar()
     {
         hayModelo = false;
+        animando = false;
         vistas.Clear();
         espejos.Clear();
         sinEtiqueta.Clear();
@@ -311,14 +529,16 @@ public class CabezaInvisible : MonoBehaviour
                 idsOriginales.Add(t.id);
                 datosOriginales[t.id] = t.CrearDatos();
             }
-        if (originales.Count < 2)
+        if (originales.Count < 1 || (originales.Count < 2 && !HayNombres(originales)))
         {
-            dibujo.Mensaje("Cabeza invisible: dibuja en esta capa el contorno de la cabeza y sus rasgos (ojos, nariz, boca, orejas)");
+            dibujo.Mensaje("Cabeza invisible: dibuja en esta capa la cabeza (o díctala: di \"cara de perfil\" y el nombre de cada parte)");
             AvanzarTutorial(0);
             return;
         }
         capaCabeza = dibujo.capaActual;
         fotogramaOriginal = dibujo.animacion != null ? dibujo.animacion.Fotograma : 0;
+        int vista = dibujo.CapaActual.vistaCabeza;
+        vistaDictada = vista > 0;
         Vector3 suma = Vector3.zero;
         int n = 0;
         foreach (var t in originales)
@@ -337,45 +557,52 @@ public class CabezaInvisible : MonoBehaviour
             derecha = cab.right;
         arriba = Vector3.Cross(adelante, derecha).normalized;
         haciaTi = -adelante;
+        centro2D = Vector2.zero;
 
-        // El contorno: el que nombraste como contorno (barbilla, frente...); si no, la línea más grande.
-        Trazo contorno = null;
+        // La línea más grande (por si no nombraste el borde: hace de contorno).
+        float mayor = -1f;
         foreach (var t in originales)
-            if (CategoriaDeLinea(t) == 3)
-                contorno = t;
-        if (contorno == null)
         {
-            float mayor = -1f;
-            foreach (var t in originales)
+            Vector2 mn, mx;
+            Caja(t, out mn, out mx);
+            float area = (mx.x - mn.x) * (mx.y - mn.y);
+            if (area > mayor)
             {
-                Vector2 mn, mx;
-                Caja(t, out mn, out mx);
-                float area = (mx.x - mn.x) * (mx.y - mn.y);
-                if (area > mayor)
-                {
-                    mayor = area;
-                    contorno = t;
-                }
+                mayor = area;
+                idContorno = t.id;
             }
         }
-        idContorno = contorno.id;
-        Vector2 cmn, cmx;
-        Caja(contorno, out cmn, out cmx);
+        // El tamaño de la cabeza: las piezas del BORDE (las que nombraste o dictaste); si no hay, la línea más grande.
+        bool dePerfil = vista == 2;
+        var pts = PuntosBorde(originales, dePerfil, true);
+        Vector2 cmn = new Vector2(float.MaxValue, float.MaxValue), cmx = new Vector2(float.MinValue, float.MinValue);
+        foreach (var q in pts)
+        {
+            cmn = Vector2.Min(cmn, q);
+            cmx = Vector2.Max(cmx, q);
+        }
         centro2D = (cmn + cmx) * 0.5f;
         semiX = Mathf.Max(0.01f, (cmx.x - cmn.x) * 0.5f);
         semiY = Mathf.Max(0.01f, (cmx.y - cmn.y) * 0.5f);
-        // ¿De perfil? (la adivinanza para las etiquetas): algo sobresale mucho del contorno por un solo lado (la nariz).
-        int fueraIzq = 0, fueraDer = 0;
-        foreach (var t in originales)
-            if (t != contorno)
-                foreach (var p in t.curva)
-                {
-                    Vector2 q = Plano(t.transform.TransformPoint(p));
-                    if (q.x > semiX * 1.02f) fueraDer++;
-                    if (q.x < -semiX * 1.02f) fueraIzq++;
-                }
-        perfilAdivinado = (fueraDer > 3 && fueraIzq == 0) || (fueraIzq > 3 && fueraDer == 0);
-        miraAdivinada = fueraIzq > fueraDer ? -1f : 1f;
+        if (vistaDictada)
+        {
+            perfilAdivinado = dePerfil;
+        }
+        else
+        {
+            // ¿De perfil? (solo para las sugerencias): algo sobresale mucho del borde por un solo lado (la nariz).
+            int fueraIzq = 0, fueraDer = 0;
+            foreach (var t in originales)
+                if (t.id != idContorno)
+                    foreach (var p in t.curva)
+                    {
+                        Vector2 q = Plano(t.transform.TransformPoint(p));
+                        if (q.x > semiX * 1.02f) fueraDer++;
+                        if (q.x < -semiX * 1.02f) fueraIzq++;
+                    }
+            perfilAdivinado = (fueraDer > 3 && fueraIzq == 0) || (fueraIzq > 3 && fueraDer == 0);
+        }
+        miraAdivinada = perfilAdivinado ? Mira(originales) : 1f;
         CalcularSugerencias(originales, perfilAdivinado, miraAdivinada);
         ArmarPanel();
         Mostrar(filaPregunta, true);
@@ -384,8 +611,23 @@ public class CabezaInvisible : MonoBehaviour
         estado = Estado.Preguntando;
         mostrandoReal = true;
         sucio = true;
+        if (vistaDictada)
+        {
+            // Ya sabes la vista (la dictaste): directo a girar.
+            Elegir(dePerfil);
+            TutorialAlAbrir(2);
+            return;
+        }
         TutorialAlAbrir(1);
         dibujo.Mensaje("Cabeza invisible: ¿la dibujaste de frente o de perfil?");
+    }
+
+    static bool HayNombres(List<Trazo> ts)
+    {
+        foreach (var t in ts)
+            if (t.nombresNodo.Count > 0)
+                return true;
+        return false;
     }
 
     void Cerrar()
@@ -395,6 +637,7 @@ public class CabezaInvisible : MonoBehaviour
         BorrarClones();
         estado = Estado.Nada;
         agarrada = false;
+        animando = false;
         pendiente = 0;
         if (raiz != null)
             raiz.gameObject.SetActive(false);
@@ -406,7 +649,7 @@ public class CabezaInvisible : MonoBehaviour
 
     // ---------- Esconder tus líneas mientras se ve la vista previa ----------
 
-    // Cada cuadro (una línea que se redibuja se vuelve a prender sola: por eso antes se veían dos caras).
+    // Cada cuadro (una línea que se redibuja se vuelve a prender sola).
     void EsconderOriginales()
     {
         foreach (var t in LineasCabeza())
@@ -442,9 +685,6 @@ public class CabezaInvisible : MonoBehaviour
             if (c != null)
                 Destroy(c.gameObject);
         clones.Clear();
-        if (cloneContorno != null)
-            Destroy(cloneContorno.gameObject);
-        cloneContorno = null;
     }
 
     void OcultarClones()
@@ -452,25 +692,9 @@ public class CabezaInvisible : MonoBehaviour
         foreach (var c in clones)
             if (c != null && c.gameObject.activeSelf)
                 c.gameObject.SetActive(false);
-        if (cloneContorno != null && cloneContorno.gameObject.activeSelf)
-            cloneContorno.gameObject.SetActive(false);
     }
 
     // ---------- Armar el modelo ----------
-
-    int CategoriaDeLinea(Trazo t)
-    {
-        foreach (var n in t.nombresNodo)
-        {
-            if (string.IsNullOrEmpty(n))
-                continue;
-            int dos = n.IndexOf(':');
-            int c = CategoriaDeNombre(dos >= 0 ? n.Substring(dos + 1) : n);
-            if (c >= 0)
-                return c;
-        }
-        return -1;
-    }
 
     static string PrimerNombre(Trazo t)
     {
@@ -486,8 +710,100 @@ public class CabezaInvisible : MonoBehaviour
         return "";
     }
 
+    // ¿Algún nodo está nombrado como parte del BORDE (cabeza arriba, nuca, mandíbula...)?
+    static bool HayBordeNombrado(List<Trazo> ts, bool dePerfil)
+    {
+        foreach (var t in ts)
+            foreach (var n in NombresPropagados(t))
+            {
+                bool borde;
+                Tipo tipo;
+                QueTipo(n, dePerfil, out borde, out tipo);
+                if (borde)
+                    return true;
+            }
+        return false;
+    }
+
+    // Los puntos del borde (en tu dibujo): para el tamaño de la cabeza y la forma de su silueta.
+    List<Vector2> PuntosBorde(List<Trazo> ts, bool dePerfil, bool conPerfilCara)
+    {
+        var pts = new List<Vector2>();
+        bool hay = HayBordeNombrado(ts, dePerfil);
+        foreach (var t in ts)
+        {
+            if (!hay)
+            {
+                if (t.id == idContorno)
+                    foreach (var p in t.curva)
+                        pts.Add(Plano(t.transform.TransformPoint(p)));
+                continue;
+            }
+            var nombres = NombresPropagados(t);
+            int enBorde = 0;
+            for (int j = 0; j < nombres.Length; j++)
+            {
+                bool borde;
+                Tipo tipo;
+                QueTipo(nombres[j], dePerfil, out borde, out tipo);
+                bool cuenta = borde || (conPerfilCara && dePerfil && ClaseDe(nombres[j]) == Clase.PerfilCara);
+                if (cuenta)
+                {
+                    pts.Add(Plano(t.transform.TransformPoint(t.nodos[j])));
+                    enBorde++;
+                }
+            }
+            if (enBorde == nombres.Length && nombres.Length > 0)
+                foreach (var p in t.curva)
+                    pts.Add(Plano(t.transform.TransformPoint(p)));
+        }
+        if (pts.Count < 3)
+        {
+            var c = dibujo.BuscarPorId(idContorno);
+            if (c != null)
+                foreach (var p in c.curva)
+                    pts.Add(Plano(c.transform.TransformPoint(p)));
+        }
+        return pts;
+    }
+
+    // De perfil: hacia dónde mira la cara (1 = a tu derecha). La nariz dice adelante; la oreja, atrás.
+    float Mira(List<Trazo> ts)
+    {
+        Vector2 sumaNariz = Vector2.zero, sumaOreja = Vector2.zero, sumaTodo = Vector2.zero;
+        int nN = 0, nO = 0, nT = 0;
+        float sx = 0f;
+        foreach (var t in ts)
+        {
+            var nombres = NombresPropagados(t);
+            for (int j = 0; j < t.nodos.Count; j++)
+            {
+                Vector2 q = Plano(t.transform.TransformPoint(t.nodos[j]));
+                sumaTodo += q;
+                nT++;
+                var c = ClaseDe(nombres[j]);
+                if (c == Clase.Nariz) { sumaNariz += q; nN++; }
+                if (c == Clase.Oreja) { sumaOreja += q; nO++; }
+                if (t.id != idContorno)
+                    sx += q.x;
+            }
+        }
+        Vector2 medio = sumaTodo / Mathf.Max(1, nT);
+        if (nN > 0)
+            return sumaNariz.x / nN >= medio.x ? 1f : -1f;
+        if (nO > 0)
+            return sumaOreja.x / nO >= medio.x ? -1f : 1f;
+        return sx < 0f ? -1f : 1f;
+    }
+
     void Elegir(bool dePerfil)
     {
+        var capa = dibujo.DatosDeCapa(capaCabeza);
+        if (capa != null && capa.vistaCabeza != (dePerfil ? 2 : 1))
+        {
+            capa.vistaCabeza = dePerfil ? 2 : 1;
+            dibujo.HayCambios = true;
+        }
         if (!ArmarModelo(dePerfil))
             return;
         // Tu original queda guardado como clave en SU fotograma (y como "Original" en la biblioteca): nunca se toca.
@@ -508,14 +824,13 @@ public class CabezaInvisible : MonoBehaviour
         estado = Estado.Girando;
         sucio = true;
         AvanzarTutorial(2);
-        dibujo.Mensaje("Gírala: Perfil / 3/4 / Frente, o pellízcala con la derecha y arrastra");
+        dibujo.Mensaje(dePerfil ? "De perfil: toca Gira para verla girar" : "De frente: toca Gira para verla girar");
     }
 
     bool ArmarModelo(bool dePerfil)
     {
         // Líneas temporales con la forma de tu ORIGINAL (y los nombres de ahora): con ellas se arma el modelo.
         var temporales = new List<Trazo>();
-        Trazo contorno = null;
         bool antesSilencio = Trazo.silenciar;
         Trazo.silenciar = true;
         foreach (int id in idsOriginales)
@@ -529,70 +844,44 @@ public class CabezaInvisible : MonoBehaviour
             tmp.id = id;
             tmp.gameObject.SetActive(false);
             temporales.Add(tmp);
-            if (id == idContorno)
-                contorno = tmp;
         }
         Trazo.silenciar = antesSilencio;
         Trazo.huboCambio = false;
-        bool ok = contorno != null && ArmarModeloCon(dePerfil, temporales, contorno);
+        bool ok = temporales.Count > 0 && ArmarModeloCon(dePerfil, temporales);
         foreach (var t in temporales)
             Destroy(t.gameObject);
         return ok;
     }
 
-    bool ArmarModeloCon(bool dePerfil, List<Trazo> originales, Trazo contorno)
+    bool ArmarModeloCon(bool dePerfil, List<Trazo> originales)
     {
         perfil = dePerfil;
         lineas.Clear();
-        if (perfil)
-        {
-            float sx = 0f;
-            int cuantos = 0;
-            foreach (var t in originales)
-                if (t != contorno)
-                    foreach (var p in t.curva)
-                    {
-                        sx += Plano(t.transform.TransformPoint(p)).x;
-                        cuantos++;
-                    }
-            mira = cuantos > 0 && sx < 0f ? -1f : 1f;
-            semiZ = semiX * 0.8f;
-        }
-        else
-        {
-            semiZ = semiX * 1.1f;
-        }
-        ArmarProporcion(contorno);
+        mira = perfil ? Mira(originales) : 1f;
+        semiZ = perfil ? semiX * 0.8f : semiX * 1.1f;
         CalcularSugerencias(originales, perfil, mira);
-        // El contorno: el ángulo de cada uno de sus nodos (en cada vista va a la silueta, al mismo ángulo).
-        angulosContorno.Clear();
-        contornoOrig.Clear();
-        contornoProf.Clear();
-        foreach (var p in contorno.nodos)
-        {
-            Vector3 m = contorno.transform.TransformPoint(p);
-            Vector2 q = Plano(m);
-            angulosContorno.Add(Mathf.Atan2(q.y, q.x));
-            contornoOrig.Add(q);
-            contornoProf.Add(Vector3.Dot(m - centro, haciaTi));
-        }
+        ArmarProporcion(PuntosBorde(originales, perfil, false));
+        bool hay = HayBordeNombrado(originales, perfil);
         foreach (var t in originales)
         {
-            if (t == contorno)
-                continue;
-            var plano = new List<Vector2>();
-            foreach (var p in t.curva)
-                plano.Add(Plano(t.transform.TransformPoint(p)));
-            if (plano.Count < 2)
-                continue;
+            var info = InfoNodos(t, perfil, hay);
             var l = new Linea { idOrigen = t.id };
-            Clasificar(t, plano, l);
-            Llenar(l, t);
+            Llenar(l, t, info);
             lineas.Add(l);
-            if (perfil && (l.tipo == Tipo.OjoPerfil || l.tipo == Tipo.Oreja))
+            // De perfil, el ojo, la ceja y la oreja se copian al otro lado (para cuando la ves de frente).
+            bool algunBorde = false;
+            int ojoOreja = 0;
+            foreach (var i in info)
             {
-                var e = new Linea { idOrigen = t.id, espejo = true, tipo = l.tipo, nombrada = l.nombrada, c = l.c, x0 = l.x0, x1 = l.x1 };
-                Llenar(e, t);
+                if (i.borde)
+                    algunBorde = true;
+                if (i.tipo == Tipo.OjoPerfil || i.tipo == Tipo.Oreja)
+                    ojoOreja++;
+            }
+            if (perfil && !algunBorde && ojoOreja * 2 > info.Length)
+            {
+                var e = new Linea { idOrigen = t.id, espejo = true };
+                Llenar(e, t, info);
                 lineas.Add(e);
             }
         }
@@ -614,173 +903,69 @@ public class CabezaInvisible : MonoBehaviour
         }
     }
 
-    // Qué es cada línea: por su nombre (si nombraste un nodo) o por lo que sugieren las zonas (v54).
-    void Clasificar(Trazo t, List<Vector2> plano, Linea l)
+    // Qué es cada nodo de una línea: su nombre (o el de la sugerencia, si la línea no tiene nombres).
+    NodoInfo[] InfoNodos(Trazo t, bool dePerfil, bool hayBorde)
     {
-        l.c = Medio(plano);
-        l.x0 = float.MaxValue;
-        l.x1 = float.MinValue;
-        foreach (var q in plano)
+        int n = t.nodos.Count;
+        var nombres = NombresPropagados(t);
+        bool sinNombres = true;
+        foreach (var s in nombres)
+            if (s.Length > 0)
+                sinNombres = false;
+        string deLinea = "";
+        if (sinNombres)
+            deLinea = !hayBorde && t.id == idContorno ? "contorno" : MejorSugerencia(t.id);
+        var q = new Vector2[n];
+        for (int j = 0; j < n; j++)
+            q[j] = Plano(t.transform.TransformPoint(t.nodos[j]));
+        var r = new NodoInfo[n];
+        int a = 0;
+        while (a < n)
         {
-            l.x0 = Mathf.Min(l.x0, q.x);
-            l.x1 = Mathf.Max(l.x1, q.x);
+            string nombre = sinNombres ? deLinea : nombres[a];
+            int b = a;
+            while (b + 1 < n && (sinNombres || nombres[b + 1] == nombre))
+                b++;
+            Vector2 c = Vector2.zero;
+            float x0 = float.MaxValue, x1 = float.MinValue;
+            for (int j = a; j <= b; j++)
+            {
+                c += q[j];
+                x0 = Mathf.Min(x0, q[j].x);
+                x1 = Mathf.Max(x1, q[j].x);
+            }
+            c /= (b - a + 1);
+            bool borde;
+            Tipo tipo;
+            QueTipo(nombre, dePerfil, out borde, out tipo);
+            for (int j = a; j <= b; j++)
+                r[j] = new NodoInfo { borde = borde, tipo = tipo, c = c, x0 = x0, x1 = x1, f = b > a ? (j - a) / (float)(b - a) : 0.5f };
+            a = b + 1;
         }
-        int cat = CategoriaDeLinea(t);
-        l.nombrada = cat >= 0;
-        if (cat < 0)
-            cat = CategoriaDeNombre(MejorSugerencia(t.id));
-        switch (cat)
-        {
-            case 0: l.tipo = perfil ? Tipo.Centro : Tipo.NarizFrente; return;
-            case 1: l.tipo = perfil ? Tipo.OjoPerfil : Tipo.Rasgo; return;
-            case 2: l.tipo = perfil ? Tipo.Boca : Tipo.Rasgo; return;
-            case 4: l.tipo = Tipo.Oreja; return;
-            default: l.tipo = Tipo.Rasgo; return;
-        }
-    }
-
-    // ---------- v54: QUÉ ES CADA LÍNEA: puntos por zonas (pura lógica, sin IA) ----------
-    // Cada línea recibe puntos para cada parte según DÓNDE está en la cabeza (alto y de lado), su FORMA (ancha,
-    // delgada, cerrada, vertical) y si tiene PAREJA en espejo (ojos, cejas, orejas). Gana la de más puntos.
-    // De frente: cejas arriba de los ojos, ojos a media cabeza y a los lados, nariz al centro bajo los ojos, boca abajo
-    // al centro, orejas en los extremos. De perfil: la nariz sobresale adelante, el ojo en el tercio delantero, la boca
-    // adelante abajo y la oreja detrás del centro.
-    class Rasgo
-    {
-        public int id;
-        public float u, v;      // centro: u de -1 (izquierda) a 1 (derecha), v de -1 (abajo) a 1 (arriba)
-        public float w, h;      // ancho y alto (fracción de la cabeza)
-        public float aspecto;   // alto ÷ ancho
-        public float fuera;     // qué parte sale del contorno (0 a 1)
-        public bool cerrado;
-    }
-
-    readonly Dictionary<int, List<KeyValuePair<string, float>>> sugerencias = new Dictionary<int, List<KeyValuePair<string, float>>>();
-    float miraAdivinada = 1f;
-
-    Rasgo Medir(Trazo t)
-    {
-        var r = new Rasgo { id = t.id, cerrado = t.cerrado };
-        float x0 = float.MaxValue, x1 = float.MinValue, y0 = float.MaxValue, y1 = float.MinValue;
-        Vector2 suma = Vector2.zero;
-        int n = 0, fuera = 0;
-        foreach (var p in t.curva)
-        {
-            Vector2 q = Plano(t.transform.TransformPoint(p));
-            x0 = Mathf.Min(x0, q.x);
-            x1 = Mathf.Max(x1, q.x);
-            y0 = Mathf.Min(y0, q.y);
-            y1 = Mathf.Max(y1, q.y);
-            suma += q;
-            n++;
-            if (K(q) <= 0f)
-                fuera++;
-        }
-        if (n == 0)
-            return r;
-        Vector2 c = suma / n;
-        r.u = c.x / semiX;
-        r.v = c.y / semiY;
-        r.w = (x1 - x0) / (2f * semiX);
-        r.h = (y1 - y0) / (2f * semiY);
-        r.aspecto = (y1 - y0) / Mathf.Max(1e-5f, x1 - x0);
-        r.fuera = fuera / (float)n;
         return r;
     }
 
-    static float G(float x, float centro, float ancho)
-    {
-        float d = (x - centro) / ancho;
-        return Mathf.Exp(-0.5f * d * d);
-    }
-
-    // Las sugerencias de todas las líneas (de la más probable a la menos).
-    void CalcularSugerencias(List<Trazo> ts, bool dePerfil, float m)
-    {
-        sugerencias.Clear();
-        var rasgos = new List<Rasgo>();
-        foreach (var t in ts)
-            if (t != null && t.id != idContorno && t.curva.Count >= 2)
-                rasgos.Add(Medir(t));
-        foreach (var r in rasgos)
-            sugerencias[r.id] = Puntuar(r, rasgos, dePerfil, m);
-    }
-
-    static List<KeyValuePair<string, float>> Puntuar(Rasgo r, List<Rasgo> todos, bool dePerfil, float m)
-    {
-        bool pareja = false, algoDebajo = false;
-        foreach (var o in todos)
-        {
-            if (o == r)
-                continue;
-            if (Mathf.Abs(r.u) > 0.12f && Mathf.Abs(r.u + o.u) < 0.25f && Mathf.Abs(r.v - o.v) < 0.15f
-                && Mathf.Abs(r.w - o.w) < Mathf.Max(0.08f, 0.5f * r.w))
-                pareja = true;
-            float dv = r.v - o.v;
-            if (Mathf.Abs(o.u - r.u) < 0.22f && dv > 0.06f && dv < 0.4f)
-                algoDebajo = true;
-        }
-        bool delgada = r.aspecto < 0.35f;
-        bool vertical = r.aspecto > 0.9f;
-        var p = new List<KeyValuePair<string, float>>();
-        if (!dePerfil)
-        {
-            float au = Mathf.Abs(r.u);
-            bool izq = r.u < 0f;
-            p.Add(new KeyValuePair<string, float>(izq ? "ojo izquierdo" : "ojo derecho",
-                G(r.v, 0.08f, 0.18f) * G(au, 0.38f, 0.2f) * (r.aspecto > 0.25f && r.aspecto < 1.4f ? 1.2f : 0.6f)
-                * (r.cerrado ? 1.2f : 1f) * (pareja ? 1.3f : 1f) * (r.w < 0.4f ? 1f : 0.5f)));
-            p.Add(new KeyValuePair<string, float>(izq ? "ceja izquierda" : "ceja derecha",
-                G(r.v, 0.3f, 0.15f) * G(au, 0.38f, 0.25f) * (delgada ? 1.3f : 0.5f) * (r.cerrado ? 0.5f : 1.1f)
-                * (pareja ? 1.3f : 1f) * (algoDebajo ? 1.4f : 1f)));
-            p.Add(new KeyValuePair<string, float>("nariz",
-                G(r.v, -0.18f, 0.2f) * G(r.u, 0f, 0.15f) * (r.w < 0.25f ? 1.1f : 0.6f)));
-            p.Add(new KeyValuePair<string, float>("boca",
-                G(r.v, -0.5f, 0.2f) * G(r.u, 0f, 0.22f) * (r.w > 0.12f && r.aspecto < 0.8f ? 1.3f : 0.6f)));
-            p.Add(new KeyValuePair<string, float>(izq ? "oreja izquierda" : "oreja derecha",
-                G(au, 0.98f, 0.15f) * G(r.v, 0f, 0.3f) * (vertical ? 1.2f : 0.8f) * (r.fuera > 0.3f ? 1.5f : 1f)));
-            p.Add(new KeyValuePair<string, float>("mejilla", G(au, 0.55f, 0.2f) * G(r.v, -0.28f, 0.15f) * 0.45f));
-        }
-        else
-        {
-            float s = r.u * m;   // hacia donde mira la cara = positivo
-            p.Add(new KeyValuePair<string, float>("nariz", G(s, 0.95f, 0.18f) * G(r.v, -0.1f, 0.22f) * (r.fuera > 0.2f ? 1.5f : 1f)));
-            p.Add(new KeyValuePair<string, float>("ojo",
-                G(s, 0.55f, 0.2f) * G(r.v, 0.08f, 0.18f) * (r.cerrado ? 1.2f : 1f) * (r.w < 0.3f ? 1f : 0.5f)));
-            p.Add(new KeyValuePair<string, float>("ceja",
-                G(s, 0.55f, 0.25f) * G(r.v, 0.3f, 0.15f) * (delgada ? 1.3f : 0.5f) * (algoDebajo ? 1.3f : 1f)));
-            p.Add(new KeyValuePair<string, float>("boca", G(s, 0.8f, 0.2f) * G(r.v, -0.45f, 0.18f) * (r.fuera > 0.1f ? 1.2f : 1f)));
-            p.Add(new KeyValuePair<string, float>("oreja", G(s, -0.15f, 0.25f) * G(r.v, 0f, 0.3f) * (vertical ? 1.2f : 0.8f)));
-            p.Add(new KeyValuePair<string, float>("mejilla", G(s, 0.45f, 0.2f) * G(r.v, -0.25f, 0.15f) * 0.45f));
-        }
-        p.Sort((a, b) => b.Value.CompareTo(a.Value));
-        return p;
-    }
-
-    string MejorSugerencia(int id)
-    {
-        List<KeyValuePair<string, float>> l;
-        return sugerencias.TryGetValue(id, out l) && l.Count > 0 ? l[0].Key : "";
-    }
-
     // Los nodos de la línea sobre el huevo (y la punta de sus tiradores).
-    void Llenar(Linea l, Trazo t)
+    void Llenar(Linea l, Trazo t, NodoInfo[] info)
     {
         int n = t.nodos.Count;
         t.AsegurarAsas();
         for (int j = 0; j < n; j++)
         {
-            float f = j / (float)Mathf.Max(1, n - 1);
             Vector3 nodoLocal = t.nodos[j];
             Vector3 m = t.transform.TransformPoint(nodoLocal);
-            l.nodos.Add(Espejar(l, Mapear(l, Plano(m), f)));
+            Vector2 q = Plano(m);
+            l.borde.Add(info[j].borde);
+            l.orig.Add(q);
+            l.ang.Add(Mathf.Atan2(q.y, q.x));
+            l.nodos.Add(Espejar(l, Mapear(info[j], q)));
             l.prof.Add(Vector3.Dot(m - centro, haciaTi));
             bool man = j < t.asaManual.Count && t.asaManual[j];
             l.manual.Add(man);
             Vector3 e = j < t.asaEntrada.Count ? t.asaEntrada[j] : Vector3.zero;
             Vector3 s = j < t.asaSalida.Count ? t.asaSalida[j] : Vector3.zero;
-            l.asaE.Add(Espejar(l, Mapear(l, Plano(t.transform.TransformPoint(nodoLocal + e)), f)));
-            l.asaS.Add(Espejar(l, Mapear(l, Plano(t.transform.TransformPoint(nodoLocal + s)), f)));
+            l.asaE.Add(Espejar(l, Mapear(info[j], Plano(t.transform.TransformPoint(nodoLocal + e)))));
+            l.asaS.Add(Espejar(l, Mapear(info[j], Plano(t.transform.TransformPoint(nodoLocal + s)))));
         }
     }
 
@@ -789,43 +974,43 @@ public class CabezaInvisible : MonoBehaviour
         return l.espejo ? new Vector3(p.x, p.y, -p.z) : p;
     }
 
-    // Un punto de tu dibujo sobre el huevo, según qué es su línea. "f" = dónde va en la línea (0 a 1).
-    // v53: sin girar, cada punto queda EXACTAMENTE donde lo dibujaste (x e y no cambian; solo se inventa la profundidad).
-    Vector3 Mapear(Linea l, Vector2 q, float f)
+    // Un punto de tu dibujo sobre el huevo, según qué es. Sin girar, cada punto queda EXACTAMENTE donde lo dibujaste
+    // (x e y no cambian; solo se inventa la profundidad).
+    Vector3 Mapear(NodoInfo i, Vector2 q)
     {
         float k = K(q);
         float u = q.x / semiX, v = q.y / semiY;
         if (!perfil)
         {
-            if (l.tipo == Tipo.Oreja)
+            if (i.tipo == Tipo.Oreja)
             {
                 // La oreja: un disco al lado, inclinado hacia atrás (de perfil se ve como oreja, no como una raya).
-                float lado = l.c.x > 0f ? 1f : -1f;
-                float dx = q.x - l.c.x;
+                float lado = i.c.x > 0f ? 1f : -1f;
+                float dx = q.x - i.c.x;
                 return new Vector3(q.x, q.y, -0.1f * semiZ - dx * lado);
             }
             float z = k > 0f ? semiZ * Mathf.Sqrt(k) : -0.05f * semiZ;
-            if (l.tipo == Tipo.NarizFrente)
-                z += 0.25f * semiZ * Mathf.Clamp01(1f - Mathf.Abs(q.x - l.c.x) / Mathf.Max(0.005f, (l.x1 - l.x0) * 0.5f + 0.005f));
+            if (i.tipo == Tipo.NarizFrente)
+                z += 0.25f * semiZ * Mathf.Clamp01(1f - Mathf.Abs(q.x - i.c.x) / Mathf.Max(0.005f, (i.x1 - i.x0) * 0.5f + 0.005f));
             else if (Mathf.Abs(u) < 0.22f && v > -0.45f && v < 0.15f)
                 z += 0.22f * semiZ * (1f - Mathf.Abs(u) / 0.22f);
             return new Vector3(q.x, q.y, z);
         }
-        switch (l.tipo)
+        switch (i.tipo)
         {
             case Tipo.Centro:
                 return new Vector3(q.x, q.y, 0f);
             case Tipo.Boca:
-                return new Vector3(q.x, q.y, (f - 0.5f) * 0.7f * semiZ);
+                return new Vector3(q.x, q.y, (i.f - 0.5f) * 0.7f * semiZ);
             case Tipo.Oreja:
             {
-                float dx = q.x - l.c.x;
+                float dx = q.x - i.c.x;
                 return new Vector3(q.x, q.y, semiZ * 0.9f - dx * mira);
             }
             default:
             {
                 float z = semiZ * Mathf.Clamp(1f - u * mira, 0.2f, 1f) * Mathf.Sqrt(Mathf.Max(1f - v * v, 0.05f));
-                z += (q.x - (l.x0 + l.x1) * 0.5f) * mira * 0.6f;
+                z += (q.x - (i.x0 + i.x1) * 0.5f) * mira * 0.6f;
                 return new Vector3(q.x, q.y, z);
             }
         }
@@ -850,27 +1035,18 @@ public class CabezaInvisible : MonoBehaviour
         }
     }
 
-    static Vector2 Medio(List<Vector2> pts)
-    {
-        Vector2 c = Vector2.zero;
-        foreach (var p in pts)
-            c += p;
-        return c / Mathf.Max(1, pts.Count);
-    }
-
     float K(Vector2 q)
     {
         float u = q.x / semiX, v = q.y / semiY;
         return 1f - u * u - v * v;
     }
 
-    void ArmarProporcion(Trazo contorno)
+    void ArmarProporcion(List<Vector2> pts)
     {
         var suma = new float[proporcion.Length];
         var cuenta = new int[proporcion.Length];
-        foreach (var p in contorno.curva)
+        foreach (var q in pts)
         {
-            Vector2 q = Plano(contorno.transform.TransformPoint(p));
             float r = q.magnitude;
             if (r < 1e-5f)
                 continue;
@@ -911,24 +1087,162 @@ public class CabezaInvisible : MonoBehaviour
         return Mathf.Lerp(proporcion[i0], proporcion[i1], f - Mathf.Floor(f));
     }
 
+    // ---------- v54: SUGERENCIAS por zonas (para las líneas que no nombraste ni dictaste) ----------
+    class Rasgo
+    {
+        public int id;
+        public float u, v;      // centro: u de -1 (izquierda) a 1 (derecha), v de -1 (abajo) a 1 (arriba)
+        public float w, h;      // ancho y alto (fracción de la cabeza)
+        public float aspecto;   // alto ÷ ancho
+        public float fuera;     // qué parte sale del borde (0 a 1)
+        public bool cerrado;
+    }
+
+    readonly Dictionary<int, List<KeyValuePair<string, float>>> sugerencias = new Dictionary<int, List<KeyValuePair<string, float>>>();
+
+    Rasgo Medir(Trazo t)
+    {
+        var r = new Rasgo { id = t.id, cerrado = t.cerrado };
+        float x0 = float.MaxValue, x1 = float.MinValue, y0 = float.MaxValue, y1 = float.MinValue;
+        Vector2 suma = Vector2.zero;
+        int n = 0, fuera = 0;
+        foreach (var p in t.curva)
+        {
+            Vector2 q = Plano(t.transform.TransformPoint(p));
+            x0 = Mathf.Min(x0, q.x);
+            x1 = Mathf.Max(x1, q.x);
+            y0 = Mathf.Min(y0, q.y);
+            y1 = Mathf.Max(y1, q.y);
+            suma += q;
+            n++;
+            if (K(q) <= 0f)
+                fuera++;
+        }
+        if (n == 0)
+            return r;
+        Vector2 c = suma / n;
+        r.u = c.x / semiX;
+        r.v = c.y / semiY;
+        r.w = (x1 - x0) / (2f * semiX);
+        r.h = (y1 - y0) / (2f * semiY);
+        r.aspecto = (y1 - y0) / Mathf.Max(1e-5f, x1 - x0);
+        r.fuera = fuera / (float)n;
+        return r;
+    }
+
+    static float G(float x, float centro, float ancho)
+    {
+        float d = (x - centro) / ancho;
+        return Mathf.Exp(-0.5f * d * d);
+    }
+
+    void CalcularSugerencias(List<Trazo> ts, bool dePerfil, float m)
+    {
+        sugerencias.Clear();
+        var rasgos = new List<Rasgo>();
+        foreach (var t in ts)
+            if (t != null && t.curva.Count >= 2)
+                rasgos.Add(Medir(t));
+        foreach (var r in rasgos)
+            sugerencias[r.id] = Puntuar(r, rasgos, dePerfil, m);
+    }
+
+    static List<KeyValuePair<string, float>> Puntuar(Rasgo r, List<Rasgo> todos, bool dePerfil, float m)
+    {
+        bool pareja = false, algoDebajo = false;
+        foreach (var o in todos)
+        {
+            if (o == r)
+                continue;
+            if (Mathf.Abs(r.u) > 0.12f && Mathf.Abs(r.u + o.u) < 0.25f && Mathf.Abs(r.v - o.v) < 0.15f
+                && Mathf.Abs(r.w - o.w) < Mathf.Max(0.08f, 0.5f * r.w))
+                pareja = true;
+            float dv = r.v - o.v;
+            if (Mathf.Abs(o.u - r.u) < 0.22f && dv > 0.06f && dv < 0.4f)
+                algoDebajo = true;
+        }
+        bool delgada = r.aspecto < 0.35f;
+        bool vertical = r.aspecto > 0.9f;
+        var p = new List<KeyValuePair<string, float>>();
+        if (!dePerfil)
+        {
+            float au = Mathf.Abs(r.u);
+            bool izq = r.u < 0f;
+            p.Add(new KeyValuePair<string, float>(izq ? "ojo izquierdo" : "ojo derecho",
+                G(r.v, 0.08f, 0.18f) * G(au, 0.38f, 0.2f) * (r.aspecto > 0.25f && r.aspecto < 1.4f ? 1.2f : 0.6f)
+                * (r.cerrado ? 1.2f : 1f) * (pareja ? 1.3f : 1f) * (r.w < 0.4f ? 1f : 0.5f)));
+            p.Add(new KeyValuePair<string, float>(izq ? "ceja izquierda" : "ceja derecha",
+                G(r.v, 0.3f, 0.15f) * G(au, 0.38f, 0.25f) * (delgada ? 1.3f : 0.5f) * (r.cerrado ? 0.5f : 1.1f)
+                * (pareja ? 1.3f : 1f) * (algoDebajo ? 1.4f : 1f)));
+            p.Add(new KeyValuePair<string, float>("nariz",
+                G(r.v, -0.18f, 0.2f) * G(r.u, 0f, 0.15f) * (r.w < 0.25f ? 1.1f : 0.6f)));
+            p.Add(new KeyValuePair<string, float>("boca",
+                G(r.v, -0.5f, 0.2f) * G(r.u, 0f, 0.22f) * (r.w > 0.12f && r.aspecto < 0.8f ? 1.3f : 0.6f)));
+            p.Add(new KeyValuePair<string, float>(izq ? "oreja izquierda" : "oreja derecha",
+                G(au, 0.98f, 0.15f) * G(r.v, 0f, 0.3f) * (vertical ? 1.2f : 0.8f) * (r.fuera > 0.3f ? 1.5f : 1f)));
+            p.Add(new KeyValuePair<string, float>("mejilla", G(au, 0.55f, 0.2f) * G(r.v, -0.28f, 0.15f) * 0.45f));
+            p.Add(new KeyValuePair<string, float>("cabeza arriba", G(r.v, 0.75f, 0.2f) * (r.w > 0.6f ? 1.2f : 0.3f)));
+            p.Add(new KeyValuePair<string, float>("mandíbula", G(r.v, -0.7f, 0.2f) * (r.w > 0.6f ? 1.2f : 0.3f)));
+        }
+        else
+        {
+            float s = r.u * m;   // hacia donde mira la cara = positivo
+            p.Add(new KeyValuePair<string, float>("nariz", G(s, 0.95f, 0.18f) * G(r.v, -0.1f, 0.22f) * (r.fuera > 0.2f ? 1.5f : 1f)));
+            p.Add(new KeyValuePair<string, float>("ojo",
+                G(s, 0.55f, 0.2f) * G(r.v, 0.08f, 0.18f) * (r.cerrado ? 1.2f : 1f) * (r.w < 0.3f ? 1f : 0.5f)));
+            p.Add(new KeyValuePair<string, float>("ceja",
+                G(s, 0.55f, 0.25f) * G(r.v, 0.3f, 0.15f) * (delgada ? 1.3f : 0.5f) * (algoDebajo ? 1.3f : 1f)));
+            p.Add(new KeyValuePair<string, float>("boca exterior", G(s, 0.85f, 0.2f) * G(r.v, -0.45f, 0.18f) * (r.fuera > 0.1f ? 1.2f : 1f)));
+            p.Add(new KeyValuePair<string, float>("oreja", G(s, -0.15f, 0.25f) * G(r.v, 0f, 0.3f) * (vertical ? 1.2f : 0.8f)));
+            p.Add(new KeyValuePair<string, float>("mejilla", G(s, 0.45f, 0.2f) * G(r.v, -0.25f, 0.15f) * 0.45f));
+            p.Add(new KeyValuePair<string, float>("cabeza arriba", G(r.v, 0.7f, 0.22f) * (r.w > 0.5f ? 1.2f : 0.3f)));
+            p.Add(new KeyValuePair<string, float>("nuca", G(s, -0.85f, 0.2f) * G(r.v, -0.1f, 0.35f) * (vertical ? 1.2f : 0.6f)));
+            p.Add(new KeyValuePair<string, float>("mandíbula", G(r.v, -0.7f, 0.2f) * G(s, 0.2f, 0.35f) * (r.w > 0.3f ? 1.1f : 0.5f)));
+        }
+        p.Sort((a, b) => b.Value.CompareTo(a.Value));
+        return p;
+    }
+
+    string MejorSugerencia(int id)
+    {
+        List<KeyValuePair<string, float>> l;
+        return sugerencias.TryGetValue(id, out l) && l.Count > 0 ? l[0].Key : "";
+    }
+
     // ---------- Cada cuadro ----------
 
     void LateUpdate()
     {
+        if (control == null)
+            control = ControlManos.Instancia;
+        if (dibujo == null && control != null)
+            dibujo = control.dibujo;
+        ActualizarCartelDictado();
         if (estado == Estado.Nada || control == null || dibujo == null)
             return;
         bool palabra = RevisarPalabras();
         if (estado == Estado.Girando)
         {
-            if (!palabra)
+            if (animando)
+            {
+                // v55: "Gira": va y viene de un perfil al otro, sola.
+                float frente = perfil ? (mira > 0f ? -90f : 90f) : 0f;
+                giro = frente + 85f * Mathf.Sin((Time.time - animandoDesde) * Mathf.PI * 2f / 6f);
+                inclina = 0f;
+                mostrandoReal = false;
+                sucio = true;
+            }
+            else if (!palabra)
+            {
                 RevisarAgarre();
+            }
             // Si cambias de fotograma, se ven tus líneas de verdad (las de ese fotograma).
             var anim = dibujo.animacion;
             int f = anim != null ? anim.Fotograma : 0;
             if (f != fotogramaVisto)
             {
                 fotogramaVisto = f;
-                if (!agarrada)
+                if (!agarrada && !animando)
                     mostrandoReal = true;
                 sucio = true;
             }
@@ -943,6 +1257,9 @@ public class CabezaInvisible : MonoBehaviour
                 EsconderOriginales();
                 if (sucio)
                     ActualizarClones();
+                foreach (var c in clones)
+                    if (c != null && c.gameObject.activeSelf)
+                        dibujo.HaloLapiz(c);
             }
         }
         // Las etiquetas siguen a tus líneas aunque las muevas (cada cuarto de segundo).
@@ -958,7 +1275,31 @@ public class CabezaInvisible : MonoBehaviour
         }
     }
 
-    float proximaEtiqueta;
+    // v55: dictando, junto a tu mano dice qué estás dibujando.
+    void ActualizarCartelDictado()
+    {
+        bool ver = Dictando && control != null && control.Der.valida && control.Cabeza != null;
+        if (!ver)
+        {
+            if (cartelDictado != null && cartelDictado.gameObject.activeSelf)
+                cartelDictado.gameObject.SetActive(false);
+            return;
+        }
+        if (cartelDictado == null)
+        {
+            cartelDictado = PanelTutoriales.Texto(transform, "", Vector3.zero, new Vector2(0.14f, 0.016f), 0.1f, null);
+            cartelDictado.fontStyle = FontStyles.Bold;
+            cartelDictado.color = new Color(0.1f, 0.35f, 0.75f);
+            cartelDictado.outlineWidth = 0.25f;
+            cartelDictado.outlineColor = new Color32(255, 255, 255, 230);
+        }
+        if (!cartelDictado.gameObject.activeSelf)
+            cartelDictado.gameObject.SetActive(true);
+        cartelDictado.text = parteDictada.Length > 0 ? Idioma.T("Dibujando: ") + Mostrar(parteDictada) : Idioma.T("Di qué vas a dibujar");
+        Vector3 pos = control.Der.indice + Vector3.up * 0.04f;
+        Vector3 mirar = pos - control.Cabeza.position;
+        cartelDictado.transform.SetPositionAndRotation(pos, mirar.sqrMagnitude > 1e-6f ? Quaternion.LookRotation(mirar, Vector3.up) : Quaternion.identity);
+    }
 
     void RevisarAgarre()
     {
@@ -997,7 +1338,7 @@ public class CabezaInvisible : MonoBehaviour
         return Mathf.Clamp01(Mathf.Max(Mathf.Abs(Mathf.DeltaAngle(giro, 0f)) / 40f, Mathf.Abs(inclina) / 25f));
     }
 
-    // La silueta del huevo girado, con la forma de tu contorno (en el plano de tu dibujo).
+    // La silueta del huevo girado, con la forma de tu borde (en el plano de tu dibujo).
     void Silueta(Quaternion q)
     {
         silueta.Clear();
@@ -1055,25 +1396,8 @@ public class CabezaInvisible : MonoBehaviour
         return new Vector3(p.x, p.y, 0f);
     }
 
-    // La forma del contorno en este giro: cada nodo a la silueta (en su mismo ángulo), mezclado con tu contorno.
-    DatosTrazo PoseContorno(Trazo contorno, float w)
-    {
-        var d = contorno.CrearDatos();
-        if (angulosContorno.Count != d.nodos.Count || contornoOrig.Count != d.nodos.Count)
-            return null;
-        var raizD = dibujo.transform;
-        for (int j = 0; j < d.nodos.Count; j++)
-        {
-            Vector2 p = Vector2.Lerp(contornoOrig[j], EnSilueta(angulosContorno[j]), w);
-            d.nodos[j] = raizD.InverseTransformPoint(Mundo(new Vector3(p.x, p.y, 0f), contornoProf[j] * (1f - w)));
-        }
-        if (w > 0.001f)
-            for (int j = 0; j < d.asaManual.Count; j++)
-                d.asaManual[j] = false;   // sus tiradores se recalculan solos (curva suave)
-        return d;
-    }
-
-    // La forma de una línea en este giro, con LOS MISMOS nodos. Los que quedan atrás se pegan al vecino que sí se ve.
+    // La forma de una línea en este giro, con LOS MISMOS nodos. Los del BORDE van a la silueta (en su mismo ángulo);
+    // los demás se pegan al huevo, y los que quedan atrás se pegan al vecino que sí se ve.
     DatosTrazo PoseLinea(Linea l, Trazo baseT, Quaternion q, float w)
     {
         DatosTrazo d = baseT.CrearDatos();
@@ -1086,8 +1410,17 @@ public class CabezaInvisible : MonoBehaviour
         int cuantosVis = 0;
         for (int j = 0; j < n; j++)
         {
-            vis[j] = Visible(q, l.nodos[j]);
-            pos[j] = Plano3(q * l.nodos[j]);
+            if (l.borde[j] && !l.espejo)
+            {
+                Vector2 p = Vector2.Lerp(l.orig[j], EnSilueta(l.ang[j]), w);
+                pos[j] = new Vector3(p.x, p.y, 0f);
+                vis[j] = true;
+            }
+            else
+            {
+                vis[j] = Visible(q, l.nodos[j]);
+                pos[j] = Plano3(q * l.nodos[j]);
+            }
             if (vis[j])
                 cuantosVis++;
         }
@@ -1105,12 +1438,19 @@ public class CabezaInvisible : MonoBehaviour
         for (int j = 0; j < n; j++)
         {
             d.nodos[j] = raizD.InverseTransformPoint(Mundo(pos[j], l.prof[j] * conservar));
-            if (j < d.asaManual.Count && l.manual[j] && vis[j])
+            if (j >= d.asaManual.Count)
+                continue;
+            if (l.borde[j])
+            {
+                if (w > 0.001f)
+                    d.asaManual[j] = false;   // el borde girado: sus tiradores se recalculan solos (curva suave)
+            }
+            else if (l.manual[j] && vis[j])
             {
                 d.asaEntrada[j] = raizD.InverseTransformPoint(Mundo(Plano3(q * l.asaE[j]), l.prof[j] * conservar)) - d.nodos[j];
                 d.asaSalida[j] = raizD.InverseTransformPoint(Mundo(Plano3(q * l.asaS[j]), l.prof[j] * conservar)) - d.nodos[j];
             }
-            else if (j < d.asaManual.Count)
+            else
             {
                 d.asaManual[j] = false;
             }
@@ -1127,20 +1467,6 @@ public class CabezaInvisible : MonoBehaviour
         Silueta(q);
         bool antes = Trazo.silenciar;
         Trazo.silenciar = true;
-        Trazo contorno = dibujo.BuscarPorId(idContorno);
-        if (contorno != null)
-        {
-            var dc = PoseContorno(contorno, w);
-            if (dc != null)
-            {
-                if (cloneContorno == null)
-                    cloneContorno = dibujo.CrearTrazoSuelto(dc, capaCabeza);
-                else
-                    cloneContorno.AplicarPose(dc, null, 0f);
-                if (!cloneContorno.gameObject.activeSelf)
-                    cloneContorno.gameObject.SetActive(true);
-            }
-        }
         for (int i = 0; i < lineas.Count; i++)
         {
             while (clones.Count <= i)
@@ -1183,6 +1509,8 @@ public class CabezaInvisible : MonoBehaviour
     {
         if (estado != Estado.Girando || !hayModelo)
             return;
+        animando = false;
+        RefrescarBotonGira();
         float w = Peso();
         if (w < 0.001f)
         {
@@ -1205,13 +1533,6 @@ public class CabezaInvisible : MonoBehaviour
         var nuevos = new List<int>();
         bool antes = Trazo.silenciar;
         Trazo.silenciar = true;
-        Trazo contorno = dibujo.BuscarPorId(idContorno);
-        if (contorno != null)
-        {
-            var dc = PoseContorno(contorno, w);
-            if (dc != null)
-                contorno.AplicarPose(dc, null, 0f);
-        }
         foreach (var l in lineas)
         {
             Trazo origen = dibujo.BuscarPorId(l.idOrigen);
@@ -1308,6 +1629,8 @@ public class CabezaInvisible : MonoBehaviour
     {
         if (i < 0 || i >= vistas.Count)
             return;
+        animando = false;
+        RefrescarBotonGira();
         var v = vistas[i];
         giro = v.giro;
         inclina = v.inclina;
@@ -1385,7 +1708,7 @@ public class CabezaInvisible : MonoBehaviour
 
     // ---------- Etiquetas con botones (visto / X / cuadrito) ----------
 
-    // v54: una palabra guardada (en español) en el idioma de la app.
+    // Una palabra guardada (en español) en el idioma de la app.
     static string Mostrar(string es)
     {
         if (string.IsNullOrEmpty(es) || !Idioma.Ingles)
@@ -1396,47 +1719,72 @@ public class CabezaInvisible : MonoBehaviour
         for (int i = 0; i < Cortas.Length; i++)
             if (es == Cortas[i])
                 return CortasEn[i];
-        if (es == "contorno")
-            return "outline";
+        for (int i = 0; i < OtrasEs.Length; i++)
+            if (es == OtrasEs[i])
+                return OtrasEn[i];
         return Idioma.T(es);
     }
 
-    // Lo que la app cree que es una línea: (texto, palabra para confirmar, ¿ya es seguro?).
-    void QueEs(Trazo t, out string texto, out string palabra, out bool segura)
+    bool ModoPerfil => estado == Estado.Girando ? perfil : perfilAdivinado;
+    float MiraAhora => estado == Estado.Girando ? mira : miraAdivinada;
+
+    // De perfil, "ojo", "ceja" y "oreja" dicen su lado: si la cara mira a tu derecha, ves su lado DERECHO.
+    string ConLado(string palabra)
     {
-        string nombre = PrimerNombre(t);
-        if (nombre.Length > 0)
-        {
-            texto = Mostrar(nombre);
-            palabra = nombre;
-            segura = true;
-            return;
-        }
-        palabra = t.id == idContorno ? "contorno" : MejorSugerencia(t.id);
-        texto = palabra.Length > 0 ? Mostrar(palabra) + "?" : "?";
-        segura = false;
+        if (!ModoPerfil)
+            return palabra;
+        bool derecho = MiraAhora > 0f;
+        if (palabra == "ojo")
+            return derecho ? "ojo derecho" : "ojo izquierdo";
+        if (palabra == "ceja")
+            return derecho ? "ceja derecha" : "ceja izquierda";
+        if (palabra == "oreja")
+            return derecho ? "oreja derecha" : "oreja izquierda";
+        return palabra;
     }
 
-    // Dónde se ve una línea ahora (tu línea de verdad o su vista previa): el centro de sus nodos.
-    static Vector3 CentroDe(Trazo t)
-    {
-        Vector3 s = Vector3.zero;
-        foreach (var p in t.nodos)
-            s += t.transform.TransformPoint(p);
-        return s / Mathf.Max(1, t.nodos.Count);
-    }
-
-    // La línea que se ve en pantalla para una línea tuya (la vista previa si está girada).
+    // Dónde se ve una línea ahora (tu línea de verdad o su vista previa).
     Trazo Mostrada(Trazo original)
     {
         if (estado != Estado.Girando || mostrandoReal || Peso() < 0.001f)
             return original;
-        if (original.id == idContorno)
-            return cloneContorno != null && cloneContorno.gameObject.activeSelf ? cloneContorno : original;
         for (int i = 0; i < lineas.Count && i < clones.Count; i++)
             if (!lineas[i].espejo && lineas[i].idOrigen == original.id && clones[i] != null)
                 return clones[i].gameObject.activeSelf ? clones[i] : null;
         return original;
+    }
+
+    // Los tramos de una línea: cada parte nombrada es un tramo; una línea sin nombres es un solo tramo (sugerido).
+    struct Tramo
+    {
+        public int desde, hasta;
+        public string palabra;
+        public bool segura;
+    }
+
+    List<Tramo> Tramos(Trazo t, bool hayBorde)
+    {
+        var r = new List<Tramo>();
+        var nombres = NombresPropagados(t);
+        int n = nombres.Length;
+        if (n == 0)
+            return r;
+        if (nombres[0].Length == 0)
+        {
+            string s = !hayBorde && t.id == idContorno ? "contorno" : MejorSugerencia(t.id);
+            r.Add(new Tramo { desde = 0, hasta = n - 1, palabra = s, segura = false });
+            return r;
+        }
+        int a = 0;
+        while (a < n)
+        {
+            int b = a;
+            while (b + 1 < n && nombres[b + 1] == nombres[a])
+                b++;
+            r.Add(new Tramo { desde = a, hasta = b, palabra = nombres[a], segura = true });
+            a = b + 1;
+        }
+        return r;
     }
 
     void PonerEtiquetas()
@@ -1445,20 +1793,31 @@ public class CabezaInvisible : MonoBehaviour
         // Con el sello en la mano, las etiquetas se esconden (así el índice no toca sus botones sin querer).
         if (verEtiquetas && raiz != null && modoPalabra != ModoPalabra.Sello)
         {
-            foreach (var t in Originales())
+            var originales = Originales();
+            bool hayBorde = HayBordeNombrado(originales, ModoPerfil);
+            foreach (var t in originales)
             {
                 if (sinEtiqueta.Contains(t.id))
                     continue;
                 var visto = Mostrada(t);
                 if (visto == null || visto.oculto)
                     continue;
-                string texto, palabra;
-                bool segura;
-                QueEs(t, out texto, out palabra, out segura);
-                Vector3 pos = t.id == idContorno
-                    ? Mundo(new Vector3(0f, semiY * 1.08f, 0f), 0f)
-                    : CentroDe(visto) + arriba * 0.016f;
-                PonerChip(k++, t.id, texto, palabra, segura, pos + haciaTi * 0.012f);
+                foreach (var tr in Tramos(t, hayBorde))
+                {
+                    Vector3 suma = Vector3.zero;
+                    int cuantos = 0;
+                    for (int j = tr.desde; j <= tr.hasta && j < visto.nodos.Count; j++)
+                    {
+                        suma += visto.transform.TransformPoint(visto.nodos[j]);
+                        cuantos++;
+                    }
+                    if (cuantos == 0)
+                        continue;
+                    string palabra = ConLado(tr.palabra);
+                    string texto = palabra.Length == 0 ? "?" : Mostrar(palabra) + (tr.segura ? "" : "?");
+                    Vector3 pos = suma / cuantos + arriba * 0.016f + haciaTi * 0.012f;
+                    PonerChip(k++, t.id, tr.desde, tr.hasta, texto, tr.palabra, tr.segura, pos);
+                }
             }
         }
         for (int i = k; i < chips.Count; i++)
@@ -1469,17 +1828,20 @@ public class CabezaInvisible : MonoBehaviour
         RefrescarVocabulario();
     }
 
-    void PonerChip(int i, int id, string texto, string palabra, bool segura, Vector3 pos)
+    void PonerChip(int i, int id, int desde, int hasta, string texto, string palabra, bool segura, Vector3 pos)
     {
         while (chips.Count <= i)
             chips.Add(CrearChip(chips.Count));
         var c = chips[i];
         c.id = id;
+        c.desde = desde;
+        c.hasta = hasta;
         c.palabra = palabra;
+        c.segura = segura;
         c.t.gameObject.SetActive(true);
         c.t.SetPositionAndRotation(pos, Quaternion.LookRotation(-haciaTi, arriba));
         c.texto.text = texto;
-        // Lo que adivinó: clarito. Lo confirmado (o nombrado por ti): firme.
+        // Lo que adivinó: clarito. Lo confirmado (o nombrado/dictado por ti): firme.
         c.texto.color = segura ? new Color(0.1f, 0.35f, 0.75f, 1f) : new Color(0.1f, 0.35f, 0.75f, 0.55f);
     }
 
@@ -1538,13 +1900,13 @@ public class CabezaInvisible : MonoBehaviour
 
     void ConfirmarChip(Chip c)
     {
-        var t = dibujo.BuscarPorId(c.id);
-        if (t == null)
+        if (c.segura)
+        {
+            dibujo.Mensaje(Idioma.T("Ya está confirmado: ") + Mostrar(ConLado(c.palabra)));
             return;
-        if (PrimerNombre(t).Length == 0 && c.palabra.Length > 0)
-            NombrarLinea(c.id, c.palabra);
-        else
-            dibujo.Mensaje("Ya está confirmado: " + Mostrar(PrimerNombre(t)));
+        }
+        if (c.palabra.Length > 0)
+            NombrarRango(c.id, c.desde, c.hasta, c.palabra);
     }
 
     void QuitarChip(Chip c)
@@ -1552,9 +1914,9 @@ public class CabezaInvisible : MonoBehaviour
         var t = dibujo.BuscarPorId(c.id);
         if (t == null)
             return;
-        if (PrimerNombre(t).Length > 0)
+        if (c.segura)
         {
-            for (int j = 0; j < t.nodos.Count; j++)
+            for (int j = c.desde; j <= c.hasta && j < t.nodos.Count; j++)
                 t.NombrarNodo(j, null);
             dibujo.HayCambios = true;
             dibujo.Mensaje("Nombre quitado (la app vuelve a adivinar)");
@@ -1567,11 +1929,11 @@ public class CabezaInvisible : MonoBehaviour
         AlCambiarNombres();
     }
 
-    // ---------- v54: el cuadrito = las 3 palabras más probables (un toque), el teclado o la voz ----------
+    // ---------- El cuadrito = las 3 palabras más probables (un toque), el teclado o la voz ----------
     Transform opciones;
     readonly List<BotonTocable> botonesOpcion = new List<BotonTocable>();
     readonly List<string> palabrasOpcion = new List<string>();
-    int idOpciones;
+    int idOpciones, desdeOpciones, hastaOpciones;
 
     void CambiarChip(Chip c)
     {
@@ -1579,7 +1941,11 @@ public class CabezaInvisible : MonoBehaviour
         if (t == null)
             return;
         pendiente = c.id;
+        pendienteDesde = c.desde;
+        pendienteHasta = c.hasta;
         idOpciones = c.id;
+        desdeOpciones = c.desde;
+        hastaOpciones = c.hasta;
         if (opciones == null)
         {
             opciones = new GameObject("Opciones").transform;
@@ -1595,9 +1961,7 @@ public class CabezaInvisible : MonoBehaviour
         }
         palabrasOpcion.Clear();
         List<KeyValuePair<string, float>> l;
-        if (c.id == idContorno)
-            palabrasOpcion.Add("contorno");
-        else if (sugerencias.TryGetValue(c.id, out l))
+        if (sugerencias.TryGetValue(c.id, out l))
             for (int k = 0; k < l.Count && palabrasOpcion.Count < 3; k++)
                 palabrasOpcion.Add(l[k].Key);
         for (int k = 0; k < botonesOpcion.Count; k++)
@@ -1607,7 +1971,7 @@ public class CabezaInvisible : MonoBehaviour
             botonesOpcion[k].gameObject.SetActive(ver);
             botonesOpcion[k].etiqueta.gameObject.SetActive(ver);
             if (ver)
-                botonesOpcion[k].PonerTexto(teclado ? Idioma.T("Teclado") : Mostrar(palabrasOpcion[k]));
+                botonesOpcion[k].PonerTexto(teclado ? "Teclado" : Mostrar(ConLado(palabrasOpcion[k])));
         }
         opciones.SetPositionAndRotation(c.t.position - arriba * 0.022f + haciaTi * 0.004f, c.t.rotation);
         opciones.gameObject.SetActive(true);
@@ -1616,56 +1980,53 @@ public class CabezaInvisible : MonoBehaviour
 
     void ElegirOpcion(int k)
     {
-        int id = idOpciones;
+        int id = idOpciones, a = desdeOpciones, b = hastaOpciones;
         opciones.gameObject.SetActive(false);
         if (k == botonesOpcion.Count - 1)
         {
             var t = dibujo.BuscarPorId(id);
-            TecladoVR.Abrir("Nombre de esta parte (o dilo)", t != null ? PrimerNombre(t) : "", nombre =>
+            TecladoVR.Abrir("Nombre de esta parte (o dilo)", t != null ? t.NombreDeNodo(a) : "", nombre =>
             {
                 if (pendiente == id)
                     pendiente = 0;
                 if (!string.IsNullOrEmpty(nombre))
-                    NombrarLinea(id, nombre.ToLowerInvariant());
+                    NombrarRango(id, a, b, nombre.ToLowerInvariant());
             });
             return;
         }
         if (pendiente == id)
             pendiente = 0;
         if (k < palabrasOpcion.Count)
-            NombrarLinea(id, palabrasOpcion[k]);
+            NombrarRango(id, a, b, palabrasOpcion[k]);
     }
 
-    // Nombra una línea entera: su nodo del medio lleva el nombre (los otros nombres se quitan).
-    void NombrarLinea(int id, string nombre)
+    // Nombra los nodos desde..hasta de una línea (todos con ese nombre).
+    void NombrarRango(int id, int desde, int hasta, string nombre)
     {
         var t = dibujo.BuscarPorId(id);
         if (t == null || t.nodos.Count == 0)
             return;
-        for (int j = 0; j < t.nodos.Count; j++)
-            t.NombrarNodo(j, null);
-        t.NombrarNodo(t.nodos.Count / 2, nombre);
+        desde = Mathf.Clamp(desde, 0, t.nodos.Count - 1);
+        hasta = Mathf.Clamp(hasta, desde, t.nodos.Count - 1);
+        for (int j = desde; j <= hasta; j++)
+            t.NombrarNodo(j, nombre);
         sinEtiqueta.Remove(id);
         if (opciones != null)
             opciones.gameObject.SetActive(false);
         dibujo.HayCambios = true;
-        dibujo.Mensaje(Idioma.T("Es: ") + Mostrar(nombre));
+        dibujo.Mensaje(Idioma.T("Es: ") + Mostrar(ConLado(nombre)));
         AlCambiarNombres();
     }
 
-    // v54: "mirar y decir": la línea que miras (con la mirada) toma ese nombre entero.
-    public static bool NombrarMirada(string nombre)
+    // Nombra una línea entera (los otros nombres se quitan).
+    void NombrarLinea(int id, string nombre)
     {
-        if (!Activa || Mirada.Objetivo == null || string.IsNullOrEmpty(nombre))
-            return false;
-        int id = Mirada.Objetivo.id;
-        foreach (var kv in instancia.espejos)
-            if (kv.Value == id)
-                id = kv.Key;
-        if (!instancia.idsOriginales.Contains(id))
-            return false;
-        instancia.NombrarLinea(id, nombre);
-        return true;
+        var t = dibujo.BuscarPorId(id);
+        if (t == null)
+            return;
+        for (int j = 0; j < t.nodos.Count; j++)
+            t.NombrarNodo(j, null);
+        NombrarRango(id, 0, t.nodos.Count - 1, nombre);
     }
 
     void AlternarEtiquetas()
@@ -1677,37 +2038,134 @@ public class CabezaInvisible : MonoBehaviour
         dibujo.Mensaje(verEtiquetas ? "Etiquetas: Sí" : "Etiquetas: No");
     }
 
-    // ---------- El vocabulario (a la derecha) ----------
-    // v54: las palabras que ya usaste se GASTAN (desaparecen de la lista; vuelven si quitas esa etiqueta). De frente
-    // vienen con izquierda/derecha (a TU izquierda); de perfil, solas ("ojo", "oreja"...).
+    // ---------- El vocabulario (a la derecha): dos dibujitos con sus zonas de colores y las palabras que sobran ----------
     // Tres maneras de usar una palabra:
     //  1. EL SELLO: TÓCALA con el índice (sin gesto en la izquierda): se queda pegada a tu dedo. Toca los NODOS (o una
     //     LÍNEA lejos de sus nodos = la línea entera) que son eso: se marcan en verde. Haz un PELLIZCO con la izquierda y
     //     suéltalo = confirmar. Tocar la palabra otra vez = cancelar.
     //  2. Con la izquierda en NODOS (medio + pulgar): toca la palabra, llévala pegada al índice al nodo y SUELTA la izquierda.
     //  3. Pellízcala con la derecha, llévala y suelta el pellizco sobre el nodo.
-    static readonly string[] PalabrasFrente =
+    struct ParteDibujo
     {
-        "ojo izquierdo", "ojo derecho", "ceja izquierda", "ceja derecha", "oreja izquierda", "oreja derecha", "nariz", "boca",
-        "punta de nariz", "puente de la nariz", "entrecejo", "párpado", "labio superior", "labio inferior",
-        "comisura izquierda", "comisura derecha", "barbilla", "mandíbula", "pómulo", "mejilla", "frente", "sien", "coronilla"
-    };
-    static readonly string[] PalabrasPerfil =
+        public string palabra;
+        public Color color;
+        public Vector2[][] trazos;
+    }
+
+    static Vector2[] Arco(float cx, float cy, float rx, float ry, float desde, float hasta, int n)
     {
-        "ojo", "ceja", "oreja", "nariz", "boca", "punta de nariz", "puente de la nariz", "párpado", "labio superior",
-        "labio inferior", "barbilla", "mandíbula", "pómulo", "mejilla", "frente", "sien", "coronilla", "nuca", "lóbulo"
+        var r = new Vector2[n + 1];
+        for (int i = 0; i <= n; i++)
+        {
+            float a = Mathf.Lerp(desde, hasta, i / (float)n) * Mathf.Deg2Rad;
+            r[i] = new Vector2(cx + Mathf.Cos(a) * rx, cy + Mathf.Sin(a) * ry);
+        }
+        return r;
+    }
+
+    static Vector2[] Espejo(Vector2[] p)
+    {
+        var r = new Vector2[p.Length];
+        for (int i = 0; i < p.Length; i++)
+            r[i] = new Vector2(-p[i].x, p[i].y);
+        return r;
+    }
+
+    static ParteDibujo PD(string palabra, Color color, params Vector2[][] trazos)
+    {
+        return new ParteDibujo { palabra = palabra, color = color, trazos = trazos };
+    }
+
+    static readonly Color ColAzul = new Color(0.2f, 0.45f, 0.95f), ColMorado = new Color(0.55f, 0.3f, 0.85f),
+        ColLila = new Color(0.78f, 0.45f, 0.95f), ColVerde = new Color(0.2f, 0.65f, 0.3f), ColGris = new Color(0.3f, 0.3f, 0.36f),
+        ColCafe = new Color(0.55f, 0.32f, 0.15f), ColNaranja = new Color(1f, 0.55f, 0.1f), ColRojo = new Color(0.9f, 0.2f, 0.2f),
+        ColRosa = new Color(1f, 0.4f, 0.7f), ColCeleste = new Color(0.25f, 0.72f, 1f), ColTurquesa = new Color(0.1f, 0.62f, 0.66f);
+
+    // La maqueta de frente (x de -1 a 1, y de -1 a 1).
+    static List<ParteDibujo> DibujoFrente()
+    {
+        var mandibula = new[] { new Vector2(-0.8f, 0.05f), new Vector2(-0.76f, -0.35f), new Vector2(-0.58f, -0.68f), new Vector2(-0.3f, -0.88f) };
+        var oreja = new[] { new Vector2(-0.8f, 0.02f), new Vector2(-0.96f, 0f), new Vector2(-0.98f, -0.18f), new Vector2(-0.9f, -0.32f), new Vector2(-0.79f, -0.33f) };
+        var ceja = new[] { new Vector2(-0.55f, 0.32f), new Vector2(-0.35f, 0.4f), new Vector2(-0.15f, 0.33f) };
+        return new List<ParteDibujo>
+        {
+            PD("cabeza arriba", ColAzul, Arco(0f, 0.05f, 0.8f, 0.95f, 0f, 180f, 16)),
+            PD("mandíbula", ColMorado, mandibula, Espejo(mandibula)),
+            PD("barbilla", ColLila, new[] { new Vector2(-0.3f, -0.88f), new Vector2(0f, -0.96f), new Vector2(0.3f, -0.88f) }),
+            PD("oreja izquierda", ColVerde, oreja),
+            PD("oreja derecha", new Color(0.45f, 0.8f, 0.3f), Espejo(oreja)),
+            PD("ceja izquierda", ColGris, ceja),
+            PD("ceja derecha", new Color(0.5f, 0.5f, 0.56f), Espejo(ceja)),
+            PD("ojo izquierdo", ColCafe, Arco(-0.35f, 0.12f, 0.15f, 0.07f, 0f, 360f, 12)),
+            PD("ojo derecho", new Color(0.75f, 0.5f, 0.25f), Arco(0.35f, 0.12f, 0.15f, 0.07f, 0f, 360f, 12)),
+            PD("nariz", ColNaranja, new[] { new Vector2(0.02f, 0.08f), new Vector2(0.07f, -0.25f), new Vector2(-0.06f, -0.3f) }),
+            PD("boca", ColRojo, new[] { new Vector2(-0.26f, -0.52f), new Vector2(0f, -0.58f), new Vector2(0.26f, -0.52f) }),
+        };
+    }
+
+    // La maqueta de perfil (mirando a la derecha).
+    static List<ParteDibujo> DibujoPerfil()
+    {
+        return new List<ParteDibujo>
+        {
+            PD("cabeza arriba", ColAzul, new[] { new Vector2(-0.72f, 0.15f), new Vector2(-0.62f, 0.62f), new Vector2(-0.25f, 0.92f),
+                                                 new Vector2(0.25f, 0.92f), new Vector2(0.58f, 0.66f), new Vector2(0.68f, 0.38f) }),
+            PD("frente", ColCeleste, new[] { new Vector2(0.68f, 0.38f), new Vector2(0.72f, 0.12f) }),
+            PD("nariz", ColNaranja, new[] { new Vector2(0.72f, 0.12f), new Vector2(0.95f, -0.14f), new Vector2(0.72f, -0.22f) }),
+            PD("boca exterior", ColRosa, new[] { new Vector2(0.72f, -0.22f), new Vector2(0.78f, -0.32f), new Vector2(0.7f, -0.4f),
+                                                 new Vector2(0.76f, -0.48f), new Vector2(0.68f, -0.58f) }),
+            PD("barbilla", ColLila, new[] { new Vector2(0.68f, -0.58f), new Vector2(0.66f, -0.76f), new Vector2(0.45f, -0.86f) }),
+            PD("mandíbula", ColMorado, new[] { new Vector2(0.45f, -0.86f), new Vector2(0.05f, -0.76f), new Vector2(-0.22f, -0.42f) }),
+            PD("nuca", ColTurquesa, new[] { new Vector2(-0.72f, 0.15f), new Vector2(-0.7f, -0.22f), new Vector2(-0.56f, -0.52f) }),
+            PD("oreja", ColVerde, new[] { new Vector2(-0.08f, 0.06f), new Vector2(-0.24f, 0.12f), new Vector2(-0.32f, -0.08f),
+                                          new Vector2(-0.25f, -0.3f), new Vector2(-0.1f, -0.3f) }),
+            PD("ojo", ColCafe, Arco(0.48f, 0.04f, 0.08f, 0.05f, 0f, 360f, 10)),
+            PD("ceja", ColGris, new[] { new Vector2(0.36f, 0.2f), new Vector2(0.5f, 0.25f), new Vector2(0.62f, 0.2f) }),
+        };
+    }
+
+    // Todas las palabras (las de los dibujitos van arriba; aquí abajo, solo las que sobran).
+    static readonly string[] TodasLasPalabras =
+    {
+        "punta de nariz", "puente de la nariz", "entrecejo", "párpado", "labio superior", "labio inferior", "comisura izquierda",
+        "comisura derecha", "pómulo", "mejilla", "sien", "coronilla", "lóbulo", "cuello", "cabello", "frente", "nuca", "boca exterior",
+        "ojo 1", "ojo 2", "ceja 1", "ceja 2", "oreja 1", "oreja 2"
     };
+
+    class Entrada
+    {
+        public TextMeshPro t;
+        public string palabra;
+    }
 
     enum ModoPalabra { Nada, Pellizco, Nodos, Sello }
     ModoPalabra modoPalabra;
-    Transform fondoVocab;
-    TextMeshPro tituloVocab;
+    Transform vocabulario, fondoVocab;
+    TextMeshPro tituloVocab, tituloOtras, palabraFlotante;
+    Transform marcaDestino;
+    readonly List<Entrada> entradasDibujo = new List<Entrada>();
+    readonly List<Entrada> entradasLista = new List<Entrada>();
+    readonly HashSet<string> enDibujos = new HashSet<string>();
     bool tocandoLista, izqNodos, izqPellizcoVisto;
     readonly HashSet<long> selNodos = new HashSet<long>();
     readonly HashSet<int> selLineas = new HashSet<int>();
     string ultimoToque = "";
+    string palabraEnMano = "";
     readonly List<Transform> puntos = new List<Transform>();
-    Material matPunto;
+    const float AnchoVocab = 0.2f;
+    float altoDibujos;
+
+    Material MaterialLinea(Color c)
+    {
+        var baseM = control != null && control.materialAsa != null ? control.materialAsa : control != null ? control.materialNodo : null;
+        var m = baseM != null ? new Material(baseM) : new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+        if (m.HasProperty("_BaseColor"))
+            m.SetColor("_BaseColor", c);
+        if (m.HasProperty("_Color"))
+            m.SetColor("_Color", c);
+        materialesPropios.Add(m);
+        return m;
+    }
 
     void ArmarVocabulario()
     {
@@ -1723,9 +2181,16 @@ public class CabezaInvisible : MonoBehaviour
             rf.sharedMaterial = matPanel;
         rf.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         fondoVocab = fondo.transform;
-        tituloVocab = PanelTutoriales.Texto(vocabulario, "", new Vector3(0f, 0.004f, -0.001f), new Vector2(0.16f, 0.01f), 0.08f, null);
+        tituloVocab = PanelTutoriales.Texto(vocabulario, "", new Vector3(0f, 0.004f, -0.001f), new Vector2(AnchoVocab - 0.01f, 0.01f), 0.08f, null);
         tituloVocab.fontStyle = FontStyles.Bold;
         Idioma.Poner(tituloVocab, "Toca una palabra (o arrástrala) a tu dibujo");
+        // Los dos dibujitos: de frente (izquierda) y de perfil (derecha), cada zona de un color, con su leyenda debajo.
+        float yLeyenda = ArmarDibujo(DibujoFrente(), -0.05f, "De frente");
+        float yLeyenda2 = ArmarDibujo(DibujoPerfil(), 0.05f, "De perfil");
+        altoDibujos = Mathf.Min(yLeyenda, yLeyenda2);
+        tituloOtras = PanelTutoriales.Texto(vocabulario, "", new Vector3(0f, altoDibujos - 0.004f, -0.001f), new Vector2(AnchoVocab - 0.01f, 0.009f), 0.07f, null);
+        tituloOtras.fontStyle = FontStyles.Bold;
+        Idioma.Poner(tituloOtras, "Otras palabras");
         palabraFlotante = PanelTutoriales.Texto(raiz, "", Vector3.zero, new Vector2(0.09f, 0.013f), 0.1f, null);
         palabraFlotante.fontStyle = FontStyles.Bold;
         palabraFlotante.color = new Color(0.1f, 0.35f, 0.75f);
@@ -1742,7 +2207,43 @@ public class CabezaInvisible : MonoBehaviour
         rm.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         marcaDestino = marca.transform;
         marcaDestino.gameObject.SetActive(false);
-        matPunto = MaterialColor(new Color(0.55f, 0.55f, 0.6f));
+    }
+
+    // Un dibujito con sus líneas de colores y la leyenda (cada palabra de su color). Devuelve dónde termina (y).
+    float ArmarDibujo(List<ParteDibujo> partes, float x, string titulo)
+    {
+        const float escala = 0.026f;
+        float yCentro = -0.045f;
+        var t = PanelTutoriales.Texto(vocabulario, "", new Vector3(x, -0.012f, -0.001f), new Vector2(0.09f, 0.008f), 0.06f, null);
+        Idioma.Poner(t, titulo);
+        t.color = new Color(0.4f, 0.4f, 0.46f);
+        float y = yCentro - escala - 0.012f;
+        foreach (var p in partes)
+        {
+            var mat = MaterialLinea(p.color);
+            foreach (var tr in p.trazos)
+            {
+                var go = new GameObject("Maqueta");
+                go.transform.SetParent(vocabulario, false);
+                var lr = go.AddComponent<LineRenderer>();
+                lr.useWorldSpace = false;
+                lr.positionCount = tr.Length;
+                for (int i = 0; i < tr.Length; i++)
+                    lr.SetPosition(i, new Vector3(x + tr[i].x * escala, yCentro + tr[i].y * escala, -0.002f));
+                lr.widthMultiplier = 0.0012f;
+                lr.numCapVertices = 2;
+                lr.sharedMaterial = mat;
+                lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                lr.receiveShadows = false;
+            }
+            var e = PanelTutoriales.Texto(vocabulario, "", new Vector3(x, y, -0.001f), new Vector2(0.09f, 0.0085f), 0.06f, null);
+            e.fontStyle = FontStyles.Bold;
+            e.color = p.color;
+            entradasDibujo.Add(new Entrada { t = e, palabra = p.palabra });
+            enDibujos.Add(p.palabra);
+            y -= 0.0105f;
+        }
+        return y;
     }
 
     // Los nombres que ya pusiste (en tus líneas).
@@ -1760,69 +2261,91 @@ public class CabezaInvisible : MonoBehaviour
         return u;
     }
 
-    // La lista de ahora: las palabras de esta vista (frente o perfil) que aún no usaste.
     void RefrescarVocabulario()
     {
         if (vocabulario == null)
             return;
-        bool dePerfil = estado == Estado.Girando ? perfil : perfilAdivinado;
         var usadas = Usadas();
-        palabras.Clear();
-        foreach (var w in dePerfil ? PalabrasPerfil : PalabrasFrente)
-            if (!usadas.Contains(w))
-                palabras.Add(w);
-        int porColumna = Mathf.Max(1, Mathf.CeilToInt(palabras.Count / 2f));
-        float alto = porColumna * 0.0125f + 0.03f;
-        fondoVocab.localPosition = new Vector3(0f, -alto * 0.5f + 0.012f, 0.004f);
-        fondoVocab.localScale = new Vector3(0.17f, alto, 0.003f);
-        while (palabrasVista.Count < palabras.Count)
+        // Las palabras de los dibujitos: las usadas quedan clarito; la que tienes en la mano, más grande.
+        foreach (var e in entradasDibujo)
         {
-            var t = PanelTutoriales.Texto(vocabulario, "", Vector3.zero, new Vector2(0.08f, 0.0105f), 0.07f, null);
-            palabrasVista.Add(t);
+            e.t.text = Mostrar(e.palabra);
+            Color c = e.t.color;
+            bool enMano = modoPalabra != ModoPalabra.Nada && palabraEnMano == e.palabra;
+            c.a = enMano ? 1f : usadas.Contains(e.palabra) ? 0.35f : 1f;
+            e.t.color = c;
+            e.t.fontSizeMax = enMano ? 0.08f : 0.06f;
         }
-        for (int i = 0; i < palabrasVista.Count; i++)
+        // Debajo, las que sobran (ni en los dibujitos ni usadas), en 3 columnas.
+        var sobran = new List<string>();
+        foreach (var w in TodasLasPalabras)
+            if (!enDibujos.Contains(w) && !usadas.Contains(w))
+                sobran.Add(w);
+        while (entradasLista.Count < sobran.Count)
         {
-            var t = palabrasVista[i];
-            bool ver = i < palabras.Count;
-            if (t.gameObject.activeSelf != ver)
-                t.gameObject.SetActive(ver);
+            var t = PanelTutoriales.Texto(vocabulario, "", Vector3.zero, new Vector2(0.062f, 0.0095f), 0.06f, null);
+            entradasLista.Add(new Entrada { t = t });
+        }
+        float y0 = altoDibujos - 0.016f;
+        const float ancho = 0.064f;
+        for (int i = 0; i < entradasLista.Count; i++)
+        {
+            var e = entradasLista[i];
+            bool ver = i < sobran.Count;
+            if (e.t.gameObject.activeSelf != ver)
+                e.t.gameObject.SetActive(ver);
             if (!ver)
+            {
+                e.palabra = null;
                 continue;
-            int col = i / porColumna, fila = i % porColumna;
-            t.transform.localPosition = new Vector3(-0.042f + col * 0.084f, -0.01f - fila * 0.0125f, -0.001f);
-            t.text = Mostrar(palabras[i]);
-            bool principal = palabras[i].IndexOf(' ') < 0 || palabras[i].StartsWith("ojo ") || palabras[i].StartsWith("ceja ")
-                             || palabras[i].StartsWith("oreja ");
-            t.fontStyle = principal ? FontStyles.Bold : FontStyles.Normal;
-            bool elegida = modoPalabra != ModoPalabra.Nada && palabraEnMano == palabras[i];
-            t.color = elegida ? new Color(0.15f, 0.65f, 0.3f) : principal ? new Color(0.1f, 0.3f, 0.7f) : new Color(0.2f, 0.2f, 0.28f);
+            }
+            e.palabra = sobran[i];
+            int col = i % 3, fila = i / 3;
+            e.t.transform.localPosition = new Vector3(-ancho + col * ancho, y0 - fila * 0.011f, -0.001f);
+            e.t.text = Mostrar(sobran[i]);
+            bool enMano = modoPalabra != ModoPalabra.Nada && palabraEnMano == sobran[i];
+            e.t.color = enMano ? new Color(0.15f, 0.65f, 0.3f) : new Color(0.2f, 0.2f, 0.28f);
         }
+        int filas = Mathf.CeilToInt(sobran.Count / 3f);
+        float abajo = y0 - filas * 0.011f - 0.006f;
+        float alto = 0.012f - abajo;
+        fondoVocab.localPosition = new Vector3(0f, 0.012f - alto * 0.5f, 0.004f);
+        fondoVocab.localScale = new Vector3(AnchoVocab, alto, 0.003f);
     }
 
     void ColocarVocabulario()
     {
         if (vocabulario == null)
             return;
-        Vector3 pos = Mundo(new Vector3(semiX + 0.14f, semiY, 0f), 0f) + haciaTi * 0.02f;
+        Vector3 pos = Mundo(new Vector3(semiX + 0.15f, semiY, 0f), 0f) + haciaTi * 0.02f;
         vocabulario.SetPositionAndRotation(pos, Quaternion.LookRotation(-haciaTi, arriba));
         vocabulario.gameObject.SetActive(verEtiquetas);
     }
 
-    string palabraEnMano = "";
-
-    // La palabra que está bajo ese punto (o -1).
-    int PalabraEn(Vector3 p, float radio)
+    // La palabra que está bajo ese punto (o null).
+    string PalabraEn(Vector3 p, float radio)
     {
-        int mejor = -1;
-        for (int i = 0; i < palabras.Count && i < palabrasVista.Count; i++)
-        {
-            float d = Vector3.Distance(p, palabrasVista[i].transform.position);
-            if (d < radio)
+        string mejor = null;
+        foreach (var e in entradasDibujo)
+            if (e.t.gameObject.activeInHierarchy)
             {
-                radio = d;
-                mejor = i;
+                float d = Vector3.Distance(p, e.t.transform.position);
+                if (d < radio)
+                {
+                    radio = d;
+                    mejor = e.palabra;
+                }
             }
-        }
+        foreach (var e in entradasLista)
+            if (e.palabra != null && e.t.gameObject.activeInHierarchy)
+            {
+                float d = Vector3.Distance(p, e.t.transform.position);
+                if (d < radio)
+                {
+                    radio = d;
+                    mejor = e.palabra;
+                }
+            }
         return mejor;
     }
 
@@ -1873,42 +2396,44 @@ public class CabezaInvisible : MonoBehaviour
         // Pellizco sobre una palabra = llevarla con el pellizco.
         if (der.empezoPellizco)
         {
-            int k = PalabraEn(der.PuntoPellizco, 0.016f);
-            if (k >= 0)
+            string w = PalabraEn(der.PuntoPellizco, 0.016f);
+            if (w != null)
             {
-                TomarPalabra(k, ModoPalabra.Pellizco, der.PuntoPellizco);
+                TomarPalabra(w, ModoPalabra.Pellizco, der.PuntoPellizco);
                 return true;
             }
         }
         // Tocar una palabra con el índice: con la izquierda en Nodos = llevarla pegada al dedo; si no = el sello.
-        int toca = der.pellizco ? -1 : PalabraEn(der.indice, 0.013f);
-        if (toca >= 0 && !tocandoLista)
+        string toca = der.pellizco ? null : PalabraEn(der.indice, 0.013f);
+        if (toca != null && !tocandoLista)
         {
             tocandoLista = true;
             TomarPalabra(toca, nodosAhora ? ModoPalabra.Nodos : ModoPalabra.Sello, der.indice);
             return true;
         }
-        if (toca < 0)
+        if (toca == null)
             tocandoLista = false;
         return false;
     }
 
-    void TomarPalabra(int k, ModoPalabra modo, Vector3 p)
+    void TomarPalabra(string palabra, ModoPalabra modo, Vector3 p)
     {
         modoPalabra = modo;
-        palabraEnMano = palabras[k];
-        palabraFlotante.text = Mostrar(palabraEnMano);
+        palabraEnMano = palabra;
+        palabraFlotante.text = Mostrar(ConLado(palabra));
         palabraFlotante.gameObject.SetActive(true);
         selNodos.Clear();
         selLineas.Clear();
         ultimoToque = "";
         izqPellizcoVisto = false;
+        animando = false;
+        RefrescarBotonGira();
         control.Ocupado = true;
         control.SonidoBurbuja(p);
         if (opciones != null)
             opciones.gameObject.SetActive(false);
         if (modo == ModoPalabra.Sello)
-            dibujo.Mensaje("Toca los nodos o las líneas de \"" + Mostrar(palabraEnMano) + "\" y PELLIZCA con la izquierda para confirmar");
+            dibujo.Mensaje(Idioma.T("Toca los nodos o las líneas y PELLIZCA con la izquierda para confirmar: ") + Mostrar(ConLado(palabra)));
         else if (modo == ModoPalabra.Nodos)
             dibujo.Mensaje("Llévala al nodo y SUELTA la izquierda");
         sucio = true;
@@ -1951,7 +2476,6 @@ public class CabezaInvisible : MonoBehaviour
         var izq = control.Izq;
         if (der.valida)
             MoverPalabra(der.indice);
-        // Confirmar: un pellizco con la izquierda y soltarlo.
         if (izq.valida && izq.empezoPellizco)
             izqPellizcoVisto = true;
         if (izqPellizcoVisto && (izq.soltoPellizco || !izq.valida))
@@ -1962,22 +2486,22 @@ public class CabezaInvisible : MonoBehaviour
         MostrarPuntos();
         if (!der.valida)
             return;
-        // Tocar la palabra otra vez (u otra palabra) en la lista.
-        int toca = PalabraEn(der.indice, 0.013f);
-        if (toca >= 0)
+        // Tocar la palabra otra vez (u otra palabra) en el vocabulario.
+        string toca = PalabraEn(der.indice, 0.013f);
+        if (toca != null)
         {
             if (!tocandoLista)
             {
                 tocandoLista = true;
-                if (palabras[toca] == palabraEnMano)
+                if (toca == palabraEnMano)
                 {
                     SoltarPalabra(false);
                     dibujo.Mensaje("Sello cancelado");
                 }
                 else
                 {
-                    palabraEnMano = palabras[toca];
-                    palabraFlotante.text = Mostrar(palabraEnMano);
+                    palabraEnMano = toca;
+                    palabraFlotante.text = Mostrar(ConLado(toca));
                     sucio = true;
                 }
             }
@@ -1987,7 +2511,7 @@ public class CabezaInvisible : MonoBehaviour
         // ¿Qué toca el índice? Un nodo (ese nodo) o una línea lejos de sus nodos (la línea entera).
         Trazo t;
         int j;
-        string toque = "";
+        string toque;
         if (NodoCercano(der.indice, 0.013f, out t, out j))
         {
             toque = "n" + t.id + ":" + j;
@@ -2029,8 +2553,7 @@ public class CabezaInvisible : MonoBehaviour
             if (t == null || t.nodos.Count == 0)
                 continue;
             for (int j = 0; j < t.nodos.Count; j++)
-                t.NombrarNodo(j, null);
-            t.NombrarNodo(t.nodos.Count / 2, palabra);
+                t.NombrarNodo(j, palabra);
             sinEtiqueta.Remove(id);
             n++;
         }
@@ -2048,7 +2571,7 @@ public class CabezaInvisible : MonoBehaviour
         if (n > 0)
         {
             dibujo.HayCambios = true;
-            dibujo.Mensaje(Idioma.T("Es: ") + Mostrar(palabra));
+            dibujo.Mensaje(Idioma.T("Es: ") + Mostrar(ConLado(palabra)));
             AlCambiarNombres();
         }
         else
@@ -2060,6 +2583,8 @@ public class CabezaInvisible : MonoBehaviour
     // Puntitos sobre los nodos (verdes = elegidos para esta palabra).
     void MostrarPuntos()
     {
+        if (matPunto == null)
+            matPunto = MaterialColor(new Color(0.55f, 0.55f, 0.6f));
         int k = 0;
         foreach (var t in Originales())
         {
@@ -2110,7 +2635,7 @@ public class CabezaInvisible : MonoBehaviour
             return;
         var modo = modoPalabra;
         string palabra = palabraEnMano;
-        Vector3 donde = modo == ModoPalabra.Pellizco ? control.Der.PuntoPellizco : control.Der.indice;
+        Vector3 donde = control != null ? (modo == ModoPalabra.Pellizco ? control.Der.PuntoPellizco : control.Der.indice) : Vector3.zero;
         modoPalabra = ModoPalabra.Nada;
         palabraEnMano = "";
         selNodos.Clear();
@@ -2138,7 +2663,7 @@ public class CabezaInvisible : MonoBehaviour
                 n = 1;
             }
         }
-        dibujo.Mensaje(n > 0 ? Idioma.T("Es: ") + Mostrar(palabra) : "Suéltala sobre un nodo de tu dibujo (o elige nodos con el lazo)");
+        dibujo.Mensaje(n > 0 ? Idioma.T("Es: ") + Mostrar(ConLado(palabra)) : Idioma.T("Suéltala sobre un nodo de tu dibujo (o elige nodos con el lazo)"));
         if (n > 0)
             AlCambiarNombres();
     }
@@ -2253,7 +2778,7 @@ public class CabezaInvisible : MonoBehaviour
                 dibujo.Mensaje("Listo: \"Ayuda\" lo vuelve a mostrar");
         });
         BotonTarjeta("X", new Vector3(0.095f, -0.056f, 0f), 0.02f, () => tarjeta.gameObject.SetActive(false));
-        // v54: se mueve como los demás paneles (pellizco en una parte vacía, o nodos izquierda + índice derecho).
+        // Se mueve como los demás paneles (pellizco en una parte vacía, o nodos izquierda + índice derecho).
         var mover = tarjeta.gameObject.AddComponent<ArrastrePanel>();
         mover.centro = new Vector2(0f, 0.01f);
         mover.medio = new Vector2(0.11f, 0.06f);
@@ -2273,7 +2798,7 @@ public class CabezaInvisible : MonoBehaviour
             ArmarTarjeta();
         paso = Mathf.Clamp(p, 0, PasosTitulo.Length - 1);
         EscribirTarjeta();
-        // v54: se coloca SOLO al aparecer (antes saltaba de lugar con cada flecha). Arriba a la izquierda de tu vista.
+        // Se coloca SOLO al aparecer (no salta con cada flecha). Arriba a la izquierda de tu vista.
         if (!tarjeta.gameObject.activeSelf)
         {
             var cab = control != null ? control.Cabeza : null;
@@ -2305,7 +2830,7 @@ public class CabezaInvisible : MonoBehaviour
         MostrarTarjeta(estado == Estado.Preguntando ? 1 : Mathf.Max(2, paso));
     }
 
-    // v54: al cambiar el idioma, TODO lo de la cabeza se reescribe (antes quedaban partes en el otro idioma).
+    // Al cambiar el idioma, TODO lo de la cabeza se reescribe.
     void AlCambiarIdioma()
     {
         EscribirTarjeta();
@@ -2330,39 +2855,40 @@ public class CabezaInvisible : MonoBehaviour
             matCambiar = MaterialColor(new Color(0.15f, 0.35f, 0.8f));
             panel = new GameObject("PanelCabeza").transform;
             panel.SetParent(raiz, false);
-            Boton(filaPregunta, "De frente", new Vector3(-0.15f, 0f, 0f), 0.055f, false, () => Elegir(false));
-            Boton(filaPregunta, "De perfil", new Vector3(-0.092f, 0f, 0f), 0.055f, false, () => Elegir(true));
-            Boton(filaPregunta, "Nombrar nodo", new Vector3(-0.028f, 0f, 0f), 0.068f, false, NombrarConTeclado);
-            Boton(filaPregunta, "Etiquetas", new Vector3(0.035f, 0f, 0f), 0.052f, false, AlternarEtiquetas);
-            Boton(filaPregunta, "Ayuda", new Vector3(0.09f, 0f, 0f), 0.05f, false, Ayuda);
-            Boton(filaPregunta, "Cerrar", new Vector3(0.145f, 0f, 0f), 0.05f, false, Cerrar);
+            // v55: menos botones (nombrar = dictado, sello o etiquetas).
+            Boton(filaPregunta, "De frente", new Vector3(-0.124f, 0f, 0f), 0.058f, false, () => Elegir(false));
+            Boton(filaPregunta, "De perfil", new Vector3(-0.062f, 0f, 0f), 0.058f, false, () => Elegir(true));
+            Boton(filaPregunta, "Etiquetas", new Vector3(0f, 0f, 0f), 0.058f, false, AlternarEtiquetas);
+            Boton(filaPregunta, "Ayuda", new Vector3(0.062f, 0f, 0f), 0.058f, false, Ayuda);
+            Boton(filaPregunta, "Cerrar", new Vector3(0.124f, 0f, 0f), 0.058f, false, Cerrar);
             string[] nombresVista = { "Perfil izq", "3/4 izq", "Frente", "3/4 der", "Perfil der" };
             float[] angulos = { -90f, -45f, 0f, 45f, 90f };
             for (int i = 0; i < nombresVista.Length; i++)
             {
                 float a = angulos[i];
-                Boton(filaGiro, nombresVista[i], new Vector3(-0.124f + i * 0.062f, 0.02f, 0f), 0.058f, false, () => Vista(a));
+                Boton(filaGiro, nombresVista[i], new Vector3(-0.155f + i * 0.062f, 0.02f, 0f), 0.058f, false, () => Vista(a));
             }
-            Boton(filaGiro, "Usar esta vista", new Vector3(-0.163f, -0.016f, 0f), 0.068f, true, Usar);
-            Boton(filaGiro, "Guardar vista", new Vector3(-0.095f, -0.016f, 0f), 0.062f, false, GuardarVista);
-            Boton(filaGiro, "Etiquetas", new Vector3(-0.035f, -0.016f, 0f), 0.052f, false, AlternarEtiquetas);
-            Boton(filaGiro, "Nombrar nodo", new Vector3(0.027f, -0.016f, 0f), 0.066f, false, NombrarConTeclado);
-            Boton(filaGiro, "Ayuda", new Vector3(0.082f, -0.016f, 0f), 0.04f, false, Ayuda);
-            Boton(filaGiro, "Nueva cabeza", new Vector3(0.133f, -0.016f, 0f), 0.056f, false, () => { Desesconder(); Empezar(); });
-            Boton(filaGiro, "Cerrar", new Vector3(0.183f, -0.016f, 0f), 0.04f, false, Cerrar);
+            btnGira = Boton(filaGiro, "Gira", new Vector3(0.155f, 0.02f, 0f), 0.058f, true, AlternarGira);
+            Boton(filaGiro, "Usar esta vista", new Vector3(-0.15f, -0.016f, 0f), 0.068f, true, Usar);
+            Boton(filaGiro, "Guardar vista", new Vector3(-0.08f, -0.016f, 0f), 0.066f, false, GuardarVista);
+            Boton(filaGiro, "Etiquetas", new Vector3(-0.014f, -0.016f, 0f), 0.058f, false, AlternarEtiquetas);
+            Boton(filaGiro, "Ayuda", new Vector3(0.042f, -0.016f, 0f), 0.048f, false, Ayuda);
+            Boton(filaGiro, "Nueva cabeza", new Vector3(0.1f, -0.016f, 0f), 0.06f, false, () => { Desesconder(); Empezar(); });
+            Boton(filaGiro, "Cerrar", new Vector3(0.155f, -0.016f, 0f), 0.044f, false, Cerrar);
         }
         raiz.gameObject.SetActive(true);
         Vector3 pos = centro + arriba * (centro2D.y - semiY - 0.06f) + derecha * centro2D.x + haciaTi * 0.02f;
         panel.SetPositionAndRotation(pos, Quaternion.LookRotation(-haciaTi, arriba));
         ArmarVocabulario();
         ColocarVocabulario();
+        RefrescarBotonGira();
         sucio = true;
     }
 
-    void Boton(List<GameObject> fila, string texto, Vector3 pos, float ancho, bool oscuro, UnityEngine.Events.UnityAction accion)
+    BotonTocable Boton(List<GameObject> fila, string texto, Vector3 pos, float ancho, bool oscuro, UnityEngine.Events.UnityAction accion)
     {
         var b = PanelTutoriales.Boton(panel, "", pos, new Vector2(ancho, 0.028f), oscuro ? marcado : normal, oscuro ? normal : marcado);
-        Idioma.Poner(b.etiqueta, texto);   // v54: sigue al idioma de la app aunque lo cambies
+        Idioma.Poner(b.etiqueta, texto);   // sigue al idioma de la app aunque lo cambies
         b.alTocar.AddListener(accion);
         if (oscuro)
         {
@@ -2371,6 +2897,7 @@ public class CabezaInvisible : MonoBehaviour
         }
         fila.Add(b.gameObject);
         fila.Add(b.etiqueta.gameObject);
+        return b;
     }
 
     static void Mostrar(List<GameObject> fila, bool ver)
@@ -2378,6 +2905,28 @@ public class CabezaInvisible : MonoBehaviour
         foreach (var g in fila)
             if (g != null)
                 g.SetActive(ver);
+    }
+
+    // v55: "Gira": la cabeza gira sola de un perfil al otro (para probar sin agarrarla). Otra vez = parar.
+    void AlternarGira()
+    {
+        if (estado != Estado.Girando)
+            return;
+        animando = !animando;
+        animandoDesde = Time.time;
+        if (!animando)
+        {
+            giro = 0f;
+            mostrandoReal = true;
+        }
+        sucio = true;
+        RefrescarBotonGira();
+    }
+
+    void RefrescarBotonGira()
+    {
+        if (btnGira != null)
+            btnGira.PonerTexto(animando ? "Parar" : "Gira");
     }
 
     readonly List<Material> materialesPropios = new List<Material>();
@@ -2394,22 +2943,10 @@ public class CabezaInvisible : MonoBehaviour
         return m;
     }
 
-    // "Nombrar nodo": el teclado de la app, para los nodos del lazo (aunque ya soltaste la izquierda) o el que miras.
-    void NombrarConTeclado()
-    {
-        TecladoVR.Abrir("Nombre del nodo (ej. punta de nariz)", "", nombre =>
-        {
-            if (string.IsNullOrEmpty(nombre) || control == null)
-                return;
-            int n = control.NombrarNodos(nombre.ToLowerInvariant());
-            dibujo.Mensaje(n > 0 ? "Nodo: " + nombre : "Primero elige un nodo (en Nodos) o míralo");
-            if (n > 0)
-                AlCambiarNombres();
-        });
-    }
-
     void Vista(float angulo)
     {
+        animando = false;
+        RefrescarBotonGira();
         float frente = perfil ? (mira > 0f ? -90f : 90f) : 0f;
         giro = frente + angulo;
         inclina = 0f;

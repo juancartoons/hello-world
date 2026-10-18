@@ -30,7 +30,7 @@ public class TutorialNovedades : TarjetaTutorial
     readonly List<Vector3> otra = new List<Vector3>();
     readonly List<Vector3> tramo = new List<Vector3>();
 
-    protected override int Paginas => 19;
+    protected override int Paginas => 20;
 
     protected override void ArmarExtra()
     {
@@ -71,7 +71,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 15: return Tx("16 · Gradient, pencil and two hands", "16 · Degradado, lápiz y dos manos");
             case 16: return Tx("17 · Invisible head, Exit and timeline zoom", "17 · Cabeza invisible, Salir y zoom del timeline");
             case 17: return Tx("18 · Your head, untouched; pencil grains", "18 · Tu cabeza intacta y granos de lápiz");
-            default: return Tx("19 · The stamp, smarter labels and pencil halo", "19 · El sello, etiquetas más listas y halo del lápiz");
+            case 18: return Tx("19 · The stamp, smarter labels and pencil halo", "19 · El sello, etiquetas más listas y halo del lápiz");
+            default: return Tx("20 · Dictate the face", "20 · Dicta la cara");
         }
     }
 
@@ -128,6 +129,10 @@ public class TutorialNovedades : TarjetaTutorial
                     "DESERT SUNSET: a new living background: dunes all around you lit by a low golden sun, violet shadows, a pink and purple sky with thin clouds, the first stars and the wind lifting dust far away. Say \"desert\". LAYERS: each one shows a thumbnail on its left; say \"layer 2\" to jump to it; leave your finger still on the name to rename it; delete with the little trash can (tap twice). The camera is a layer of its own (\"+ Camera\" = another one). The panels open with either hand, whatever the other one is doing.",
                     "ATARDECER EN EL DESIERTO: un fondo vivo nuevo: dunas a tu alrededor con la luz dorada del sol bajito, sombras violeta, un cielo rosado y morado con nubes finas, las primeras estrellas y el viento levantando polvo a lo lejos. Di \"desierto\". CAPAS: cada una muestra su miniatura a la izquierda; di \"capa 2\" para ir a ella; deja el dedo quieto en el nombre para cambiarlo; borra con el basurerito (toca dos veces). La cámara es su propia capa (\"+ Cámara\" = otra). Las persianas se abren con cualquier mano, haga lo que haga la otra.");
             default:
+                return Tx(
+                    "DICTATE THE FACE: before drawing, say \"profile face\" (or \"front face\"). Then, BEFORE each part, say its name and draw it: \"nose\", \"outer mouth\", \"jaw\", \"ear\", \"top of head\", \"nape\", \"eye\"... A little sign next to your hand says what you are drawing. Every node keeps that name, even when lines join. In profile, the nose tells the app where the face looks, so it knows which eye and ear you drew. From the front, say \"eye one\" / \"eye two\" (or left / right). Say \"end dictation\" and tap Invisible head: it goes straight to turning. The outline can be several pieces (top of head, nape, jaw...): they turn together as one silhouette. On the right: two little drawings (front and profile) with each zone in its color; below, only the leftover words. \"Turn\" makes it turn by itself.",
+                    "DICTA LA CARA: antes de dibujar, di \"cara de perfil\" (o \"cara de frente\"). Luego, ANTES de cada parte, di su nombre y dibújala: \"nariz\", \"boca exterior\", \"mandíbula\", \"oreja\", \"cabeza arriba\", \"nuca\", \"ojo\"... Un cartelito junto a tu mano dice qué estás dibujando. Cada nodo guarda ese nombre, aunque las líneas se unan. De perfil, la nariz le dice a la app hacia dónde mira la cara: así sabe qué ojo y qué oreja dibujaste. De frente, di \"ojo uno\" / \"ojo dos\" (o izquierdo / derecho). Di \"fin del dictado\" y toca Cabeza invisible: va directo a girar. El borde puede ser de varias piezas (cabeza arriba, nuca, mandíbula...): giran juntas como una sola silueta. A la derecha: dos dibujitos (de frente y de perfil) con cada zona de un color; debajo, solo las palabras que sobran. \"Gira\" la hace girar sola.");
+            case 19:
                 return Tx(
                     "THE STAMP (invisible head): tap a word in the list on the right; it sticks to your index finger. Tap the nodes (or a line, away from its nodes = the whole line) that are that word: they turn green. PINCH with your left hand and let go = confirmed. Used words disappear from the list (front: left/right eye, eyebrow and ear; profile: just \"eye\"). Other ways: left hand in Nodes + touch the word (it follows your finger; let go of the left = it drops), pinch it, look at a line and say its name, or the blue square of a label (3 likely words). Labels now use zones (eyebrows above the eyes, nose in the center, mouth below, ears at the sides) and everything follows the app's language. The tutorial stays put and can be moved. PENCIL: no more grains; a soft HALO in the line's color (0 = none). Leaving the camera layer brings you back to where you were.",
                     "EL SELLO (cabeza invisible): toca una palabra de la lista de la derecha; se pega a tu índice. Toca los nodos (o una línea, lejos de sus nodos = la línea entera) que son esa palabra: se ponen verdes. PELLIZCA con la izquierda y suelta = confirmado. Las palabras usadas desaparecen de la lista (de frente: ojo, ceja y oreja izquierda/derecha; de perfil: solo \"ojo\"). Otras formas: izquierda en Nodos + toca la palabra (sigue tu dedo; sueltas la izquierda = cae), pellizcarla, mirar una línea y decir su nombre, o el cuadrito azul de una etiqueta (3 palabras probables). Las etiquetas ahora usan zonas (cejas sobre los ojos, nariz al centro, boca abajo, orejas a los lados) y todo sigue el idioma de la app. El tutorial se queda quieto y se puede mover. LÁPIZ: sin granos; un HALO suave del color de la línea (0 = sin halo). Al dejar la capa de cámara vuelves a donde estabas.");
@@ -199,7 +204,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 15: AnimarVidrio(t); break;
             case 16: AnimarBarra(t); break;
             case 17: AnimarVidrio(t); break;
-            default: AnimarLineas(t); break;
+            case 18: AnimarLineas(t); break;
+            default: AnimarVoz(t); break;
         }
     }
 

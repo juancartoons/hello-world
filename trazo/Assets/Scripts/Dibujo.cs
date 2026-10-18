@@ -77,6 +77,7 @@ public class DatosCapa
     // empieza VACÍO (con el papel cebolla del anterior y el siguiente), las líneas no pasan de una clave a otra y
     // no hay morph: cada dibujo se sostiene hasta la clave siguiente (como los programas de animación normales).
     public bool cuadroACuadro;
+    public int vistaCabeza;   // v55: cómo se dictó la cara de esta capa (0 = no se sabe, 1 = de frente, 2 = de perfil)
     // v49: textura de la línea: 0 lisa (tinta), 1 lápiz (grano, orilla irregular, hervida).
     public int texturaLinea;
     // v52: los ajustes del lápiz (de 0 a 9; 5 = normal), para las líneas nuevas de esta capa.
@@ -1321,6 +1322,8 @@ public class Dibujo : MonoBehaviour
             DescartarUltimoDeshacer();
             return;
         }
+        // v55: el DICTADO de la cabeza ("nariz", "mandíbula"...): la línea nueva queda nombrada antes de unirse a otra.
+        CabezaInvisible.AlTerminarLinea(t);
         if (!CapaActual.iman && !t.cerrado)
         {
             // Imán apagado: la línea queda tal como la dibujaste.
@@ -1603,11 +1606,30 @@ public class Dibujo : MonoBehaviour
             return;
         a.AsegurarAsas();
         b.AsegurarAsas();
+        // v55: los NOMBRES de los nodos ("nariz", "mandíbula"...) se conservan al unir (cada uno con su nodo).
+        var nombresA = NombresPorNodo(a);
+        var nombresB = NombresPorNodo(b);
         if (extremoA == 0)
+        {
             a.Invertir();
+            System.Array.Reverse(nombresA);
+        }
         if (extremoB == 1)
+        {
             b.Invertir();
+            System.Array.Reverse(nombresB);
+        }
         int u = a.nodos.Count - 1;
+        a.nombresNodo.Clear();
+        for (int i = 0; i < nombresA.Length; i++)
+        {
+            string n = i == u && string.IsNullOrEmpty(nombresA[i]) && nombresB.Length > 0 ? nombresB[0] : nombresA[i];
+            if (!string.IsNullOrEmpty(n))
+                a.nombresNodo.Add(i + ":" + n);
+        }
+        for (int i = 1; i < nombresB.Length; i++)
+            if (!string.IsNullOrEmpty(nombresB[i]))
+                a.nombresNodo.Add((u + i) + ":" + nombresB[i]);
         a.nodos[u] = b.nodos[0];
         a.asaSalida[u] = b.asaSalida[0];
         // v40: por defecto la unión queda en ESQUINA (cada lado conserva su dirección: dos rectas siguen rectas);
@@ -1646,6 +1668,14 @@ public class Dibujo : MonoBehaviour
         a.Reconstruir();
         Mensaje("Líneas unidas");
         Avisar();
+    }
+
+    static string[] NombresPorNodo(Trazo t)
+    {
+        var r = new string[t.nodos.Count];
+        for (int i = 0; i < r.Length; i++)
+            r[i] = t.NombreDeNodo(i);
+        return r;
     }
 
     public void QuitarRelleno(Trazo t)
