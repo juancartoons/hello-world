@@ -598,6 +598,9 @@ public class CamaraEscena : MonoBehaviour
         // v48: al entrar a la capa de cámara, apareces detrás de ella (cuando ya sabe dónde está).
         if (enCapa && !estabaEnCapa)
             ponerDetras = true;
+        // v54: al volver a una capa de dibujo, regresas a donde estabas antes de ir a la cámara (cerca de tu dibujo).
+        if (!enCapa && estabaEnCapa && hayPoseAntes && !ExportadorVideo.Exportando && !Tutorial.EnCurso)
+            VolverADondeEstaba();
         estabaEnCapa = enCapa;
         bool ver = enCapa && datos.hay && !VistaLimpia.Activa;
         if (!ver)
@@ -749,10 +752,29 @@ public class CamaraEscena : MonoBehaviour
         adelante.Normalize();
         float angulo = Vector3.SignedAngle(miAdelante, adelante, Vector3.up);
         Transform r = rig.transform;
+        if (!hayPoseAntes)
+        {
+            posAntes = r.position;
+            rotAntes = r.rotation;
+            hayPoseAntes = true;
+        }
         r.RotateAround(cab.position, Vector3.up, angulo);
         // 40 cm detrás y un poquito arriba (para ver la camarita y su monitor).
         Vector3 deseado = poseViva - adelante * 0.4f + Vector3.up * 0.05f;
         r.position += deseado - cab.position;
+    }
+
+    bool hayPoseAntes;
+    Vector3 posAntes;
+    Quaternion rotAntes;
+
+    void VolverADondeEstaba()
+    {
+        hayPoseAntes = false;
+        var rig = FindFirstObjectByType<OVRCameraRig>();
+        if (rig == null)
+            return;
+        rig.transform.SetPositionAndRotation(posAntes, rotAntes);
     }
 
     void Soltar(bool guardar)

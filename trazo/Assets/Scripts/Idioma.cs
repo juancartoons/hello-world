@@ -429,6 +429,21 @@ public static class Idioma
         "Atardecer en el desierto", "Desert sunset",
         // v46: cuadro a cuadro
         "Cuadro a cuadro", "Frame by frame",
+        // v54: cabeza (sello, opciones, idioma), lápiz con halo
+        "Toca una palabra (o arrástrala) a tu dibujo", "Tap a word (or drag it) onto your drawing",
+        "Teclado", "Keyboard",
+        "Es: ", "It is: ",
+        "Toca una opción, abre el teclado o DILO con la voz (\"boca\", \"punta de nariz\"...)", "Tap an option, open the keyboard or SAY it (\"mouth\", \"nose tip\"...)",
+        "Llévala al nodo y SUELTA la izquierda", "Take it to the node and RELEASE your left hand",
+        "Sello cancelado", "Stamp cancelled",
+        "No tocaste ningún nodo ni línea: sello cancelado", "You didn't touch any node or line: stamp cancelled",
+        "< Atrás", "< Back",
+        "Siguiente >", "Next >",
+        "Halo", "Halo",
+        "sin halo · fuerte", "no halo · strong",
+        "fibras finas · gruesas", "fine · thick fibers",
+        "No", "No",
+        "Cada parte tiene su cartelito: visto verde = confirmar, X roja = quitar, cuadrito azul = las 3 palabras más probables o el teclado. EL SELLO: toca una palabra de la lista de la derecha, toca los nodos (o las líneas) que son eso y haz un pellizco con la izquierda para confirmar. También: mira una línea y di su nombre.", "Each part has its label: green check = confirm, red X = remove, blue square = the 3 most likely words or the keyboard. THE STAMP: tap a word in the list on the right, tap the nodes (or lines) that are that, and pinch with your left hand to confirm. Also: look at a line and say its name.",
         // v53: cabeza (original intacto, etiquetas con botones, vocabulario, tutorial), lápiz con formas de grano
         "Ayuda", "Help",
         "Original", "Original",

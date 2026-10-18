@@ -878,6 +878,9 @@ public partial class ControlManos
             selTrazo.NombrarNodo(selIndice, nombre);
             n++;
         }
+        // v54: con la cabeza abierta, "mirar y decir": la línea que miras toma ese nombre entera.
+        if (n == 0 && CabezaInvisible.NombrarMirada(nombre))
+            return 1;
         if (n == 0 && Mirada.NodoTrazo != null && Mirada.Nodo >= 0)
         {
             Mirada.NodoTrazo.NombrarNodo(Mirada.Nodo, nombre);

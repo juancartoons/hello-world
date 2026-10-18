@@ -81,7 +81,7 @@ public class DatosCapa
     public int texturaLinea;
     // v52: los ajustes del lápiz (de 0 a 9; 5 = normal), para las líneas nuevas de esta capa.
     public int lapizGrano = 5, lapizDensidad = 5, lapizBorde = 5, lapizAncho = 5, lapizHervido = 5;
-    public int lapizForma = 1;   // v53: 0 cuadritos, 1 redondos, 2 asteroides, 3 borrosos, 4 pelos
+    public int lapizHalo = 3;    // v54: halo suave del lápiz (0 = sin halo, 9 = fuerte)
 
     public DatosCapa Copia()
     {
@@ -379,6 +379,7 @@ public class Dibujo : MonoBehaviour
 
     void LateUpdate()
     {
+        DibujarHalosLapiz();
         if (!HaloEncendido || !HaloDisponible)
             return;
         if (haloClaro == null)
@@ -409,6 +410,59 @@ public class Dibujo : MonoBehaviour
             Graphics.DrawMesh(malla, t.transform.localToWorldMatrix, luz < 0.45f ? haloClaro : haloOscuro,
                               t.gameObject.layer, camaraHalo, 0, null, false, false);
         }
+    }
+
+    // ---------- v54: el HALO DEL LÁPIZ ----------
+    // Un degradé suave del MISMO color de la línea alrededor de ella (arriba, abajo y a los lados), como el grafito que
+    // se esparce en el papel. Se gradúa con la palanca "Halo" de los ajustes del lápiz (0 = sin halo). A diferencia del
+    // halo de fondos 360, este sí sale en fotos y videos (es parte del dibujo).
+    Material haloLapiz;
+    MaterialPropertyBlock bloqueHalo;
+
+    void DibujarHalosLapiz()
+    {
+        if (materialHalo == null)
+            return;
+        foreach (var t in trazos)
+            if (t != null && !t.oculto && !t.Invisible && t.gameObject.activeInHierarchy)
+                HaloLapiz(t);
+    }
+
+    // También lo usan la muestra de los ajustes del lápiz y la vista previa de la cabeza (líneas que no son del dibujo).
+    public void HaloLapiz(Trazo t)
+    {
+        if (t == null || materialHalo == null)
+            return;
+        int textura, halo;
+        if (t.tieneEstilo && t.estiloTrazo != null)
+        {
+            textura = t.estiloTrazo.texturaLinea;
+            halo = t.estiloTrazo.lapizHalo;
+        }
+        else
+        {
+            var c = DatosDeCapa(t.capa);
+            if (c == null)
+                return;
+            textura = c.texturaLinea;
+            halo = c.lapizHalo;
+        }
+        if (textura != 1 || halo <= 0)
+            return;
+        var mr = t.RendererLinea;
+        var malla = t.Malla;
+        if (mr == null || !mr.enabled || mr.forceRenderingOff || malla == null || malla.vertexCount == 0)
+            return;
+        if (haloLapiz == null)
+            haloLapiz = new Material(materialHalo) { name = "HaloLapiz" };
+        if (bloqueHalo == null)
+            bloqueHalo = new MaterialPropertyBlock();
+        float k = Mathf.Clamp01(halo / 9f);
+        Color color = t.color;
+        color.a = Mathf.Lerp(0.12f, 0.55f, k);
+        bloqueHalo.SetColor("_BaseColor", color);
+        bloqueHalo.SetFloat("_Ancho", Mathf.Max(0.0005f, t.ancho * t.transform.lossyScale.x * Mathf.Lerp(0.6f, 2.2f, k)));
+        Graphics.DrawMesh(malla, t.transform.localToWorldMatrix, haloLapiz, t.gameObject.layer, null, 0, bloqueHalo, false, false);
     }
 
     void OnApplicationPause(bool pausa)

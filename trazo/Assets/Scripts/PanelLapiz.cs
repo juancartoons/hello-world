@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
-// AJUSTES DEL LÁPIZ (v52, v53): un panel que sale arriba (como la mesa) con 6 PALANCAS y una línea de muestra grande:
-//  Forma del granito (cuadritos, redondos, asteroides, borrosos, pelos), Grano (fino → grueso), Densidad (suave →
-//  cargado), Orilla (nítida → borrosa), Ancho y Hervido (quieto → nervioso).
+// AJUSTES DEL LÁPIZ (v52, v53, v54): un panel que sale arriba (como la mesa) con 6 PALANCAS y una línea de muestra grande:
+//  Halo (v54: un degradé suave del color de la línea alrededor; 0 = sin halo), Grano (fibras finas → gruesas),
+//  Densidad (suave → cargado), Orilla (nítida → borrosa), Ancho y Hervido (quieto → nervioso). (v54: sin granitos.)
 //  - Desliza el índice derecho sobre una palanca para moverla.
 //  - v53: EN VIVO: la muestra y las líneas SELECCIONADAS cambian mientras mueves la palanca (sin esperar al OK).
 //    "OK" lo deja así (y las líneas nuevas salen así); "Cancelar" vuelve todo a como estaba.
@@ -15,13 +15,12 @@ public class PanelLapiz : MonoBehaviour
     public static bool Abierto => instancia != null && instancia.gameObject.activeSelf;
 
     const int Filas = 6;
-    static readonly string[] Nombres = { "Forma", "Grano", "Densidad", "Orilla", "Ancho", "Hervido" };
+    static readonly string[] Nombres = { "Halo", "Grano", "Densidad", "Orilla", "Ancho", "Hervido" };
     static readonly string[] Extremos =
     {
-        "cuadritos · redondos · asteroides · borrosos · pelos", "fino · grueso", "suave · cargado", "nítida · borrosa",
+        "sin halo · fuerte", "fibras finas · gruesas", "suave · cargado", "nítida · borrosa",
         "delgado · ancho", "quieto · nervioso"
     };
-    static readonly string[] Formas = { "Cuadritos", "Redondos", "Asteroides", "Borrosos", "Pelos" };
     const float LargoPalanca = 0.16f;
 
     ControlManos control;
@@ -40,7 +39,7 @@ public class PanelLapiz : MonoBehaviour
     readonly List<bool> teniaEstilo = new List<bool>();
     bool cambio, deshacerGuardado;
 
-    static int Maximo(int fila) => fila == 0 ? 4 : 9;
+    static int Maximo(int fila) => 9;
 
     public static void Abrir()
     {
@@ -143,7 +142,7 @@ public class PanelLapiz : MonoBehaviour
         deshacerGuardado = false;
         estilo = EstiloTrazo.DesdeCapa(c);
         estilo.texturaLinea = 1;
-        valores[0] = estilo.lapizForma;
+        valores[0] = estilo.lapizHalo;
         valores[1] = estilo.lapizGrano;
         valores[2] = estilo.lapizDensidad;
         valores[3] = estilo.lapizBorde;
@@ -165,6 +164,8 @@ public class PanelLapiz : MonoBehaviour
 
     void Update()
     {
+        if (dibujo != null && muestra != null)
+            dibujo.HaloLapiz(muestra);   // v54: la muestra también lleva su halo
         if (control == null || !control.Der.valida)
             return;
         Vector3 dedo = control.Der.indice;
@@ -190,9 +191,9 @@ public class PanelLapiz : MonoBehaviour
         {
             Vector3 p = rieles[i].localPosition;
             perillas[i].localPosition = new Vector3(p.x + (valores[i] / (float)Maximo(i) - 0.5f) * LargoPalanca, p.y, -0.003f);
-            numeros[i].text = i == 0 ? Idioma.T(Formas[Mathf.Clamp(valores[0], 0, 4)]) : valores[i].ToString();
+            numeros[i].text = i == 0 && valores[0] == 0 ? Idioma.T("No") : valores[i].ToString();
         }
-        estilo.lapizForma = valores[0];
+        estilo.lapizHalo = valores[0];
         estilo.lapizGrano = valores[1];
         estilo.lapizDensidad = valores[2];
         estilo.lapizBorde = valores[3];
@@ -232,7 +233,7 @@ public class PanelLapiz : MonoBehaviour
         c.texturaLinea = 1;
         if (c.hebras > 1)
             c.hebras = 1;
-        c.lapizForma = valores[0];
+        c.lapizHalo = valores[0];
         c.lapizGrano = valores[1];
         c.lapizDensidad = valores[2];
         c.lapizBorde = valores[3];
@@ -260,7 +261,7 @@ public class PanelLapiz : MonoBehaviour
             {
                 c.texturaLinea = capaAntes.texturaLinea;
                 c.hebras = capaAntes.hebras;
-                c.lapizForma = capaAntes.lapizForma;
+                c.lapizHalo = capaAntes.lapizHalo;
                 c.lapizGrano = capaAntes.lapizGrano;
                 c.lapizDensidad = capaAntes.lapizDensidad;
                 c.lapizBorde = capaAntes.lapizBorde;

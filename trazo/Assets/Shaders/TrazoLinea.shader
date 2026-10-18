@@ -65,7 +65,6 @@ Shader "TrazoVR/Linea"
                 float lapiz       : TEXCOORD4; // v49: 1 = textura de lápiz
                 float3 grano      : TEXCOORD5; // v49: dónde está (en el dibujo) para el grano del papel
                 float4 ajusteLapiz : TEXCOORD6; // v52: grano, densidad, orilla borrosa, hervido (de 0 a 1; 0.55 = normal)
-                float formaLapiz  : TEXCOORD7; // v53: forma de los granitos (0 cuadritos, 1 redondos, 2 asteroides, 3 borrosos, 4 pelos)
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -129,60 +128,12 @@ Shader "TrazoVR/Linea"
                 o.ajusteLapiz = w > 0.5
                     ? float4(fmod(w, 10.0), floor(fmod(w / 10.0, 10.0)), floor(fmod(w / 100.0, 10.0)), floor(fmod(w / 10000.0, 10.0))) / 9.0
                     : float4(0.555, 0.555, 0.555, 0.555);
-                o.formaLapiz = w > 0.5 ? floor(fmod(w / 100000.0, 10.0)) : 1.0;
                 return o;
-            }
-
-            float Azar(float2 c)
-            {
-                return frac(sin(dot(c, float2(12.9898, 78.233))) * 43758.5453);
-            }
-
-            // v53: la FORMA de los granitos del papel. Devuelve de 0 (grafito) a 1 (papel limpio = hueco).
-            // 0 = cuadritos (el de antes), 1 = redondos, 2 = asteroides irregulares, 3 = borrosos, 4 = pelos a lo largo.
-            float GranitoPapel(float2 p, float tam, float cuadro, float forma, float2 alLargo)
-            {
-                if (forma < 0.5)
-                    return Azar(floor(p / (1.0 + tam * 3.0)) + cuadro * 1.7);
-                float s = lerp(3.0, 10.0, tam);                 // tamaño de cada granito (en pixeles)
-                float2 q = p;
-                if (forma > 3.5)
-                {
-                    // Pelos: celdas largas a lo largo del trazo y finas de lado.
-                    q = float2(dot(p, alLargo), dot(p, float2(-alLargo.y, alLargo.x))) / float2(3.5, 0.8);
-                }
-                float suave = (forma > 2.5 && forma < 3.5) ? 0.22 : 0.05;
-                float hueco = 1.0;
-                // Dos rejillas corridas media celda: los granitos se mezclan y no se nota la cuadrícula.
-                for (int k = 0; k < 2; k++)
-                {
-                    float2 g = q / s + k * 0.5;
-                    float2 c = floor(g) + cuadro * 1.7 + k * 17.0;
-                    float2 f = frac(g) - 0.5;
-                    float h1 = Azar(c);
-                    float h2 = Azar(c + 31.7);
-                    float h3 = Azar(c + 57.3);
-                    float2 d = f - (float2(h1, h2) - 0.5) * 0.35;
-                    float r = 0.18 + 0.2 * h3;
-                    if (forma > 1.5 && forma < 2.5)
-                    {
-                        float ang = atan2(d.y, d.x);
-                        r *= 1.0 + 0.3 * sin(3.0 * ang + h1 * 6.28) + 0.15 * sin(5.0 * ang + h2 * 6.28);
-                    }
-                    float grano = 1.0 - smoothstep(r - suave, r + suave, length(d));
-                    hueco = min(hueco, 1.0 - grano * (0.75 + 0.25 * h3));
-                }
-                if (forma > 2.5 && forma < 3.5)
-                    hueco += (Azar(floor(p) + cuadro) - 0.5) * 0.3;   // borrosos: la orilla se deshace en polvito
-                return 0.12 + hueco * 0.78;
             }
 
             half4 Frag(Varyings i) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
-                // v53: hacia dónde va la línea en la pantalla (para los granitos tipo pelo). Antes de cualquier "if".
-                float2 dirLugar = float2(ddx(i.lugar), ddy(i.lugar));
-                dirLugar = dot(dirLugar, dirLugar) > 1e-12 ? normalize(dirLugar) : float2(1.0, 0.0);
                 // Rebobinar (deshacer): lo que pasa del corte no se dibuja.
                 clip(_JCCorte - i.lugar);
                 float luz = saturate(dot(normalize(i.normalWS), normalize(float3(0.3, 0.9, -0.3))));
@@ -205,10 +156,11 @@ Shader "TrazoVR/Linea"
                     float presion = 0.72 + 0.28 * TrazoRuido(float3(largo * 0.012, 3.0, cuadro * 0.05));
                     float cuerpo = 1.0 - smoothstep(lerp(0.6, 0.02, aj.z), 1.0, borde);   // orilla más o menos borrosa
                     float densidad = cuerpo * presion * (0.45 + 0.4 * fibra + 0.25 * fibra2);
-                    // Granitos del papel (por pixel, cambian con el hervido).
-                    float granito = GranitoPapel(i.positionCS.xy, aj.x, cuadro, round(i.formaLapiz), dirLugar);
+                    // v54: SIN granitos (se veían de 8 bits): solo las FIBRAS a lo largo del trazo dan la orilla.
+                    // "Grano" ahora es qué tan finas son las fibras. El halo suave va aparte (detrás de la línea).
                     densidad *= lerp(0.7, 1.4, aj.y);                                     // más o menos grafito
-                    clip(densidad * 1.12 - granito * 0.8 - 0.02);
+                    float fino = TrazoRuido(float3(largo * lerp(0.05, 0.2, aj.x), i.lado * lerp(6.0, 30.0, aj.x), 23.0 + cuadro * 0.29));
+                    clip(densidad * 1.12 - 0.3 - fino * 0.2);
                     // Más oscuro donde hay más grafito; más claro en las orillas.
                     float tono = saturate(densidad * 1.15 - 0.05);
                     float3 claro = lerp(col, float3(0.6, 0.6, 0.62), 0.6);

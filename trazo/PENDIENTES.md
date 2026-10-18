@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v53***
+*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v54***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -16,6 +16,19 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 4. **Build And Run**.
 
 ---
+
+## 0+. Hecho en la v54 (falta probarlo en el visor)
+
+- [x] **El sello** para nombrar: tocar una palabra (se pega al índice) → tocar nodos o líneas (verdes) → **pellizco izquierdo y soltar = confirmar**. Tocar la palabra otra vez = cancelar.
+- [x] Otras formas: izquierda en Nodos + tocar la palabra (sigue al dedo; soltar la izquierda = cae), pellizco, **mirar y decir**, y el cuadrito azul con **las 3 palabras más probables** o el teclado.
+- [x] **Palabras que se gastan**: desaparecen de la lista al usarlas. De frente: ojo/ceja/oreja izquierda y derecha (a TU izquierda); de perfil: solas.
+- [x] **Sugerencias por zonas** (altura, lado, forma, parejas en espejo), distintas de frente y de perfil.
+- [x] **Idioma**: todo lo de la cabeza sigue el idioma de la app (también los nombres guardados).
+- [x] **Tutorial** de la cabeza: ya no salta al tocar las flechas y se puede mover.
+- [x] **Lápiz sin granos** (solo las fibras del centro) + **Halo** suave del color de la línea con palanca (0 = sin halo).
+- [x] **Cámara**: al volver a una capa de dibujo, regresas a donde estabas.
+- [ ] Ajustar las zonas con dibujos reales del usuario (proporciones de su estilo).
+- [ ] 3/4 como vista de partida (hoy: solo frente o perfil).
 
 ## 0+. Hecho en la v53 (falta probarlo en el visor)
 
