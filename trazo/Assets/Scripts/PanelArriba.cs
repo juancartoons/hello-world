@@ -672,6 +672,13 @@ public class PanelArriba : MonoBehaviour
             btnVolverArriba.etiqueta.gameObject.SetActive(ver);
     }
 
+    // v56: guarda la mesa (la función la esconde para que nada tape la escena).
+    public void GuardarMesa()
+    {
+        if (visible)
+            Seguirme();
+    }
+
     void Seguirme()
     {
         anclado = false;

@@ -838,3 +838,8 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - Trabajar solo en la rama `claude/trazo-vr`. No tocar la carpeta `unity/` ni la rama de la farmacia.
 - No hay compilador de Unity en la nube: revisar el código con mucho cuidado antes de subirlo.
 - Sonidos: probarlos primero en el simulador y pasarlos a la app cuando estén aprobados (las fórmulas son las mismas en `Sonidos.cs` y en el simulador).
+
+## v56
+- HECHO: LA FUNCIÓN (reproductor inmersivo tipo Quill): botón "Función" en el reloj y voz "función". Te pone en la cámara, reproduce en bucle, sigue a la cámara (cortes = salto), Salir junto a la mano izquierda.
+- PRÓXIMA: relleno de plastilina (inflado, huellas, bordes irregulares, boil opcional, sliders) + contador de "presupuesto" de rendimiento con consejos.
+- IDEA: importar SVG con los mismos nodos (Bézier exactas), relleno y grosor opcionales.

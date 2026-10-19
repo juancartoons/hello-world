@@ -444,7 +444,11 @@ public class PanelMuneca : MonoBehaviour
         if (contenido == null || btnColores == null)
             return;
         // SALIR: guarda y cierra el dibujo (queda una hoja nueva). Con la hoja en blanco, cierra la app.
-        btnSalir = BotonRec(contenido.transform, "Salir", new Vector3(0f, -0.139f, 0f), 0.06f);
+        btnSalir = BotonRec(contenido.transform, "Salir", new Vector3(0.032f, -0.139f, 0f), 0.058f);
+        // v56: LA FUNCIÓN (reproductor inmersivo) al lado de Salir.
+        var btnFuncion = BotonRec(contenido.transform, "Función", new Vector3(-0.032f, -0.139f, 0f), 0.058f);
+        btnFuncion.alTocar.AddListener(Funcion.Alternar);
+        BotonTocable.PonerNombre(btnFuncion, "Función");
         btnSalir.alTocar.AddListener(Salir);
         BotonTocable.PonerNombre(btnSalir, "Salir");
         // Copiar y pegar: dos iconos pequeñitos arriba, entre el ? y la X.
