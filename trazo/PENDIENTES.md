@@ -847,3 +847,8 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - HECHO: IMPORTAR SVG (Imagen + → SVG +, o voz "importar svg"): mismos nodos y tiradores (Q → C exacta, arcos aproximados), relleno, color de línea, grosor opcional, transformaciones, clases <style>, formas básicas. Busca en Descargas, Descargas/JCartoons y Descargas/JCartoons/SVG.
 - POR PROBAR: en Android 13+ puede que la app no vea .svg que no creó ella (permisos). Si pasa, hacer un selector de archivos del sistema (SAF).
 - FALTA: huecos de SVG (evenodd), textos, degradados.
+
+## v58
+- HECHO: CUCHILLO (Nodos + índice derecho rápido de ida y vuelta sobre un tramo) y voz "cortar aquí": cerrada se abre, abierta queda en dos.
+- HECHO: cabeza: silueta sin hueco detrás de la oreja (piezas del borde se estiran hasta la mitad del hueco, < 100°); partes con nombres distintos no se unen con el imán; mejilla izquierda/derecha (borde); al dictar salen solos los dibujitos y las palabras (tocar = dictar).
+- POR PROBAR: líneas que YA estaban unidas (borde + oreja) en dibujos viejos: usar el cuchillo para separarlas.

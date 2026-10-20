@@ -46,8 +46,10 @@ public class CabezaInvisible : MonoBehaviour
     };
     static readonly string[] CortasEn = { "mouth", "nose", "eye", "eyebrow", "ear", "outline", "cheek" };
     // Otras partes con nombre propio (para mostrarlas en inglés).
-    static readonly string[] OtrasEs = { "boca exterior", "cabeza arriba", "cuello", "cabello", "ojo 1", "ojo 2", "ceja 1", "ceja 2", "oreja 1", "oreja 2" };
-    static readonly string[] OtrasEn = { "outer mouth", "top of head", "neck", "hair", "eye 1", "eye 2", "eyebrow 1", "eyebrow 2", "ear 1", "ear 2" };
+    static readonly string[] OtrasEs = { "boca exterior", "cabeza arriba", "cuello", "cabello", "ojo 1", "ojo 2", "ceja 1", "ceja 2", "oreja 1", "oreja 2",
+                                         "mejilla izquierda", "mejilla derecha" };
+    static readonly string[] OtrasEn = { "outer mouth", "top of head", "neck", "hair", "eye 1", "eye 2", "eyebrow 1", "eyebrow 2", "ear 1", "ear 2",
+                                         "left cheek", "right cheek" };
     const string ClaveTutorial = "jcartoons_tuto_cabeza";
 
     public static string[] FrasesEs(int i)
@@ -106,6 +108,8 @@ public class CabezaInvisible : MonoBehaviour
         P("ojo", new[] { "ojo" }, new[] { "eye" }),
         P("ceja", new[] { "ceja" }, new[] { "eyebrow" }),
         P("mejilla", new[] { "mejilla" }, new[] { "cheek" }),
+        P("mejilla izquierda", new[] { "mejilla izquierda" }, new[] { "left cheek" }),
+        P("mejilla derecha", new[] { "mejilla derecha" }, new[] { "right cheek" }),
         P("cuello", new[] { "cuello" }, new[] { "neck" }),
         P("cabello", new[] { "cabello", "pelo" }, new[] { "hair" }),
         P("contorno", new[] { "contorno" }, new[] { "outline" }),
@@ -212,6 +216,19 @@ public class CabezaInvisible : MonoBehaviour
             instancia.AlCambiarNombres();
     }
 
+    // v58: dos líneas con partes DISTINTAS (por ejemplo "cabeza arriba" y "oreja") no se unen con el imán: cada parte
+    // queda en su línea y gira bien. Las que no tienen nombre se unen como siempre.
+    public static bool PuedenUnirse(Trazo a, int nodoA, Trazo b, int nodoB)
+    {
+        if (a == null || b == null)
+            return true;
+        string na = nodoA >= 0 && nodoA < a.nodos.Count ? a.NombreDeNodo(nodoA) : "";
+        string nb = nodoB >= 0 && nodoB < b.nodos.Count ? b.NombreDeNodo(nodoB) : "";
+        if (na.Length == 0 || nb.Length == 0)
+            return true;
+        return na == nb;
+    }
+
     // ---------- v55: QUÉ ES CADA NODO ----------
     enum Clase { Ninguna, Borde, PerfilCara, Nariz, Ojo, Boca, Oreja, Otro }
 
@@ -223,6 +240,9 @@ public class CabezaInvisible : MonoBehaviour
         if (n.StartsWith("boca exterior") || n == "outer mouth" || n.StartsWith("frente") || n == "forehead"
             || n.StartsWith("barbilla") || n == "chin")
             return Clase.PerfilCara;
+        // v58: las mejillas de los lados (de frente) son parte del borde, como la mandíbula.
+        if (n.StartsWith("mejilla izquierda") || n.StartsWith("mejilla derecha") || n == "left cheek" || n == "right cheek")
+            return Clase.Borde;
         if (n.Contains("cabeza arriba") || n.Contains("cráneo") || n.Contains("craneo") || n.Contains("nuca") || n.Contains("mandíbula")
             || n.Contains("mandibula") || n.Contains("contorno") || n.Contains("coronilla") || n.Contains("cabello") || n.Contains("pelo")
             || n.Contains("skull") || n.Contains("top of head") || n.Contains("jaw") || n.Contains("nape") || n.Contains("outline")
@@ -353,6 +373,7 @@ public class CabezaInvisible : MonoBehaviour
         public readonly List<bool> borde = new List<bool>();             // nodos de la silueta
         public readonly List<Vector2> orig = new List<Vector2>();        // cada nodo en tu dibujo
         public readonly List<float> ang = new List<float>();             // su ángulo alrededor del centro
+        public readonly List<float> angLleno = new List<float>();        // v58: el ángulo estirado (sin huecos en la silueta)
         public readonly List<Vector3> nodos = new List<Vector3>();       // sus nodos sobre el huevo
         public readonly List<Vector3> asaE = new List<Vector3>(), asaS = new List<Vector3>();  // punta de cada tirador
         public readonly List<bool> manual = new List<bool>();
@@ -885,9 +906,116 @@ public class CabezaInvisible : MonoBehaviour
                 lineas.Add(e);
             }
         }
+        LlenarHuecos();
         hayModelo = true;
         BorrarClones();
         return true;
+    }
+
+    // ---------- v58: SILUETA SIN HUECOS ----------
+    // De frente, las orejas cortan el borde (cabeza arriba / mejillas / mandíbula terminan donde empieza la oreja).
+    // Al girar, la oreja se va hacia el centro y ahí quedaba un HUECO detrás de ella. Ahora cada pieza del borde se
+    // estira (en ángulo) hasta la mitad del hueco que la separa de la pieza vecina: la silueta queda cerrada.
+    // Los huecos grandes (más de 100°, por ejemplo la cara en un dibujo de perfil) no se tocan.
+    class PiezaBorde
+    {
+        public Linea l;
+        public int a, b;
+        public float lo, hi, nlo, nhi;
+        public float[] un;
+    }
+
+    const float DosPi = Mathf.PI * 2f;
+
+    static float Vuelta(float x)
+    {
+        return Mathf.Repeat(x, DosPi);
+    }
+
+    static bool Cubre(PiezaBorde p, float ang)
+    {
+        return Vuelta(ang - p.lo) <= p.hi - p.lo;
+    }
+
+    void LlenarHuecos()
+    {
+        var piezas = new List<PiezaBorde>();
+        foreach (var l in lineas)
+        {
+            if (l.espejo)
+                continue;
+            int n = l.borde.Count;
+            int j = 0;
+            while (j < n)
+            {
+                if (!l.borde[j])
+                {
+                    j++;
+                    continue;
+                }
+                int a = j;
+                while (j + 1 < n && l.borde[j + 1])
+                    j++;
+                int b = j;
+                j++;
+                var un = new float[b - a + 1];
+                float acc = l.ang[a];
+                un[0] = acc;
+                for (int k = a + 1; k <= b; k++)
+                {
+                    acc += Mathf.DeltaAngle(l.ang[k - 1] * Mathf.Rad2Deg, l.ang[k] * Mathf.Rad2Deg) * Mathf.Deg2Rad;
+                    un[k - a] = acc;
+                }
+                float lo = Mathf.Min(un[0], un[un.Length - 1]), hi = Mathf.Max(un[0], un[un.Length - 1]);
+                foreach (var u in un)
+                {
+                    lo = Mathf.Min(lo, u);
+                    hi = Mathf.Max(hi, u);
+                }
+                if (hi - lo >= DosPi - 0.05f)
+                    continue;   // ya da la vuelta completa
+                float corrido = Vuelta(lo) - lo;
+                for (int k = 0; k < un.Length; k++)
+                    un[k] += corrido;
+                piezas.Add(new PiezaBorde { l = l, a = a, b = b, lo = lo + corrido, hi = hi + corrido, nlo = lo + corrido, nhi = hi + corrido, un = un });
+            }
+        }
+        const float HuecoMaximo = 100f * Mathf.Deg2Rad;
+        foreach (var p in piezas)
+        {
+            // Hacia adelante (desde hi): la pieza más cercana que empieza después.
+            bool cubiertoHi = false, cubiertoLo = false;
+            float mejorAdelante = float.MaxValue, mejorAtras = float.MaxValue;
+            foreach (var o in piezas)
+            {
+                if (o == p)
+                    continue;
+                if (Cubre(o, p.hi + 0.01f))
+                    cubiertoHi = true;
+                if (Cubre(o, p.lo - 0.01f))
+                    cubiertoLo = true;
+                mejorAdelante = Mathf.Min(mejorAdelante, Vuelta(o.lo - p.hi));
+                mejorAtras = Mathf.Min(mejorAtras, Vuelta(p.lo - o.hi));
+            }
+            if (piezas.Count == 1)
+            {
+                mejorAdelante = Vuelta(p.lo - p.hi);
+                mejorAtras = mejorAdelante;
+            }
+            if (!cubiertoHi && mejorAdelante > 0.02f && mejorAdelante < HuecoMaximo)
+                p.nhi = p.hi + mejorAdelante * 0.5f;
+            if (!cubiertoLo && mejorAtras > 0.02f && mejorAtras < HuecoMaximo)
+                p.nlo = p.lo - mejorAtras * 0.5f;
+        }
+        foreach (var p in piezas)
+        {
+            float largo = p.hi - p.lo;
+            for (int k = 0; k < p.un.Length; k++)
+            {
+                float u = largo > 1e-5f ? (p.un[k] - p.lo) / largo : 0.5f;
+                p.l.angLleno[p.a + k] = p.nlo + u * (p.nhi - p.nlo);
+            }
+        }
     }
 
     // Volver a mirar qué es cada línea (después de nombrar algo), sin perder el giro.
@@ -958,6 +1086,7 @@ public class CabezaInvisible : MonoBehaviour
             l.borde.Add(info[j].borde);
             l.orig.Add(q);
             l.ang.Add(Mathf.Atan2(q.y, q.x));
+            l.angLleno.Add(Mathf.Atan2(q.y, q.x));
             l.nodos.Add(Espejar(l, Mapear(info[j], q)));
             l.prof.Add(Vector3.Dot(m - centro, haciaTi));
             bool man = j < t.asaManual.Count && t.asaManual[j];
@@ -1218,6 +1347,7 @@ public class CabezaInvisible : MonoBehaviour
         if (dibujo == null && control != null)
             dibujo = control.dibujo;
         ActualizarCartelDictado();
+        VocabularioDictado();
         if (estado == Estado.Nada || control == null || dibujo == null)
             return;
         bool palabra = RevisarPalabras();
@@ -1412,7 +1542,7 @@ public class CabezaInvisible : MonoBehaviour
         {
             if (l.borde[j] && !l.espejo)
             {
-                Vector2 p = Vector2.Lerp(l.orig[j], EnSilueta(l.ang[j]), w);
+                Vector2 p = Vector2.Lerp(l.orig[j], EnSilueta(l.angLleno[j]), w);
                 pos[j] = new Vector3(p.x, p.y, 0f);
                 vis[j] = true;
             }
@@ -2079,17 +2209,21 @@ public class CabezaInvisible : MonoBehaviour
     static readonly Color ColAzul = new Color(0.2f, 0.45f, 0.95f), ColMorado = new Color(0.55f, 0.3f, 0.85f),
         ColLila = new Color(0.78f, 0.45f, 0.95f), ColVerde = new Color(0.2f, 0.65f, 0.3f), ColGris = new Color(0.3f, 0.3f, 0.36f),
         ColCafe = new Color(0.55f, 0.32f, 0.15f), ColNaranja = new Color(1f, 0.55f, 0.1f), ColRojo = new Color(0.9f, 0.2f, 0.2f),
-        ColRosa = new Color(1f, 0.4f, 0.7f), ColCeleste = new Color(0.25f, 0.72f, 1f), ColTurquesa = new Color(0.1f, 0.62f, 0.66f);
+        ColRosa = new Color(1f, 0.4f, 0.7f), ColCeleste = new Color(0.25f, 0.72f, 1f), ColTurquesa = new Color(0.1f, 0.62f, 0.66f),
+        ColMejilla = new Color(0.9f, 0.45f, 0.3f);
 
     // La maqueta de frente (x de -1 a 1, y de -1 a 1).
     static List<ParteDibujo> DibujoFrente()
     {
-        var mandibula = new[] { new Vector2(-0.8f, 0.05f), new Vector2(-0.76f, -0.35f), new Vector2(-0.58f, -0.68f), new Vector2(-0.3f, -0.88f) };
+        var mejilla = new[] { new Vector2(-0.8f, 0.05f), new Vector2(-0.79f, -0.15f), new Vector2(-0.76f, -0.35f) };
+        var mandibula = new[] { new Vector2(-0.76f, -0.35f), new Vector2(-0.58f, -0.68f), new Vector2(-0.3f, -0.88f) };
         var oreja = new[] { new Vector2(-0.8f, 0.02f), new Vector2(-0.96f, 0f), new Vector2(-0.98f, -0.18f), new Vector2(-0.9f, -0.32f), new Vector2(-0.79f, -0.33f) };
         var ceja = new[] { new Vector2(-0.55f, 0.32f), new Vector2(-0.35f, 0.4f), new Vector2(-0.15f, 0.33f) };
         return new List<ParteDibujo>
         {
             PD("cabeza arriba", ColAzul, Arco(0f, 0.05f, 0.8f, 0.95f, 0f, 180f, 16)),
+            PD("mejilla izquierda", ColMejilla, mejilla),
+            PD("mejilla derecha", new Color(0.95f, 0.6f, 0.45f), Espejo(mejilla)),
             PD("mandíbula", ColMorado, mandibula, Espejo(mandibula)),
             PD("barbilla", ColLila, new[] { new Vector2(-0.3f, -0.88f), new Vector2(0f, -0.96f), new Vector2(0.3f, -0.88f) }),
             PD("oreja izquierda", ColVerde, oreja),
@@ -2250,7 +2384,15 @@ public class CabezaInvisible : MonoBehaviour
     HashSet<string> Usadas()
     {
         var u = new HashSet<string>();
-        foreach (var t in Originales())
+        var lista = Originales();
+        if (estado == Estado.Nada && Dictando && dibujo != null)
+        {
+            lista = new List<Trazo>();
+            foreach (var t in dibujo.trazos)
+                if (t != null && t.capa == capaDictado)
+                    lista.Add(t);
+        }
+        foreach (var t in lista)
             foreach (var n in t.nombresNodo)
             {
                 if (string.IsNullOrEmpty(n))
@@ -2259,6 +2401,14 @@ public class CabezaInvisible : MonoBehaviour
                 u.Add(dos >= 0 ? n.Substring(dos + 1) : n);
             }
         return u;
+    }
+
+    // La palabra "en la mano": la del sello, o (v58) la parte que estás dictando.
+    bool EnMano(string palabra)
+    {
+        if (modoPalabra != ModoPalabra.Nada && palabraEnMano == palabra)
+            return true;
+        return estado == Estado.Nada && Dictando && parteDictada == palabra;
     }
 
     void RefrescarVocabulario()
@@ -2271,7 +2421,7 @@ public class CabezaInvisible : MonoBehaviour
         {
             e.t.text = Mostrar(e.palabra);
             Color c = e.t.color;
-            bool enMano = modoPalabra != ModoPalabra.Nada && palabraEnMano == e.palabra;
+            bool enMano = EnMano(e.palabra);
             c.a = enMano ? 1f : usadas.Contains(e.palabra) ? 0.35f : 1f;
             e.t.color = c;
             e.t.fontSizeMax = enMano ? 0.08f : 0.06f;
@@ -2303,7 +2453,7 @@ public class CabezaInvisible : MonoBehaviour
             int col = i % 3, fila = i / 3;
             e.t.transform.localPosition = new Vector3(-ancho + col * ancho, y0 - fila * 0.011f, -0.001f);
             e.t.text = Mostrar(sobran[i]);
-            bool enMano = modoPalabra != ModoPalabra.Nada && palabraEnMano == sobran[i];
+            bool enMano = EnMano(sobran[i]);
             e.t.color = enMano ? new Color(0.15f, 0.65f, 0.3f) : new Color(0.2f, 0.2f, 0.28f);
         }
         int filas = Mathf.CeilToInt(sobran.Count / 3f);
@@ -2842,6 +2992,19 @@ public class CabezaInvisible : MonoBehaviour
 
     void ArmarPanel()
     {
+        CrearRaiz();
+        panel.gameObject.SetActive(true);
+        raiz.gameObject.SetActive(true);
+        Vector3 pos = centro + arriba * (centro2D.y - semiY - 0.06f) + derecha * centro2D.x + haciaTi * 0.02f;
+        panel.SetPositionAndRotation(pos, Quaternion.LookRotation(-haciaTi, arriba));
+        ArmarVocabulario();
+        ColocarVocabulario();
+        RefrescarBotonGira();
+        sucio = true;
+    }
+
+    void CrearRaiz()
+    {
         if (raiz == null)
         {
             raiz = new GameObject("VistaCabeza").transform;
@@ -2876,13 +3039,64 @@ public class CabezaInvisible : MonoBehaviour
             Boton(filaGiro, "Nueva cabeza", new Vector3(0.1f, -0.016f, 0f), 0.06f, false, () => { Desesconder(); Empezar(); });
             Boton(filaGiro, "Cerrar", new Vector3(0.155f, -0.016f, 0f), 0.044f, false, Cerrar);
         }
-        raiz.gameObject.SetActive(true);
-        Vector3 pos = centro + arriba * (centro2D.y - semiY - 0.06f) + derecha * centro2D.x + haciaTi * 0.02f;
-        panel.SetPositionAndRotation(pos, Quaternion.LookRotation(-haciaTi, arriba));
-        ArmarVocabulario();
-        ColocarVocabulario();
-        RefrescarBotonGira();
-        sucio = true;
+    }
+
+    // ---------- v58: AL DICTAR, los dibujitos y las palabras salen solos (sin los botones) ----------
+    // Aparecen a tu derecha al decir "cara de perfil" / "cara de frente". La parte que dictas se ve más grande; las
+    // que ya dibujaste, clarito. Tocar una palabra con el índice derecho = dictarla (sin hablar).
+    bool vocabDictado;
+    float proximoVocab;
+    string toqueDictado = "";
+
+    void VocabularioDictado()
+    {
+        bool ver = Dictando && estado == Estado.Nada && control != null && control.Cabeza != null && dibujo != null;
+        if (!ver)
+        {
+            if (vocabDictado)
+            {
+                vocabDictado = false;
+                if (estado == Estado.Nada && raiz != null)
+                    raiz.gameObject.SetActive(false);
+            }
+            return;
+        }
+        if (!vocabDictado)
+        {
+            vocabDictado = true;
+            CrearRaiz();
+            raiz.gameObject.SetActive(true);
+            panel.gameObject.SetActive(false);
+            ArmarVocabulario();
+            // A tu derecha, un poco abajo, mirándote.
+            var cab = control.Cabeza;
+            Vector3 adelante = Vector3.ProjectOnPlane(cab.forward, Vector3.up);
+            if (adelante.sqrMagnitude < 1e-4f)
+                adelante = Vector3.forward;
+            adelante.Normalize();
+            Vector3 der = Vector3.Cross(Vector3.up, adelante).normalized;
+            Vector3 pos = cab.position + adelante * 0.55f + der * 0.32f + Vector3.up * 0.05f;
+            vocabulario.SetPositionAndRotation(pos, Quaternion.LookRotation(pos - cab.position, Vector3.up));
+            vocabulario.gameObject.SetActive(true);
+            proximoVocab = 0f;
+        }
+        if (Time.time >= proximoVocab)
+        {
+            proximoVocab = Time.time + 0.3f;
+            RefrescarVocabulario();
+        }
+        // Tocar una palabra = dictarla.
+        var mano = control.Der;
+        string w = mano.valida ? PalabraEn(mano.indice, 0.009f) : null;
+        if (w != null && w != toqueDictado)
+        {
+            if (DictarParte(w))
+            {
+                control.SonidoBurbuja(mano.indice);
+                proximoVocab = 0f;
+            }
+        }
+        toqueDictado = w ?? "";
     }
 
     BotonTocable Boton(List<GameObject> fila, string texto, Vector3 pos, float ancho, bool oscuro, UnityEngine.Events.UnityAction accion)

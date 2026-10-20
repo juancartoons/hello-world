@@ -69,6 +69,7 @@ public partial class ControlManos
     // Al entrar al modo nodos.
     void EmpezarModoNodos()
     {
+        ReiniciarCuchillo();
         dedoListoNodos = false;
         esperarSalirLinea = false;
         moviendoGrupo = false;
@@ -111,6 +112,13 @@ public partial class ControlManos
             return;
         }
         Vector3 punta = Der.indice;
+
+        // v58: EL CUCHILLO (ida y vuelta rápida cruzando un tramo = se corta). Ver ControlManosCuchillo.cs.
+        if (RevisarCuchillo(punta, telaTrazo != null || moviendoGrupo || arrastre != Objetivo.Nada || lazo.Count > 0))
+        {
+            MostrarModoNodos(true, dibujo.Seleccion);
+            return;
+        }
 
         // 1. Algo agarrado: sigue al dedo (se suelta al abrir la mano izquierda; la tela pellizcada, al abrir el pellizco).
         if (telaTrazo != null)

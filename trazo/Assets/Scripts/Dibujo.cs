@@ -1352,9 +1352,12 @@ public class Dibujo : MonoBehaviour
         {
             Trazo otro;
             int extremo;
-            if (BuscarExtremo(t.nodos[t.nodos.Count - 1], t, out otro, out extremo))
+            // v58: partes distintas de la cabeza ("cabeza arriba" y "oreja"...) no se unen.
+            if (BuscarExtremo(t.nodos[t.nodos.Count - 1], t, out otro, out extremo)
+                && CabezaInvisible.PuedenUnirse(t, t.nodos.Count - 1, otro, extremo == 0 ? 0 : otro.nodos.Count - 1))
                 Unir(t, 1, otro, extremo);
-            if (BuscarExtremo(t.nodos[0], t, out otro, out extremo))
+            if (BuscarExtremo(t.nodos[0], t, out otro, out extremo)
+                && CabezaInvisible.PuedenUnirse(t, 0, otro, extremo == 0 ? 0 : otro.nodos.Count - 1))
                 Unir(t, 0, otro, extremo);
             // Si al unirse las puntas quedaron juntas (por ejemplo, un triángulo de rectas), se cierra.
             int m = t.nodos.Count;
@@ -1685,6 +1688,111 @@ public class Dibujo : MonoBehaviour
         a.Reconstruir();
         Mensaje("Líneas unidas");
         Avisar();
+    }
+
+    // ---------- v58: CORTAR un tramo (el cuchillo, o "cortar aquí") ----------
+
+    // El tramo (entre dos nodos) más cercano a ese punto (local), dentro de "radio" (local). Solo líneas editables.
+    public bool TramoCercano(Vector3 local, float radio, out Trazo encontrado, out int segmento)
+    {
+        encontrado = null;
+        segmento = -1;
+        float mejor = radio;
+        foreach (var t in trazos)
+        {
+            if (!Editable(t) || t.nodos.Count < 2)
+                continue;
+            Bounds b;
+            if (t.Limites(out b))
+            {
+                b.Expand(radio * 2f);
+                if (!b.Contains(local))
+                    continue;
+            }
+            int seg;
+            float u, d;
+            if (t.PuntoEnCurva(local, out seg, out u, out d) && d < mejor)
+            {
+                mejor = d;
+                encontrado = t;
+                segmento = seg;
+            }
+        }
+        return encontrado != null;
+    }
+
+    // Quita la línea entre el nodo "segmento" y el siguiente. Cerrada: se abre ahí. Abierta: quedan dos líneas.
+    // Cada parte conserva su color, grosor, estilo, relleno (como relleno abierto) y los nombres de sus nodos.
+    public bool CortarTramo(Trazo t, int segmento)
+    {
+        if (t == null || !trazos.Contains(t))
+            return false;
+        int n = t.nodos.Count;
+        if (n < 2 || segmento < 0 || segmento >= (t.cerrado ? n : n - 1))
+            return false;
+        GuardarParaDeshacer();
+        var d = t.CrearDatos();
+        var nombres = NombresPorNodo(t);
+        if (t.cerrado)
+        {
+            var abierta = SubDatos(d, nombres, (segmento + 1) % n, n, n);
+            t.AplicarPropiedades(abierta);
+            t.AplicarPose(abierta, null, 0f);
+        }
+        else
+        {
+            var a = SubDatos(d, nombres, 0, segmento + 1, n);
+            var b = SubDatos(d, nombres, segmento + 1, n - segmento - 1, n);
+            if (a.nodos.Count >= 2)
+            {
+                t.AplicarPropiedades(a);
+                t.AplicarPose(a, null, 0f);
+            }
+            else
+            {
+                QuitarDeLaLista(t);
+            }
+            if (b.nodos.Count >= 2)
+            {
+                b.id = 0;
+                int capaAntes = capaActual;
+                capaActual = t != null ? t.capa : capaActual;
+                AgregarTrazo(b);
+                capaActual = capaAntes;
+            }
+        }
+        Trazo.huboCambio = false;
+        HayCambios = true;
+        Avisar();
+        Mensaje("Línea cortada");
+        return true;
+    }
+
+    static DatosTrazo SubDatos(DatosTrazo d, string[] nombres, int desde, int cuantos, int n)
+    {
+        var r = JsonUtility.FromJson<DatosTrazo>(JsonUtility.ToJson(d));
+        r.nodos.Clear();
+        r.asaEntrada.Clear();
+        r.asaSalida.Clear();
+        r.asaManual.Clear();
+        r.grosorNodo.Clear();
+        r.nombresNodo = new List<string>();
+        r.telaBase = new List<Vector3>();
+        r.telaMovida = new List<Vector3>();
+        for (int k = 0; k < cuantos; k++)
+        {
+            int i = (desde + k) % n;
+            r.nodos.Add(d.nodos[i]);
+            r.asaEntrada.Add(i < d.asaEntrada.Count ? d.asaEntrada[i] : Vector3.zero);
+            r.asaSalida.Add(i < d.asaSalida.Count ? d.asaSalida[i] : Vector3.zero);
+            r.asaManual.Add(i < d.asaManual.Count && d.asaManual[i]);
+            r.grosorNodo.Add(i < d.grosorNodo.Count ? d.grosorNodo[i] : 1f);
+            if (i < nombres.Length && !string.IsNullOrEmpty(nombres[i]))
+                r.nombresNodo.Add(k + ":" + nombres[i]);
+        }
+        r.cerrado = false;
+        r.rellenoAbierto = d.relleno;
+        return r;
     }
 
     static string[] NombresPorNodo(Trazo t)
