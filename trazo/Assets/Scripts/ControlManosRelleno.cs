@@ -117,17 +117,49 @@ public partial class ControlManos
 
     void ElegirTextura(int textura, int velocidad)
     {
+        // v57: la plastilina empieza quieta (el "hervido" stop-motion es opcional: palanca Hervido).
+        if (textura == Trazo.TexturaPlastilina && TexturaElegida != Trazo.TexturaPlastilina)
+            velocidad = 0;
         texturaElegida = Mathf.Clamp(textura, 0, Trazo.NombresTextura.Length - 1);
         velocidadTexturaElegida = Mathf.Clamp(velocidad, 0, Trazo.VelocidadesTextura.Length - 1);
         PlayerPrefs.SetInt(ClaveTextura, texturaElegida);
         PlayerPrefs.SetInt(ClaveVelocidadTextura, velocidadTexturaElegida);
         PlayerPrefs.Save();
         string nombre = NombreTexturaElegida();
+        if (texturaElegida == Trazo.TexturaPlastilina)
+        {
+            PanelPlastilina.Abrir();
+            int nPl = dibujo.TexturaEnElegidas(texturaElegida, velocidadTexturaElegida, EscalaTexturaElegida);
+            dibujo.Mensaje(nPl > 0 ? "Plastilina: " + nPl + " figuras" : "Plastilina: dibuja una figura cerrada y se infla sola (o toca dentro de una con Relleno abierto)");
+            return;
+        }
+        PanelPlastilina.Cerrar();
         int n = dibujo.TexturaEnElegidas(texturaElegida, velocidadTexturaElegida, EscalaTexturaElegida);
         if (n > 0)
             dibujo.Mensaje("Relleno vivo: " + nombre + (n > 1 ? " (" + n + " figuras)" : ""));
         else
             dibujo.Mensaje("Relleno vivo: " + nombre + ". Toca dentro de una figura (o usa la cubeta)");
+    }
+
+    // v57: PLASTILINA elegida: una figura recién cerrada se rellena (con el color del relleno) y se infla sola.
+    public void PlastilinaAlCerrar(Trazo t)
+    {
+        if (t == null || TexturaElegida != Trazo.TexturaPlastilina)
+            return;
+        dibujo.RellenarConColor(t, ColorDeRelleno, Trazo.TexturaPlastilina, VelocidadTexturaElegida, EscalaTexturaElegida);
+    }
+
+    // v57: el "hervido" del panel de plastilina es la velocidad de la textura.
+    public void ElegirVelocidadPlastilina(int velocidad)
+    {
+        velocidadTexturaElegida = Mathf.Clamp(velocidad, 0, Trazo.VelocidadesTextura.Length - 1);
+        PlayerPrefs.SetInt(ClaveVelocidadTextura, velocidadTexturaElegida);
+    }
+
+    // v57: "plastilina" (voz): la elige y abre sus palancas.
+    public void ElegirPlastilina()
+    {
+        ElegirTextura(Trazo.TexturaPlastilina, VelocidadTexturaElegida);
     }
 
     string NombreTexturaElegida()

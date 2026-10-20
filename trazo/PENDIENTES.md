@@ -841,5 +841,9 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ## v56
 - HECHO: LA FUNCIÓN (reproductor inmersivo tipo Quill): botón "Función" en el reloj y voz "función". Te pone en la cámara, reproduce en bucle, sigue a la cámara (cortes = salto), Salir junto a la mano izquierda.
-- PRÓXIMA: relleno de plastilina (inflado, huellas, bordes irregulares, boil opcional, sliders) + contador de "presupuesto" de rendimiento con consejos.
-- IDEA: importar SVG con los mismos nodos (Bézier exactas), relleno y grosor opcionales.
+
+## v57
+- HECHO: PLASTILINA (textura 4 del relleno): figura cerrada → se rellena e infla sola (dos caras), luz mate, bordes irregulares, huellas, hervido opcional; panel de palancas (Inflado, Huellas, Bordes, Hervido, Línea del borde); medidor de PRESUPUESTO del Quest 2 (40 000 puntos seguros) + avisos con consejos. Voz "plastilina".
+- HECHO: IMPORTAR SVG (Imagen + → SVG +, o voz "importar svg"): mismos nodos y tiradores (Q → C exacta, arcos aproximados), relleno, color de línea, grosor opcional, transformaciones, clases <style>, formas básicas. Busca en Descargas, Descargas/JCartoons y Descargas/JCartoons/SVG.
+- POR PROBAR: en Android 13+ puede que la app no vea .svg que no creó ella (permisos). Si pasa, hacer un selector de archivos del sistema (SAF).
+- FALTA: huecos de SVG (evenodd), textos, degradados.

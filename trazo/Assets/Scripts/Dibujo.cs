@@ -46,6 +46,11 @@ public class DatosTrazo
     public EstiloTrazo estiloTrazo;
     // v52: nombres de nodos ("punta de nariz"...) para la cabeza invisible: "índice:nombre".
     public List<string> nombresNodo = new List<string>();
+    // v57: plastilina (textura 4 del relleno): inflado, huellas, bordes irregulares y si se ve la línea del borde.
+    public float plastiInflado;
+    public float plastiHuellas;
+    public float plastiIrregular;
+    public bool sinBorde;
 }
 
 [System.Serializable]
@@ -833,7 +838,7 @@ public class Dibujo : MonoBehaviour
             return;
         Trazo.verInvisibles = ver;
         foreach (var t in trazos)
-            if (t != null && t.Invisible)
+            if (t != null && (t.Invisible || t.sinBorde))
                 t.Reconstruir(true);
     }
 
@@ -851,7 +856,10 @@ public class Dibujo : MonoBehaviour
             return;
         GuardarParaDeshacer();
         t.degradado = 0;   // v49: rellenar con un color quita el degradado (RellenarDegradado lo vuelve a poner)
+        bool eraPlastilina = t.relleno && t.texturaRelleno == Trazo.TexturaPlastilina;
         t.texturaRelleno = Mathf.Clamp(textura, 0, Trazo.NombresTextura.Length - 1);
+        if (t.texturaRelleno == Trazo.TexturaPlastilina && !eraPlastilina)
+            Plastilina.PorDefecto(t);
         t.velocidadTextura = Mathf.Clamp(velocidad, 0, Trazo.VelocidadesTextura.Length - 1);
         t.escalaTextura = Trazo.LimitarEscala(escala);
         if (c.a < 0.01f)
@@ -870,6 +878,8 @@ public class Dibujo : MonoBehaviour
         Trazo.huboCambio = false;
         HayCambios = true;
         Avisar();
+        if (t.EsPlastilina)
+            Plastilina.Revisar(this);
     }
 
     // El color del RELLENO de varias figuras a la vez (las cerradas o las que ya tienen relleno).
@@ -1357,6 +1367,9 @@ public class Dibujo : MonoBehaviour
         // v36: un destello la recorre de punta a punta (si al unirse quedó dentro de otra, no hace falta).
         if (t != null && trazos.Contains(t))
             EfectosLinea.Materializar(t);
+        // v57: con la PLASTILINA elegida, la figura cerrada se rellena e infla sola.
+        if (t != null && trazos.Contains(t) && t.cerrado && t.texturaRelleno != Trazo.TexturaPlastilina && ControlManos.Instancia != null)
+            ControlManos.Instancia.PlastilinaAlCerrar(t);
         Avisar();
     }
 
@@ -1659,6 +1672,10 @@ public class Dibujo : MonoBehaviour
             a.texturaRelleno = b.texturaRelleno;
             a.velocidadTextura = b.velocidadTextura;
             a.escalaTextura = b.escalaTextura;
+            a.plastiInflado = b.plastiInflado;
+            a.plastiHuellas = b.plastiHuellas;
+            a.plastiIrregular = b.plastiIrregular;
+            a.sinBorde = b.sinBorde;
             a.telaBase.Clear();
             a.telaBase.AddRange(b.telaBase);
             a.telaMovida.Clear();

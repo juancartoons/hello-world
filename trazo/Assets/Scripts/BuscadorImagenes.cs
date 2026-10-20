@@ -855,7 +855,10 @@ public class BuscadorImagenes : MonoBehaviour
         }
         var btnCerrar = Boton(raiz, "X", new Vector3(0.295f, 0.205f, 0f), new Vector2(0.024f, 0.022f));
         btnCerrar.alTocar.AddListener(Cerrar);
-        textoAyuda = Texto(raiz, "Toca una imagen para verla en grande, o pellízcala y sácala del panel", new Vector3(0f, 0.172f, -0.002f), new Vector2(0.56f, 0.018f), 0.12f);
+        textoAyuda = Texto(raiz, "Toca una imagen para verla en grande, o pellízcala y sácala del panel", new Vector3(-0.06f, 0.172f, -0.002f), new Vector2(0.44f, 0.018f), 0.12f);
+        // v57: SVG: dibujos vectoriales de Descargas → líneas tuyas, con los mismos nodos.
+        var btnSvg = Boton(raiz, "SVG +", new Vector3(0.235f, 0.172f, 0f), new Vector2(0.1f, 0.022f));
+        btnSvg.alTocar.AddListener(() => { Cerrar(); ImportadorSvg.Abrir(); });
 
         grilla = new GameObject("Grilla");
         grilla.transform.SetParent(raiz, false);

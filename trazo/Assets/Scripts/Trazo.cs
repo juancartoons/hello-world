@@ -151,7 +151,15 @@ public class Trazo : MonoBehaviour
     public static readonly float[] TamanosTextura = { 0.5f, 1f, 2f, 4f };
     public static float LimitarEscala(float e) => Mathf.Clamp(e > 0f ? e : 1f, EscalaTexturaMin, EscalaTexturaMax);
     public static readonly float[] VelocidadesTextura = { 0f, 2f, 4f, 8f }; // cambios por segundo (0 = quieto)
-    public static readonly string[] NombresTextura = { "Liso", "Facetas", "Manchas", "Pinceladas" };
+    public static readonly string[] NombresTextura = { "Liso", "Facetas", "Manchas", "Pinceladas", "Plastilina" };
+    // v57: PLASTILINA (textura 4): el relleno se infla como una almohadita, con luz suave, huellas y bordes irregulares.
+    public const int TexturaPlastilina = 4;
+    public float plastiInflado = 0.55f;     // 0.05 (plano) .. 1.5 (globo)
+    public float plastiHuellas = 0.5f;      // 0 .. 1
+    public float plastiIrregular = 0.5f;    // 0 .. 1 (bordes hechos a mano)
+    public bool sinBorde;                   // la línea del borde no se ve (solo la plastilina)
+    public bool EsPlastilina => relleno && texturaRelleno == TexturaPlastilina;
+    public int VerticesRelleno => mallaRelleno != null && rellenoRenderer != null && rellenoRenderer.gameObject.activeSelf ? mallaRelleno.vertexCount : 0;
     public static readonly string[] NombresVelocidadTextura = { "Quieto", "Lento", "Medio", "Rápido" };
 
     // ---------- Puntos de TELA (relieve suave dentro del relleno) ----------
@@ -380,6 +388,10 @@ public class Trazo : MonoBehaviour
         // escalaTextura 0 = archivo de antes: usa su escalón.
         escalaTextura = d.escalaTextura > 0f ? LimitarEscala(d.escalaTextura)
                                              : TamanosTextura[Mathf.Clamp(d.tamanoTextura, 0, TamanosTextura.Length - 1)];
+        plastiInflado = d.plastiInflado > 0f ? d.plastiInflado : 0.55f;
+        plastiHuellas = Mathf.Clamp01(d.plastiHuellas);
+        plastiIrregular = Mathf.Clamp01(d.plastiIrregular);
+        sinBorde = d.sinBorde;
     }
 
     // El escalón visual de frente/fondo (lo pone el Dibujo). Rehace la malla solo si cambió.
@@ -403,6 +415,8 @@ public class Trazo : MonoBehaviour
         escala = LimitarEscala(escala);
         if (textura == texturaRelleno && velocidad == velocidadTextura && Mathf.Abs(escala - escalaTextura) < 1e-4f)
             return;
+        if (textura == TexturaPlastilina && texturaRelleno != TexturaPlastilina)
+            Plastilina.PorDefecto(this);
         texturaRelleno = textura;
         velocidadTextura = velocidad;
         escalaTextura = escala;
@@ -914,6 +928,10 @@ public class Trazo : MonoBehaviour
             velocidadTextura = velocidadTextura,
             escalaTextura = escalaTextura,
             tamanoTextura = EscalonMasCercano(escalaTextura),
+            plastiInflado = plastiInflado,
+            plastiHuellas = plastiHuellas,
+            plastiIrregular = plastiIrregular,
+            sinBorde = sinBorde,
             telaBase = new List<Vector3>(telaBase),
             telaMovida = new List<Vector3>(telaMovida)
         };
@@ -1061,7 +1079,7 @@ public class Trazo : MonoBehaviour
     {
         AsegurarMalla();
         var mr = GetComponent<MeshRenderer>();
-        bool sinLinea = oculto || (Invisible && !verInvisibles);
+        bool sinLinea = oculto || (Invisible && !verInvisibles) || (sinBorde && EsPlastilina && crudos.Count == 0 && !verInvisibles);
         if (mr != null && mr.forceRenderingOff != sinLinea)
             mr.forceRenderingOff = sinLinea;
         if (rellenoRenderer != null && rellenoRenderer.forceRenderingOff != oculto)
@@ -1333,8 +1351,15 @@ public class Trazo : MonoBehaviour
         vertices.Clear();
         indices.Clear();
         colores.Clear();
+        // v57: plastilina: la almohadita inflada (por delante y por detrás).
+        bool plast = texturaRelleno == TexturaPlastilina && !Dibujando && ArmarPlastilina(vertices, indices);
+        if (!plast)
+        {
+            vertices.Clear();
+            indices.Clear();
+        }
         // Con puntos de tela: una malla más fina que se dobla. Si no, la de siempre (pocos triángulos).
-        if (!(TieneTela && !Dibujando && ArmarMallaTela(vertices, indices)))
+        if (!plast && !(TieneTela && !Dibujando && ArmarMallaTela(vertices, indices)))
         {
             vertices.Clear();
             indices.Clear();
@@ -1368,6 +1393,8 @@ public class Trazo : MonoBehaviour
         uvsRelleno2.Clear();
         // Relleno vivo: cada punto sabe dónde está en el plano de la figura (para las texturas).
         float textura = Mathf.Clamp(texturaRelleno, 0, NombresTextura.Length - 1);
+        if (texturaRelleno == TexturaPlastilina)
+            textura = plast ? 4f + Mathf.Clamp01(plastiHuellas) * 0.9f : 0f;   // la shader lee las huellas de aquí
         float cambios = VelocidadesTextura[Mathf.Clamp(velocidadTextura, 0, VelocidadesTextura.Length - 1)];
         float semilla = (id % 97) * 0.731f;
         float porEscala = 1f / LimitarEscala(escalaTextura);
@@ -1401,7 +1428,243 @@ public class Trazo : MonoBehaviour
         mallaRelleno.SetUVs(2, uvs3);
         mallaRelleno.SetUVs(3, uvs4);
         mallaRelleno.SetTriangles(indices, 0);
+        if (plast)
+            mallaRelleno.RecalculateNormals();
         mallaRelleno.RecalculateBounds();
+    }
+
+    // ---------- v57: PLASTILINA ----------
+    static readonly List<Vector2> plBorde = new List<Vector2>();
+    static readonly List<Vector2> plPlano = new List<Vector2>();
+    static readonly List<int> plTris = new List<int>();
+    static readonly List<float> plDist = new List<float>();
+    static readonly List<Vector3> plTemp = new List<Vector3>();
+    static readonly Dictionary<long, int> plAristas = new Dictionary<long, int>();
+
+    // La almohadita: el borde (un poco irregular, hecho a mano), una malla fina adentro y la altura de cada punto
+    // según lo lejos que está del borde (redondita, como plastilina aplastada). Dos caras: adelante y atrás.
+    bool ArmarPlastilina(List<Vector3> verts, List<int> tris)
+    {
+        int n = poli2D.Count;
+        if (n < 3 || poli3D.Count != n)
+            return false;
+        Vector2 min = poli2D[0], max = poli2D[0];
+        float perimetro = 0f;
+        for (int i = 0; i < n; i++)
+        {
+            min = Vector2.Min(min, poli2D[i]);
+            max = Vector2.Max(max, poli2D[i]);
+            perimetro += Vector2.Distance(poli2D[i], poli2D[(i + 1) % n]);
+        }
+        float tam = Mathf.Max(max.x - min.x, max.y - min.y);
+        if (tam < 1e-4f || perimetro < 1e-4f)
+            return false;
+        // 1. El borde irregular: se mete y se sale un poquito, con un ruido que da la vuelta completa sin saltos.
+        plBorde.Clear();
+        float signo = AreaDoble(poli2D) >= 0f ? 1f : -1f;
+        float amp = Mathf.Clamp01(plastiIrregular) * Mathf.Min(0.006f, tam * 0.05f);
+        float semilla = (id % 97) * 1.37f + 3.1f;
+        float radioRuido = perimetro / (0.02f * 2f * Mathf.PI);
+        float s = 0f;
+        for (int i = 0; i < n; i++)
+        {
+            if (i > 0)
+                s += Vector2.Distance(poli2D[i - 1], poli2D[i]);
+            float ang = s / perimetro * 2f * Mathf.PI;
+            float r = Mathf.PerlinNoise(semilla + Mathf.Cos(ang) * radioRuido, semilla * 0.7f + Mathf.Sin(ang) * radioRuido) - 0.5f;
+            plBorde.Add(poli2D[i] + (amp > 0f ? HaciaAdentro(poli2D, i, signo, 1f) * (r * 2f * amp) : Vector2.zero));
+        }
+        // 2. El borde en triángulos y una cuadrícula de puntos adentro.
+        plTris.Clear();
+        plTemp.Clear();
+        for (int i = 0; i < n; i++)
+            plTemp.Add(Vector3.zero);
+        Triangular(plBorde, plTris, plTemp);
+        if (plTris.Count < 3)
+            return false;
+        plPlano.Clear();
+        plPlano.AddRange(plBorde);
+        if (plTemp.Count > n && restantes.Count > 0)
+        {
+            Vector2 centro = Vector2.zero;
+            foreach (int r in restantes)
+                centro += plBorde[r];
+            plPlano.Add(centro / restantes.Count);
+        }
+        float paso = tam / 18f;
+        for (float y = min.y + paso * 0.5f; y < max.y; y += paso)
+            for (float x = min.x + paso * 0.5f; x < max.x; x += paso)
+            {
+                var q = new Vector2(x + ((Mathf.FloorToInt((y - min.y) / paso) & 1) == 1 ? paso * 0.5f : 0f), y);
+                if (!PuntoEnPoligono(q, plBorde) || DistanciaAlContorno(q, plBorde) < paso * 0.4f)
+                    continue;
+                InsertarPlastilina(q);
+            }
+        Voltear(n);
+        // 3. La altura: 0 en el borde, redondita hacia el centro.
+        plDist.Clear();
+        float dMax = 1e-5f;
+        for (int k = 0; k < plPlano.Count; k++)
+        {
+            float d = k < n ? 0f : DistanciaAlContorno(plPlano[k], plBorde);
+            plDist.Add(d);
+            dMax = Mathf.Max(dMax, d);
+        }
+        float alto = Mathf.Clamp(plastiInflado, 0.05f, 1.5f) * dMax;
+        AltosDelBorde();
+        int m = plPlano.Count;
+        for (int cara = 0; cara < 2; cara++)
+        {
+            float lado = cara == 0 ? 1f : -1f;
+            for (int k = 0; k < m; k++)
+            {
+                Vector2 q = plPlano[k];
+                float t = Mathf.Clamp01(plDist[k] / dMax);
+                float h = alto * Mathf.Sqrt(t * (2f - t));
+                float baseAlto = k < n && k < altosBorde.Count ? altosBorde[k] : AltoInterpolado(q, poli2D, altosBorde);
+                verts.Add(poliCentro + poliU * q.x + poliV * q.y + poliN * (baseAlto + lado * h));
+            }
+            int desde = cara * m;
+            for (int t = 0; t + 2 < plTris.Count; t += 3)
+            {
+                if (cara == 0)
+                {
+                    tris.Add(desde + plTris[t]); tris.Add(desde + plTris[t + 1]); tris.Add(desde + plTris[t + 2]);
+                }
+                else
+                {
+                    tris.Add(desde + plTris[t]); tris.Add(desde + plTris[t + 2]); tris.Add(desde + plTris[t + 1]);
+                }
+            }
+        }
+        return true;
+    }
+
+    static void InsertarPlastilina(Vector2 q)
+    {
+        for (int t = 0; t + 2 < plTris.Count; t += 3)
+        {
+            int a = plTris[t], b = plTris[t + 1], c = plTris[t + 2];
+            if (!PuntoEnTriangulo(q, plPlano[a], plPlano[b], plPlano[c]))
+                continue;
+            int k = plPlano.Count;
+            plPlano.Add(q);
+            plTris[t + 2] = k;
+            plTris.Add(b); plTris.Add(c); plTris.Add(k);
+            plTris.Add(c); plTris.Add(a); plTris.Add(k);
+            return;
+        }
+    }
+
+    static long Arista(int a, int b)
+    {
+        return a < b ? ((long)a << 32) | (uint)b : ((long)b << 32) | (uint)a;
+    }
+
+    static bool EsBorde(int a, int b, int n)
+    {
+        if (a >= n || b >= n)
+            return false;
+        int d = Mathf.Abs(a - b);
+        return d == 1 || d == n - 1;
+    }
+
+    // Triángulos más parejos (Delaunay): si dos triángulos vecinos forman un rombo "mal cortado", se corta por la
+    // otra diagonal. Así la luz se ve suave, sin rayas. Las aristas del borde nunca se tocan.
+    static void Voltear(int n)
+    {
+        for (int vuelta = 0; vuelta < 6; vuelta++)
+        {
+            bool cambio = false;
+            plAristas.Clear();
+            for (int t = 0; t + 2 < plTris.Count; t += 3)
+            {
+                for (int e = 0; e < 3; e++)
+                {
+                    int a = plTris[t + e], b = plTris[t + (e + 1) % 3];
+                    if (EsBorde(a, b, n))
+                        continue;
+                    long clave = Arista(a, b);
+                    int otro;
+                    if (!plAristas.TryGetValue(clave, out otro))
+                    {
+                        plAristas[clave] = t;
+                        continue;
+                    }
+                    if (otro < 0 || Voltea(otro, t, a, b))
+                    {
+                        if (otro >= 0)
+                        {
+                            cambio = true;
+                            plAristas[clave] = -1;
+                        }
+                    }
+                }
+            }
+            if (!cambio)
+                break;
+        }
+    }
+
+    static int Tercero(int t, int a, int b)
+    {
+        for (int e = 0; e < 3; e++)
+        {
+            int v = plTris[t + e];
+            if (v != a && v != b)
+                return v;
+        }
+        return -1;
+    }
+
+    // Prueba de Delaunay entre los triángulos t1 y t2 que comparten la arista a-b. Devuelve true si los volteó.
+    static bool Voltea(int t1, int t2, int a, int b)
+    {
+        int c = Tercero(t1, a, b), d = Tercero(t2, a, b);
+        if (c < 0 || d < 0 || c == d)
+            return false;
+        // ¿Ya se usaron en este paso? (otro volteo cambió estos triángulos)
+        if (!Tiene(t1, a) || !Tiene(t1, b) || !Tiene(t2, a) || !Tiene(t2, b))
+            return false;
+        Vector2 pa = plPlano[a], pb = plPlano[b], pc = plPlano[c], pd = plPlano[d];
+        // El rombo tiene que ser convexo para poder cortar por la otra diagonal.
+        if (Cruz(pd - pc, pa - pc) * Cruz(pd - pc, pb - pc) >= 0f || Cruz(pb - pa, pc - pa) * Cruz(pb - pa, pd - pa) >= 0f)
+            return false;
+        if (!EnCirculo(pa, pb, pc, pd))
+            return false;
+        // Orientación igual a la de t1 (a, b, c en su orden).
+        bool directo = Cruz(pb - pa, pc - pa) > 0f;
+        if (directo)
+        {
+            plTris[t1] = c; plTris[t1 + 1] = a; plTris[t1 + 2] = d;
+            plTris[t2] = c; plTris[t2 + 1] = d; plTris[t2 + 2] = b;
+        }
+        else
+        {
+            plTris[t1] = c; plTris[t1 + 1] = d; plTris[t1 + 2] = a;
+            plTris[t2] = c; plTris[t2 + 1] = b; plTris[t2 + 2] = d;
+        }
+        return true;
+    }
+
+    static bool Tiene(int t, int v)
+    {
+        return plTris[t] == v || plTris[t + 1] == v || plTris[t + 2] == v;
+    }
+
+    // ¿d cae dentro del círculo que pasa por a, b y c?
+    static bool EnCirculo(Vector2 a, Vector2 b, Vector2 c, Vector2 d)
+    {
+        if (Cruz(b - a, c - a) < 0f)
+        {
+            Vector2 x = b;
+            b = c;
+            c = x;
+        }
+        float ax = a.x - d.x, ay = a.y - d.y, bx = b.x - d.x, by = b.y - d.y, cx = c.x - d.x, cy = c.y - d.y;
+        float det = (ax * ax + ay * ay) * (bx * cy - cx * by) - (bx * bx + by * by) * (ax * cy - cx * ay)
+                    + (cx * cx + cy * cy) * (ax * by - bx * ay);
+        return det > 1e-14f;
     }
 
     // ---------- El borde del relleno, escondido debajo de la línea ----------

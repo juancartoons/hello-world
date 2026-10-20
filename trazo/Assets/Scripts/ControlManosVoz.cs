@@ -40,7 +40,7 @@ public partial class ControlManos
         // v52
         IrAFotograma, BorraFotograma, BorraCapa, SeleccionaTodo, QuitaSeleccion, ApagaVoz, CopiarEstilo, PegarEstilo, PuntoClave,
         PuntoCorto,   // v53: "nariz", "oreja"... (con la cabeza invisible abierta)
-        CaraPerfil, CaraFrente, FinDictado, ParteDictado, Funcion   // v55/v56: el dictado de la cabeza
+        CaraPerfil, CaraFrente, FinDictado, ParteDictado, Funcion, Plastilina, ImportarSvg   // v55/v56/v57: el dictado de la cabeza
     }
 
     // v43: los fondos que se pueden pedir por su nombre (el nombre exacto que tienen en Escenario).
@@ -279,6 +279,10 @@ public partial class ControlManos
                 new[] { "cara de perfil", "cara lateral", "cara de lado", "cabeza de perfil" }, new[] { "profile face", "side face", "face in profile" }));
         l.Add(C(ComandoVoz.CaraFrente, "Cara de frente", "Front face",
                 new[] { "cara de frente", "cara frontal", "cabeza de frente" }, new[] { "front face", "face from the front" }));
+        l.Add(C(ComandoVoz.Plastilina, "Plastilina", "Clay",
+                new[] { "plastilina", "relleno de plastilina", "ajustes de plastilina" }, new[] { "clay", "plasticine", "clay fill" }));
+        l.Add(C(ComandoVoz.ImportarSvg, "Importar SVG", "Import SVG",
+                new[] { "importar svg", "importa svg", "abrir svg" }, new[] { "import svg", "open svg" }));
         l.Add(C(ComandoVoz.Funcion, "Función", "Show",
                 new[] { "función", "funcion", "ver función", "salir de la función", "la función" }, new[] { "show", "play show", "exit show", "start show" }));
         l.Add(C(ComandoVoz.FinDictado, "Fin del dictado", "End dictation",
@@ -559,6 +563,8 @@ public partial class ControlManos
             case ComandoVoz.CaraPerfil: CabezaInvisible.EmpezarDictado(true); break;
             case ComandoVoz.CaraFrente: CabezaInvisible.EmpezarDictado(false); break;
             case ComandoVoz.Funcion: global::Funcion.Alternar(); break;
+            case ComandoVoz.Plastilina: ElegirPlastilina(); break;
+            case ComandoVoz.ImportarSvg: ImportadorSvg.Abrir(); break;
             case ComandoVoz.FinDictado: CabezaInvisible.TerminarDictado(); break;
             case ComandoVoz.ParteDictado:
                 dibujo.Mensaje("Primero di \"cara de perfil\" o \"cara de frente\" (y luego el nombre de cada parte antes de dibujarla)");
