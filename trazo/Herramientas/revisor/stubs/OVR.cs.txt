@@ -1,3 +1,4 @@
+#if !UNITY_5_3_OR_NEWER // simulacro solo para el revisor: Unity NUNCA lo compila
 using UnityEngine;
 public class OVRCameraRig : MonoBehaviour
 {
@@ -47,3 +48,4 @@ namespace RPStub
         public static void SubmitRenderRequest<T>(UnityEngine.Camera c, T r) { }
     }
 }
+#endif

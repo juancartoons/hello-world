@@ -1,3 +1,4 @@
+#if !UNITY_5_3_OR_NEWER // simulacro solo para el revisor: Unity NUNCA lo compila
 using UnityEngine;
 namespace TMPro
 {
@@ -53,3 +54,4 @@ namespace TMPro
     public class TextMeshPro : TMP_Text { public int sortingOrder { get; set; } }
     public class TextMeshProUGUI : TMP_Text { }
 }
+#endif
