@@ -686,7 +686,7 @@ public class PanelArriba : MonoBehaviour
         if (contenido != null)
             contenido.SetActive(false);
         if (dibujo != null)
-            dibujo.Mensaje(VistaLimpia.Activa ? "Para sacar la mesa: botón Mesa del reloj"
+            dibujo.Mensaje(VistaLimpia.Activa ? "Para sacar la línea de tiempo: botón Línea de tiempo del reloj"
                                               : "Jala la pastillita del fotograma para sacar la mesa");
     }
 

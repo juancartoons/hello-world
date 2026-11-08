@@ -1890,6 +1890,14 @@ public class Dibujo : MonoBehaviour
         Mensaje(c.nombre + (c.iman ? ": imán encendido (las puntas se unen)" : ": imán apagado (las líneas quedan como las dibujas)"));
     }
 
+    // v59: Propiedades: el papel directo (0 blanco, 1 a la mitad, 2 transparente).
+    public void PonerPapel(int papel)
+    {
+        var c = CapaActual;
+        c.papel = (Mathf.Clamp(papel, 0, 2) + 2) % 3;
+        SiguientePapel();
+    }
+
     // Boceto en 2D: el papel detrás del lápiz (Blanco → 50 % → Transparente). Cada capa recuerda el suyo.
     public void SiguientePapel()
     {

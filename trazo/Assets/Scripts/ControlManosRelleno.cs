@@ -156,6 +156,17 @@ public partial class ControlManos
         PlayerPrefs.SetInt(ClaveVelocidadTextura, velocidadTexturaElegida);
     }
 
+    // v59: Propiedades: la textura y la velocidad del relleno, directo.
+    public void ElegirTexturaRelleno(int textura)
+    {
+        ElegirTextura(textura, VelocidadTexturaElegida);
+    }
+
+    public void ElegirVelocidadRelleno(int velocidad)
+    {
+        ElegirTextura(TexturaElegida, velocidad);
+    }
+
     // v57: "plastilina" (voz): la elige y abre sus palancas.
     public void ElegirPlastilina()
     {

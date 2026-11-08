@@ -22,7 +22,7 @@ public static class VistaLimpia
         {
             if (activa < 0)
                 activa = PlayerPrefs.GetInt(Clave, 0) == 1 ? 1 : 0;
-            return activa == 1;
+            return activa == 1 || MesaEntrada.Activa;   // v59: en la mesa de animación no se ve nada de trabajar
         }
     }
 
@@ -31,7 +31,9 @@ public static class VistaLimpia
 
     public static void Alternar()
     {
-        activa = Activa ? 0 : 1;
+        if (activa < 0)
+            activa = PlayerPrefs.GetInt(Clave, 0) == 1 ? 1 : 0;
+        activa = activa == 1 ? 0 : 1;
         cambio = Time.time;
         PlayerPrefs.SetInt(Clave, activa);
         PlayerPrefs.Save();

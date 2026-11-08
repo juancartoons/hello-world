@@ -135,6 +135,9 @@ public class PanelMuneca : MonoBehaviour
         BotonTocable.PonerVoz(btnColores, ControlManos.ComandoVoz.Paleta);
         BotonTocable.PonerNombre(btnBorrar, "Borrar todo");      // (por seguridad, no va por voz)
         BotonTocable.PonerNombre(btnCerrar, "Cerrar");
+        // v59: "Mesa" ahora es la LÍNEA DE TIEMPO (la mesa es la de animación, al salir).
+        if (btnMesa != null)
+            btnMesa.PonerTexto("Línea de tiempo");
         if (btnColores != null)
             btnColores.PonerTexto("Paleta");                        // igual que su palabra de voz
 
@@ -451,6 +454,22 @@ public class PanelMuneca : MonoBehaviour
         BotonTocable.PonerNombre(btnFuncion, "Función");
         btnSalir.alTocar.AddListener(Salir);
         BotonTocable.PonerNombre(btnSalir, "Salir");
+        // v59: PROPIEDADES (los ajustes de lo que estás usando) al lado de Colores (que pasa a la derecha).
+        btnColores.transform.localPosition = new Vector3(0.032f, -0.168f, btnColores.transform.localPosition.z);
+        btnColores.transform.localScale = new Vector3(0.058f, 0.02f, 0.008f);
+        if (btnColores.etiqueta != null)
+        {
+            btnColores.etiqueta.transform.localPosition = new Vector3(0.032f, -0.168f, btnColores.etiqueta.transform.localPosition.z);
+            btnColores.etiqueta.rectTransform.sizeDelta = new Vector2(0.054f, 0.016f);
+        }
+        var btnPropiedades = BotonRec(contenido.transform, "Propiedades", new Vector3(-0.032f, -0.168f, 0f), 0.058f);
+        btnPropiedades.alTocar.AddListener(() =>
+        {
+            if (control != null)
+                control.CerrarMenu();
+            PanelPropiedades.Alternar();
+        });
+        BotonTocable.PonerVoz(btnPropiedades, ControlManos.ComandoVoz.Propiedades);
         // Copiar y pegar: dos iconos pequeñitos arriba, entre el ? y la X.
         var oscuro = new Material(btnColores.materialNormal);
         Pintar(oscuro, new Color(0.22f, 0.22f, 0.26f));
@@ -499,18 +518,14 @@ public class PanelMuneca : MonoBehaviour
         r.receiveShadows = false;
     }
 
+    // v59: SALIR guarda el dibujo y vuelve a la MESA DE ANIMACIÓN (ahí está "Cerrar app").
     void Salir()
     {
         if (dibujo == null)
             return;
-        if (dibujo.HayArchivoAbierto)
-        {
-            dibujo.ArchivoNuevo();
-            Refrescar();
-            return;
-        }
-        // Ya no hay nada abierto: cierra la app.
-        Mensaje(Idioma.T("Hasta pronto"));
-        Application.Quit();
+        if (control != null)
+            control.CerrarMenu();
+        MesaEntrada.Salir();
+        Refrescar();
     }
 }

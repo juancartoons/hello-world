@@ -852,3 +852,11 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - HECHO: CUCHILLO (Nodos + índice derecho rápido de ida y vuelta sobre un tramo) y voz "cortar aquí": cerrada se abre, abierta queda en dos.
 - HECHO: cabeza: silueta sin hueco detrás de la oreja (piezas del borde se estiran hasta la mitad del hueco, < 100°); partes con nombres distintos no se unen con el imán; mejilla izquierda/derecha (borde); al dictar salen solos los dibujitos y las palabras (tocar = dictar).
 - POR PROBAR: líneas que YA estaban unidas (borde + oreja) en dibujos viejos: usar el cuchillo para separarlas.
+
+## v59
+- HECHO: MESA DE ANIMACIÓN (modo entrada): al abrir la app (después del título; la primera vez va el tutorial) y con Salir. Tablero de madera, disco giratorio con luz, reglas con pivotes, hoja con boceto antiguo (personaje original, azul + rojo), 7 recientes arriba, lápiz en la hoja (índice derecho, "Suave"), hoja de tinta encima, ✦ Entrar (lápiz → capa "Lápiz", tinta → capa "Tinta" con líneas de verdad), Hoja nueva, Cerrar app (dos toques). Entrar/salir con la hoja que crece. Nada de trabajar se ve en la mesa (VistaLimpia + Ocupado).
+- HECHO: PROPIEDADES (reloj y voz): ajustes de lo que usas, todas las opciones a la vista (lápiz, tinta, relleno, fondo).
+- HECHO: "Mesa" → "Línea de tiempo". Reset en Archivos (dos toques; borra ajustes y el boceto de la mesa, no los dibujos). Tutorial de la cabeza invisible en Novedades (página 25). Novedades reordenadas (títulos y textos coincidían mal desde la v55).
+- HECHO: revisor de tipos guardado en trazo/Herramientas/revisor/compilar.sh (se arma solo en una sesión nueva).
+- POR PROBAR: tamaño y lugar de la mesa en el visor, que la tinta de la mesa quede bien en su capa, el giro del disco.
+- IDEA (sin HY): esconder "Suavidad" de la línea de tiempo en modo lápiz; morph con distinto número de nodos, física en huesos y video de referencia (ideas de MacroFlash).

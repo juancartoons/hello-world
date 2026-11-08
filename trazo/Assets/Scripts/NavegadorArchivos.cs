@@ -942,7 +942,29 @@ public class NavegadorArchivos : MonoBehaviour
         textoPagina = Texto(raiz, "1 / 1", new Vector3(0f, -0.226f, -0.002f), new Vector2(0.05f, 0.016f), 0.13f);
         btnSiguiente = Boton(raiz, ">", new Vector3(0.045f, -0.226f, 0f), new Vector2(0.026f, 0.02f));
         btnSiguiente.alTocar.AddListener(() => CambiarPagina(1));
-        Texto(raiz, "desliza el dedo de lado = otra página", new Vector3(0.2f, -0.226f, -0.002f), new Vector2(0.2f, 0.014f), 0.09f).color = new Color(0.45f, 0.45f, 0.5f);
+        Texto(raiz, "desliza el dedo de lado = otra página", new Vector3(0.18f, -0.226f, -0.002f), new Vector2(0.17f, 0.014f), 0.09f).color = new Color(0.45f, 0.45f, 0.5f);
+        // v59: RESET (esquina de abajo a la derecha, dos toques): la próxima vez la app abre como la primera vez.
+        btnReset = Boton(raiz, "Reset", new Vector3(0.295f, -0.226f, 0f), new Vector2(0.036f, 0.018f));
+        btnReset.alTocar.AddListener(ResetearApp);
+    }
+
+    BotonTocable btnReset;
+    float resetHasta;
+
+    // Borra los ajustes (tutorial visto, idioma, paneles, lápiz...) y el boceto de la mesa. Tus dibujos NO se borran.
+    void ResetearApp()
+    {
+        if (Time.time > resetHasta)
+        {
+            resetHasta = Time.time + 3f;
+            dibujo.Mensaje("Reset: la app volverá a empezar como la primera vez (tus dibujos se quedan). Toca Reset otra vez");
+            return;
+        }
+        resetHasta = 0f;
+        PlayerPrefs.DeleteAll();
+        PlayerPrefs.Save();
+        MesaEntrada.BorrarBocetoGuardado();
+        dibujo.Mensaje("Listo: cierra la app y ábrela otra vez (será como la primera vez)");
     }
 
     BotonTocable Boton(Transform padre, string texto, Vector3 pos, Vector2 tam)

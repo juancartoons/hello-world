@@ -574,7 +574,7 @@ public static class ArmarEscenaTrazo
         // · ← Girar / Girar → · Vista limpia / Mesa. El imán ahora está en la paleta (palma izquierda).
         // v38: los botones un poco más chicos y más separados (antes se tocaba sin querer el de al lado).
         string[] nombres = { "Libre (3D)", "Fondo: Cuadrícula", "Guardar", "Archivos", "Borrar todo", "Esfera", "Cubo", "Cilindro", "A líneas", "Capas: 1",
-                             "← Girar", "Girar →", "Vista limpia", "Mesa" };
+                             "← Girar", "Girar →", "Vista limpia", "Línea de tiempo" };
         const float columna = 0.026f;
         Vector2[] lugares =
         {

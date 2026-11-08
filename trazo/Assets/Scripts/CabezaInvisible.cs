@@ -651,6 +651,13 @@ public class CabezaInvisible : MonoBehaviour
         return false;
     }
 
+    // v59: al salir a la mesa de animación.
+    public static void CerrarSiAbierta()
+    {
+        if (instancia != null && instancia.estado != Estado.Nada)
+            instancia.Cerrar();
+    }
+
     void Cerrar()
     {
         SoltarPalabra(false);

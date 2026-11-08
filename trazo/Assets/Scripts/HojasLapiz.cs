@@ -168,6 +168,21 @@ public class HojasLapiz : MonoBehaviour
         Sellar(h, t, va, vb);
     }
 
+    // v59: un trazo ya hecho (el boceto de la mesa de animación al entrar): se agrega y se pinta.
+    public void AgregarHecho(TrazoLapiz t)
+    {
+        if (dibujo == null || materialSello == null || t == null || t.puntos.Count == 0)
+            return;
+        Terminar();
+        var h = HojaDe(t.capa);
+        if (h == null)
+            return;
+        trazos.Add(t);
+        Sellar(h, t, t.puntos[0], t.puntos[0]);
+        for (int i = 1; i < t.puntos.Count; i++)
+            Sellar(h, t, t.puntos[i - 1], t.puntos[i]);
+    }
+
     public void Terminar()
     {
         if (actual == null)

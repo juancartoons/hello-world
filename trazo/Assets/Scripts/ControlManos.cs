@@ -951,7 +951,7 @@ public partial class ControlManos : MonoBehaviour
     //  0 Pegado: justo en el dedo (como ahora). 1 Suave: un poco arrastrado (como antes), línea más lisa.
     //  2 Cuerda: el lápiz va detrás del dedo como si lo jalaras con un hilo corto: líneas muy limpias.
     public static readonly string[] NombresModoLapiz = { "Pegado", "Suave", "Cuerda" };
-    static readonly string[] ExplicacionModoLapiz = { "va justo en tu dedo", "un poco arrastrado, más liso", "te sigue con un hilo, muy liso" };
+    public static readonly string[] ExplicacionModoLapiz = { "va justo en tu dedo", "un poco arrastrado, más liso", "te sigue con un hilo, muy liso" };
     const string ClaveModoLapiz = "jcartoons_lapiz_modo";
     const float LargoCuerda = 0.007f; // metros de "hilo"
     int modoLapiz = -1; // -1 = aún no leído
@@ -964,6 +964,14 @@ public partial class ControlManos : MonoBehaviour
                 modoLapiz = Mathf.Clamp(PlayerPrefs.GetInt(ClaveModoLapiz, 0), 0, NombresModoLapiz.Length - 1);
             return modoLapiz;
         }
+    }
+
+    // v59: Propiedades: elegir el modo directo (Pegado, Suave o Cuerda).
+    public void ElegirModoLapiz(int modo)
+    {
+        modoLapiz = (Mathf.Clamp(modo, 0, NombresModoLapiz.Length - 1) + NombresModoLapiz.Length - 1) % NombresModoLapiz.Length;
+        PlayerPrefs.SetInt(ClaveModoLapiz, modoLapiz);
+        SiguienteModoLapiz();
     }
 
     void SiguienteModoLapiz()

@@ -40,7 +40,7 @@ public partial class ControlManos
         // v52
         IrAFotograma, BorraFotograma, BorraCapa, SeleccionaTodo, QuitaSeleccion, ApagaVoz, CopiarEstilo, PegarEstilo, PuntoClave,
         PuntoCorto,   // v53: "nariz", "oreja"... (con la cabeza invisible abierta)
-        CaraPerfil, CaraFrente, FinDictado, ParteDictado, Funcion, Plastilina, ImportarSvg, CortarAqui   // v55/v56/v57/v58: el dictado de la cabeza
+        CaraPerfil, CaraFrente, FinDictado, ParteDictado, Funcion, Plastilina, ImportarSvg, CortarAqui, Propiedades, Entrar   // v55/v56/v57/v58/v59: el dictado de la cabeza
     }
 
     // v43: los fondos que se pueden pedir por su nombre (el nombre exacto que tienen en Escenario).
@@ -81,7 +81,7 @@ public partial class ControlManos
           new[] { "gira atrás", "girar atrás", "da la vuelta", "media vuelta" }, new[] { "turn around", "around" }),
         C(ComandoVoz.Capas, "Capas", "Layers", new[] { "capas", "las capas" }, new[] { "layers" }),
         C(ComandoVoz.CapaNueva, "Capa nueva", "New layer", new[] { "capa nueva", "nueva capa", "otra capa" }, new[] { "new layer", "add layer" }),
-        C(ComandoVoz.Mesa, "Mesa", "Desk", new[] { "mesa", "la mesa", "línea de tiempo" }, new[] { "desk", "timeline" }),
+        C(ComandoVoz.Mesa, "Línea de tiempo", "Timeline", new[] { "línea de tiempo", "linea de tiempo", "mesa", "la mesa" }, new[] { "timeline", "desk" }),
         C(ComandoVoz.Play, "Play", "Play", new[] { "play", "reproduce", "reproducir", "dale" }, new[] { "play" }),
         C(ComandoVoz.Pausa, "Pausa", "Pause", new[] { "pausa", "pausar" }, new[] { "pause" }),
         C(ComandoVoz.Siguiente, "Siguiente", "Next", new[] { "siguiente", "adelante" }, new[] { "next", "forward" }),
@@ -279,6 +279,8 @@ public partial class ControlManos
                 new[] { "cara de perfil", "cara lateral", "cara de lado", "cabeza de perfil" }, new[] { "profile face", "side face", "face in profile" }));
         l.Add(C(ComandoVoz.CaraFrente, "Cara de frente", "Front face",
                 new[] { "cara de frente", "cara frontal", "cabeza de frente" }, new[] { "front face", "face from the front" }));
+        l.Add(C(ComandoVoz.Propiedades, "Propiedades", "Properties", new[] { "propiedades", "ajustes", "herramientas" }, new[] { "properties", "settings", "tools" }));
+        l.Add(C(ComandoVoz.Entrar, "Entrar", "Enter", new[] { "entrar", "entra", "entrar a la hoja" }, new[] { "enter", "go in" }));
         l.Add(C(ComandoVoz.CortarAqui, "Cortar aquí", "Cut here",
                 new[] { "cortar aquí", "corta aquí", "cortar aqui", "separar aquí" }, new[] { "cut here", "split here" }));
         l.Add(C(ComandoVoz.Plastilina, "Plastilina", "Clay",
@@ -567,6 +569,8 @@ public partial class ControlManos
             case ComandoVoz.Funcion: global::Funcion.Alternar(); break;
             case ComandoVoz.Plastilina: ElegirPlastilina(); break;
             case ComandoVoz.CortarAqui: CortarAquiVoz(); break;
+            case ComandoVoz.Propiedades: PanelPropiedades.Alternar(); break;
+            case ComandoVoz.Entrar: MesaEntrada.EntrarVoz(); break;
             case ComandoVoz.ImportarSvg: ImportadorSvg.Abrir(); break;
             case ComandoVoz.FinDictado: CabezaInvisible.TerminarDictado(); break;
             case ComandoVoz.ParteDictado:

@@ -66,6 +66,42 @@ public class Temblor : MonoBehaviour
         }
     }
 
+    // v59: Propiedades: elegir directo (sin dar la vuelta con "siguiente").
+    public void PonerTextura(int t)
+    {
+        if (Capa == null) return;
+        int actual = Textura;
+        t = Mathf.Clamp(t, 0, NombresTextura.Length - 1);
+        if (t == actual) return;
+        Capa.texturaLinea = t == 1 ? 1 : 0;
+        Capa.hebras = 1;
+        // SiguienteTextura avanza uno: se deja justo antes.
+        int antes = (t + NombresTextura.Length - 1) % NombresTextura.Length;
+        Capa.texturaLinea = antes == 1 ? 1 : 0;
+        Capa.hebras = antes == 2 ? 3 : antes == 3 ? 5 : 1;
+        SiguienteTextura();
+    }
+
+    public void PonerVida(int v)
+    {
+        if (Capa == null) return;
+        v = Mathf.Clamp(v, 0, NombresVida.Length - 1);
+        if (v == Vida) return;
+        Capa.temblor = (v + NombresVida.Length - 1) % NombresVida.Length;
+        SiguienteVida();
+    }
+
+    public int Suavidad => Capa != null ? Mathf.Clamp(Capa.suavidad, 0, 2) : 1;
+
+    public void PonerSuavidad(int s)
+    {
+        if (Capa == null) return;
+        s = Mathf.Clamp(s, 0, 2);
+        if (s == Suavidad) return;
+        Capa.suavidad = (s + 2) % 3;
+        SiguienteSuavidad();
+    }
+
     public void SiguienteTextura()
     {
         if (Capa == null) return;

@@ -25,6 +25,8 @@ public class Tutorial : MonoBehaviour
 {
     public static Tutorial Instancia { get; private set; }
     // El tutorial está en marcha (no cuenta el título).
+    // v59: el título ya pasó y no hay tutorial: puede salir la mesa de animación.
+    public static bool ListoParaMesa => Instancia == null || (Instancia.tituloHecho && Instancia.estado == Estado.Nada);
     public static bool EnCurso => Instancia != null && Instancia.estado != Estado.Nada && Instancia.estado != Estado.Titulo;
 
     public Dibujo dibujo;

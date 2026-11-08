@@ -1,0 +1,55 @@
+using UnityEngine;
+namespace TMPro
+{
+    public enum TextAlignmentOptions { TopLeft, Top, TopRight, Left, Center, Right, BottomLeft, Bottom, BottomRight, Midline, MidlineLeft, MidlineRight, CenterGeoAligned, Baseline, BaselineLeft, BaselineRight, Justified, Flush, TopJustified, Capline, CaplineLeft }
+    [System.Flags] public enum FontStyles { Normal = 0, Bold = 1, Italic = 2, Underline = 4, LowerCase = 8, UpperCase = 16, SmallCaps = 32, Strikethrough = 64, Superscript = 128, Subscript = 256, Highlight = 512 }
+    public enum TextOverflowModes { Overflow, Ellipsis, Masking, Truncate, ScrollRect, Page, Linked }
+    public enum TextWrappingModes { NoWrap, Normal, PreserveWhitespace, PreserveWhitespaceNoWrap }
+    public enum VertexSortingOrder { Normal, Reverse }
+    public class TMP_FontAsset : ScriptableObject { }
+    public struct TMP_CharacterInfo { public Vector3 topLeft, topRight, bottomLeft, bottomRight; public char character; public bool isVisible; }
+    public class TMP_TextInfo { public int characterCount; public int lineCount; public TMP_CharacterInfo[] characterInfo; }
+    public struct VertexGradient { public Color topLeft, topRight, bottomLeft, bottomRight; public VertexGradient(Color a, Color b, Color c, Color d) { topLeft = a; topRight = b; bottomLeft = c; bottomRight = d; } }
+    public abstract class TMP_Text : MonoBehaviour
+    {
+        public string text { get; set; }
+        public Color color { get; set; }
+        public Color32 faceColor { get; set; }
+        public float fontSize { get; set; }
+        public float fontSizeMin { get; set; }
+        public float fontSizeMax { get; set; }
+        public bool enableAutoSizing { get; set; }
+        public TextAlignmentOptions alignment { get; set; }
+        public FontStyles fontStyle { get; set; }
+        public RectTransform rectTransform { get { return null; } }
+        public float outlineWidth { get; set; }
+        public Color32 outlineColor { get; set; }
+        public TMP_FontAsset font { get; set; }
+        public Material fontSharedMaterial { get; set; }
+        public Material fontMaterial { get; set; }
+        public bool enableWordWrapping { get; set; }
+        public TextWrappingModes textWrappingMode { get; set; }
+        public TextOverflowModes overflowMode { get; set; }
+        public Vector4 margin { get; set; }
+        public float characterSpacing { get; set; }
+        public float lineSpacing { get; set; }
+        public bool richText { get; set; }
+        public bool enableVertexGradient { get; set; }
+        public VertexGradient colorGradient { get; set; }
+        public bool isOverlay { get; set; }
+        public float alpha { get; set; }
+        public Bounds bounds { get { return default(Bounds); } }
+        public Bounds textBounds { get { return default(Bounds); } }
+        public float preferredWidth { get { return 0f; } }
+        public float preferredHeight { get { return 0f; } }
+        public TMP_TextInfo textInfo { get { return null; } }
+        public Renderer renderer { get { return null; } }
+        public void ForceMeshUpdate(bool a = false, bool b = false) { }
+        public Vector2 GetPreferredValues() { return default(Vector2); }
+        public Vector2 GetPreferredValues(string t) { return default(Vector2); }
+        public Vector2 GetPreferredValues(string t, float w, float h) { return default(Vector2); }
+        public void SetText(string t) { }
+    }
+    public class TextMeshPro : TMP_Text { public int sortingOrder { get; set; } }
+    public class TextMeshProUGUI : TMP_Text { }
+}
