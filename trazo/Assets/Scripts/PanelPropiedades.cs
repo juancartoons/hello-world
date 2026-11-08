@@ -2,13 +2,15 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
-// PROPIEDADES (v59): un panel con los ajustes de LO QUE ESTÁS USANDO AHORA, sin botones "ciegos": cada ajuste
-// muestra TODAS sus opciones a la vista, la actual iluminada, y una frase corta de qué hace.
-//  - Modo lápiz (capa de lápiz en 2D): cómo te sigue el lápiz (Pegado · Suave · Cuerda) y el papel.
-//  - Tinta: textura de la línea, vida (temblor), suavidad del temblor, uniones e imán.
-//  - Relleno: textura, velocidad y degradado (con Plastilina, un botón abre sus palancas).
-//  - Siempre, abajo: el fondo (y las flechas para girarlo si es 360).
-// Se abre con el botón "Propiedades" del reloj (o la voz: "propiedades"). Se mueve como los demás paneles.
+// PROPIEDADES (v59, v60): un panel con los ajustes de LA HERRAMIENTA QUE ESTÁS USANDO (solo esa), sin botones
+// "ciegos": cada ajuste muestra TODAS sus opciones a la vista, la actual iluminada, y una frase corta de qué hace.
+//  - Lápiz (capa de lápiz en 2D): cómo te sigue el lápiz (Pegado · Suave · Cuerda) y el papel.
+//  - Tinta: textura de la línea, vida (temblor), suavidad, grosor vivo, uniones, imán y halo.
+//  - Relleno (si lo último que abriste en la paleta fue RELLENO): textura, velocidad y degradado.
+//  - Cámara (ahí no se dibuja): su nota y el FONDO.
+// v60: la paleta ya no repite estos ajustes (solo colores). Se abre con su PASTILLITA (abajo a la derecha de tu vista,
+// jálala hacia arriba), con el botón del reloj o con la voz ("propiedades"). Se mueve con un pellizco en su
+// AGARRADERA (la barrita de arriba) o en cualquier parte vacía, como los demás paneles, y se queda donde lo dejes.
 public class PanelPropiedades : MonoBehaviour
 {
     static PanelPropiedades instancia;
@@ -24,6 +26,7 @@ public class PanelPropiedades : MonoBehaviour
     TextMeshPro titulo;
     string firma = "";
     float proximo;
+    bool colocado;
 
     // Una fila: sus botones, cuál está elegido y la frase de abajo.
     class Fila
@@ -58,7 +61,10 @@ public class PanelPropiedades : MonoBehaviour
             }
         }
         instancia.gameObject.SetActive(true);
-        instancia.Colocar();
+        // Se queda donde lo dejaste; solo se trae si nunca se colocó o quedó muy lejos de ti.
+        var cab = instancia.control != null ? instancia.control.Cabeza : null;
+        if (!instancia.colocado || (cab != null && Vector3.Distance(cab.position, instancia.transform.position) > 1.6f))
+            instancia.Colocar();
         instancia.firma = "";
         instancia.Refrescar();
     }
@@ -87,6 +93,15 @@ public class PanelPropiedades : MonoBehaviour
         r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         fondo = f.transform;
         titulo = PanelTutoriales.Texto(transform, "", new Vector3(-0.02f, 0f, -0.002f), new Vector2(Ancho - 0.08f, 0.02f), 0.18f, null);
+        // v60: la AGARRADERA: una barrita arriba, sin botones cerca (pellízcala para llevar el panel).
+        var asa = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        Destroy(asa.GetComponent<Collider>());
+        asa.transform.SetParent(transform, false);
+        asa.transform.localPosition = new Vector3(0f, 0.032f, 0f);
+        asa.transform.localScale = new Vector3(0.12f, 0.008f, 0.004f);
+        var ra = asa.GetComponent<Renderer>();
+        ra.sharedMaterial = marcado;
+        ra.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         titulo.fontStyle = FontStyles.Bold;
         var x = PanelTutoriales.Boton(transform, "X", new Vector3(Ancho * 0.5f - 0.02f, 0f, 0f), new Vector2(0.024f, 0.024f), normal, marcado);
         x.alTocar.AddListener(Cerrar);
@@ -110,6 +125,7 @@ public class PanelPropiedades : MonoBehaviour
         adelante.Normalize();
         Vector3 pos = cab.position + adelante * 0.45f + Vector3.up * 0.14f;
         transform.SetPositionAndRotation(pos, Quaternion.LookRotation(pos - cab.position, Vector3.up));
+        colocado = true;
     }
 
     void Update()
@@ -130,7 +146,9 @@ public class PanelPropiedades : MonoBehaviour
             return "camara";
         if (dibujo.UsaHoja)
             return "lapiz";
-        return control.TexturaElegida == Trazo.TexturaPlastilina ? "tinta+pl" : "tinta";
+        if (control.ContextoRelleno)
+            return control.TexturaElegida == Trazo.TexturaPlastilina ? "relleno+pl" : "relleno";
+        return "tinta" + (dibujo.temblor != null && dibujo.temblor.Textura == 1 ? "+lapiz" : "") + (dibujo.HaloDisponible ? "+halo" : "");
     }
 
     void Refrescar()
@@ -163,56 +181,62 @@ public class PanelPropiedades : MonoBehaviour
             Destroy(h.gameObject);
         filas.Clear();
         float y = -0.035f;
-        switch (firma)
+        if (firma == "lapiz")
         {
-            case "lapiz":
-                titulo.text = Idioma.T("Propiedades · Lápiz");
-                y = Seccion(y, "Lápiz");
-                y = Opciones(y, "Sigue al dedo", ControlManos.NombresModoLapiz, () => control.ModoLapiz, control.ElegirModoLapiz,
-                             () => ControlManos.ExplicacionModoLapiz[control.ModoLapiz]);
-                y = Opciones(y, "Papel", new[] { "Blanco", "50 %", "Transparente" }, () => Mathf.Clamp(dibujo.CapaActual.papel, 0, 2),
-                             dibujo.PonerPapel, () => "Lo que hay detrás del lápiz (cada capa recuerda el suyo)");
-                break;
-            case "camara":
-                titulo.text = Idioma.T("Propiedades · Cámara");
-                y = Nota(y, "Capa de cámara: pellízcala para moverla. El zoom y \"Sugerir\" están en su panelito.");
-                break;
-            default:
-                titulo.text = Idioma.T("Propiedades · Tinta");
-                var tb = dibujo.temblor;
-                if (tb != null)
-                {
-                    y = Seccion(y, "Línea");
-                    y = Opciones(y, "Textura", Temblor.NombresTextura, () => tb.Textura, tb.PonerTextura,
-                                 () => tb.Textura == 1 ? "Lápiz: sus palancas se abren solas" : "Cómo se ve la línea (las nuevas y las seleccionadas)");
-                    y = Opciones(y, "Vida", Temblor.NombresVida, () => tb.Vida, tb.PonerVida, () => "Cuánto tiembla la línea, como dibujo animado a mano");
-                    y = Opciones(y, "Suavidad", Dibujo.NombresSuavidad, () => tb.Suavidad, tb.PonerSuavidad,
-                                 () => "Qué tan ondulado es el temblor", () => tb.Vida > 0);
-                }
-                y = Opciones(y, "Uniones", new[] { "Rectas", "Suaves" }, () => Trazo.UnionesSuaves ? 1 : 0,
-                             i => { if ((i == 1) != Trazo.UnionesSuaves) Trazo.AlternarUniones(); }, () => "Cómo se juntan dos líneas que se unen");
-                y = Opciones(y, "Imán", new[] { "Sí", "No" }, () => dibujo.CapaActual.iman ? 0 : 1,
-                             i => { if ((i == 0) != dibujo.CapaActual.iman) dibujo.AlternarIman(); }, () => "Las puntas cercanas se unen solas");
-                y = Seccion(y, "Relleno");
-                y = Opciones(y, "Textura", Trazo.NombresTextura, () => control.TexturaElegida, control.ElegirTexturaRelleno,
-                             () => "El relleno de las próximas figuras (y de las seleccionadas)");
-                y = Opciones(y, "Velocidad", Trazo.NombresVelocidadTextura, () => control.VelocidadTexturaElegida, control.ElegirVelocidadRelleno,
-                             () => "Qué tan rápido se mueve la textura", () => control.TexturaElegida > 0);
-                y = Opciones(y, "Degradado", ControlManos.NombresDegradado, () => control.ModoDegradado, i => control.ModoDegradado = i,
-                             () => "Del color de antes al de ahora");
-                if (firma == "tinta+pl")
-                    y = Accion(y, "Palancas de plastilina", PanelPlastilina.Abrir);
-                break;
+            titulo.text = Idioma.T("Propiedades · Lápiz");
+            y = Opciones(y, "Sigue al dedo", ControlManos.NombresModoLapiz, () => control.ModoLapiz, control.ElegirModoLapiz,
+                         () => ControlManos.ExplicacionModoLapiz[control.ModoLapiz]);
+            y = Opciones(y, "Papel", new[] { "Blanco", "50 %", "Transparente" }, () => Mathf.Clamp(dibujo.CapaActual.papel, 0, 2),
+                         dibujo.PonerPapel, () => "Lo que hay detrás del lápiz (cada capa recuerda el suyo)");
         }
-        // El fondo, siempre al final.
-        var muneca = FindFirstObjectByType<PanelMuneca>(FindObjectsInactive.Include);
-        var escenario = FindFirstObjectByType<Escenario>(FindObjectsInactive.Include);
-        if (muneca != null && escenario != null)
+        else if (firma == "camara")
         {
-            y = Seccion(y, "Fondo");
-            y = Opciones(y, "Fondo", new[] { "Siguiente" }, () => -1, i => muneca.SiguienteFondo(), () => escenario.MensajeFondo);
-            y = Opciones(y, "Girar", new[] { "← Girar", "Girar →" }, () => -1, i => control.GirarFondoBoton(i == 0 ? -1 : 1),
-                         () => "Gira el fondo 360", () => escenario.modo >= 3);
+            titulo.text = Idioma.T("Propiedades · Cámara y fondo");
+            y = Nota(y, "Capa de cámara: pellízcala para moverla. El zoom y \"Sugerir\" están en su panelito.");
+            var muneca = FindFirstObjectByType<PanelMuneca>(FindObjectsInactive.Include);
+            var escenario = FindFirstObjectByType<Escenario>(FindObjectsInactive.Include);
+            if (muneca != null && escenario != null)
+            {
+                y = Opciones(y, "Fondo", new[] { "Siguiente" }, () => -1, i => muneca.SiguienteFondo(), () => escenario.MensajeFondo);
+                y = Opciones(y, "Girar", new[] { "← Girar", "Girar →" }, () => -1, i => control.GirarFondoBoton(i == 0 ? -1 : 1),
+                             () => "Gira el fondo 360", () => escenario.modo >= 3);
+            }
+        }
+        else if (firma.StartsWith("relleno"))
+        {
+            titulo.text = Idioma.T("Propiedades · Relleno");
+            y = Opciones(y, "Textura", Trazo.NombresTextura, () => control.TexturaElegida, control.ElegirTexturaRelleno,
+                         () => "El relleno de las próximas figuras (y de las seleccionadas)");
+            y = Opciones(y, "Velocidad", Trazo.NombresVelocidadTextura, () => control.VelocidadTexturaElegida, control.ElegirVelocidadRelleno,
+                         () => "Qué tan rápido se mueve la textura", () => control.TexturaElegida > 0);
+            y = Opciones(y, "Degradado", ControlManos.NombresDegradado, () => control.ModoDegradado, i => control.ModoDegradado = i,
+                         () => "Del color de antes al de ahora");
+            if (firma == "relleno+pl")
+                y = Accion(y, "Palancas de plastilina", PanelPlastilina.Abrir);
+        }
+        else
+        {
+            titulo.text = Idioma.T("Propiedades · Tinta");
+            var tb = dibujo.temblor;
+            if (tb != null)
+            {
+                y = Opciones(y, "Textura", Temblor.NombresTextura, () => tb.Textura, tb.PonerTextura,
+                             () => tb.Textura == 1 ? "Lápiz: sus palancas se abren solas" : "Cómo se ve la línea (las nuevas y las seleccionadas)");
+                y = Opciones(y, "Vida", Temblor.NombresVida, () => tb.Vida, tb.PonerVida, () => "Cuánto tiembla la línea, como dibujo animado a mano");
+                y = Opciones(y, "Suavidad", Dibujo.NombresSuavidad, () => tb.Suavidad, tb.PonerSuavidad,
+                             () => "Qué tan ondulado es el temblor", () => tb.Vida > 0);
+                y = Opciones(y, "Grosor vivo", new[] { "Sí", "No" }, () => tb.GrosorVivo ? 0 : 1,
+                             i => { if ((i == 0) != tb.GrosorVivo) tb.AlternarGrosor(); }, () => "El grosor de la línea respira un poquito");
+            }
+            y = Opciones(y, "Uniones", new[] { "Rectas", "Suaves" }, () => Trazo.UnionesSuaves ? 1 : 0,
+                         i => { if ((i == 1) != Trazo.UnionesSuaves) Trazo.AlternarUniones(); }, () => "Cómo se juntan dos líneas que se unen");
+            y = Opciones(y, "Imán", new[] { "Sí", "No" }, () => dibujo.CapaActual.iman ? 0 : 1,
+                         i => { if ((i == 0) != dibujo.CapaActual.iman) dibujo.AlternarIman(); }, () => "Las puntas cercanas se unen solas");
+            if (firma.Contains("+halo"))
+                y = Opciones(y, "Halo", new[] { "Sí", "No" }, () => dibujo.HaloEncendido ? 0 : 1,
+                             i => { if ((i == 0) != dibujo.HaloEncendido) dibujo.AlternarHalo(); }, () => "Un brillo detrás de las líneas (con fondo 360 o realidad)");
+            if (firma.Contains("+lapiz"))
+                y = Accion(y, "Ajustes del lápiz", PanelLapiz.Abrir);
         }
         float alto = -y + 0.01f;
         fondo.localPosition = new Vector3(0f, 0.02f - alto * 0.5f, 0.005f);
@@ -290,5 +314,37 @@ public class PanelPropiedades : MonoBehaviour
     {
         if (instancia == this)
             instancia = null;
+    }
+}
+
+// v60: LA PASTILLITA de Propiedades (como las de Capas y Línea de tiempo): abajo, a la derecha de tu vista.
+// Jálala hacia arriba y sale el panel. No se ve en la vista limpia, ni en la mesa de animación, ni con el panel abierto.
+public class PastillaPropiedades : MonoBehaviour
+{
+    const float Lado = 0.16f;   // metros a la derecha del centro de la orilla de abajo
+    Persiana persiana;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    static void Crear()
+    {
+        new GameObject("PastillaPropiedades").AddComponent<PastillaPropiedades>();
+    }
+
+    void Update()
+    {
+        if (persiana != null)
+            return;
+        var control = ControlManos.Instancia;
+        if (control == null || control.Cabeza == null)
+            return;
+        persiana = new GameObject("PersianaPropiedades").AddComponent<Persiana>();
+        persiana.seEsconde = true;
+        persiana.sentido = 1;   // se jala hacia arriba
+        persiana.pose = (Transform cab, out Vector3 pos, out Quaternion rot) => PanelesFlexibles.PoseOrilla(cab, false, Lado, out pos, out rot);
+        persiana.visible = () => !PanelPropiedades.Abierto && !Tutorial.EnCurso && !MesaEntrada.Activa && !ExportadorVideo.Exportando;
+        persiana.puedeJalar = () => !control.TrazandoAhora;
+        persiana.texto = () => Idioma.T("Propiedades");
+        persiana.comandoVoz = ControlManos.ComandoVoz.Propiedades;
+        persiana.alAbrir = PanelPropiedades.Abrir;
     }
 }

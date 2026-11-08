@@ -16,6 +16,12 @@ using UnityEngine;
 //    en la capa 2 (líneas de verdad, editables). Ahí sigues entintando con todo lo de siempre.
 //  - "Hoja nueva": una hoja en blanco. Si sales sin entrar, tu boceto se queda en la mesa (también al cerrar la app).
 //  - "Cerrar app" (abajo a la derecha, dos toques).
+//  - v60: al tocar un reciente, su dibujo aparece DE GOLPE en la hoja del disco y te ZAMBULLES en ella (la mesa crece a
+//    tu alrededor; la hoja se desvanece y tus líneas de verdad aparecen poco a poco).
+//  - v60: ZOOM y ALTURA: pellizca con las dos manos (separar/juntar = tamaño; subir/bajar = altura). "Centrar mesa".
+//  - v60: TRES LÁPICES (grafito, rojo, azul): toca uno. EL BLOC (izquierda): "+ Hoja" agrega otra hoja (la anterior
+//    se ve debajo en papel cebolla), ◀ ▶ para ir y volver, "▶ Hojear" las pasa seguidas (8 por segundo) como un
+//    flip book. Al entrar, entra la hoja que está en el disco (las demás se quedan en el bloc).
 public class MesaEntrada : MonoBehaviour
 {
     static MesaEntrada instancia;
@@ -37,7 +43,7 @@ public class MesaEntrada : MonoBehaviour
     Dibujo dibujo;
     Transform raiz, giratorio, hoja, hojaTinta;
     Texture2D texHoja, texTinta;
-    Color32[] pxHoja, pxBase, pxTinta;
+    Color32[] pxHoja, pxBase, pxTinta, pxPapel;
     bool sucioHoja, sucioTinta, tintaPuesta, conBocetoAntiguo = true;
     readonly List<BotonTocable> botonesRecientes = new List<BotonTocable>();
     readonly List<Renderer> minis = new List<Renderer>();
@@ -50,16 +56,80 @@ public class MesaEntrada : MonoBehaviour
     Material matImagen, matTransparente, matColor;
 
     // Lo que dibujaste (en la hoja: u, v de 0 a 1 y la presión), para pasarlo al dibujo al entrar.
+    // v60: c = color del lápiz (0 grafito, 1 rojo, 2 azul). Varias HOJAS (el bloc): cada una su lápiz y su tinta.
     [System.Serializable]
-    class Linea { public List<Vector3> p = new List<Vector3>(); }
+    class Linea { public List<Vector3> p = new List<Vector3>(); public int c; }
+    [System.Serializable]
+    class Pagina
+    {
+        public List<Linea> lapiz = new List<Linea>();
+        public List<Linea> tinta = new List<Linea>();
+    }
     [System.Serializable]
     class Guardado
     {
         public bool antiguo = true;
-        public List<Linea> lapiz = new List<Linea>();
+        public List<Linea> lapiz = new List<Linea>();   // (de la v59: una sola hoja; al cargar pasa a "paginas")
         public List<Linea> tinta = new List<Linea>();
+        public List<Pagina> paginas = new List<Pagina>();
+        public int actual;
     }
     Guardado boceto = new Guardado();
+    Pagina Pag
+    {
+        get
+        {
+            Normalizar();
+            return boceto.paginas[boceto.actual];
+        }
+    }
+
+    void Normalizar()
+    {
+        if (boceto == null)
+            boceto = new Guardado();
+        if (boceto.paginas == null)
+            boceto.paginas = new List<Pagina>();
+        if (boceto.lapiz == null)
+            boceto.lapiz = new List<Linea>();
+        if (boceto.tinta == null)
+            boceto.tinta = new List<Linea>();
+        if (boceto.paginas.Count == 0)
+        {
+            var p = new Pagina();
+            p.lapiz.AddRange(boceto.lapiz);
+            p.tinta.AddRange(boceto.tinta);
+            boceto.paginas.Add(p);
+            boceto.lapiz.Clear();
+            boceto.tinta.Clear();
+        }
+        foreach (var p in boceto.paginas)
+        {
+            if (p.lapiz == null) p.lapiz = new List<Linea>();
+            if (p.tinta == null) p.tinta = new List<Linea>();
+        }
+        boceto.actual = Mathf.Clamp(boceto.actual, 0, boceto.paginas.Count - 1);
+    }
+
+    static readonly Color[] ColoresLapiz = { new Color(0.22f, 0.22f, 0.25f), new Color(0.85f, 0.3f, 0.22f), new Color(0.35f, 0.55f, 0.95f) };
+    int colorLapiz;
+    readonly List<Transform> lapices = new List<Transform>();
+
+    // El bloc: hojear (ver las hojas seguidas, como un flip book).
+    bool hojeando;
+    float proximoCuadro;
+    int cuadroHojear;
+    readonly List<Color32[]> cuadrosHojear = new List<Color32[]>();
+    TextMeshPro textoBloc;
+    BotonTocable btnHojear;
+
+    // Zoom y altura de la mesa (con las dos manos en pellizco). Se recuerdan.
+    const string ClaveEscala = "jcartoons_mesa_escala", ClaveAltura = "jcartoons_mesa_altura";
+    float escalaMesa = 1f, alturaMesa;
+    bool zoomeando;
+    float zoomDistancia, zoomEscala, zoomAltura, zoomY;
+    Vector3 baseMesa;   // dónde está la mesa sin la altura extra
+    Quaternion giroMesa;
     Linea actual;
     bool actualTinta;
 
@@ -124,8 +194,14 @@ public class MesaEntrada : MonoBehaviour
         control.Ocupado = true;
         if (animando)
             return;
-        Dibujar();
-        GirarDisco();
+        if (!Zoom())
+        {
+            if (hojeando)
+                Hojear();
+            else
+                Dibujar();
+            GirarDisco();
+        }
         if (sucioHoja)
         {
             sucioHoja = false;
@@ -208,7 +284,152 @@ public class MesaEntrada : MonoBehaviour
         float a = Inclinacion * Mathf.Deg2Rad;
         Vector3 normal = Vector3.up * Mathf.Cos(a) - adelante * Mathf.Sin(a);       // hacia arriba y hacia ti
         Vector3 subeTablero = adelante * Mathf.Cos(a) + Vector3.up * Mathf.Sin(a);
-        raiz.SetPositionAndRotation(cab.position + adelante * 0.5f - Vector3.up * 0.3f, Quaternion.LookRotation(-normal, subeTablero));
+        baseMesa = cab.position + adelante * 0.5f - Vector3.up * 0.3f;
+        giroMesa = Quaternion.LookRotation(-normal, subeTablero);
+        AplicarPose();
+    }
+
+    void AplicarPose()
+    {
+        raiz.SetPositionAndRotation(baseMesa + Vector3.up * alturaMesa, giroMesa);
+        raiz.localScale = Vector3.one * escalaMesa;
+    }
+
+    // v60: ZOOM y ALTURA de la mesa: pellizca con LAS DOS manos; separar o juntar = más grande o más chica; subir o bajar
+    // las manos = más arriba o más abajo. No se va de enfrente (así nunca la pierdes). Devuelve true mientras lo haces.
+    bool Zoom()
+    {
+        var iz = control.Izq;
+        var de = control.Der;
+        bool ambas = iz.valida && de.valida && iz.pellizco && de.pellizco;
+        if (!ambas)
+        {
+            if (zoomeando)
+            {
+                zoomeando = false;
+                PlayerPrefs.SetFloat(ClaveEscala, escalaMesa);
+                PlayerPrefs.SetFloat(ClaveAltura, alturaMesa);
+                PlayerPrefs.Save();
+            }
+            return false;
+        }
+        float dist = Vector3.Distance(iz.PuntoPellizco, de.PuntoPellizco);
+        float y = (iz.PuntoPellizco.y + de.PuntoPellizco.y) * 0.5f;
+        if (!zoomeando)
+        {
+            zoomeando = true;
+            manoGiro = -1;
+            TerminarLinea();
+            zoomDistancia = Mathf.Max(0.03f, dist);
+            zoomEscala = escalaMesa;
+            zoomAltura = alturaMesa;
+            zoomY = y;
+        }
+        escalaMesa = Mathf.Clamp(zoomEscala * dist / zoomDistancia, 0.6f, 2f);
+        alturaMesa = Mathf.Clamp(zoomAltura + (y - zoomY), -0.35f, 0.35f);
+        AplicarPose();
+        return true;
+    }
+
+    void CentrarMesa()
+    {
+        escalaMesa = 1f;
+        alturaMesa = 0f;
+        PlayerPrefs.SetFloat(ClaveEscala, escalaMesa);
+        PlayerPrefs.SetFloat(ClaveAltura, alturaMesa);
+        PlayerPrefs.Save();
+        Colocar();
+        control.SonidoBurbuja(raiz.position);
+    }
+
+    // ---------- El bloc y los lápices ----------
+
+    void ElegirLapiz(int k)
+    {
+        colorLapiz = Mathf.Clamp(k, 0, ColoresLapiz.Length - 1);
+        for (int i = 0; i < lapices.Count; i++)
+        {
+            Vector3 p = lapices[i].localPosition;
+            lapices[i].localPosition = new Vector3(p.x, i == colorLapiz ? 0.012f : 0f, p.z);
+        }
+        if (control != null && lapices.Count > 0)
+            control.SonidoBurbuja(lapices[colorLapiz].position);
+    }
+
+    void CambiarHoja(int paso)
+    {
+        if (hojeando)
+            PararHojear();
+        TerminarLinea();
+        int n = boceto.actual + paso;
+        if (n < 0 || n >= boceto.paginas.Count)
+            return;
+        boceto.actual = n;
+        RehacerHoja();
+        GuardarBoceto();
+        control.SonidoBurbuja(hoja.position);
+    }
+
+    void AgregarHoja()
+    {
+        if (hojeando)
+            PararHojear();
+        TerminarLinea();
+        Normalizar();
+        boceto.paginas.Insert(boceto.actual + 1, new Pagina());
+        boceto.actual++;
+        tintaPuesta = false;
+        RehacerHoja();
+        GuardarBoceto();
+        control.SonidoBurbuja(hoja.position);
+    }
+
+    void AlternarHojear()
+    {
+        if (hojeando)
+            PararHojear();
+        else
+            EmpezarHojear();
+    }
+
+    void EmpezarHojear()
+    {
+        TerminarLinea();
+        Normalizar();
+        if (boceto.paginas.Count < 2)
+        {
+            textoAyuda.text = Idioma.T("Para hojear agrega otra hoja con \"+ Hoja\" y dibuja el siguiente cuadro");
+            return;
+        }
+        cuadrosHojear.Clear();
+        for (int i = 0; i < boceto.paginas.Count; i++)
+            cuadrosHojear.Add(HojaCompleta(i));
+        hojeando = true;
+        cuadroHojear = 0;
+        proximoCuadro = 0f;
+        hojaTinta.gameObject.SetActive(false);
+        btnHojear.etiqueta.text = Idioma.T("■ Parar");
+        btnHojear.Marcar(true);
+    }
+
+    void PararHojear()
+    {
+        hojeando = false;
+        cuadrosHojear.Clear();
+        btnHojear.etiqueta.text = Idioma.T("▶ Hojear");
+        btnHojear.Marcar(false);
+        RehacerHoja();
+    }
+
+    // 8 hojas por segundo, en bucle (como pasar las hojas con el pulgar).
+    void Hojear()
+    {
+        if (Time.time < proximoCuadro || cuadrosHojear.Count == 0)
+            return;
+        proximoCuadro = Time.time + 1f / 8f;
+        System.Array.Copy(cuadrosHojear[cuadroHojear], pxHoja, pxHoja.Length);
+        sucioHoja = true;
+        cuadroHojear = (cuadroHojear + 1) % cuadrosHojear.Count;
     }
 
     IEnumerator Aparecer()
@@ -218,10 +439,10 @@ public class MesaEntrada : MonoBehaviour
         for (float t = 0f; t < 1f; t += Time.deltaTime / 0.6f)
         {
             float e = Mathf.SmoothStep(0f, 1f, t);
-            raiz.localScale = Vector3.one * Mathf.Lerp(0.05f, 1f, e);
+            raiz.localScale = Vector3.one * Mathf.Lerp(0.05f, 1f, e) * escalaMesa;
             yield return null;
         }
-        raiz.localScale = Vector3.one;
+        raiz.localScale = Vector3.one * escalaMesa;
         animando = false;
     }
 
@@ -239,67 +460,89 @@ public class MesaEntrada : MonoBehaviour
         StartCoroutine(Entrar(i));
     }
 
+    // v60: LA ZAMBULLIDA. El dibujo elegido aparece DE GOLPE en la hoja del disco (sin deslizarse). Luego tú te
+    // zambulles en esa hoja: la mesa crece a tu alrededor mientras te acercas; a la mitad se abre el dibujo, la mesa se
+    // va y la hoja (que ya te rodea) se desvanece mientras tus líneas de verdad aparecen poco a poco.
     IEnumerator Entrar(int reciente)
     {
         animando = true;
+        if (hojeando)
+            PararHojear();
+        TerminarLinea();
         control.SonidoBurbuja(hoja.position);
-        // La hoja que vuela: la del disco (tu boceto) o la del dibujo reciente.
-        Transform vuela;
-        if (reciente < 0)
+        var rHoja = hoja.GetComponent<Renderer>();
+        Material original = rHoja.sharedMaterial;
+        var mVer = new Material(matTransparente);
+        if (mVer.HasProperty("_BaseColor"))
+            mVer.SetColor("_BaseColor", Color.white);
+        Texture2D temporal = null;
+        Texture tex;
+        if (reciente >= 0)
         {
-            vuela = Instantiate(hoja.gameObject).transform;
-            vuela.SetPositionAndRotation(hoja.position, hoja.rotation);
-            vuela.localScale = hoja.lossyScale;
+            var tm = minis[reciente].sharedMaterial;
+            tex = tm.HasProperty("_BaseMap") ? tm.GetTexture("_BaseMap") : tm.mainTexture;
         }
         else
         {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            Destroy(go.GetComponent<Collider>());
-            var r = go.GetComponent<Renderer>();
-            r.sharedMaterial = minis[reciente].sharedMaterial;
-            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            vuela = go.transform;
-            var m = minis[reciente].transform;
-            vuela.SetPositionAndRotation(m.position, m.rotation);
-            vuela.localScale = m.lossyScale;
+            // Tu boceto con la tinta encima, en una sola imagen (para la transición).
+            temporal = new Texture2D(AnchoTex, AltoTex, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            temporal.SetPixels32(HojaCompleta(boceto.actual));
+            temporal.Apply(false);
+            tex = temporal;
         }
+        PonerTextura(mVer, tex);
+        rHoja.sharedMaterial = mVer;
+        hojaTinta.gameObject.SetActive(false);
+        yield return new WaitForSeconds(0.25f);   // un instante para verlo en la hoja
+
         var cab = control.Cabeza;
-        Vector3 p0 = vuela.position, s0 = vuela.localScale;
-        Quaternion r0 = vuela.rotation;
-        bool hecho = false;
-        for (float t = 0f; t < 1f; t += Time.deltaTime / 1.2f)
+        Vector3 hoja0 = hoja.position;
+        Quaternion r0 = raiz.rotation;
+        Quaternion mira = Quaternion.LookRotation(hoja0 - cab.position, Vector3.up);
+        Vector3 desde = raiz.position - hoja0;
+        float esc0 = raiz.localScale.x;
+        Vector3 meta = cab.position + (hoja0 - cab.position).normalized * 0.2f;
+        // 1) Te acercas y la mesa crece a tu alrededor.
+        for (float t = 0f; t < 1f; t += Time.deltaTime / 0.6f)
         {
             float e = Mathf.SmoothStep(0f, 1f, t);
-            // Primero sube a tu vista; después crece hasta que lo atraviesas.
-            Vector3 frente = cab.position + cab.forward * Mathf.Lerp(0.45f, 0.05f, Mathf.Clamp01((e - 0.45f) / 0.55f));
-            Quaternion mira = Quaternion.LookRotation(cab.forward, Vector3.up);
-            float k = Mathf.Clamp01(e / 0.45f);
-            vuela.position = Vector3.Lerp(p0, frente, k);
-            vuela.rotation = Quaternion.Slerp(r0, mira, k);
-            float crece = Mathf.Lerp(1f, 1.6f, k) * Mathf.Lerp(1f, 9f, Mathf.Clamp01((e - 0.45f) / 0.55f));
-            vuela.localScale = new Vector3(s0.x * crece, s0.y * crece, 1f);
-            raiz.localScale = Vector3.one * Mathf.Lerp(1f, 0.02f, Mathf.Clamp01(e / 0.6f));
-            if (!hecho && e > 0.6f)
-            {
-                hecho = true;
-                raiz.gameObject.SetActive(false);
-                if (reciente < 0)
-                    PasarBocetoAlDibujo();
-                else
-                    dibujo.AbrirArchivo(rutasRecientes[reciente]);
-            }
+            float k = Mathf.Lerp(1f, 3.5f, e * e);
+            Quaternion r = Quaternion.Slerp(r0, mira, e);
+            raiz.rotation = r;
+            raiz.localScale = Vector3.one * esc0 * k;
+            raiz.position = Vector3.Lerp(hoja0, meta, e) + (r * Quaternion.Inverse(r0)) * desde * k;
             yield return null;
         }
-        if (!hecho)
+        // 2) Se abre el dibujo; la mesa se va y solo queda la hoja, que te rodea y se desvanece.
+        hoja.SetParent(null, true);
+        raiz.gameObject.SetActive(false);
+        if (reciente < 0)
+            PasarBocetoAlDibujo();
+        else
+            dibujo.AbrirArchivo(rutasRecientes[reciente]);
+        foreach (var t in dibujo.trazos)
+            if (t != null)
+                EfectosLinea.Materializar(t);
+        Vector3 p1 = hoja.position, s1 = hoja.localScale;
+        for (float t = 0f; t < 1f; t += Time.deltaTime / 0.7f)
         {
-            raiz.gameObject.SetActive(false);
-            if (reciente < 0)
-                PasarBocetoAlDibujo();
-            else
-                dibujo.AbrirArchivo(rutasRecientes[reciente]);
+            float e = Mathf.SmoothStep(0f, 1f, t);
+            hoja.position = Vector3.Lerp(p1, cab.position + (p1 - cab.position).normalized * 0.06f, e);
+            hoja.localScale = new Vector3(s1.x * Mathf.Lerp(1f, 2.2f, e), s1.y * Mathf.Lerp(1f, 2.2f, e), 1f);
+            if (mVer.HasProperty("_BaseColor"))
+                mVer.SetColor("_BaseColor", new Color(1f, 1f, 1f, 1f - e));
+            yield return null;
         }
-        Destroy(vuela.gameObject);
-        raiz.localScale = Vector3.one;
+        // Todo vuelve a su lugar (para la próxima vez).
+        hoja.SetParent(giratorio, false);
+        hoja.localPosition = new Vector3(0f, 0f, -0.0055f);
+        hoja.localRotation = Quaternion.identity;
+        hoja.localScale = new Vector3(AnchoHoja, AltoHoja, 1f);
+        rHoja.sharedMaterial = original;
+        Destroy(mVer);
+        if (temporal != null)
+            Destroy(temporal);
+        raiz.localScale = Vector3.one * escalaMesa;
         activa = false;
         animando = false;
         control.Ocupado = false;
@@ -308,7 +551,7 @@ public class MesaEntrada : MonoBehaviour
     // Tu boceto pasa a un dibujo nuevo: el lápiz en la capa 1 (lápiz 2D) y la tinta en la capa 2 (líneas de verdad).
     void PasarBocetoAlDibujo()
     {
-        bool hayLapiz = boceto.lapiz.Count > 0, hayTinta = boceto.tinta.Count > 0;
+        bool hayLapiz = Pag.lapiz.Count > 0, hayTinta = Pag.tinta.Count > 0;
         var cab = control.Cabeza;
         Vector3 adelante = Vector3.ProjectOnPlane(cab.forward, Vector3.up);
         if (adelante.sqrMagnitude < 1e-4f)
@@ -333,7 +576,7 @@ public class MesaEntrada : MonoBehaviour
             if (hojas != null)
             {
                 float radio = hojas.radioLapiz * 1.6f / dibujo.EscalaMundo;
-                foreach (var l in boceto.lapiz)
+                foreach (var l in Pag.lapiz)
                 {
                     var t = new TrazoLapiz { capa = dibujo.capaActual, borra = false, radio = radio };
                     foreach (var q in l.p)
@@ -362,7 +605,7 @@ public class MesaEntrada : MonoBehaviour
             Vector3 planoLocal = raizD.InverseTransformPoint(centroTinta);
             dibujo.DefinirPlano(planoLocal, adelante);
             Vector3 normalLocal = raizD.InverseTransformDirection(adelante).normalized;
-            foreach (var l in boceto.tinta)
+            foreach (var l in Pag.tinta)
             {
                 var puntos = new List<Vector3>();
                 foreach (var q in l.p)
@@ -388,8 +631,16 @@ public class MesaEntrada : MonoBehaviour
         {
             dibujo.Mensaje("Hoja nueva");
         }
-        // La hoja de la mesa queda lista para otro boceto.
-        boceto = new Guardado();
+        // La hoja de la mesa queda lista para otro boceto (si hay más hojas en el bloc, se quedan; sale la que entró).
+        if (boceto.paginas.Count > 1)
+        {
+            boceto.paginas.RemoveAt(boceto.actual);
+            Normalizar();
+        }
+        else
+        {
+            boceto = new Guardado();
+        }
         tintaPuesta = false;
         RehacerHoja();
         GuardarBoceto();
@@ -468,9 +719,9 @@ public class MesaEntrada : MonoBehaviour
         if (actual == null || actualTinta != tintaPuesta)
         {
             TerminarLinea();
-            actual = new Linea();
+            actual = new Linea { c = tintaPuesta ? 0 : colorLapiz };
             actualTinta = tintaPuesta;
-            (tintaPuesta ? boceto.tinta : boceto.lapiz).Add(actual);
+            (tintaPuesta ? Pag.tinta : Pag.lapiz).Add(actual);
         }
         var lista = actual.p;
         if (lista.Count > 0)
@@ -478,11 +729,11 @@ public class MesaEntrada : MonoBehaviour
             Vector3 ultimo = lista[lista.Count - 1];
             if (Vector2.Distance(ultimo, q) < 0.0015f)
                 return;
-            Trazar(ultimo, q, actualTinta);
+            Trazar(ultimo, q, actualTinta, actual.c);
         }
         else
         {
-            Trazar(q, q, actualTinta);
+            Trazar(q, q, actualTinta, actual.c);
         }
         lista.Add(q);
     }
@@ -492,7 +743,7 @@ public class MesaEntrada : MonoBehaviour
         if (actual == null)
             return;
         if (actual.p.Count == 0)
-            (actualTinta ? boceto.tinta : boceto.lapiz).Remove(actual);
+            (actualTinta ? Pag.tinta : Pag.lapiz).Remove(actual);
         actual = null;
         GuardarBoceto();
     }
@@ -523,8 +774,9 @@ public class MesaEntrada : MonoBehaviour
     }
 
     // Sellos entre dos puntos de la hoja (u, v, presión).
-    void Trazar(Vector3 a, Vector3 b, bool tinta)
+    void Trazar(Vector3 a, Vector3 b, bool tinta, int c = 0)
     {
+        Color colorLinea = ColoresLapiz[Mathf.Clamp(c, 0, ColoresLapiz.Length - 1)];
         float pxA = a.x * AnchoTex, pyA = a.y * AltoTex, pxB = b.x * AnchoTex, pyB = b.y * AltoTex;
         float largo = Mathf.Sqrt((pxB - pxA) * (pxB - pxA) + (pyB - pyA) * (pyB - pyA));
         int pasos = Mathf.Max(1, Mathf.CeilToInt(largo / 0.8f));
@@ -535,7 +787,7 @@ public class MesaEntrada : MonoBehaviour
             if (tinta)
                 Sello(pxTinta, Mathf.Lerp(pxA, pxB, t), Mathf.Lerp(pyA, pyB, t), 1.9f, new Color(0.05f, 0.05f, 0.07f), 0.9f, false);
             else
-                Sello(pxHoja, Mathf.Lerp(pxA, pxB, t), Mathf.Lerp(pyA, pyB, t), 1.1f + 1.4f * pr, ColorGrafito, 0.12f + 0.3f * pr, true);
+                Sello(pxHoja, Mathf.Lerp(pxA, pxB, t), Mathf.Lerp(pyA, pyB, t), 1.1f + 1.4f * pr, colorLinea, 0.12f + 0.3f * pr, true);
         }
         if (tinta)
             sucioTinta = true;
@@ -613,9 +865,16 @@ public class MesaEntrada : MonoBehaviour
 
     // ---------- Botones ----------
 
+    // Deja EN BLANCO la hoja que está en el disco (las otras del bloc se quedan).
     void HojaNueva()
     {
-        boceto = new Guardado { antiguo = false };
+        if (hojeando)
+            PararHojear();
+        TerminarLinea();
+        Pag.lapiz.Clear();
+        Pag.tinta.Clear();
+        if (boceto.actual == 0)
+            boceto.antiguo = false;
         tintaPuesta = false;
         RehacerHoja();
         GuardarBoceto();
@@ -716,6 +975,8 @@ public class MesaEntrada : MonoBehaviour
         Material normal = nav.materialBoton, marcado = nav.materialBotonMarcado;
         raiz = new GameObject("Mesa").transform;
         raiz.SetParent(transform, false);
+        escalaMesa = Mathf.Clamp(PlayerPrefs.GetFloat(ClaveEscala, 1f), 0.6f, 2f);
+        alturaMesa = Mathf.Clamp(PlayerPrefs.GetFloat(ClaveAltura, 0f), -0.35f, 0.35f);
 
         // El tablero de madera (su cara de arriba en z = 0; lo de encima va hacia -z).
         Pieza(PrimitiveType.Cube, new Vector3(0f, 0f, 0.012f), new Vector3(0.84f, 0.6f, 0.024f), Quaternion.identity, Textura(Madera()));
@@ -758,14 +1019,44 @@ public class MesaEntrada : MonoBehaviour
         }
 
         // Los lápices y el clip de resorte (arriba a la derecha).
-        Pieza(PrimitiveType.Cube, new Vector3(0.33f, 0.07f, -0.006f), new Vector3(0.1f, 0.016f, 0.01f), Quaternion.identity, metal);
-        for (int k = 0; k < 2; k++)
+        Pieza(PrimitiveType.Cube, new Vector3(0.335f, 0.07f, -0.006f), new Vector3(0.12f, 0.016f, 0.01f), Quaternion.identity, metal);
+        // v60: tres lápices: grafito, rojo y azul. Toca uno para dibujar con él (el elegido se levanta).
+        var madera = Pintura(new Color(0.85f, 0.72f, 0.52f));
+        for (int k = 0; k < 3; k++)
         {
-            float x = 0.31f + k * 0.04f;
-            Pieza(PrimitiveType.Cylinder, new Vector3(x, 0.0f, -0.012f), new Vector3(0.007f, 0.07f, 0.007f), Quaternion.identity, negro);
-            Pieza(PrimitiveType.Cylinder, new Vector3(x, -0.075f, -0.012f), new Vector3(0.006f, 0.006f, 0.006f), Quaternion.identity,
-                  Pintura(new Color(0.85f, 0.72f, 0.52f)));
+            float x = 0.3f + k * 0.035f;
+            int kk = k;
+            var cuerpo = Pintura(k == 0 ? new Color(0.12f, 0.12f, 0.14f) : ColoresLapiz[k]);
+            var b = PanelTutoriales.Boton(raiz, "", new Vector3(x, 0f, -0.008f), new Vector2(0.009f, 0.12f), cuerpo, cuerpo);
+            b.alTocar.AddListener(() => ElegirLapiz(kk));
+            lapices.Add(b.transform);
+            Pieza(PrimitiveType.Cylinder, new Vector3(x, -0.066f, -0.008f), new Vector3(0.006f, 0.006f, 0.006f), Quaternion.identity, madera);
         }
+        ElegirLapiz(0);
+
+        // v60: EL BLOC (izquierda): más hojas para animar, con papel cebolla, y "Hojear" para verlas seguidas.
+        Pieza(PrimitiveType.Cube, new Vector3(-0.33f, 0.06f, -0.006f), new Vector3(0.11f, 0.075f, 0.012f), Quaternion.identity,
+              Pintura(new Color(0.97f, 0.95f, 0.9f)));
+        for (int k = 1; k <= 3; k++)
+            Pieza(PrimitiveType.Cube, new Vector3(-0.33f, 0.06f - 0.0375f - 0.0012f * k, -0.006f + 0.002f * k), new Vector3(0.11f, 0.0008f, 0.002f),
+                  Quaternion.identity, Pintura(new Color(0.8f, 0.78f, 0.74f)));
+        textoBloc = PanelTutoriales.Texto(raiz, "", new Vector3(-0.33f, 0.07f, -0.0125f), new Vector2(0.1f, 0.014f), 0.09f, null);
+        textoBloc.color = new Color(0.3f, 0.22f, 0.15f);
+        var antes = PanelTutoriales.Boton(raiz, "◀", new Vector3(-0.375f, 0.005f, -0.004f), new Vector2(0.03f, 0.022f), normal, marcado);
+        antes.alTocar.AddListener(() => CambiarHoja(-1));
+        var mas = PanelTutoriales.Boton(raiz, "", new Vector3(-0.33f, 0.005f, -0.004f), new Vector2(0.048f, 0.022f), normal, marcado);
+        Idioma.Poner(mas.etiqueta, "+ Hoja");
+        mas.alTocar.AddListener(AgregarHoja);
+        var despues = PanelTutoriales.Boton(raiz, "▶", new Vector3(-0.285f, 0.005f, -0.004f), new Vector2(0.03f, 0.022f), normal, marcado);
+        despues.alTocar.AddListener(() => CambiarHoja(1));
+        btnHojear = PanelTutoriales.Boton(raiz, "", new Vector3(-0.33f, -0.03f, -0.004f), new Vector2(0.11f, 0.024f), normal, marcado);
+        btnHojear.etiqueta.text = Idioma.T("▶ Hojear");
+        btnHojear.alTocar.AddListener(AlternarHojear);
+
+        // v60: "Centrar mesa": vuelve a su tamaño y lugar (frente a ti).
+        var centrar = PanelTutoriales.Boton(raiz, "", new Vector3(0.355f, 0.15f, -0.004f), new Vector2(0.08f, 0.02f), normal, marcado);
+        Idioma.Poner(centrar.etiqueta, "Centrar mesa");
+        centrar.alTocar.AddListener(CentrarMesa);
 
         // Arriba: tus dibujos recientes (hojas con su miniatura y su nombre).
         for (int i = 0; i < Recientes; i++)
@@ -866,20 +1157,31 @@ public class MesaEntrada : MonoBehaviour
 
     void RehacerHoja()
     {
-        // El papel con sus tres perforaciones arriba.
-        for (int i = 0; i < pxBase.Length; i++)
-            pxBase[i] = ColorPapel;
-        foreach (float hx in new[] { 0.3f, 0.5f, 0.7f })
-            Sello(pxBase, hx * AnchoTex, 0.93f * AltoTex, 9f, new Color(0.62f, 0.62f, 0.6f), 1f, false);
-        if (boceto.antiguo)
+        Normalizar();
+        // El papel con sus tres perforaciones arriba (se hace una vez).
+        if (pxPapel == null)
+        {
+            pxPapel = new Color32[AnchoTex * AltoTex];
+            for (int i = 0; i < pxPapel.Length; i++)
+                pxPapel[i] = ColorPapel;
+            foreach (float hx in new[] { 0.3f, 0.5f, 0.7f })
+                Sello(pxPapel, hx * AnchoTex, 0.93f * AltoTex, 9f, new Color(0.62f, 0.62f, 0.6f), 1f, false);
+        }
+        System.Array.Copy(pxPapel, pxBase, pxBase.Length);
+        // El boceto antiguo solo en la primera hoja; en las demás, la anterior en papel cebolla.
+        if (boceto.actual == 0 && boceto.antiguo)
             BocetoAntiguo(pxBase);
+        if (boceto.actual > 0)
+            Cebolla(pxBase, boceto.paginas[boceto.actual - 1]);
         System.Array.Copy(pxBase, pxHoja, pxBase.Length);
         for (int i = 0; i < pxTinta.Length; i++)
             pxTinta[i] = new Color32(255, 255, 255, 38);   // papel de calcar: deja ver el lápiz, un poco más claro
-        foreach (var l in boceto.lapiz)
+        foreach (var l in Pag.lapiz)
             RepintarLinea(l, false);
-        foreach (var l in boceto.tinta)
+        foreach (var l in Pag.tinta)
             RepintarLinea(l, true);
+        if (textoBloc != null)
+            textoBloc.text = Idioma.T("Hoja") + " " + (boceto.actual + 1) + " / " + boceto.paginas.Count;
         hojaTinta.gameObject.SetActive(tintaPuesta);
         if (btnTinta != null)
         {
@@ -893,9 +1195,51 @@ public class MesaEntrada : MonoBehaviour
     {
         if (l.p.Count == 0)
             return;
-        Trazar(l.p[0], l.p[0], tinta);
+        Trazar(l.p[0], l.p[0], tinta, l.c);
         for (int i = 1; i < l.p.Count; i++)
-            Trazar(l.p[i - 1], l.p[i], tinta);
+            Trazar(l.p[i - 1], l.p[i], tinta, l.c);
+    }
+
+    // v60: PAPEL CEBOLLA del bloc: la hoja anterior se ve clarita y rojiza debajo (como en la mesa de verdad).
+    static void Cebolla(Color32[] px, Pagina p)
+    {
+        var tenue = new Color(0.95f, 0.55f, 0.5f);
+        foreach (var l in p.lapiz)
+            PintarSuave(px, l, tenue, 0.35f);
+        foreach (var l in p.tinta)
+            PintarSuave(px, l, tenue, 0.45f);
+    }
+
+    static void PintarSuave(Color32[] px, Linea l, Color color, float fuerza)
+    {
+        for (int i = 0; i < l.p.Count; i++)
+        {
+            Vector3 a = l.p[Mathf.Max(0, i - 1)], b = l.p[i];
+            float ax = a.x * AnchoTex, ay = a.y * AltoTex, bx = b.x * AnchoTex, by = b.y * AltoTex;
+            int pasos = Mathf.Max(1, Mathf.CeilToInt(Mathf.Sqrt((bx - ax) * (bx - ax) + (by - ay) * (by - ay)) / 1.2f));
+            for (int k = 0; k <= pasos; k++)
+            {
+                float t = k / (float)pasos;
+                Sello(px, Mathf.Lerp(ax, bx, t), Mathf.Lerp(ay, by, t), 1.6f, color, fuerza, false);
+            }
+        }
+    }
+
+    // Una hoja entera ya pintada (papel + su lápiz + su tinta encima), para hojear.
+    Color32[] HojaCompleta(int indice)
+    {
+        var px = new Color32[AnchoTex * AltoTex];
+        System.Array.Copy(pxPapel, px, px.Length);
+        if (indice == 0 && boceto.antiguo)
+            BocetoAntiguo(px);
+        var guarda = pxHoja;
+        pxHoja = px;
+        foreach (var l in boceto.paginas[indice].lapiz)
+            RepintarLinea(l, false);
+        pxHoja = guarda;
+        foreach (var l in boceto.paginas[indice].tinta)
+            PintarSuave(px, l, new Color(0.05f, 0.05f, 0.07f), 0.9f);
+        return px;
     }
 
     // Un personaje original, al estilo de los bocetos de animación antiguos: construcción en azul y línea en rojo.
@@ -1003,8 +1347,7 @@ public class MesaEntrada : MonoBehaviour
         {
             Debug.LogWarning("TrazoVR: boceto de la mesa: " + e.Message);
         }
-        if (boceto.lapiz == null) boceto.lapiz = new List<Linea>();
-        if (boceto.tinta == null) boceto.tinta = new List<Linea>();
+        Normalizar();
     }
 
     // v59: "Reset" en Archivos: la próxima vez la mesa empieza limpia (con el boceto antiguo).

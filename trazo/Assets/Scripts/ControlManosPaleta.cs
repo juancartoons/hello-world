@@ -739,6 +739,14 @@ public partial class ControlManos
         hijo.alTocar = () => ElegirTextura(TexturaElegida, (VelocidadTexturaElegida + 1) % Trazo.VelocidadesTextura.Length);
         hijo.texto = () => "Velocidad: " + Trazo.NombresVelocidadTextura[VelocidadTexturaElegida];
         hijo.tono = 1.3f;
+
+        // v60: la paleta queda SOLO para los colores. Los ajustes (textura, vida, imán, uniones, halo, lápiz, velocidad,
+        // degradado...) están en PROPIEDADES (sin repetirse aquí). Queda la raíz RELLENO: abierta = pintas el relleno.
+        foreach (var h in ramaLinea.hijos)
+            h.visible = () => false;
+        foreach (var h in ramaRelleno.hijos)
+            h.visible = () => false;
+        ramaLinea.raiz.visible = () => false;
     }
 
     // Un "#".
@@ -794,9 +802,14 @@ public partial class ControlManos
     }
 
     // Tocar una raíz: se abre (y se cierra la otra); tocarla otra vez la cierra.
+    // v60: lo último que elegiste en la paleta (línea o relleno) decide qué muestra Propiedades, aunque la cierres.
+    // Vuelve a "línea" al cerrar la raíz Relleno o al empezar a dibujar.
+    public bool ContextoRelleno { get; set; }
+
     void AbrirRama(RamaPaleta r)
     {
         ramaAbierta = ramaAbierta == r ? null : r;
+        ContextoRelleno = ramaAbierta != null && ramaAbierta == ramaRelleno;
         claveCentroRelleno = null;
     }
 

@@ -149,8 +149,10 @@ Shader "TrazoVR/Relleno"
                 return TonoCercano(c, CeldaCercana(q, fase, semilla), fase, semilla, 0.34);
             }
 
-            // v57: PLASTILINA: luz mate y suave (de arriba), un poquito más oscura en las orillas, un brillito apenas,
-            // granito fino y HUELLAS de dedos (anillos ovalados aquí y allá). "huellas" de 0 a 1.
+            // v57, v60: PLASTILINA. Para que no parezca plástico de programa 3D: NADA de brillo, casi sin borde oscuro,
+            // la luz "envuelve" (como arcilla o cera) y en la sombra el color se satura en vez de ponerse gris; la
+            // superficie tiene ABOLLADURAS suaves de dedos y un granito fino (la luz cambia a parches); la masa tiene
+            // manchitas de amasado; y aquí y allá HUELLAS de dedos y pulgares (marcas alargadas con rayitas finas).
             float3 Plastilina(float3 c, float2 uv, float huellas, float cambios, float semilla, float3 n, float3 posWS)
             {
                 float3 V = normalize(GetCameraPositionWS() - posWS);
@@ -158,7 +160,14 @@ Shader "TrazoVR/Relleno"
                 if (dot(n, V) < 0.0)
                     n = -n;
                 float fase = cambios > 0.0 ? fmod(floor(_TrazoTiempo * cambios), 4.0) : 0.0;
-                float2 p = uv / 0.022;
+                // Abolladuras (grandes y finas): la normal se tuerce a parches.
+                float3 q = posWS * 70.0 + semilla + fase * 3.7;
+                float3 bulto = float3(TrazoRuido(q), TrazoRuido(q + 13.7), TrazoRuido(q + 29.3)) - 0.5;
+                float3 q2 = posWS * 210.0 + semilla * 1.7;
+                float3 fino = float3(TrazoRuido(q2), TrazoRuido(q2 + 7.1), TrazoRuido(q2 + 3.9)) - 0.5;
+                n = normalize(n + bulto * 0.6 + fino * 0.14);
+                // Huellas: marcas alargadas (pulgar que alisa) con rayitas finas, en celdas al azar.
+                float2 p = uv / 0.024;
                 float2 i0 = floor(p);
                 float2 f0 = frac(p);
                 float marca = 0.0;
@@ -169,27 +178,29 @@ Shader "TrazoVR/Relleno"
                         float2 g = float2(x, y);
                         float2 celda = i0 + g;
                         float h = TrazoHash(float3(celda, semilla + 4.7 + fase * 3.1));
-                        if (h > 0.62)
+                        if (h > 0.58)
                         {
                             float2 centro = g + float2(TrazoHash(float3(celda + 5.3, semilla + fase)), TrazoHash(float3(celda + 9.1, semilla + fase))) - f0;
                             float ang = h * 31.0;
                             float2 dir = float2(cos(ang), sin(ang));
-                            float2 d = float2(dot(centro, dir), dot(centro, float2(-dir.y, dir.x)) * 1.45);
+                            float2 d = float2(dot(centro, dir) * 0.8, dot(centro, float2(-dir.y, dir.x)) * 1.7);
                             float r = length(d);
-                            float dentro = saturate(1.0 - r / 0.6);
-                            marca += dentro * dentro * (0.5 + 0.5 * sin(r * 48.0 + h * 6.0));
+                            float dentro = saturate(1.0 - r / 0.62);
+                            dentro *= dentro;
+                            marca += dentro * (0.65 + 0.35 * sin(r * 34.0 + h * 6.0));
                         }
                     }
                 }
-                float grano = TrazoRuido(float3(uv * 260.0, semilla)) - 0.5;
+                float grano = TrazoRuido(float3(uv * 300.0, semilla)) - 0.5;
+                // Luz envolvente y sin brillo.
                 float3 L = normalize(float3(0.35, 0.9, -0.3));
-                float dif = dot(n, L) * 0.5 + 0.5;
-                float luz = 0.6 + 0.5 * dif * dif;
-                float orilla = 1.0 - 0.2 * pow(1.0 - saturate(dot(n, V)), 2.0);
-                float3 r3 = c * luz * orilla;
-                r3 *= 1.0 - huellas * (0.17 * saturate(marca) + 0.08 * grano);
-                float3 H = normalize(L + V);
-                r3 += 0.05 * pow(saturate(dot(n, H)), 12.0);
+                float envuelve = saturate((dot(n, L) + 0.55) / 1.55);
+                float3 sombra = c * c * 1.05 + c * 0.08;
+                float3 r3 = lerp(sombra, c, envuelve) * (0.62 + 0.48 * envuelve);
+                r3 *= 1.0 - 0.07 * pow(1.0 - saturate(dot(n, V)), 2.0);
+                // Manchitas de la masa amasada.
+                r3 *= 1.0 + (TrazoRuido(posWS * 24.0 + semilla * 3.1) - 0.5) * 0.12;
+                r3 *= 1.0 - huellas * (0.11 * saturate(marca) + 0.07 * grano);
                 return saturate(r3);
             }
 

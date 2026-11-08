@@ -928,6 +928,7 @@ public partial class ControlManos : MonoBehaviour
             trazoActual = dibujo.NuevoTrazo();
             AplicarCubeta(trazoActual); // con la cubeta encendida se va rellenando mientras dibujas
             inicioTrazo = Time.time;
+            ContextoRelleno = false;   // v60: dibujar = Propiedades vuelve a la línea
         }
         trazoActual.AgregarPuntoCrudo(dibujo.ProyectarEnPlano(local));
     }
@@ -1125,6 +1126,7 @@ public partial class ControlManos : MonoBehaviour
             inicioRecta = Imantar(dibujo.ProyectarEnPlano(local), null);
             trazoActual = dibujo.NuevoTrazo();
             inicioTrazo = Time.time;
+            ContextoRelleno = false;   // v60: dibujar = Propiedades vuelve a la línea
         }
         trazoActual.PonerRecta(inicioRecta, Imantar(dibujo.ProyectarEnPlano(local), trazoActual));
     }

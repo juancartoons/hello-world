@@ -860,3 +860,10 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - HECHO: revisor de tipos guardado en trazo/Herramientas/revisor/compilar.sh (se arma solo en una sesión nueva).
 - POR PROBAR: tamaño y lugar de la mesa en el visor, que la tinta de la mesa quede bien en su capa, el giro del disco.
 - IDEA (sin HY): esconder "Suavidad" de la línea de tiempo en modo lápiz; morph con distinto número de nodos, física en huesos y video de referencia (ideas de MacroFlash).
+
+## v60
+- HECHO: Propiedades solo con la herramienta actual (lápiz / tinta / relleno según lo último abierto en la paleta / cámara + fondo), pastillita abajo a la derecha (se jala hacia arriba), agarradera para moverlo, se queda donde lo dejas. La paleta queda solo con colores + Relleno (sin hijos repetidos). Grosor vivo, Halo y "Ajustes del lápiz" pasaron a Propiedades·Tinta.
+- HECHO: voz "fondo blanco", "fondo cuadrícula", "fondo transparente", "passthrough" (directo).
+- HECHO: plastilina más real (mate, sin brillo, luz envolvente, abolladuras, manchas de amasado, huellas alargadas, perfil aplastado con bultitos).
+- HECHO: mesa: zambullida (el reciente aparece de golpe en la hoja, la mesa crece, la hoja se desvanece y las líneas se materializan), zoom y altura con dos manos + "Centrar mesa", tres lápices (grafito/rojo/azul), bloc con papel cebolla y Hojear.
+- FALTA: al entrar, pasar TODAS las hojas del bloc como cuadros de animación (hoy entra solo la hoja del disco). Hojear con el pulgar en la esquina (hoy es un botón).

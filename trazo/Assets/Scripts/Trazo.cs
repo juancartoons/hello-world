@@ -1520,7 +1520,11 @@ public class Trazo : MonoBehaviour
             {
                 Vector2 q = plPlano[k];
                 float t = Mathf.Clamp01(plDist[k] / dMax);
-                float h = alto * Mathf.Sqrt(t * (2f - t));
+                // v60: perfil de plastilina APLASTADA (orilla redondeada y arriba casi plano, no un globo perfecto)
+                // y BULTITOS de amasar a mano (nunca en la orilla).
+                float h = alto * Mathf.Pow(t * (2f - t), 0.38f);
+                float bulto = Mathf.PerlinNoise(q.x / (0.035f * tam / 0.3f + 1e-4f) + semilla, q.y / (0.035f * tam / 0.3f + 1e-4f) - semilla) - 0.5f;
+                h *= 1f + (0.08f + 0.18f * Mathf.Clamp01(plastiIrregular)) * 2f * bulto * Mathf.SmoothStep(0f, 1f, t * 3f);
                 float baseAlto = k < n && k < altosBorde.Count ? altosBorde[k] : AltoInterpolado(q, poli2D, altosBorde);
                 verts.Add(poliCentro + poliU * q.x + poliV * q.y + poliN * (baseAlto + lado * h));
             }

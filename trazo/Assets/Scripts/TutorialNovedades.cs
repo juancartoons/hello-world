@@ -30,7 +30,7 @@ public class TutorialNovedades : TarjetaTutorial
     readonly List<Vector3> otra = new List<Vector3>();
     readonly List<Vector3> tramo = new List<Vector3>();
 
-    protected override int Paginas => 25;
+    protected override int Paginas => 26;
 
     protected override void ArmarExtra()
     {
@@ -77,7 +77,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 21: return Tx("22 · Clay and SVG", "22 · Plastilina y SVG");
             case 22: return Tx("23 · The knife and the invisible head", "23 · El cuchillo y la cabeza invisible");
             case 23: return Tx("24 · The animation desk and Properties", "24 · La mesa de animación y Propiedades");
-            default: return Tx("25 · How to use the invisible head", "25 · Cómo usar la cabeza invisible");
+            case 24: return Tx("25 · How to use the invisible head", "25 · Cómo usar la cabeza invisible");
+            default: return Tx("26 · Flip book, colored pencils and Properties", "26 · Bloc, lápices de colores y Propiedades");
         }
     }
 
@@ -134,6 +135,10 @@ public class TutorialNovedades : TarjetaTutorial
                     "DESERT SUNSET: a new living background: dunes all around you lit by a low golden sun, violet shadows, a pink and purple sky with thin clouds, the first stars and the wind lifting dust far away. Say \"desert\". LAYERS: each one shows a thumbnail on its left; say \"layer 2\" to jump to it; leave your finger still on the name to rename it; delete with the little trash can (tap twice). The camera is a layer of its own (\"+ Camera\" = another one). The panels open with either hand, whatever the other one is doing.",
                     "ATARDECER EN EL DESIERTO: un fondo vivo nuevo: dunas a tu alrededor con la luz dorada del sol bajito, sombras violeta, un cielo rosado y morado con nubes finas, las primeras estrellas y el viento levantando polvo a lo lejos. Di \"desierto\". CAPAS: cada una muestra su miniatura a la izquierda; di \"capa 2\" para ir a ella; deja el dedo quieto en el nombre para cambiarlo; borra con el basurerito (toca dos veces). La cámara es su propia capa (\"+ Cámara\" = otra). Las persianas se abren con cualquier mano, haga lo que haga la otra.");
             default:
+                return Tx(
+                    "THE DESK, MORE ALIVE: three PENCILS (graphite, red, blue): touch one to draw with it. THE PAD (left): \"+ Sheet\" adds a sheet (the previous one shows underneath in onion skin), ◀ ▶ to go back and forth, \"▶ Flip\" plays them in a loop like a flip book. Pinch with BOTH hands to make the desk bigger or smaller and higher or lower; \"Center desk\" puts it back. Touch a recent drawing: it appears on the disc sheet and you DIVE into it. PROPERTIES: only the tool you are using (pencil, ink, fill or camera); pull its pill at the bottom right of your view; move it by pinching its little bar. The PALETTE now has only colors (and Fill). VOICE: \"white background\", \"grid background\", \"transparent background\" or \"passthrough\" go straight to that background. CLAY: matte, with dents and finger marks, flatter (pressed by hand).",
+                    "LA MESA, MÁS VIVA: tres LÁPICES (grafito, rojo, azul): toca uno para dibujar con él. EL BLOC (izquierda): \"+ Hoja\" agrega una hoja (la anterior se ve debajo en papel cebolla), ◀ ▶ para ir y volver, \"▶ Hojear\" las pasa seguidas como un flip book. Pellizca con LAS DOS manos para hacer la mesa más grande o más chica y más arriba o más abajo; \"Centrar mesa\" la devuelve. Toca un dibujo reciente: aparece en la hoja del disco y te ZAMBULLES en él. PROPIEDADES: solo la herramienta que estás usando (lápiz, tinta, relleno o cámara); jala su pastillita abajo a la derecha de tu vista; muévelo pellizcando su barrita. La PALETA ahora tiene solo colores (y Relleno). VOZ: \"fondo blanco\", \"fondo cuadrícula\", \"fondo transparente\" o \"passthrough\" van directo a ese fondo. PLASTILINA: mate, con abolladuras y huellas, más aplastada (hecha a mano).");
+            case 24:
                 return Tx(
                     "HOW TO USE THE INVISIBLE HEAD. 1) Open it: Timeline (watch) → Animate page → \"Invisible head\", or say \"invisible head\". 2) The easiest way is to DICTATE it while you draw it: say \"profile face\" (or \"front face\"); the little drawings and the words appear on your right. Before each part, say its name (or touch it on the list) and draw it: \"top of head\", \"left cheek\", \"jaw\", \"ear\", \"nose\", \"eye 1\"... Say \"end dictation\". 3) Open Invisible head: it already knows the view. Pinch the head and turn it, or use the buttons (profile, 3/4, front) and \"Turn\". 4) If a part is wrong, touch its label: green check = OK, red X = remove, blue square = 3 likely words. 5) \"Use this view\" puts it in another frame with the SAME nodes (it morphs). Your original never changes.",
                     "CÓMO USAR LA CABEZA INVISIBLE. 1) Ábrela: Línea de tiempo (reloj) → página Animar → \"Cabeza invisible\", o di \"cabeza invisible\". 2) Lo más fácil es DICTARLA mientras la dibujas: di \"cara de perfil\" (o \"cara de frente\"); a tu derecha salen los dibujitos y las palabras. Antes de cada parte di su nombre (o tócala en la lista) y dibújala: \"cabeza arriba\", \"mejilla izquierda\", \"mandíbula\", \"oreja\", \"nariz\", \"ojo 1\"... Di \"fin del dictado\". 3) Abre la Cabeza invisible: ya sabe la vista. Pellizca la cabeza y gírala, o usa los botones (perfil, 3/4, frente) y \"Gira\". 4) Si una parte quedó mal, toca su etiqueta: visto verde = bien, X roja = quitar, cuadrito azul = 3 palabras probables. 5) \"Usar esta vista\" la pone en otro fotograma con LOS MISMOS nodos (se hace morph). Tu original nunca cambia.");

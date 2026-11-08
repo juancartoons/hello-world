@@ -40,7 +40,7 @@ public partial class ControlManos
         // v52
         IrAFotograma, BorraFotograma, BorraCapa, SeleccionaTodo, QuitaSeleccion, ApagaVoz, CopiarEstilo, PegarEstilo, PuntoClave,
         PuntoCorto,   // v53: "nariz", "oreja"... (con la cabeza invisible abierta)
-        CaraPerfil, CaraFrente, FinDictado, ParteDictado, Funcion, Plastilina, ImportarSvg, CortarAqui, Propiedades, Entrar   // v55/v56/v57/v58/v59: el dictado de la cabeza
+        CaraPerfil, CaraFrente, FinDictado, ParteDictado, Funcion, Plastilina, ImportarSvg, CortarAqui, Propiedades, Entrar, FondoDirecto   // v55/v56/v57/v58/v59/v60: el dictado de la cabeza
     }
 
     // v43: los fondos que se pueden pedir por su nombre (el nombre exacto que tienen en Escenario).
@@ -97,6 +97,13 @@ public partial class ControlManos
         // v42: los botones que no tenían voz.
         C(ComandoVoz.Plano, "Plano", "Plane", new[] { "plano" }, new[] { "plane" }),
         C(ComandoVoz.Fondo, "Fondo", "Background", new[] { "fondo" }, new[] { "background" }),
+        // v60: "fondo blanco", "fondo transparente"... van DIRECTO a ese fondo (la frase más larga gana: "blanco" solo
+        // sigue pintando la línea).
+        C(ComandoVoz.FondoDirecto, "Fondo cuadrícula", "Grid background", new[] { "fondo cuadrícula", "fondo cuadricula", "fondo de cuadrícula" },
+          new[] { "grid background", "background grid" }, 0),
+        C(ComandoVoz.FondoDirecto, "Fondo blanco", "White background", new[] { "fondo blanco" }, new[] { "white background", "background white" }, 1),
+        C(ComandoVoz.FondoDirecto, "Fondo transparente", "Passthrough", new[] { "fondo transparente", "passthrough", "fondo realidad" },
+          new[] { "transparent background", "background transparent" }, 2),
         C(ComandoVoz.Archivos, "Archivos", "Files", new[] { "archivos", "mis archivos" }, new[] { "files", "my files" }),
         C(ComandoVoz.Esfera, "Esfera", "Sphere", new[] { "esfera" }, new[] { "sphere", "ball" }),
         C(ComandoVoz.Cubo, "Cubo", "Cube", new[] { "cubo" }, new[] { "cube", "box" }),
@@ -473,6 +480,17 @@ public partial class ControlManos
             case ComandoVoz.Halo: dibujo.AlternarHalo(); break;
             // v42
             case ComandoVoz.Plano: dibujo.AlternarPlano(); break;
+            case ComandoVoz.FondoDirecto:
+            {
+                var esc = FindFirstObjectByType<Escenario>();
+                if (esc != null)
+                {
+                    esc.PonerModo(dato);
+                    SelectorFondos.Cerrar();
+                    dibujo.Mensaje(esc.MensajeFondo);
+                }
+                break;
+            }
             case ComandoVoz.Fondo:
             {
                 var reloj = FindFirstObjectByType<PanelMuneca>();
