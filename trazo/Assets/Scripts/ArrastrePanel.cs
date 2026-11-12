@@ -7,6 +7,7 @@ using UnityEngine;
 // Lo usan Mis archivos, la ventanita de fondos 360 y el buscador de imágenes (la mesa de trabajo tiene lo suyo).
 // v52: también con el gesto de NODOS en la izquierda (medio + pulgar): toca el panel con el índice derecho y llévalo;
 // al soltar la izquierda, el panel se queda ahí.
+// v62: el pellizco agarra el panel desde cualquier parte de su cuerpo (también encima de los botones).
 public class ArrastrePanel : MonoBehaviour
 {
     [Tooltip("Centro del área que se puede agarrar (coordenadas del panel)")]
@@ -114,7 +115,9 @@ public class ArrastrePanel : MonoBehaviour
         }
         if (!der.valida || !der.empezoPellizco || control.Ocupado || control.GestoIzq != ControlManos.Gesto.Ninguno)
             return;
-        if (BotonTocable.DedoCerca || (puede != null && !puede()))
+        // v62: con el PELLIZCO (OK) se agarra desde CUALQUIER parte del panel, aunque haya botones cerca (los botones
+        // se tocan con la punta del índice, sin pellizcar).
+        if (puede != null && !puede())
             return;
         if (!Dentro(der.PuntoPellizco))
             return;

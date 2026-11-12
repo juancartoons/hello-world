@@ -40,7 +40,8 @@ public partial class ControlManos
         // v52
         IrAFotograma, BorraFotograma, BorraCapa, SeleccionaTodo, QuitaSeleccion, ApagaVoz, CopiarEstilo, PegarEstilo, PuntoClave,
         PuntoCorto,   // v53: "nariz", "oreja"... (con la cabeza invisible abierta)
-        CaraPerfil, CaraFrente, FinDictado, ParteDictado, Funcion, Plastilina, ImportarSvg, CortarAqui, Propiedades, Entrar, FondoDirecto   // v55/v56/v57/v58/v59/v60: el dictado de la cabeza
+        CaraPerfil, CaraFrente, FinDictado, ParteDictado, Funcion, Plastilina, ImportarSvg, CortarAqui, Propiedades, Entrar, FondoDirecto,
+        CentrarMesa, Semipassthrough, VerEnLaMesa   // v62 · v55/v56/v57/v58/v59/v60: el dictado de la cabeza
     }
 
     // v43: los fondos que se pueden pedir por su nombre (el nombre exacto que tienen en Escenario).
@@ -104,6 +105,15 @@ public partial class ControlManos
         C(ComandoVoz.FondoDirecto, "Fondo blanco", "White background", new[] { "fondo blanco" }, new[] { "white background", "background white" }, 1),
         C(ComandoVoz.FondoDirecto, "Fondo transparente", "Passthrough", new[] { "fondo transparente", "passthrough", "fondo realidad" },
           new[] { "transparent background", "background transparent" }, 2),
+        // v62: el SEMIPASSTHROUGH (blanco a los lados, tu cuarto en el centro). 0 = ponerlo, 1 = ventana fija, 2 = sigue la mirada.
+        C(ComandoVoz.Semipassthrough, "Semipassthrough", "Semi passthrough",
+          new[] { "semipassthrough", "semi passthrough", "fondo semi", "semi transparente", "medio passthrough" },
+          new[] { "semi passthrough", "semipassthrough", "half passthrough" }, 0),
+        C(ComandoVoz.Semipassthrough, "Ventana fija", "Fixed window",
+          new[] { "ventana fija", "semi fijo", "semipassthrough fijo" }, new[] { "fixed window", "semi fixed" }, 1),
+        C(ComandoVoz.Semipassthrough, "Ventana sigue la mirada", "Window follows gaze",
+          new[] { "ventana sigue la mirada", "semi mirada", "semipassthrough mirada", "ventana con la mirada" },
+          new[] { "window follows gaze", "semi gaze" }, 2),
         C(ComandoVoz.Archivos, "Archivos", "Files", new[] { "archivos", "mis archivos" }, new[] { "files", "my files" }),
         C(ComandoVoz.Esfera, "Esfera", "Sphere", new[] { "esfera" }, new[] { "sphere", "ball" }),
         C(ComandoVoz.Cubo, "Cubo", "Cube", new[] { "cubo" }, new[] { "cube", "box" }),
@@ -288,6 +298,10 @@ public partial class ControlManos
                 new[] { "cara de frente", "cara frontal", "cabeza de frente" }, new[] { "front face", "face from the front" }));
         l.Add(C(ComandoVoz.Propiedades, "Propiedades", "Properties", new[] { "propiedades", "ajustes", "herramientas" }, new[] { "properties", "settings", "tools" }));
         l.Add(C(ComandoVoz.Entrar, "Entrar", "Enter", new[] { "entrar", "entra", "entrar a la hoja" }, new[] { "enter", "go in" }));
+        l.Add(C(ComandoVoz.CentrarMesa, "Centrar mesa", "Center desk", new[] { "centrar mesa", "centra la mesa", "mesa al centro" },
+                new[] { "center desk", "center the desk" }));
+        l.Add(C(ComandoVoz.VerEnLaMesa, "Ver en la mesa", "See on the desk", new[] { "ver en la mesa", "mesa de animación" },
+                new[] { "see on the desk", "show on the desk", "animation desk" }));
         l.Add(C(ComandoVoz.CortarAqui, "Cortar aquí", "Cut here",
                 new[] { "cortar aquí", "corta aquí", "cortar aqui", "separar aquí" }, new[] { "cut here", "split here" }));
         l.Add(C(ComandoVoz.Plastilina, "Plastilina", "Clay",
@@ -589,6 +603,22 @@ public partial class ControlManos
             case ComandoVoz.CortarAqui: CortarAquiVoz(); break;
             case ComandoVoz.Propiedades: PanelPropiedades.Alternar(); break;
             case ComandoVoz.Entrar: MesaEntrada.EntrarVoz(); break;
+            case ComandoVoz.CentrarMesa: MesaEntrada.CentrarVoz(); break;
+            case ComandoVoz.VerEnLaMesa: MesaEntrada.VerEnLaMesa(); break;
+            case ComandoVoz.Semipassthrough:
+            {
+                var esc = FindFirstObjectByType<Escenario>();
+                if (esc != null)
+                {
+                    if (dato == 1 || dato == 2)
+                        esc.PonerSemiMirada(dato == 2);
+                    esc.PonerSemi();
+                    SelectorFondos.Cerrar();
+                    dibujo.Mensaje(dato == 2 ? "Semipassthrough: la ventana sigue tu mirada"
+                                   : dato == 1 ? "Semipassthrough: ventana fija frente a ti" : "Fondo: Semipassthrough");
+                }
+                break;
+            }
             case ComandoVoz.ImportarSvg: ImportadorSvg.Abrir(); break;
             case ComandoVoz.FinDictado: CabezaInvisible.TerminarDictado(); break;
             case ComandoVoz.ParteDictado:

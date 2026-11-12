@@ -247,6 +247,49 @@ public class PanelMuneca : MonoBehaviour
         }
         ActualizarAviso();
         ActualizarRec();
+        if (MesaEntrada.Activa != modoMesa)
+            AplicarModoMesa(MesaEntrada.Activa);
+    }
+
+    // v62: EN LA MESA DE ANIMACIÓN el reloj sale solo con lo del FONDO (Fondo y las flechas de girar): lo demás se
+    // esconde mientras estás en la mesa y vuelve al entrar.
+    bool modoMesa;
+    readonly System.Collections.Generic.List<GameObject> escondidosMesa = new System.Collections.Generic.List<GameObject>();
+
+    void AplicarModoMesa(bool en)
+    {
+        modoMesa = en;
+        if (contenido == null)
+            return;
+        if (!en)
+        {
+            foreach (var g in escondidosMesa)
+                if (g != null)
+                    g.SetActive(true);
+            escondidosMesa.Clear();
+            return;
+        }
+        foreach (Transform h in contenido.transform)
+        {
+            if (!h.gameObject.activeSelf || SirveEnMesa(h))
+                continue;
+            h.gameObject.SetActive(false);
+            escondidosMesa.Add(h.gameObject);
+        }
+    }
+
+    bool SirveEnMesa(Transform h)
+    {
+        if (h.name == "Fondo")
+            return true;   // el vidrio de atrás del menú
+        foreach (var b in new[] { btnFondo, btnGirarIzq, btnGirarDer })
+        {
+            if (b == null)
+                continue;
+            if (b.transform.IsChildOf(h) || (b.etiqueta != null && b.etiqueta.transform.IsChildOf(h)))
+                return true;
+        }
+        return (textoAviso != null && textoAviso.transform.IsChildOf(h)) || (textoEstado != null && textoEstado.transform.IsChildOf(h));
     }
 
     void CrearFilaRec()

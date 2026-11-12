@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v61***
+*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v62***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -876,3 +876,16 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - HECHO: cada botón de la paleta abre Propiedades de esa herramienta; aviso de tinta invisible en Propiedades·Tinta.
 - FALTA: los 2 dibujos que faltan para llegar a 7 (se agregan como boceto6 y boceto7, sin tocar código).
 - FALTA (AN): mesa con zoom "infinito" y moverla de lado, goma de tinta con burbujas como nodos, tinta vectorial con gestos, "Ver en la mesa", passthrough y semipassthrough, aviso 2D→3D, pastillita de Propiedades más arriba, arrastrar paneles desde cualquier parte, cebolla on/off, todas las hojas como cuadros al entrar, rediseño de la paleta (espera instrucciones).
+
+## v62
+- HECHO: MESA: zoom de 0,3 a 15 veces y la mesa se mueve con las dos manos en pellizco (a los lados, arriba, abajo, cerca/lejos); se recuerda. Flecha azul "Tu mesa" si queda fuera de la vista. Voz "centrar mesa".
+- HECHO: mesa siempre en passthrough (al entrar vuelve el fondo que tenías; si lo cambiaste en la mesa con el reloj, se queda). En la mesa el reloj sale solo con Fondo y las flechas de girar.
+- HECHO: "Cebolla: sí/no" en el bloc. Puño izquierdo + índice = goma (lápiz y tinta).
+- HECHO: TINTA EN LÍNEAS (por defecto): se guarda con nodos y se dibuja lisa; el puño (o la goma) borra la línea entera con burbujas; gesto de nodos (pulgar + medio izquierdos) = ver y arrastrar nodos. Truco: 2 segundos sobre "Hoja de tinta" = tinta pintada (la de antes) / líneas.
+- HECHO: con varias hojas en el bloc, ✦ Entrar las pasa TODAS como cuadros (capas cuadro a cuadro "Lápiz" y "Tinta"). Con una sola hoja, igual que antes.
+- HECHO: "Ver en la mesa" (Propiedades en una capa 2D, o la voz): tu hoja del archivo sobre el disco; ✦ Volver al archivo.
+- HECHO: SEMIPASSTHROUGH (Fondo: Realidad → Semipassthrough → 360; voz "semipassthrough"): ventana fija (por defecto) o que sigue la mirada (Propiedades o voz "semi mirada"). Se guarda con el archivo.
+- HECHO: hoja 2D de lápiz dentro del archivo con estilo de papel de animación (perforaciones abajo y número del fotograma a mano; círculo si es clave).
+- HECHO: Propiedades siempre encima (con puntito azul en el dedo), pastillita más arriba y más al centro, paneles se arrastran con pellizco desde cualquier parte, aviso "¿Pasar a 3D?" al dibujar a más de 20 cm de la hoja 2D.
+- POR PROBAR: tamaño de la ventana del semipassthrough, que la tinta en líneas se sienta bien, la foto de "Ver en la mesa" (que no salgan cosas de más), el puntito del dedo en Propiedades.
+- FALTA: rediseño de la línea en la paleta (esperando indicaciones). Ver en la mesa: por ahora solo para mirar (no se dibuja sobre tu hoja del archivo).

@@ -77,6 +77,10 @@ public partial class ControlManos : MonoBehaviour
 
     // true mientras otro objeto usa las manos (por ejemplo, al mover el panel de arriba).
     public bool Ocupado { get; set; }
+    // v62 (la mesa de animación los usa): el PUÑO izquierdo (borrar) y el gesto de NODOS (pulgar + medio izquierdos).
+    public bool PunoIzquierdo => EsPuno(false) || PunoApretado();
+    public bool NodosIzquierdo => Izq.valida && Vector3.Distance(Izq.pulgar, Izq.medio) < 0.022f
+                                  && Vector3.Distance(Izq.pulgar, Izq.indice) > 0.035f;
 
     // Dibujo bloqueado (doble toque izquierdo): no se dibujan líneas por accidente.
     public bool DibujoBloqueado { get; private set; }
@@ -393,7 +397,11 @@ public partial class ControlManos : MonoBehaviour
             SoltarImagen();
             lineaMovida = null;
             figuraMovida = null;
-            menuAbierto = false;
+            // v62: en la mesa de animación el reloj SÍ sale (para cambiar el fondo); lo demás sigue quieto.
+            if (MesaEntrada.Activa && !ExportadorVideo.Exportando && !Titere.Activo)
+                ActualizarMenu();
+            else
+                menuAbierto = false;
             CerrarPaleta();
             esperarSoltarIzq = true;
             esperarSoltarDesde = -1f;
@@ -1060,6 +1068,8 @@ public partial class ControlManos : MonoBehaviour
         // Detrás del plano = el lápiz apretado al máximo (la línea sigue pegada a la hoja).
         float p = ProfundidadTrasPlano(local);
         lejosDelPlano = p < -hojas.alcance || p > MaxDetrasPlano;
+        if (lejosDelPlano && !goma && (p < -AvisoPasar3D.DistanciaAviso || p > MaxDetrasPlano))
+            AvisoPasar3D.Pedir(this, dibujo);   // v62: dibujando lejos de la hoja: "¿Pasar a 3D?"
         if (lejosDelPlano)
         {
             hojas.Terminar();
@@ -1085,6 +1095,8 @@ public partial class ControlManos : MonoBehaviour
         if (trazoActual == null)
         {
             lejosDelPlano = p < -0.015f || p > MaxDetrasPlano;
+            if (lejosDelPlano && (p < -AvisoPasar3D.DistanciaAviso || p > MaxDetrasPlano))
+                AvisoPasar3D.Pedir(this, dibujo);   // v62: dibujando lejos de la hoja: "¿Pasar a 3D?"
             return lejosDelPlano;
         }
         if (p >= -0.025f && p <= MaxDetrasPlano)

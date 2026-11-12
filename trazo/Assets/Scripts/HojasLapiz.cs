@@ -53,6 +53,7 @@ public class HojasLapiz : MonoBehaviour
         public Material material;
         public Vector3 origen, ejeU, ejeV, normal;
         public bool colocada;
+        public GameObject papelAnim;   // v62: perforaciones y número del fotograma encima del papel
     }
 
     float avisoBorde = -10f;
@@ -367,6 +368,87 @@ public class HojasLapiz : MonoBehaviour
                 h.go.SetActive(ver);
         }
         ActualizarBotonPapel();
+        ActualizarPapelAnimacion();
+    }
+
+    // ---------- v62: el PAPEL DE ANIMACIÓN (como en la mesa): perforaciones abajo y el número del fotograma ----------
+    // Solo en la hoja de la capa en la que dibujas, y solo si su papel se ve (blanco o 50 %).
+
+    const int AnchoPapelAnim = 600, AltoPapelAnim = 400;
+    Texture2D texPapelAnim;
+    Color32[] pxPapelAnim;
+    int numeroPapelAnim = -1;
+    bool clavePapelAnim;
+    Material matPapelAnim;
+
+    void ActualizarPapelAnimacion()
+    {
+        var anim = dibujo.animacion;
+        int numero = anim != null ? anim.Fotograma + 1 : 1;
+        bool clave = anim != null && anim.EsClave(anim.Fotograma);
+        if (numero == 1 && (anim == null || !anim.Activa))
+            clave = true;   // la hoja 1 empieza como clave (igual que en la mesa)
+        foreach (var par in hojas)
+        {
+            var h = par.Value;
+            if (h.go == null)
+                continue;
+            bool ver = h.go.activeSelf && par.Key == dibujo.capaActual && dibujo.UsaHoja
+                       && Mathf.Clamp(dibujo.DatosDeCapa(par.Key).papel, 0, 2) < 2;
+            if (!ver)
+            {
+                if (h.papelAnim != null && h.papelAnim.activeSelf)
+                    h.papelAnim.SetActive(false);
+                continue;
+            }
+            if (h.papelAnim == null && !CrearPapelAnim(h))
+                continue;
+            if (!h.papelAnim.activeSelf)
+                h.papelAnim.SetActive(true);
+        }
+        if (texPapelAnim != null && (numero != numeroPapelAnim || clave != clavePapelAnim))
+        {
+            numeroPapelAnim = numero;
+            clavePapelAnim = clave;
+            PapelAnimacion.Pintar(pxPapelAnim, AnchoPapelAnim, AltoPapelAnim, numero, clave);
+            texPapelAnim.SetPixels32(pxPapelAnim);
+            texPapelAnim.Apply(false);
+        }
+    }
+
+    bool CrearPapelAnim(Hoja h)
+    {
+        if (matPapelAnim == null)
+        {
+            var refs = FindFirstObjectByType<Referencias>(FindObjectsInactive.Include);
+            if (refs == null || (refs.materialImagenTransparente == null && refs.materialImagen == null))
+                return false;
+            texPapelAnim = new Texture2D(AnchoPapelAnim, AltoPapelAnim, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            pxPapelAnim = new Color32[AnchoPapelAnim * AltoPapelAnim];
+            numeroPapelAnim = -1;
+            matPapelAnim = new Material(refs.materialImagenTransparente != null ? refs.materialImagenTransparente : refs.materialImagen);
+            if (matPapelAnim.HasProperty("_BaseMap"))
+                matPapelAnim.SetTexture("_BaseMap", texPapelAnim);
+            if (matPapelAnim.HasProperty("_MainTex"))
+                matPapelAnim.SetTexture("_MainTex", texPapelAnim);
+            if (matPapelAnim.HasProperty("_BaseColor"))
+                matPapelAnim.SetColor("_BaseColor", Color.white);
+        }
+        if (h.material != null)
+            matPapelAnim.renderQueue = Mathf.Max(matPapelAnim.renderQueue, h.material.renderQueue + 1);
+        var go = new GameObject("PapelAnimacion");
+        go.layer = h.go.layer;
+        go.transform.SetParent(h.go.transform, false);
+        go.transform.localPosition = new Vector3(0f, 0f, -0.0004f);   // un pelito hacia ti
+        go.transform.localRotation = Quaternion.identity;
+        go.transform.localScale = new Vector3(AnchoPapel / tamano, AltoPapel / tamano, 1f);
+        go.AddComponent<MeshFilter>().sharedMesh = MallaHoja();
+        var mr = go.AddComponent<MeshRenderer>();
+        mr.sharedMaterial = matPapelAnim;
+        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        mr.receiveShadows = false;
+        h.papelAnim = go;
+        return true;
     }
 
     // El botón del papel: en la esquina de arriba a la derecha del papel de la capa activa (solo dibujando en 2D).

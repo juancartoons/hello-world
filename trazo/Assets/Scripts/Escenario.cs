@@ -31,6 +31,7 @@ public class Escenario : MonoBehaviour
 
     const string ClaveFondo = "jcartoons_fondo";
     const string ClaveUltimo360 = "jcartoons_ultimo360";
+    const string ClaveSemi = "jcartoons_semi", ClaveSemiMirada = "jcartoons_semi_mirada";
     const int MaxFotosPropias = 8;
     const float AlturaCamara = 1.6f;   // a esta altura (más o menos) se toman las fotos 360
     const float RadioPisoReal = 5f;    // tus fotos: a qué distancia queda todo lo que no es piso (metros)
@@ -108,7 +109,77 @@ public class Escenario : MonoBehaviour
         return VivoPuesto == cual;
     }
     public bool Hay360 => materialFondo360 != null;
-    public string NombreModo => Nombre(modo);
+    public string NombreModo => Semi ? "Semipassthrough" : Nombre(modo);
+
+    // ---------- v62: SEMIPASSTHROUGH (blanco a los lados y tu cuarto en el centro, con degradado) ----------
+    // Es la "Realidad" (modo 2) con una esfera blanca alrededor que tiene una ventana transparente.
+    //  b (por defecto): la ventana queda FIJA frente a tu dibujo (hacia donde mirabas al ponerla).
+    //  a (subopción, en Propiedades o con la voz): la ventana SIGUE TU MIRADA.
+    bool semi;
+    GameObject semiEsfera;
+    Material semiMaterial;
+    Vector3 semiDir = Vector3.forward, semiDirSuave = Vector3.forward;
+    static readonly int idCentro = Shader.PropertyToID("_Centro");
+    public bool Semi => modo == 2 && semi;
+    public bool SemiMirada { get; private set; }
+
+    public void PonerSemi(bool guardar = true)
+    {
+        PonerModo(2, guardar);
+        semi = true;
+        if (guardar)
+        {
+            PlayerPrefs.SetInt(ClaveSemi, 1);
+            PlayerPrefs.Save();
+        }
+        ApuntarSemi();
+        ActualizarSemi();
+    }
+
+    public void PonerSemiMirada(bool mirada)
+    {
+        SemiMirada = mirada;
+        PlayerPrefs.SetInt(ClaveSemiMirada, mirada ? 1 : 0);
+        PlayerPrefs.Save();
+        ApuntarSemi();
+    }
+
+    // La ventana mira hacia donde miras ahora (en horizontal).
+    public void ApuntarSemi()
+    {
+        Transform cab = camara != null ? camara.transform : (Camera.main != null ? Camera.main.transform : null);
+        Vector3 f = cab != null ? cab.forward : Vector3.forward;
+        f.y *= 0.3f;
+        if (f.sqrMagnitude < 1e-4f)
+            f = Vector3.forward;
+        semiDir = semiDirSuave = f.normalized;
+    }
+
+    void ActualizarSemi()
+    {
+        if (Semi && semiEsfera == null)
+        {
+            var sh = Resources.Load<Shader>("TrazoSemipassthrough");
+            if (sh == null)
+                sh = Shader.Find("TrazoVR/Semipassthrough");
+            if (sh != null)
+            {
+                semiMaterial = new Material(sh);
+                semiEsfera = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                semiEsfera.name = "Semipassthrough";
+                Destroy(semiEsfera.GetComponent<Collider>());
+                semiEsfera.transform.SetParent(transform, false);
+                semiEsfera.transform.localScale = Vector3.one * 50f;   // 25 m de radio
+                var r = semiEsfera.GetComponent<Renderer>();
+                r.sharedMaterial = semiMaterial;
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                r.receiveShadows = false;
+            }
+        }
+        if (semiEsfera != null && semiEsfera.activeSelf != Semi)
+            semiEsfera.SetActive(Semi);
+        SeguirCabeza();
+    }
 
     public string Nombre(int m)
     {
@@ -157,7 +228,10 @@ public class Escenario : MonoBehaviour
             camara.farClipPlane = 150f; // los fondos 360 llegan hasta ~100 m
         if (passthrough == null)
             passthrough = FindFirstObjectByType<OVRPassthroughLayer>(FindObjectsInactive.Include);
-        PonerModo(PlayerPrefs.GetInt(ClaveFondo, 2));
+        SemiMirada = PlayerPrefs.GetInt(ClaveSemiMirada, 0) == 1;
+        PonerModo(PlayerPrefs.GetInt(ClaveFondo, 2), false);
+        if (modo == 2 && PlayerPrefs.GetInt(ClaveSemi, 0) == 1)
+            PonerSemi(false);
     }
 
     // ¿Se puede usar ese fondo?
@@ -183,6 +257,12 @@ public class Escenario : MonoBehaviour
         if (modo < 2)
         {
             n = modo + 1;
+        }
+        else if (modo == 2 && !semi)
+        {
+            // v62: Realidad → Semipassthrough → 360
+            PonerSemi();
+            return;
         }
         else if (modo == 2)
         {
@@ -313,17 +393,23 @@ public class Escenario : MonoBehaviour
     string aviso;
     public string MensajeFondo => string.IsNullOrEmpty(aviso) ? "Fondo: " + NombreModo : aviso;
 
-    public void PonerModo(int nuevo)
+    // v62: guardar = false: un cambio de paso (la mesa de animación pone la realidad sin olvidar tu fondo).
+    public void PonerModo(int nuevo, bool guardar = true)
     {
+        semi = false;
         modo = Mathf.Clamp(nuevo, 0, CantidadModos - 1);
         if (modo >= 3 && VivoDe(modo) < 0 && !(Disponible(modo) && ArmarCascara(modo)))
             modo = 2; // ese fondo 360 no se pudo abrir: realidad
         int vivo = VivoDe(modo);
         if (modo < InicioPropias)
             LiberarPropia();
-        PlayerPrefs.SetInt(ClaveFondo, modo);
-        if (modo >= 3)
-            PlayerPrefs.SetInt(ClaveUltimo360, modo);
+        if (guardar)
+        {
+            PlayerPrefs.SetInt(ClaveFondo, modo);
+            PlayerPrefs.SetInt(ClaveSemi, 0);
+            if (modo >= 3)
+                PlayerPrefs.SetInt(ClaveUltimo360, modo);
+        }
         bool realidad = modo == 2;
         if (cuadricula != null)
             cuadricula.SetActive(modo == 0);
@@ -341,6 +427,7 @@ public class Escenario : MonoBehaviour
             camara.backgroundColor = realidad ? new Color(0f, 0f, 0f, 0f) : vivo >= 0 ? FondosVivos.ColorFondo(vivo) : fondo;
         }
         ActualizarVidrio();
+        ActualizarSemi();
     }
 
     // ---------- Vidrio vivo (v36) ----------
@@ -425,6 +512,16 @@ public class Escenario : MonoBehaviour
         Transform cab = camara != null ? camara.transform : (Camera.main != null ? Camera.main.transform : null);
         if (vivos != null && cab != null)
             vivos.Seguir(cab);   // v42: el cielo vivo va contigo
+        if (semiEsfera != null && semiEsfera.activeSelf && cab != null)
+        {
+            semiEsfera.transform.position = cab.position;
+            if (SemiMirada)
+                semiDirSuave = Vector3.Slerp(semiDirSuave, cab.forward, 1f - Mathf.Exp(-4f * Mathf.Max(0.001f, Time.deltaTime)));
+            else
+                semiDirSuave = semiDir;
+            if (semiMaterial != null)
+                semiMaterial.SetVector(idCentro, semiDirSuave);
+        }
         if (!sigueCabeza || cascara == null || !cascara.activeSelf)
             return;
         if (cab != null)

@@ -27,6 +27,41 @@ public class PanelPropiedades : MonoBehaviour
     string firma = "";
     float proximo;
     bool colocado;
+    Escenario esc;
+    readonly HashSet<TextMeshPro> textosEncima = new HashSet<TextMeshPro>();
+
+    // v62: SIEMPRE VISIBLE: el panel se dibuja ENCIMA de todo (aunque un dibujo u objeto esté más cerca de ti).
+    // Sus piezas usan el shader TrazoVR/Encima (sin esconderse detrás de nada) y sus letras no miran la profundidad.
+    static Shader shaderEncima;
+    static Material Encima(Material origen, int cola)
+    {
+        if (shaderEncima == null)
+            shaderEncima = Shader.Find("TrazoVR/Encima");
+        if (shaderEncima == null || origen == null)
+            return origen;
+        var m = new Material(shaderEncima);
+        Color c = origen.HasProperty("_BaseColor") ? origen.GetColor("_BaseColor") : origen.HasProperty("_Color") ? origen.GetColor("_Color") : Color.white;
+        c.a = 1f;
+        m.SetColor("_BaseColor", c);
+        m.renderQueue = cola;
+        return m;
+    }
+
+    void TextosEncima()
+    {
+        foreach (var t in GetComponentsInChildren<TextMeshPro>(true))
+        {
+            if (t == null || textosEncima.Contains(t))
+                continue;
+            var m = t.fontMaterial;
+            if (m != null)
+            {
+                m.renderQueue = 4002;
+                m.SetFloat("unity_GUIZTestMode", (float)UnityEngine.Rendering.CompareFunction.Always);
+            }
+            textosEncima.Add(t);
+        }
+    }
 
     // Una fila: sus botones, cuál está elegido y la frase de abajo.
     class Fila
@@ -82,9 +117,10 @@ public class PanelPropiedades : MonoBehaviour
         var nav = FindFirstObjectByType<NavegadorArchivos>(FindObjectsInactive.Include);
         if (dibujo == null || nav == null)
             return false;
-        normal = nav.materialBoton;
-        marcado = nav.materialBotonMarcado;
-        matPanel = nav.materialPanel;
+        esc = FindFirstObjectByType<Escenario>(FindObjectsInactive.Include);
+        normal = Encima(nav.materialBoton, 4001);
+        marcado = Encima(nav.materialBotonMarcado, 4001);
+        matPanel = Encima(nav.materialPanel, 4000);
         var f = GameObject.CreatePrimitive(PrimitiveType.Cube);
         Destroy(f.GetComponent<Collider>());
         f.transform.SetParent(transform, false);
@@ -110,6 +146,7 @@ public class PanelPropiedades : MonoBehaviour
         var mover = gameObject.AddComponent<ArrastrePanel>();
         mover.centro = new Vector2(0f, -0.1f);
         mover.medio = new Vector2(Ancho * 0.5f, 0.12f);
+        TextosEncima();
         return true;
     }
 
@@ -128,10 +165,47 @@ public class PanelPropiedades : MonoBehaviour
         colocado = true;
     }
 
+    // v62: como el panel va encima de todo, tapa la punta de tu dedo: un PUNTITO azul (también encima) te muestra
+    // dónde está tu índice cuando está cerca del panel.
+    Transform puntaDedo;
+
+    void ActualizarPuntaDedo()
+    {
+        var der = control.Der;
+        bool ver = false;
+        if (der.valida && fondo != null)
+        {
+            Vector3 l = transform.InverseTransformPoint(der.indice);
+            Vector3 c = fondo.localPosition, m = fondo.localScale * 0.5f;
+            ver = Mathf.Abs(l.x - c.x) < m.x + 0.02f && Mathf.Abs(l.y - c.y) < m.y + 0.02f && l.z > -0.1f && l.z < 0.03f;
+        }
+        if (puntaDedo == null)
+        {
+            if (!ver)
+                return;
+            var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            go.name = "PuntaDedo";
+            Destroy(go.GetComponent<Collider>());
+            go.transform.SetParent(transform, false);
+            var r = go.GetComponent<Renderer>();
+            r.sharedMaterial = Encima(marcado, 4003);
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            puntaDedo = go.transform;
+        }
+        if (puntaDedo.gameObject.activeSelf != ver)
+            puntaDedo.gameObject.SetActive(ver);
+        if (!ver)
+            return;
+        puntaDedo.position = der.indice;
+        float s = Mathf.Max(0.01f, transform.lossyScale.x);
+        puntaDedo.localScale = Vector3.one * (0.009f / s);
+    }
+
     void Update()
     {
         if (control == null || dibujo == null)
             return;
+        ActualizarPuntaDedo();
         if (Time.time < proximo)
             return;
         proximo = Time.time + 0.25f;
@@ -140,14 +214,21 @@ public class PanelPropiedades : MonoBehaviour
 
     // ---------- Qué se muestra ----------
 
+    // v62: + "+semi" (con el semipassthrough puesto sale su subopción) y "+plano" (capa en 2D: "Ver en la mesa").
     string FirmaAhora()
+    {
+        bool plano = dibujo.plano && !dibujo.EsCamara(dibujo.capaActual);
+        return FirmaBase() + (esc != null && esc.Semi ? "+semi" : "") + (plano ? "+plano" : "");
+    }
+
+    string FirmaBase()
     {
         if (dibujo.EsCamara(dibujo.capaActual))
             return "camara";
         if (dibujo.UsaHoja)
             return "lapiz";
         if (control.ContextoRelleno)
-            return control.TexturaElegida == Trazo.TexturaPlastilina ? "relleno+pl" : "relleno";
+            return control.TexturaElegida == Trazo.TexturaPlastilina ? "relleno+plast" : "relleno";
         return "tinta" + (dibujo.temblor != null && dibujo.temblor.Textura == 1 ? "+lapiz" : "") + (dibujo.HaloDisponible ? "+halo" : "")
                + (dibujo.ColorNuevo.a < 0.01f ? "+inv" : "");
     }
@@ -182,7 +263,7 @@ public class PanelPropiedades : MonoBehaviour
             Destroy(h.gameObject);
         filas.Clear();
         float y = -0.035f;
-        if (firma == "lapiz")
+        if (firma.StartsWith("lapiz"))
         {
             titulo.text = Idioma.T("Propiedades · Lápiz");
             y = Opciones(y, "Sigue al dedo", ControlManos.NombresModoLapiz, () => control.ModoLapiz, control.ElegirModoLapiz,
@@ -190,7 +271,7 @@ public class PanelPropiedades : MonoBehaviour
             y = Opciones(y, "Papel", new[] { "Blanco", "50 %", "Transparente" }, () => Mathf.Clamp(dibujo.CapaActual.papel, 0, 2),
                          dibujo.PonerPapel, () => "Lo que hay detrás del lápiz (cada capa recuerda el suyo)");
         }
-        else if (firma == "camara")
+        else if (firma.StartsWith("camara"))
         {
             titulo.text = Idioma.T("Propiedades · Cámara y fondo");
             y = Nota(y, "Capa de cámara: pellízcala para moverla. El zoom y \"Sugerir\" están en su panelito.");
@@ -212,7 +293,7 @@ public class PanelPropiedades : MonoBehaviour
                          () => "Qué tan rápido se mueve la textura", () => control.TexturaElegida > 0);
             y = Opciones(y, "Degradado", ControlManos.NombresDegradado, () => control.ModoDegradado, i => control.ModoDegradado = i,
                          () => "Del color de antes al de ahora");
-            if (firma == "relleno+pl")
+            if (firma.Contains("+plast"))
                 y = Accion(y, "Palancas de plastilina", PanelPlastilina.Abrir);
         }
         else
@@ -242,6 +323,14 @@ public class PanelPropiedades : MonoBehaviour
             if (firma.Contains("+lapiz"))
                 y = Accion(y, "Ajustes del lápiz", PanelLapiz.Abrir);
         }
+        // v62: en 2D, "Ver en la mesa" (tu hoja sobre el disco de la mesa de animación, sin salir del archivo).
+        if (firma.Contains("+plano"))
+            y = Accion(y, "Ver en la mesa", MesaEntrada.VerEnLaMesa);
+        // v62: la subopción del semipassthrough.
+        if (firma.Contains("+semi") && esc != null)
+            y = Opciones(y, "Semipassthrough", new[] { "Ventana fija", "Sigue tu mirada" }, () => esc.SemiMirada ? 1 : 0,
+                         i => esc.PonerSemiMirada(i == 1), () => "Dónde queda la ventana a tu cuarto (blanco a los lados)");
+        TextosEncima();
         float alto = -y + 0.01f;
         fondo.localPosition = new Vector3(0f, 0.02f - alto * 0.5f, 0.005f);
         fondo.localScale = new Vector3(Ancho, alto + 0.03f, 0.004f);
@@ -325,7 +414,8 @@ public class PanelPropiedades : MonoBehaviour
 // Jálala hacia arriba y sale el panel. No se ve en la vista limpia, ni en la mesa de animación, ni con el panel abierto.
 public class PastillaPropiedades : MonoBehaviour
 {
-    const float Lado = 0.16f;   // metros a la derecha del centro de la orilla de abajo
+    const float Lado = 0.1f;    // metros a la derecha del centro de la orilla de abajo (v62: más al centro)
+    const float Sube = 0.03f;   // v62: un poco más arriba que las otras pastillitas
     Persiana persiana;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -344,7 +434,11 @@ public class PastillaPropiedades : MonoBehaviour
         persiana = new GameObject("PersianaPropiedades").AddComponent<Persiana>();
         persiana.seEsconde = true;
         persiana.sentido = 1;   // se jala hacia arriba
-        persiana.pose = (Transform cab, out Vector3 pos, out Quaternion rot) => PanelesFlexibles.PoseOrilla(cab, false, Lado, out pos, out rot);
+        persiana.pose = (Transform cab, out Vector3 pos, out Quaternion rot) =>
+        {
+            PanelesFlexibles.PoseOrilla(cab, false, Lado, out pos, out rot);
+            pos += rot * Vector3.up * Sube;
+        };
         persiana.visible = () => !PanelPropiedades.Abierto && !Tutorial.EnCurso && !MesaEntrada.Activa && !ExportadorVideo.Exportando;
         persiana.puedeJalar = () => !control.TrazandoAhora;
         persiana.texto = () => Idioma.T("Propiedades");

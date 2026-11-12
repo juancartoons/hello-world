@@ -145,6 +145,7 @@ public class DatosDibujo
     public string nombre = "";   // nombre del archivo ("Dibujo 3"); vacío = dibujo nuevo sin guardar
     public List<DatosTrazo> trazos = new List<DatosTrazo>();
     public int fondo;
+    public bool fondoSemi;   // v62: el fondo era el semipassthrough (fondo = 2)
     public float anchoPincel = 0.008f;
     public Vector3 posicion;
     public Quaternion rotacion = Quaternion.identity;
@@ -2926,6 +2927,7 @@ public class Dibujo : MonoBehaviour
         var d = new DatosDibujo
         {
             fondo = escenario != null ? escenario.modo : 0,
+            fondoSemi = escenario != null && escenario.Semi,
             anchoPincel = anchoPincel,
             posicion = transform.localPosition,
             rotacion = transform.localRotation,
@@ -3094,7 +3096,12 @@ public class Dibujo : MonoBehaviour
                 capas[ic].datosCamara = JsonUtility.FromJson<DatosCamara>(JsonUtility.ToJson(d.camara));
         }
         if (incluirFondo && escenario != null)
-            escenario.PonerModo(d.fondo);
+        {
+            if (d.fondoSemi && d.fondo == 2)
+                escenario.PonerSemi();
+            else
+                escenario.PonerModo(d.fondo);
+        }
         if (incluirFondo)
             NombreArchivo = d.nombre ?? "";
         ActualizarVisibilidad();
