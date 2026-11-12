@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v55***
+*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v61***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -867,3 +867,12 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - HECHO: plastilina más real (mate, sin brillo, luz envolvente, abolladuras, manchas de amasado, huellas alargadas, perfil aplastado con bultitos).
 - HECHO: mesa: zambullida (el reciente aparece de golpe en la hoja, la mesa crece, la hoja se desvanece y las líneas se materializan), zoom y altura con dos manos + "Centrar mesa", tres lápices (grafito/rojo/azul), bloc con papel cebolla y Hojear.
 - FALTA: al entrar, pasar TODAS las hojas del bloc como cuadros de animación (hoy entra solo la hoja del disco). Hojear con el pulgar en la esquina (hoy es un botón).
+
+## v61
+- HECHO: DIBUJOS DE MUESTRA en la hoja 1 de la mesa (Resources/BocetosMesa/boceto1..5: león, gatos y zorro de David Revoy CC-BY 4.0 tal cual, con su crédito; baile y mano de Juan Cartoons). Sale uno al azar, distinto cada vez que vuelves con la hoja sin tocar. Reemplaza al boceto antiguo.
+- HECHO: GOMA en la mesa (bloque rosado junto a los lápices): borra lápiz y muestra; con la hoja de tinta puesta, borra tinta. Al entrar, la goma del lápiz también borra en la capa Lápiz.
+- HECHO: perforaciones ABAJO (redonda al centro + dos ranuras, estilo Acme) y los pivotes en ese lugar.
+- HECHO: NÚMERO de la hoja pequeño y a mano (arriba a la derecha); tocarlo = hoja CLAVE (círculo imperfecto). La hoja 1 viene marcada.
+- HECHO: cada botón de la paleta abre Propiedades de esa herramienta; aviso de tinta invisible en Propiedades·Tinta.
+- FALTA: los 2 dibujos que faltan para llegar a 7 (se agregan como boceto6 y boceto7, sin tocar código).
+- FALTA (AN): mesa con zoom "infinito" y moverla de lado, goma de tinta con burbujas como nodos, tinta vectorial con gestos, "Ver en la mesa", passthrough y semipassthrough, aviso 2D→3D, pastillita de Propiedades más arriba, arrastrar paneles desde cualquier parte, cebolla on/off, todas las hojas como cuadros al entrar, rediseño de la paleta (espera instrucciones).

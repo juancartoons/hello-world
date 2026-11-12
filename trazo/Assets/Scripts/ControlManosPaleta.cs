@@ -297,6 +297,7 @@ public partial class ControlManos
     void ElegirColor(Color c, Vector3 donde)
     {
         Burbuja(donde, 1.1f);
+        AbrirPropiedadesHerramienta();
         var elegidas = dibujo.Seleccionadas();
         if (RellenoAbierto)
         {
@@ -761,8 +762,17 @@ public partial class ControlManos
     }
 
     // v52: escribe un color como #FF6A00 (o FF6A00): va a la línea o al relleno, según lo que esté abierto.
+    // v61: cada botón de la paleta que tocas abre PROPIEDADES de esa herramienta (línea o relleno). Si ya está
+    // abierto, solo cambia lo que muestra (eso lo hace el panel solo, cada cuadro).
+    void AbrirPropiedadesHerramienta()
+    {
+        if (!PanelPropiedades.Abierto && !MesaEntrada.Activa)
+            PanelPropiedades.Abrir();
+    }
+
     void PedirHex()
     {
+        AbrirPropiedadesHerramienta();
         bool relleno = RellenoAbierto;
         Color actual = relleno ? colorRellenoNuevo : dibujo.ColorNuevo;
         TecladoVR.Abrir(relleno ? "Color del relleno (hexadecimal)" : "Color de la línea (hexadecimal)",
@@ -931,6 +941,7 @@ public partial class ControlManos
             tocado.dedoEn = true;
             if (tocado.alTocar != null)
                 tocado.alTocar();
+            AbrirPropiedadesHerramienta();
             Burbuja(tocado.t.position, tocado.tono);
             claveMuestra = int.MinValue;
             claveCentroRelleno = null;

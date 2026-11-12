@@ -148,7 +148,8 @@ public class PanelPropiedades : MonoBehaviour
             return "lapiz";
         if (control.ContextoRelleno)
             return control.TexturaElegida == Trazo.TexturaPlastilina ? "relleno+pl" : "relleno";
-        return "tinta" + (dibujo.temblor != null && dibujo.temblor.Textura == 1 ? "+lapiz" : "") + (dibujo.HaloDisponible ? "+halo" : "");
+        return "tinta" + (dibujo.temblor != null && dibujo.temblor.Textura == 1 ? "+lapiz" : "") + (dibujo.HaloDisponible ? "+halo" : "")
+               + (dibujo.ColorNuevo.a < 0.01f ? "+inv" : "");
     }
 
     void Refrescar()
@@ -217,6 +218,9 @@ public class PanelPropiedades : MonoBehaviour
         else
         {
             titulo.text = Idioma.T("Propiedades · Tinta");
+            // v61: con la tinta invisible las líneas nuevas no se ven: se avisa aquí (para que no parezca un error).
+            if (firma.Contains("+inv"))
+                y = Nota(y, "Tinta invisible: tus líneas nuevas no se ven (el relleno sí). Toca un color de la paleta para volver.");
             var tb = dibujo.temblor;
             if (tb != null)
             {

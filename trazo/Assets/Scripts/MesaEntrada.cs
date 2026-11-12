@@ -7,13 +7,16 @@ using UnityEngine;
 // LA MESA DE ANIMACIÓN (v59): el "modo entrada". Al abrir la app (después del título) y al tocar Salir en el reloj,
 // desaparece TODO lo de trabajar (reloj, paleta, capas, línea de tiempo, parlante, flechas...) y frente a ti queda
 // solo una MESA DE ANIMACIÓN antigua: el tablero de madera inclinado, el DISCO con la luz por debajo, las dos reglas
-// con pivotes, una HOJA con un boceto antiguo, los lápices y, arriba, tus 7 DIBUJOS RECIENTES como hojas.
+// con pivotes, una HOJA con un dibujo de muestra, los lápices y, arriba, tus 7 DIBUJOS RECIENTES como hojas.
 //  - Toca una hoja de arriba: ENTRAS a ese dibujo (la hoja crece hacia ti hasta que estás adentro).
 //  - Dibuja en la hoja del disco con el ÍNDICE DERECHO (como un lápiz: más pegado = más oscuro). El lápiz va
 //    "suave" (un poco arrastrado, más liso). Pellizca el borde del disco y gíralo, como en la mesa de verdad.
 //  - "Hoja de tinta": pone una hoja encima (como papel de calcar) y lo que dibujas es TINTA.
 //  - "✦ Entrar": entras a tu boceto: se crea un dibujo nuevo con tu lápiz en la capa 1 (lápiz, 2D) y tu tinta
 //    en la capa 2 (líneas de verdad, editables). Ahí sigues entintando con todo lo de siempre.
+//  - v61: la hoja 1 trae un DIBUJO DE MUESTRA al azar (Resources/BocetosMesa): bórralo con la GOMA o con "Hoja nueva".
+//    Perforaciones ABAJO (como el papel de los estudios). El NÚMERO de la hoja, pequeño y a mano; tócalo para
+//    marcarla como CLAVE (número en círculo; la hoja 1 ya viene marcada).
 //  - "Hoja nueva": una hoja en blanco. Si sales sin entrar, tu boceto se queda en la mesa (también al cerrar la app).
 //  - "Cerrar app" (abajo a la derecha, dos toques).
 //  - v60: al tocar un reciente, su dibujo aparece DE GOLPE en la hoja del disco y te ZAMBULLES en ella (la mesa crece a
@@ -35,8 +38,7 @@ public class MesaEntrada : MonoBehaviour
     const float AlcanceLapiz = 0.012f;    // metros: el dedo dibuja a menos de esto del papel
     static readonly Color32 ColorPapel = new Color32(246, 242, 230, 255);
     static readonly Color ColorGrafito = new Color(0.22f, 0.22f, 0.25f);
-    static readonly Color ColorAzul = new Color(0.35f, 0.55f, 0.95f);
-    static readonly Color ColorRojo = new Color(0.85f, 0.3f, 0.22f);
+    const float AlturaHoyos = 0.06f, SeparacionRanura = 0.28f;   // v61: perforaciones abajo (en la hoja, de 0 a 1)
 
     bool activa, armada, animando, arrancado, tutorialVisto;
     ControlManos control;
@@ -44,7 +46,12 @@ public class MesaEntrada : MonoBehaviour
     Transform raiz, giratorio, hoja, hojaTinta;
     Texture2D texHoja, texTinta;
     Color32[] pxHoja, pxBase, pxTinta, pxPapel;
-    bool sucioHoja, sucioTinta, tintaPuesta, conBocetoAntiguo = true;
+    Color32[] pxFondo, fondoGoma;   // v61: a lo que vuelve la goma (papel + número + papel cebolla)
+    Color32 vacioTinta = new Color32(255, 255, 255, 38);
+    byte[] muestraPx;
+    int muestraCargada = -1;
+    bool tocandoNumero;
+    bool sucioHoja, sucioTinta, tintaPuesta;
     readonly List<BotonTocable> botonesRecientes = new List<BotonTocable>();
     readonly List<Renderer> minis = new List<Renderer>();
     readonly List<TextMeshPro> nombresRecientes = new List<TextMeshPro>();
@@ -64,11 +71,14 @@ public class MesaEntrada : MonoBehaviour
     {
         public List<Linea> lapiz = new List<Linea>();
         public List<Linea> tinta = new List<Linea>();
+        public bool clave;   // v61: hoja clave (su número va en un círculo)
     }
     [System.Serializable]
     class Guardado
     {
-        public bool antiguo = true;
+        public bool antiguo = true;   // la primera hoja muestra un dibujo de muestra (v61)
+        public int muestra = -1;      // cuál (de Resources/BocetosMesa)
+        public bool clavesListas;     // v61: la hoja 1 empieza como clave
         public List<Linea> lapiz = new List<Linea>();   // (de la v59: una sola hoja; al cargar pasa a "paginas")
         public List<Linea> tinta = new List<Linea>();
         public List<Pagina> paginas = new List<Pagina>();
@@ -109,9 +119,17 @@ public class MesaEntrada : MonoBehaviour
             if (p.tinta == null) p.tinta = new List<Linea>();
         }
         boceto.actual = Mathf.Clamp(boceto.actual, 0, boceto.paginas.Count - 1);
+        if (!boceto.clavesListas)
+        {
+            boceto.paginas[0].clave = true;
+            boceto.clavesListas = true;
+        }
     }
 
-    static readonly Color[] ColoresLapiz = { new Color(0.22f, 0.22f, 0.25f), new Color(0.85f, 0.3f, 0.22f), new Color(0.35f, 0.55f, 0.95f) };
+    // v61: el 4.º es la GOMA (borra el lápiz, el dibujo de muestra y, con la hoja de tinta puesta, la tinta).
+    static readonly Color[] ColoresLapiz = { new Color(0.22f, 0.22f, 0.25f), new Color(0.85f, 0.3f, 0.22f), new Color(0.35f, 0.55f, 0.95f),
+                                             new Color(0.95f, 0.62f, 0.66f) };
+    const int Goma = 3;
     int colorLapiz;
     readonly List<Transform> lapices = new List<Transform>();
 
@@ -246,6 +264,7 @@ public class MesaEntrada : MonoBehaviour
             return;
         activa = true;
         control.Ocupado = true;
+        QuizasOtraMuestra();
         Colocar();
         LlenarRecientes();
         StartCoroutine(Aparecer());
@@ -350,7 +369,8 @@ public class MesaEntrada : MonoBehaviour
         for (int i = 0; i < lapices.Count; i++)
         {
             Vector3 p = lapices[i].localPosition;
-            lapices[i].localPosition = new Vector3(p.x, i == colorLapiz ? 0.012f : 0f, p.z);
+            float baseY = i == Goma ? -0.03f : 0f;
+            lapices[i].localPosition = new Vector3(p.x, baseY + (i == colorLapiz ? 0.012f : 0f), p.z);
         }
         if (control != null && lapices.Count > 0)
             control.SonidoBurbuja(lapices[colorLapiz].position);
@@ -578,7 +598,8 @@ public class MesaEntrada : MonoBehaviour
                 float radio = hojas.radioLapiz * 1.6f / dibujo.EscalaMundo;
                 foreach (var l in Pag.lapiz)
                 {
-                    var t = new TrazoLapiz { capa = dibujo.capaActual, borra = false, radio = radio };
+                    bool esGoma = l.c == Goma;
+                    var t = new TrazoLapiz { capa = dibujo.capaActual, borra = esGoma, radio = esGoma ? radio * 3f : radio };
                     foreach (var q in l.p)
                     {
                         Vector3 p = dibujo.ProyectarEnPlano(raizD.InverseTransformPoint(mundo(q)));
@@ -607,6 +628,8 @@ public class MesaEntrada : MonoBehaviour
             Vector3 normalLocal = raizD.InverseTransformDirection(adelante).normalized;
             foreach (var l in Pag.tinta)
             {
+                if (l.c == Goma)
+                    continue;   // (la goma de la tinta solo vale en la mesa; las líneas de verdad se borran con sus gestos)
                 var puntos = new List<Vector3>();
                 foreach (var q in l.p)
                     puntos.Add(raizD.InverseTransformPoint(mundo(q) - adelante * 0.002f));
@@ -700,6 +723,7 @@ public class MesaEntrada : MonoBehaviour
         var der = control.Der;
         if (!der.valida || der.pellizco)
         {
+            tocandoNumero = false;
             TerminarLinea();
             return;
         }
@@ -711,7 +735,17 @@ public class MesaEntrada : MonoBehaviour
         bool toca = dentro && distancia < (actual != null ? AlcanceLapiz * 1.5f : AlcanceLapiz) && distancia > -0.03f;
         if (!toca)
         {
+            tocandoNumero = false;
             TerminarLinea();
+            return;
+        }
+        // v61: tocar el número de la hoja la marca (o desmarca) como CLAVE.
+        if (tocandoNumero)
+            return;
+        if (actual == null && !hojeando && EnNumero(new Vector3(l.x + 0.5f, l.y + 0.5f, 0f)))
+        {
+            tocandoNumero = true;
+            AlternarClave();
             return;
         }
         float presion = Mathf.Clamp01(1f - Mathf.Max(0f, distancia) / AlcanceLapiz);
@@ -719,7 +753,7 @@ public class MesaEntrada : MonoBehaviour
         if (actual == null || actualTinta != tintaPuesta)
         {
             TerminarLinea();
-            actual = new Linea { c = tintaPuesta ? 0 : colorLapiz };
+            actual = new Linea { c = tintaPuesta ? (colorLapiz == Goma ? Goma : 0) : colorLapiz };
             actualTinta = tintaPuesta;
             (tintaPuesta ? Pag.tinta : Pag.lapiz).Add(actual);
         }
@@ -776,6 +810,11 @@ public class MesaEntrada : MonoBehaviour
     // Sellos entre dos puntos de la hoja (u, v, presión).
     void Trazar(Vector3 a, Vector3 b, bool tinta, int c = 0)
     {
+        if (c == Goma)
+        {
+            TrazarGoma(a, b, tinta);
+            return;
+        }
         Color colorLinea = ColoresLapiz[Mathf.Clamp(c, 0, ColoresLapiz.Length - 1)];
         float pxA = a.x * AnchoTex, pyA = a.y * AltoTex, pxB = b.x * AnchoTex, pyB = b.y * AltoTex;
         float largo = Mathf.Sqrt((pxB - pxA) * (pxB - pxA) + (pyB - pyA) * (pyB - pyA));
@@ -788,6 +827,39 @@ public class MesaEntrada : MonoBehaviour
                 Sello(pxTinta, Mathf.Lerp(pxA, pxB, t), Mathf.Lerp(pyA, pyB, t), 1.9f, new Color(0.05f, 0.05f, 0.07f), 0.9f, false);
             else
                 Sello(pxHoja, Mathf.Lerp(pxA, pxB, t), Mathf.Lerp(pyA, pyB, t), 1.1f + 1.4f * pr, colorLinea, 0.12f + 0.3f * pr, true);
+        }
+        if (tinta)
+            sucioTinta = true;
+        else
+            sucioHoja = true;
+    }
+
+    // v61: LA GOMA: devuelve el papel (en la hoja de lápiz) o deja limpio el papel de calcar (en la tinta).
+    void TrazarGoma(Vector3 a, Vector3 b, bool tinta)
+    {
+        float pxA = a.x * AnchoTex, pyA = a.y * AltoTex, pxB = b.x * AnchoTex, pyB = b.y * AltoTex;
+        float largo = Mathf.Sqrt((pxB - pxA) * (pxB - pxA) + (pyB - pyA) * (pyB - pyA));
+        int pasos = Mathf.Max(1, Mathf.CeilToInt(largo / 1.5f));
+        Color32[] px = tinta ? pxTinta : pxHoja;
+        for (int i = 0; i <= pasos; i++)
+        {
+            float t = i / (float)pasos;
+            float radio = 5f + 4f * Mathf.Lerp(a.z, b.z, t);
+            float cx = Mathf.Lerp(pxA, pxB, t), cy = Mathf.Lerp(pyA, pyB, t);
+            int x0 = Mathf.Max(0, Mathf.FloorToInt(cx - radio)), x1 = Mathf.Min(AnchoTex - 1, Mathf.CeilToInt(cx + radio));
+            int y0 = Mathf.Max(0, Mathf.FloorToInt(cy - radio)), y1 = Mathf.Min(AltoTex - 1, Mathf.CeilToInt(cy + radio));
+            float r2 = radio * radio;
+            for (int y = y0; y <= y1; y++)
+                for (int x = x0; x <= x1; x++)
+                {
+                    float dx = x - cx, dy = y - cy, d2 = dx * dx + dy * dy;
+                    if (d2 > r2)
+                        continue;
+                    float f = Mathf.Clamp01((1f - d2 / r2) * 2.5f);
+                    int k = y * AnchoTex + x;
+                    Color32 o = tinta ? vacioTinta : (fondoGoma != null ? fondoGoma[k] : ColorPapel);
+                    px[k] = Color32.Lerp(px[k], o, f);
+                }
         }
         if (tinta)
             sucioTinta = true;
@@ -1014,9 +1086,13 @@ public class MesaEntrada : MonoBehaviour
         {
             float y = s * (AltoHoja * 0.5f + 0.008f);
             Pieza(PrimitiveType.Cube, new Vector3(0f, y, -0.008f), new Vector3(AnchoHoja + 0.05f, 0.022f, 0.006f), Quaternion.identity, negro, giratorio);
-            for (int k = -1; k <= 1; k++)
-                Pieza(PrimitiveType.Cylinder, new Vector3(k * 0.11f, y, -0.0115f), new Vector3(0.007f, 0.0012f, 0.007f), giroDisco, metal, giratorio);
         }
+        // v61: los PIVOTES abajo, justo en las perforaciones de la hoja (uno redondo al centro y dos planos a los lados).
+        float yPivote = (AlturaHoyos - 0.5f) * AltoHoja;
+        Pieza(PrimitiveType.Cylinder, new Vector3(0f, yPivote, -0.0105f), new Vector3(0.0055f, 0.003f, 0.0055f), giroDisco, metal, giratorio);
+        for (int s = -1; s <= 1; s += 2)
+            Pieza(PrimitiveType.Cube, new Vector3(s * SeparacionRanura * AnchoHoja, yPivote, -0.0105f), new Vector3(0.0165f, 0.0035f, 0.006f),
+                  Quaternion.identity, metal, giratorio);
 
         // Los lápices y el clip de resorte (arriba a la derecha).
         Pieza(PrimitiveType.Cube, new Vector3(0.335f, 0.07f, -0.006f), new Vector3(0.12f, 0.016f, 0.01f), Quaternion.identity, metal);
@@ -1032,6 +1108,11 @@ public class MesaEntrada : MonoBehaviour
             lapices.Add(b.transform);
             Pieza(PrimitiveType.Cylinder, new Vector3(x, -0.066f, -0.008f), new Vector3(0.006f, 0.006f, 0.006f), Quaternion.identity, madera);
         }
+        // v61: la GOMA (rosada, al lado de los lápices): tócala y lo que "dibujas" se borra.
+        var rosa = Pintura(ColoresLapiz[Goma]);
+        var goma = PanelTutoriales.Boton(raiz, "", new Vector3(0.4f, -0.03f, -0.008f), new Vector2(0.018f, 0.045f), rosa, rosa);
+        goma.alTocar.AddListener(() => ElegirLapiz(Goma));
+        lapices.Add(goma.transform);
         ElegirLapiz(0);
 
         // v60: EL BLOC (izquierda): más hojas para animar, con papel cebolla, y "Hojear" para verlas seguidas.
@@ -1153,29 +1234,39 @@ public class MesaEntrada : MonoBehaviour
         return t;
     }
 
-    // ---------- La hoja: papel, perforaciones, boceto antiguo y lo tuyo ----------
+    // ---------- La hoja: papel, perforaciones, número, dibujo de muestra y lo tuyo ----------
 
     void RehacerHoja()
     {
         Normalizar();
-        // El papel con sus tres perforaciones arriba (se hace una vez).
+        // v61: el papel con sus perforaciones ABAJO, como el papel de animación de los estudios (Acme): un hoyo
+        // redondo en el centro y dos ranuras a los lados (se hace una vez).
         if (pxPapel == null)
         {
             pxPapel = new Color32[AnchoTex * AltoTex];
             for (int i = 0; i < pxPapel.Length; i++)
                 pxPapel[i] = ColorPapel;
-            foreach (float hx in new[] { 0.3f, 0.5f, 0.7f })
-                Sello(pxPapel, hx * AnchoTex, 0.93f * AltoTex, 9f, new Color(0.62f, 0.62f, 0.6f), 1f, false);
+            var hueco = new Color(0.62f, 0.62f, 0.6f);
+            Sello(pxPapel, 0.5f * AnchoTex, AlturaHoyos * AltoTex, 8f, hueco, 1f, false);
+            foreach (float hx in new[] { 0.5f - SeparacionRanura, 0.5f + SeparacionRanura })
+                for (float d = -22f; d <= 22f; d += 1f)
+                    Sello(pxPapel, hx * AnchoTex + d, AlturaHoyos * AltoTex, 5f, hueco, 1f, false);
         }
-        System.Array.Copy(pxPapel, pxBase, pxBase.Length);
-        // El boceto antiguo solo en la primera hoja; en las demás, la anterior en papel cebolla.
-        if (boceto.actual == 0 && boceto.antiguo)
-            BocetoAntiguo(pxBase);
+        if (pxFondo == null)
+            pxFondo = new Color32[AnchoTex * AltoTex];
+        // El fondo: papel + su número (en círculo si es clave) + la hoja anterior en papel cebolla. La goma vuelve a esto.
+        System.Array.Copy(pxPapel, pxFondo, pxFondo.Length);
+        NumeroPagina(pxFondo, boceto.actual + 1, Pag.clave);
         if (boceto.actual > 0)
-            Cebolla(pxBase, boceto.paginas[boceto.actual - 1]);
+            Cebolla(pxFondo, boceto.paginas[boceto.actual - 1]);
+        System.Array.Copy(pxFondo, pxBase, pxBase.Length);
+        // El dibujo de muestra solo en la primera hoja (se borra con la goma o con "Hoja nueva").
+        if (boceto.actual == 0 && boceto.antiguo)
+            PonerMuestra(pxBase);
         System.Array.Copy(pxBase, pxHoja, pxBase.Length);
+        fondoGoma = pxFondo;
         for (int i = 0; i < pxTinta.Length; i++)
-            pxTinta[i] = new Color32(255, 255, 255, 38);   // papel de calcar: deja ver el lápiz, un poco más claro
+            pxTinta[i] = vacioTinta;   // papel de calcar: deja ver el lápiz, un poco más claro
         foreach (var l in Pag.lapiz)
             RepintarLinea(l, false);
         foreach (var l in Pag.tinta)
@@ -1205,9 +1296,11 @@ public class MesaEntrada : MonoBehaviour
     {
         var tenue = new Color(0.95f, 0.55f, 0.5f);
         foreach (var l in p.lapiz)
-            PintarSuave(px, l, tenue, 0.35f);
+            if (l.c != Goma)
+                PintarSuave(px, l, tenue, 0.35f);
         foreach (var l in p.tinta)
-            PintarSuave(px, l, tenue, 0.45f);
+            if (l.c != Goma)
+                PintarSuave(px, l, tenue, 0.45f);
     }
 
     static void PintarSuave(Color32[] px, Linea l, Color color, float fuerza)
@@ -1225,95 +1318,268 @@ public class MesaEntrada : MonoBehaviour
         }
     }
 
-    // Una hoja entera ya pintada (papel + su lápiz + su tinta encima), para hojear.
+    // Una hoja entera ya pintada (papel + número + muestra + su lápiz + su tinta encima), para hojear y para entrar.
     Color32[] HojaCompleta(int indice)
     {
+        var pag = boceto.paginas[indice];
+        var fondo = new Color32[AnchoTex * AltoTex];
+        System.Array.Copy(pxPapel, fondo, fondo.Length);
+        NumeroPagina(fondo, indice + 1, pag.clave);
         var px = new Color32[AnchoTex * AltoTex];
-        System.Array.Copy(pxPapel, px, px.Length);
+        System.Array.Copy(fondo, px, px.Length);
         if (indice == 0 && boceto.antiguo)
-            BocetoAntiguo(px);
-        var guarda = pxHoja;
+            PonerMuestra(px);
+        var guardaHoja = pxHoja;
+        var guardaGoma = fondoGoma;
         pxHoja = px;
-        foreach (var l in boceto.paginas[indice].lapiz)
+        fondoGoma = fondo;
+        foreach (var l in pag.lapiz)
             RepintarLinea(l, false);
-        pxHoja = guarda;
-        foreach (var l in boceto.paginas[indice].tinta)
-            PintarSuave(px, l, new Color(0.05f, 0.05f, 0.07f), 0.9f);
+        pxHoja = guardaHoja;
+        fondoGoma = guardaGoma;
+        if (pag.tinta.Count > 0)
+        {
+            // La tinta en una capa aparte (así la goma de la tinta funciona igual) y luego encima del papel.
+            var capa = new Color32[AnchoTex * AltoTex];
+            var vacio = new Color32(255, 255, 255, 0);
+            for (int i = 0; i < capa.Length; i++)
+                capa[i] = vacio;
+            var guardaTinta = pxTinta;
+            var guardaVacio = vacioTinta;
+            pxTinta = capa;
+            vacioTinta = vacio;
+            foreach (var l in pag.tinta)
+                RepintarLinea(l, true);
+            pxTinta = guardaTinta;
+            vacioTinta = guardaVacio;
+            for (int i = 0; i < px.Length; i++)
+            {
+                Color32 c = capa[i];
+                if (c.a == 0)
+                    continue;
+                float a = c.a / 255f;
+                Color32 p = px[i];
+                px[i] = new Color32((byte)Mathf.Lerp(p.r, c.r, a), (byte)Mathf.Lerp(p.g, c.g, a), (byte)Mathf.Lerp(p.b, c.b, a), 255);
+            }
+        }
         return px;
     }
 
-    // Un personaje original, al estilo de los bocetos de animación antiguos: construcción en azul y línea en rojo.
-    static void BocetoAntiguo(Color32[] px)
-    {
-        // Azul: la línea de acción, las formas de construcción y el esqueleto.
-        Curva(px, ColorAzul, 0.35f, new Vector2(0.43f, 0.12f), new Vector2(0.53f, 0.5f), new Vector2(0.48f, 0.88f));
-        Ovalo(px, ColorAzul, 0.3f, new Vector2(0.5f, 0.66f), 0.075f, 0.1f);
-        Ovalo(px, ColorAzul, 0.3f, new Vector2(0.5f, 0.42f), 0.065f, 0.12f);
-        Poli(px, ColorAzul, 0.3f, new Vector2(0.45f, 0.5f), new Vector2(0.35f, 0.58f), new Vector2(0.26f, 0.71f));
-        Poli(px, ColorAzul, 0.3f, new Vector2(0.55f, 0.5f), new Vector2(0.65f, 0.58f), new Vector2(0.74f, 0.71f));
-        Poli(px, ColorAzul, 0.3f, new Vector2(0.47f, 0.32f), new Vector2(0.4f, 0.22f), new Vector2(0.44f, 0.12f));
-        Poli(px, ColorAzul, 0.3f, new Vector2(0.53f, 0.32f), new Vector2(0.61f, 0.24f), new Vector2(0.59f, 0.12f));
-        // Rojo: la línea "limpia".
-        Ovalo(px, ColorRojo, 0.55f, new Vector2(0.5f, 0.66f), 0.07f, 0.095f);
-        Ovalo(px, ColorRojo, 0.55f, new Vector2(0.42f, 0.73f), 0.025f, 0.035f);
-        Ovalo(px, ColorRojo, 0.55f, new Vector2(0.58f, 0.73f), 0.025f, 0.035f);
-        Ovalo(px, ColorRojo, 0.55f, new Vector2(0.475f, 0.68f), 0.013f, 0.028f);
-        Ovalo(px, ColorRojo, 0.55f, new Vector2(0.525f, 0.68f), 0.013f, 0.028f);
-        Ovalo(px, ColorRojo, 0.7f, new Vector2(0.48f, 0.675f), 0.004f, 0.009f);
-        Ovalo(px, ColorRojo, 0.7f, new Vector2(0.53f, 0.675f), 0.004f, 0.009f);
-        Ovalo(px, ColorRojo, 0.55f, new Vector2(0.5f, 0.645f), 0.012f, 0.01f);
-        Curva(px, ColorRojo, 0.55f, new Vector2(0.455f, 0.615f), new Vector2(0.5f, 0.565f), new Vector2(0.545f, 0.615f));
-        Ovalo(px, ColorRojo, 0.55f, new Vector2(0.5f, 0.42f), 0.06f, 0.115f);
-        Ovalo(px, ColorRojo, 0.7f, new Vector2(0.5f, 0.46f), 0.006f, 0.008f);
-        Ovalo(px, ColorRojo, 0.7f, new Vector2(0.5f, 0.4f), 0.006f, 0.008f);
-        Curva(px, ColorRojo, 0.55f, new Vector2(0.45f, 0.51f), new Vector2(0.36f, 0.6f), new Vector2(0.28f, 0.69f));
-        Curva(px, ColorRojo, 0.55f, new Vector2(0.55f, 0.51f), new Vector2(0.64f, 0.6f), new Vector2(0.72f, 0.69f));
-        Ovalo(px, ColorRojo, 0.55f, new Vector2(0.255f, 0.715f), 0.025f, 0.03f);
-        Ovalo(px, ColorRojo, 0.55f, new Vector2(0.745f, 0.715f), 0.025f, 0.03f);
-        Curva(px, ColorRojo, 0.55f, new Vector2(0.47f, 0.31f), new Vector2(0.39f, 0.23f), new Vector2(0.445f, 0.135f));
-        Curva(px, ColorRojo, 0.55f, new Vector2(0.53f, 0.31f), new Vector2(0.62f, 0.24f), new Vector2(0.585f, 0.135f));
-        Ovalo(px, ColorRojo, 0.55f, new Vector2(0.43f, 0.115f), 0.045f, 0.022f);
-        Ovalo(px, ColorRojo, 0.55f, new Vector2(0.6f, 0.115f), 0.045f, 0.022f);
-        // El número de la toma, en la esquina (como en los papeles de los estudios).
-        Poli(px, ColorGrafito, 0.45f, new Vector2(0.88f, 0.08f), new Vector2(0.89f, 0.13f), new Vector2(0.89f, 0.06f));
-        Ovalo(px, ColorGrafito, 0.45f, new Vector2(0.92f, 0.095f), 0.012f, 0.03f);
-    }
+    // ---------- v61: los DIBUJOS DE MUESTRA (Resources/BocetosMesa/boceto1, 2, 3...: imágenes en gris) ----------
 
-    static void Punto(Color32[] px, Color c, float fuerza, Vector2 uv)
-    {
-        Sello(px, uv.x * AnchoTex, uv.y * AltoTex, 1.5f, c, fuerza, true);
-    }
+    static int cantidadMuestras = -1;
 
-    static void Poli(Color32[] px, Color c, float fuerza, params Vector2[] p)
+    static int CantidadMuestras()
     {
-        for (int i = 1; i < p.Length; i++)
+        if (cantidadMuestras >= 0)
+            return cantidadMuestras;
+        cantidadMuestras = 0;
+        for (int n = 1; n <= 30; n++)
         {
-            float largo = Vector2.Distance(Vector2.Scale(p[i - 1], new Vector2(AnchoTex, AltoTex)), Vector2.Scale(p[i], new Vector2(AnchoTex, AltoTex)));
-            int n = Mathf.Max(2, Mathf.CeilToInt(largo / 0.8f));
+            var ta = Resources.Load<TextAsset>("BocetosMesa/boceto" + n);
+            if (ta == null)
+                break;
+            Resources.UnloadAsset(ta);
+            cantidadMuestras = n;
+        }
+        return cantidadMuestras;
+    }
+
+    // Cada vez que vuelves a la mesa con la hoja sin tocar, sale OTRO dibujo de muestra (al azar).
+    void QuizasOtraMuestra()
+    {
+        Normalizar();
+        if (boceto.paginas.Count != 1 || boceto.paginas[0].lapiz.Count > 0 || boceto.paginas[0].tinta.Count > 0)
+            return;
+        int n = CantidadMuestras();
+        if (n == 0)
+            return;
+        int nueva = UnityEngine.Random.Range(0, n);
+        if (n > 1 && nueva == boceto.muestra)
+            nueva = (nueva + 1 + UnityEngine.Random.Range(0, n - 1)) % n;
+        boceto.muestra = nueva;
+        boceto.antiguo = true;
+        boceto.actual = 0;
+        tintaPuesta = false;
+        GuardarBoceto();
+        RehacerHoja();
+    }
+
+    // Lee la imagen de la muestra y la acomoda en la hoja (una vez por muestra): 0 = papel, 255 = línea.
+    bool PrepararMuestra()
+    {
+        int n = CantidadMuestras();
+        if (n == 0)
+            return false;
+        if (boceto.muestra < 0 || boceto.muestra >= n)
+            boceto.muestra = UnityEngine.Random.Range(0, n);
+        if (muestraPx != null && muestraCargada == boceto.muestra)
+            return true;
+        var ta = Resources.Load<TextAsset>("BocetosMesa/boceto" + (boceto.muestra + 1));
+        if (ta == null)
+            return false;
+        var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+        bool ok = tex.LoadImage(ta.bytes);
+        Resources.UnloadAsset(ta);
+        if (!ok || tex.width < 2 || tex.height < 2)
+        {
+            Destroy(tex);
+            return false;
+        }
+        Color32[] src = tex.GetPixels32();
+        int w = tex.width, h = tex.height;
+        Destroy(tex);
+        // La zona del dibujo en la hoja: deja libre arriba (el número) y abajo (las perforaciones).
+        const float x0 = 24f, x1 = 776f, y0 = 62f, y1 = 540f;
+        float k = Mathf.Min((x1 - x0) / w, (y1 - y0) / h);
+        float ox = (x0 + x1 - w * k) * 0.5f, oy = (y0 + y1 - h * k) * 0.5f;
+        muestraPx = new byte[AnchoTex * AltoTex];
+        for (int y = 0; y < AltoTex; y++)
+        {
+            float sy = (y - oy) / k;
+            if (sy < 0f || sy > h - 1)
+                continue;
+            int iy = Mathf.Min((int)sy, h - 2);
+            float fy = sy - iy;
+            for (int x = 0; x < AnchoTex; x++)
+            {
+                float sx = (x - ox) / k;
+                if (sx < 0f || sx > w - 1)
+                    continue;
+                int ix = Mathf.Min((int)sx, w - 2);
+                float fx = sx - ix;
+                int i0 = iy * w + ix, i1 = i0 + w;
+                float g = Mathf.Lerp(Mathf.Lerp(src[i0].r, src[i0 + 1].r, fx), Mathf.Lerp(src[i1].r, src[i1 + 1].r, fx), fy);
+                muestraPx[y * AnchoTex + x] = (byte)Mathf.Clamp(255f - g, 0f, 255f);
+            }
+        }
+        muestraCargada = boceto.muestra;
+        return true;
+    }
+
+    void PonerMuestra(Color32[] px)
+    {
+        if (!PrepararMuestra())
+            return;
+        for (int i = 0; i < px.Length; i++)
+        {
+            int d = muestraPx[i];
+            if (d == 0)
+                continue;
+            float a = d / 255f * 0.88f;
+            Color32 c = px[i];
+            px[i] = new Color32((byte)Mathf.Lerp(c.r, ColorGrafito.r * 255f, a), (byte)Mathf.Lerp(c.g, ColorGrafito.g * 255f, a),
+                                (byte)Mathf.Lerp(c.b, ColorGrafito.b * 255f, a), c.a);
+        }
+    }
+
+    // ---------- v61: el NÚMERO de la hoja, escrito a mano (pequeño, arriba a la derecha) ----------
+    // En CÍRCULO (un círculo hecho a mano, no perfecto) si la hoja es CLAVE. Toca el número para marcarla o no.
+
+    const float NumeroX = 742f, NumeroY = 556f;
+
+    static readonly Vector2[][] Digitos =
+    {
+        new[] { new Vector2(0.5f, 1f), new Vector2(0.15f, 0.8f), new Vector2(0.08f, 0.45f), new Vector2(0.25f, 0.08f), new Vector2(0.55f, 0f),
+                new Vector2(0.85f, 0.2f), new Vector2(0.9f, 0.6f), new Vector2(0.7f, 0.95f), new Vector2(0.42f, 0.98f) },
+        new[] { new Vector2(0.25f, 0.75f), new Vector2(0.55f, 1f), new Vector2(0.55f, 0.5f), new Vector2(0.55f, 0f) },
+        new[] { new Vector2(0.12f, 0.72f), new Vector2(0.3f, 0.95f), new Vector2(0.62f, 0.98f), new Vector2(0.85f, 0.78f), new Vector2(0.72f, 0.5f),
+                new Vector2(0.12f, 0.02f), new Vector2(0.9f, 0.04f) },
+        new[] { new Vector2(0.15f, 0.85f), new Vector2(0.45f, 1f), new Vector2(0.8f, 0.85f), new Vector2(0.7f, 0.62f), new Vector2(0.42f, 0.54f),
+                new Vector2(0.78f, 0.44f), new Vector2(0.85f, 0.18f), new Vector2(0.5f, 0f), new Vector2(0.12f, 0.12f) },
+        new[] { new Vector2(0.68f, 0f), new Vector2(0.67f, 0.5f), new Vector2(0.66f, 1f), new Vector2(0.08f, 0.32f), new Vector2(0.92f, 0.32f) },
+        new[] { new Vector2(0.85f, 0.98f), new Vector2(0.25f, 0.96f), new Vector2(0.2f, 0.56f), new Vector2(0.5f, 0.62f), new Vector2(0.82f, 0.45f),
+                new Vector2(0.8f, 0.14f), new Vector2(0.48f, 0f), new Vector2(0.12f, 0.12f) },
+        new[] { new Vector2(0.78f, 0.95f), new Vector2(0.4f, 0.85f), new Vector2(0.15f, 0.45f), new Vector2(0.25f, 0.08f), new Vector2(0.55f, 0f),
+                new Vector2(0.82f, 0.2f), new Vector2(0.78f, 0.48f), new Vector2(0.48f, 0.56f), new Vector2(0.18f, 0.4f) },
+        new[] { new Vector2(0.1f, 0.96f), new Vector2(0.9f, 0.98f), new Vector2(0.65f, 0.5f), new Vector2(0.4f, 0f) },
+        new[] { new Vector2(0.52f, 0.55f), new Vector2(0.2f, 0.75f), new Vector2(0.48f, 1f), new Vector2(0.8f, 0.78f), new Vector2(0.52f, 0.55f),
+                new Vector2(0.15f, 0.28f), new Vector2(0.48f, 0f), new Vector2(0.85f, 0.25f), new Vector2(0.52f, 0.55f) },
+        new[] { new Vector2(0.82f, 0.7f), new Vector2(0.5f, 0.5f), new Vector2(0.2f, 0.7f), new Vector2(0.45f, 1f), new Vector2(0.8f, 0.8f),
+                new Vector2(0.75f, 0.3f), new Vector2(0.55f, 0f) },
+    };
+
+    static void NumeroPagina(Color32[] px, int numero, bool clave)
+    {
+        string s = numero.ToString();
+        var azar = new System.Random(numero * 7919 + 17);   // el mismo "pulso" cada vez para el mismo número
+        const float alto = 19f, ancho = 10.5f, paso = 12.5f;
+        float x0 = NumeroX - (s.Length - 1) * paso * 0.5f;
+        for (int k = 0; k < s.Length; k++)
+        {
+            int dig = s[k] - '0';
+            if (dig < 0 || dig > 9)
+                continue;
+            var pts = new List<Vector2>();
+            foreach (var p in Digitos[dig])
+                pts.Add(new Vector2(x0 + k * paso + (p.x - 0.5f) * ancho + Temblorcito(azar, 0.5f),
+                                    NumeroY + (p.y - 0.5f) * alto + Temblorcito(azar, 0.5f)));
+            LineaAMano(px, Chaikin(Chaikin(pts)), 1.05f, 0.62f);
+        }
+        if (!clave)
+            return;
+        // El círculo: da un poco más de una vuelta, no es redondo del todo y no cierra justo donde empezó.
+        float rx = 15f + (s.Length - 1) * paso * 0.5f, ry = 15.5f;
+        float inicio = (float)azar.NextDouble() * Mathf.PI * 2f, fase = (float)azar.NextDouble() * 6f;
+        var c = new List<Vector2>();
+        const int pasos = 72;
+        for (int i = 0; i <= pasos; i++)
+        {
+            float t = i / (float)pasos;
+            float a = inicio + t * Mathf.PI * 2f * 1.09f;
+            float r = 1f + 0.05f * Mathf.Sin(2f * a + fase) - 0.06f * t;
+            c.Add(new Vector2(NumeroX + 0.5f + Mathf.Cos(a) * rx * r, NumeroY + Mathf.Sin(a) * ry * r));
+        }
+        LineaAMano(px, c, 0.95f, 0.5f);
+    }
+
+    static float Temblorcito(System.Random azar, float cuanto)
+    {
+        return ((float)azar.NextDouble() * 2f - 1f) * cuanto;
+    }
+
+    // Suaviza las esquinas (como la mano), dejando las puntas donde están.
+    static List<Vector2> Chaikin(List<Vector2> p)
+    {
+        if (p.Count < 3)
+            return p;
+        var r = new List<Vector2> { p[0] };
+        for (int i = 0; i < p.Count - 1; i++)
+        {
+            r.Add(Vector2.Lerp(p[i], p[i + 1], 0.25f));
+            r.Add(Vector2.Lerp(p[i], p[i + 1], 0.75f));
+        }
+        r.Add(p[p.Count - 1]);
+        return r;
+    }
+
+    // Una línea de lápiz (en píxeles de la hoja), con grano.
+    static void LineaAMano(Color32[] px, List<Vector2> p, float radio, float fuerza)
+    {
+        for (int i = 1; i < p.Count; i++)
+        {
+            int n = Mathf.Max(1, Mathf.CeilToInt(Vector2.Distance(p[i - 1], p[i]) / 0.6f));
             for (int k = 0; k <= n; k++)
-                Punto(px, c, fuerza, Vector2.Lerp(p[i - 1], p[i], k / (float)n));
+            {
+                Vector2 q = Vector2.Lerp(p[i - 1], p[i], k / (float)n);
+                Sello(px, q.x, q.y, radio, ColorGrafito, fuerza, true);
+            }
         }
     }
 
-    static void Curva(Color32[] px, Color c, float fuerza, Vector2 a, Vector2 control, Vector2 b)
+    // ¿El dedo empezó a tocar sobre el número? (u, v de la hoja)
+    static bool EnNumero(Vector3 q)
     {
-        const int n = 400;
-        for (int k = 0; k <= n; k++)
-        {
-            float t = k / (float)n, u = 1f - t;
-            Punto(px, c, fuerza, u * u * a + 2f * u * t * control + t * t * b);
-        }
+        return Mathf.Abs(q.x * AnchoTex - NumeroX) < 34f && Mathf.Abs(q.y * AltoTex - NumeroY) < 30f;
     }
 
-    // rx en ancho de la hoja; ry en alto de la hoja.
-    static void Ovalo(Color32[] px, Color c, float fuerza, Vector2 centro, float rx, float ry)
+    void AlternarClave()
     {
-        int n = Mathf.Clamp(Mathf.CeilToInt((rx * AnchoTex + ry * AltoTex) * 4f), 40, 900);
-        for (int k = 0; k <= n; k++)
-        {
-            float a = k / (float)n * Mathf.PI * 2f;
-            Punto(px, c, fuerza, centro + new Vector2(Mathf.Cos(a) * rx, Mathf.Sin(a) * ry));
-        }
+        Pag.clave = !Pag.clave;
+        RehacerHoja();
+        GuardarBoceto();
+        textoAyuda.text = Idioma.T(Pag.clave ? "Hoja clave: su número va en un círculo" : "Ya no es hoja clave");
+        control.SonidoBurbuja(hoja.position);
     }
 
     // ---------- El boceto se guarda (si sales sin entrar, sigue ahí) ----------

@@ -30,7 +30,7 @@ public class TutorialNovedades : TarjetaTutorial
     readonly List<Vector3> otra = new List<Vector3>();
     readonly List<Vector3> tramo = new List<Vector3>();
 
-    protected override int Paginas => 26;
+    protected override int Paginas => 27;
 
     protected override void ArmarExtra()
     {
@@ -78,7 +78,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 22: return Tx("23 · The knife and the invisible head", "23 · El cuchillo y la cabeza invisible");
             case 23: return Tx("24 · The animation desk and Properties", "24 · La mesa de animación y Propiedades");
             case 24: return Tx("25 · How to use the invisible head", "25 · Cómo usar la cabeza invisible");
-            default: return Tx("26 · Flip book, colored pencils and Properties", "26 · Bloc, lápices de colores y Propiedades");
+            case 25: return Tx("26 · Flip book, colored pencils and Properties", "26 · Bloc, lápices de colores y Propiedades");
+            default: return Tx("27 · Sample drawings, eraser and key sheets", "27 · Dibujos de muestra, goma y hojas clave");
         }
     }
 
@@ -135,6 +136,10 @@ public class TutorialNovedades : TarjetaTutorial
                     "DESERT SUNSET: a new living background: dunes all around you lit by a low golden sun, violet shadows, a pink and purple sky with thin clouds, the first stars and the wind lifting dust far away. Say \"desert\". LAYERS: each one shows a thumbnail on its left; say \"layer 2\" to jump to it; leave your finger still on the name to rename it; delete with the little trash can (tap twice). The camera is a layer of its own (\"+ Camera\" = another one). The panels open with either hand, whatever the other one is doing.",
                     "ATARDECER EN EL DESIERTO: un fondo vivo nuevo: dunas a tu alrededor con la luz dorada del sol bajito, sombras violeta, un cielo rosado y morado con nubes finas, las primeras estrellas y el viento levantando polvo a lo lejos. Di \"desierto\". CAPAS: cada una muestra su miniatura a la izquierda; di \"capa 2\" para ir a ella; deja el dedo quieto en el nombre para cambiarlo; borra con el basurerito (toca dos veces). La cámara es su propia capa (\"+ Cámara\" = otra). Las persianas se abren con cualquier mano, haga lo que haga la otra.");
             default:
+                return Tx(
+                    "SAMPLE DRAWINGS: the first sheet of the desk brings a drawing (by Juan Cartoons or by David Revoy, CC-BY), a different one each time you come back while the sheet is untouched. Erase it with the ERASER (the pink block next to the pencils: touch it and \"draw\" to erase; with the ink sheet on, it erases ink) or with \"New sheet\". The sheet has its holes AT THE BOTTOM (like studio animation paper) and the pegs are there. Its NUMBER is small and handwritten in the top right corner: touch it to mark the sheet as a KEY (number in a circle); sheet 1 is already a key. PALETTE: every button you touch (a color, #, invisible ink, Fill) opens PROPERTIES of that tool. With invisible ink, Properties tells you why your lines don't show.",
+                    "DIBUJOS DE MUESTRA: la primera hoja de la mesa trae un dibujo (de Juan Cartoons o de David Revoy, CC-BY), uno distinto cada vez que vuelves mientras la hoja está sin tocar. Bórralo con la GOMA (el bloque rosado junto a los lápices: tócala y \"dibuja\" para borrar; con la hoja de tinta puesta, borra la tinta) o con \"Hoja nueva\". La hoja tiene sus perforaciones ABAJO (como el papel de animación de los estudios) y ahí están los pivotes. Su NÚMERO va pequeño y a mano, arriba a la derecha: tócalo para marcar la hoja como CLAVE (número en círculo); la hoja 1 ya viene marcada. PALETA: cada botón que tocas (un color, #, tinta invisible, Relleno) abre PROPIEDADES de esa herramienta. Con la tinta invisible, Propiedades te dice por qué no se ven tus líneas.");
+            case 25:
                 return Tx(
                     "THE DESK, MORE ALIVE: three PENCILS (graphite, red, blue): touch one to draw with it. THE PAD (left): \"+ Sheet\" adds a sheet (the previous one shows underneath in onion skin), ◀ ▶ to go back and forth, \"▶ Flip\" plays them in a loop like a flip book. Pinch with BOTH hands to make the desk bigger or smaller and higher or lower; \"Center desk\" puts it back. Touch a recent drawing: it appears on the disc sheet and you DIVE into it. PROPERTIES: only the tool you are using (pencil, ink, fill or camera); pull its pill at the bottom right of your view; move it by pinching its little bar. The PALETTE now has only colors (and Fill). VOICE: \"white background\", \"grid background\", \"transparent background\" or \"passthrough\" go straight to that background. CLAY: matte, with dents and finger marks, flatter (pressed by hand).",
                     "LA MESA, MÁS VIVA: tres LÁPICES (grafito, rojo, azul): toca uno para dibujar con él. EL BLOC (izquierda): \"+ Hoja\" agrega una hoja (la anterior se ve debajo en papel cebolla), ◀ ▶ para ir y volver, \"▶ Hojear\" las pasa seguidas como un flip book. Pellizca con LAS DOS manos para hacer la mesa más grande o más chica y más arriba o más abajo; \"Centrar mesa\" la devuelve. Toca un dibujo reciente: aparece en la hoja del disco y te ZAMBULLES en él. PROPIEDADES: solo la herramienta que estás usando (lápiz, tinta, relleno o cámara); jala su pastillita abajo a la derecha de tu vista; muévelo pellizcando su barrita. La PALETA ahora tiene solo colores (y Relleno). VOZ: \"fondo blanco\", \"fondo cuadrícula\", \"fondo transparente\" o \"passthrough\" van directo a ese fondo. PLASTILINA: mate, con abolladuras y huellas, más aplastada (hecha a mano).");
