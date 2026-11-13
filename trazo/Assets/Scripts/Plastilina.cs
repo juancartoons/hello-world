@@ -231,7 +231,9 @@ public class PanelPlastilina : MonoBehaviour
             if (adelante.sqrMagnitude < 1e-4f)
                 adelante = Vector3.forward;
             adelante.Normalize();
-            Vector3 pos = cab.position + adelante * 0.45f + Vector3.up * 0.12f;
+            // v65: a un lado (a tu izquierda; Propiedades sale a la derecha), para no tapar lo que dibujas.
+            Vector3 izquierda = -Vector3.Cross(Vector3.up, adelante).normalized;
+            Vector3 pos = cab.position + adelante * 0.42f + izquierda * 0.3f + Vector3.up * 0.08f;
             transform.SetPositionAndRotation(pos, Quaternion.LookRotation(pos - cab.position, Vector3.up));
         }
         proximoUso = 0f;

@@ -95,10 +95,12 @@ public class PanelPropiedades : MonoBehaviour
                 return;
             }
         }
+        bool yaAbierto = instancia.gameObject.activeSelf;
         instancia.gameObject.SetActive(true);
-        // Se queda donde lo dejaste; solo se trae si nunca se colocó o quedó muy lejos de ti.
+        // v65: cada vez que se abre sale A UN LADO (a tu derecha), para no tapar lo que dibujas. Abierto, se queda
+        // donde lo dejes (y si quedó muy lejos de ti, se trae).
         var cab = instancia.control != null ? instancia.control.Cabeza : null;
-        if (!instancia.colocado || (cab != null && Vector3.Distance(cab.position, instancia.transform.position) > 1.6f))
+        if (!yaAbierto || !instancia.colocado || (cab != null && Vector3.Distance(cab.position, instancia.transform.position) > 1.6f))
             instancia.Colocar();
         instancia.firma = "";
         instancia.Refrescar();
@@ -321,6 +323,9 @@ public class PanelPropiedades : MonoBehaviour
             y = Opciones(y, "Líneas invisibles", new[] { "Ocultas", "Previsualizar" }, () => Trazo.PrevisualizarInvisibles ? 1 : 0,
                          i => dibujo.PonerPrevisualizarInvisibles(i == 1),
                          () => Trazo.PrevisualizarInvisibles ? "Una raya intermitente muestra dónde están (no sale en fotos)" : "No se ven (solo su relleno)");
+            y = Opciones(y, "Al borrar un nodo", new[] { "Unir", "Cortar" }, () => Trazo.BorrarCortando ? 1 : 0,
+                         i => Trazo.BorrarCortando = i == 1,
+                         () => Trazo.BorrarCortando ? "La línea queda partida donde borras" : "Se unen los nodos de al lado: la línea sigue");
             y = Opciones(y, "Uniones", new[] { "Rectas", "Suaves" }, () => Trazo.UnionesSuaves ? 1 : 0,
                          i => { if ((i == 1) != Trazo.UnionesSuaves) Trazo.AlternarUniones(); }, () => "Cómo se juntan dos líneas que se unen");
             y = Opciones(y, "Imán", new[] { "Sí", "No" }, () => dibujo.CapaActual.iman ? 0 : 1,

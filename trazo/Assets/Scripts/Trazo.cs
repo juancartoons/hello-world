@@ -1182,6 +1182,26 @@ public class Trazo : MonoBehaviour
         return Mathf.Max(puntaMinima, Mathf.Pow(seno, 0.55f));
     }
 
+    // ---------- v65: AL BORRAR UN NODO: UNIR (la línea sigue: se unen los nodos de al lado; como siempre) o CORTAR
+    // (la línea queda partida ahí). Propiedades · Tinta. Vale dentro de los archivos y en la mesa de animación.
+    const string ClaveCorta = "jcartoons_borrar_corta";
+    static int cortaPref = -1;
+    public static bool BorrarCortando
+    {
+        get
+        {
+            if (cortaPref < 0)
+                cortaPref = PlayerPrefs.GetInt(ClaveCorta, 0) == 1 ? 1 : 0;
+            return cortaPref == 1;
+        }
+        set
+        {
+            cortaPref = value ? 1 : 0;
+            PlayerPrefs.SetInt(ClaveCorta, cortaPref);
+            PlayerPrefs.Save();
+        }
+    }
+
     // ---------- v64: LÍNEAS INVISIBLES PREVISUALIZADAS: una raya delgada negra intermitente (como la de la mitad de
     // la carretera) donde hay tinta invisible. Se elige en Propiedades · Tinta. No sale en fotos ni videos.
     const string ClaveRaya = "jcartoons_ver_invisibles";

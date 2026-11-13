@@ -81,6 +81,10 @@ public partial class ControlManos : MonoBehaviour
     public bool PunoIzquierdo => EsPuno(false) || PunoApretado();
     public bool NodosIzquierdo => Izq.valida && Vector3.Distance(Izq.pulgar, Izq.medio) < 0.022f
                                   && Vector3.Distance(Izq.pulgar, Izq.indice) > 0.035f;
+    // v65: el gesto de GROSOR (pulgar + anular izquierdos), para la mesa.
+    public bool GrosorIzquierdo => Izq.valida && Vector3.Distance(Izq.pulgar, Izq.anular) < 0.022f
+                                   && Vector3.Distance(Izq.pulgar, Izq.medio) > 0.03f && Vector3.Distance(Izq.pulgar, Izq.indice) > 0.035f;
+    public float SensibilidadGrosor => sensibilidadGrosor;
 
     // Dibujo bloqueado (doble toque izquierdo): no se dibujan líneas por accidente.
     public bool DibujoBloqueado { get; private set; }
@@ -1756,7 +1760,11 @@ public partial class ControlManos : MonoBehaviour
                     if (!EfectosLinea.DisolverNodo(t, i))
                         dibujo.Destello(dondeNodo, 0.02f);
                     Burbuja(dondeNodo, 1f);
+                    // v65: "Cortar": la línea queda partida donde estaba el nodo (si no es una punta).
+                    bool cortar = Trazo.BorrarCortando && !t.cerrado && i > 0 && i < t.nodos.Count - 1;
                     dibujo.QuitarNodo(t, i);
+                    if (cortar && dibujo.trazos.Contains(t) && i - 1 < t.nodos.Count - 1)
+                        dibujo.CortarTramo(t, i - 1);
                 }
                 else if (tipo == Objetivo.Tela)
                 {

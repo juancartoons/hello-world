@@ -66,6 +66,12 @@ public class MesaEntrada : MonoBehaviour
     BotonTocable btnModo;
     Transform frasco;
     float ultimoBorradoTinta = -10f;
+    // v65: grosor de la tinta nueva y de cada nodo (gesto de grosor), y tamaño de la goma (puño + pellizco).
+    float anchoPincelMesa = 1f, tamanoGomaMesa = 1f;
+    bool grosorActivo, gomaDial;
+    Linea lineaGrosor;
+    int nodoGrosor;
+    float alturaGrosor, grosorInicio, gomaAltura, gomaInicio;
     static bool sonidoMesaListo;
     TextMeshPro textoAyuda;
     float cerrarAppHasta;
@@ -74,7 +80,9 @@ public class MesaEntrada : MonoBehaviour
     // Lo que dibujaste (en la hoja: u, v de 0 a 1 y la presión), para pasarlo al dibujo al entrar.
     // v60: c = color del lápiz (0 grafito, 1 rojo, 2 azul). Varias HOJAS (el bloc): cada una su lápiz y su tinta.
     [System.Serializable]
-    class Linea { public List<Vector3> p = new List<Vector3>(); public int c; public bool vector; }   // v62: vector = tinta en líneas
+    // v62: vector = tinta en líneas. v65: a = grosor de la línea (multiplica al de la mesa; 0 = 1); en las líneas
+    // vector, la z de cada nodo es SU grosor (1 = normal), como el grosor de los nodos de adentro de los archivos.
+    class Linea { public List<Vector3> p = new List<Vector3>(); public int c; public bool vector; public float a; }
     [System.Serializable]
     class Pagina
     {
@@ -283,7 +291,13 @@ public class MesaEntrada : MonoBehaviour
                 Hojear();
             else
                 Dibujar();
-            GirarDisco();
+            // v65: con un gesto de la izquierda (puño, nodos, grosor) el pellizco derecho es de ese gesto.
+            if (control.PunoIzquierdo && control.Der.valida && control.Der.pellizco)
+                DialGoma();
+            else if (!control.PunoIzquierdo && !control.NodosIzquierdo && !control.GrosorIzquierdo)
+                GirarDisco();
+            if (!control.Der.pellizco || !control.PunoIzquierdo)
+                gomaDial = false;
         }
         control.MusicaMesa(actual != null && !hojeando, control.Der.indice);   // v64: suena al dibujar, como siempre
         ActualizarReglas();
@@ -1045,26 +1059,8 @@ public class MesaEntrada : MonoBehaviour
             dibujo.DefinirPlano(planoLocal, adelante);
             Vector3 normalLocal = raizD.InverseTransformDirection(adelante).normalized;
             foreach (var l in Pag.tinta)
-            {
-                if (l.c == Goma)
-                    continue;   // (la goma de la tinta solo vale en la mesa; las líneas de verdad se borran con sus gestos)
-                var puntos = new List<Vector3>();
-                foreach (var q in l.p)
-                    puntos.Add(raizD.InverseTransformPoint(mundo(q) - adelante * 0.002f));
-                var simples = Simplificar(puntos, 0.0015f / dibujo.EscalaMundo);
-                if (simples.Count < 2)
-                    continue;
-                var d = new DatosTrazo { color = Color.black, enHoja = true, hojaPunto = planoLocal, hojaNormal = normalLocal };
-                foreach (var p in simples)
-                {
-                    d.nodos.Add(p);
-                    d.asaEntrada.Add(Vector3.zero);
-                    d.asaSalida.Add(Vector3.zero);
-                    d.asaManual.Add(false);
-                    d.grosorNodo.Add(1f);
-                }
-                dibujo.AgregarTrazo(d);
-            }
+                if (l.c != Goma)   // (la goma de la tinta solo vale en la mesa)
+                    AgregarLineaVector(l, mundo, adelante, 0.002f, planoLocal, normalLocal, Color.black, 0f);
             dibujo.HayCambios = true;
             dibujo.Mensaje(hayLapiz ? "Tu boceto de la mesa: el lápiz en su capa; entinta en la capa Tinta" : "Tu tinta de la mesa ya está aquí");
         }
@@ -1177,15 +1173,30 @@ public class MesaEntrada : MonoBehaviour
         if (l.p.Count < 2)
             return;
         var raizD = dibujo.transform;
+        var d = new DatosTrazo { color = color, enHoja = true, hojaPunto = planoLocal, hojaNormal = normalLocal };
+        if (ancho > 0f)
+            d.ancho = ancho;
+        if (l.vector)
+        {
+            // v65: la tinta en líneas pasa con SUS nodos, su grosor y el de cada nodo (la hoja de 30 cm es de 90 cm).
+            d.ancho = AnchoTintaMesa * (l.a > 0f ? l.a : 1f) * (0.9f / AnchoHoja) / Mathf.Max(1e-4f, dibujo.EscalaMundo);
+            foreach (var q in l.p)
+            {
+                d.nodos.Add(raizD.InverseTransformPoint(mundo(q) - adelante * separacion));
+                d.asaEntrada.Add(Vector3.zero);
+                d.asaSalida.Add(Vector3.zero);
+                d.asaManual.Add(false);
+                d.grosorNodo.Add(Mathf.Clamp(q.z, 0.15f, 5f));
+            }
+            dibujo.AgregarTrazo(d);
+            return;
+        }
         var puntos = new List<Vector3>();
         foreach (var q in l.p)
             puntos.Add(raizD.InverseTransformPoint(mundo(q) - adelante * separacion));
         var simples = Simplificar(puntos, 0.0015f / dibujo.EscalaMundo);
         if (simples.Count < 2)
             return;
-        var d = new DatosTrazo { color = color, enHoja = true, hojaPunto = planoLocal, hojaNormal = normalLocal };
-        if (ancho > 0f)
-            d.ancho = ancho;
         foreach (var p in simples)
         {
             d.nodos.Add(p);
@@ -1252,7 +1263,17 @@ public class MesaEntrada : MonoBehaviour
     void Dibujar()
     {
         var der = control.Der;
-        bool nodos = tintaPuesta && !tintaPintada && control.NodosIzquierdo;
+        bool grosor = tintaPuesta && !tintaPintada && control.GrosorIzquierdo;
+        if (grosor)
+        {
+            TerminarLinea();
+            GrosorTinta();
+        }
+        else if (grosorActivo)
+        {
+            SoltarGrosor();
+        }
+        bool nodos = tintaPuesta && !tintaPintada && (control.NodosIzquierdo || grosor);
         if (nodos != nodosVisibles)
         {
             nodosVisibles = nodos;
@@ -1273,6 +1294,8 @@ public class MesaEntrada : MonoBehaviour
         float distancia = -l.z * escalaMesa;   // la hoja mira hacia ti (su -Z); v62: en metros, sea cual sea el tamaño
         bool dentro = Mathf.Abs(l.x) < 0.5f && Mathf.Abs(l.y) < 0.5f;
         var q = new Vector3(l.x + 0.5f, l.y + 0.5f, 0f);
+        if (grosor)
+            return;
         if (nodos)
         {
             NodosTinta(q, dentro && distancia < AlcanceLapiz * 2.5f && distancia > -0.04f);
@@ -1304,11 +1327,14 @@ public class MesaEntrada : MonoBehaviour
             BorrarLineaTinta(q);
             return;
         }
+        bool esVector = tintaPuesta && !tintaPintada && c != Goma;
+        if (esVector)
+            q.z = 1f;   // v65: en la tinta en líneas, z = el grosor del nodo (1 = normal)
         if (actual == null || actualTinta != tintaPuesta || actual.c != c)
         {
             TerminarLinea();
             GuardarDeshacer();
-            actual = new Linea { c = c, vector = tintaPuesta && !tintaPintada && c != Goma };
+            actual = new Linea { c = c, vector = esVector, a = esVector ? anchoPincelMesa : 0f };
             actualTinta = tintaPuesta;
             (tintaPuesta ? Pag.tinta : Pag.lapiz).Add(actual);
         }
@@ -1388,7 +1414,7 @@ public class MesaEntrada : MonoBehaviour
         var tri = new List<int>();
         foreach (var l in Pag.tinta)
             if (l.vector && l.p.Count > 0)
-                Cinta(l == actual ? l.p : Suave(l.p), v, tri);
+                Cinta(l == actual ? l.p : Suave(l.p), l.a > 0f ? l.a : 1f, v, tri);
         mallaTinta.Clear();
         mallaTinta.SetVertices(v);
         mallaTinta.SetTriangles(tri, 0);
@@ -1421,14 +1447,14 @@ public class MesaEntrada : MonoBehaviour
     // centro y en punta en los extremos; Trazo.PerfilPunta).
     const float AnchoTintaMesa = 0.0024f;   // metros del papel, en el centro de la línea
 
-    static void Cinta(List<Vector3> pts, List<Vector3> v, List<int> tri)
+    static void Cinta(List<Vector3> pts, float grosor, List<Vector3> v, List<int> tri)
     {
         int n = pts.Count;
         if (n == 0)
             return;
         if (n == 1)
         {
-            Disco(pts[0], AnchoTintaMesa * 0.25f, v, tri);
+            Disco(pts[0], AnchoTintaMesa * 0.25f * grosor, v, tri);
             return;
         }
         var largos = new float[n];
@@ -1443,7 +1469,8 @@ public class MesaEntrada : MonoBehaviour
             if (t.sqrMagnitude < 1e-12f)
                 t = Vector2.right;
             t.Normalize();
-            Vector2 lado = new Vector2(-t.y, t.x) * (AnchoTintaMesa * 0.5f * Trazo.PerfilPunta(largos[i] / total));
+            float nodo = Mathf.Clamp(pts[i].z, 0.1f, 6f);   // el grosor del nodo (antes de la v65 era la presión)
+            Vector2 lado = new Vector2(-t.y, t.x) * (AnchoTintaMesa * 0.5f * grosor * nodo * Trazo.PerfilPunta(largos[i] / total));
             Vector2 c = EnMetros(pts[i]);
             v.Add(EnMalla(c + lado));
             v.Add(EnMalla(c - lado));
@@ -1555,12 +1582,14 @@ public class MesaEntrada : MonoBehaviour
         return r;
     }
 
-    // v64: el puño (o la goma) borra SOLO el pedazo de línea que toca (como el borrador de adentro de los archivos):
-    // ese pedazo se va en burbujas y la línea queda partida en dos (cada parte con sus nodos).
+    // v65: la goma (o el puño) borra los NODOS que toca, como dentro de los archivos: con "Unir" (Propiedades · Tinta,
+    // como siempre) la línea sigue entre los nodos de al lado; con "Cortar" la línea queda partida ahí. Los nodos se van
+    // en burbujas. La tinta pintada se borra por pedacitos.
     void BorrarLineaTinta(Vector3 q)
     {
-        const float RadioPx = 8f;
+        float radioPx = 8f * tamanoGomaMesa;
         Vector2 dedo = EnPx(q);
+        bool cortar = Trazo.BorrarCortando;
         bool borro = false;
         var nuevas = new List<Linea>();
         var quitar = new List<Linea>();
@@ -1569,34 +1598,38 @@ public class MesaEntrada : MonoBehaviour
         {
             if (l.c == Goma || l.p.Count == 0)
                 continue;
-            var pts = l.vector && l.p.Count >= 3 ? Suave(l.p) : l.p;
+            var pts = l.p;
+            var fuera = new bool[pts.Count];
             bool toca = false;
-            foreach (var p in pts)
-                if (Vector2.Distance(dedo, EnPx(p)) < RadioPx)
-                {
+            for (int i = 0; i < pts.Count; i++)
+            {
+                fuera[i] = Vector2.Distance(dedo, EnPx(pts[i])) >= radioPx;
+                if (!fuera[i])
                     toca = true;
-                    break;
-                }
+            }
             if (!toca)
                 continue;
             if (!borro && Time.time - ultimoBorradoTinta > 0.5f)
                 GuardarDeshacer();   // una vez por cada pasada de la goma
             borro = true;
             quitar.Add(l);
+            bool partir = !l.vector || cortar;
             var tramo = new List<Vector3>();
             for (int i = 0; i <= pts.Count; i++)
             {
-                bool fuera = i < pts.Count && Vector2.Distance(dedo, EnPx(pts[i])) >= RadioPx;
-                if (fuera)
+                if (i < pts.Count && fuera[i])
                 {
                     tramo.Add(pts[i]);
                     continue;
                 }
                 if (i < pts.Count)
                     burbujas.Add(pts[i]);
-                if (tramo.Count >= 2)
-                    nuevas.Add(new Linea { c = l.c, vector = l.vector, p = l.vector ? SimplificarHoja(tramo, 1.4f) : new List<Vector3>(tramo) });
-                tramo = new List<Vector3>();
+                if (partir || i == pts.Count)
+                {
+                    if (tramo.Count >= 2)
+                        nuevas.Add(new Linea { c = l.c, vector = l.vector, a = l.a, p = tramo });
+                    tramo = new List<Vector3>();
+                }
             }
         }
         if (!borro)
@@ -1604,13 +1637,101 @@ public class MesaEntrada : MonoBehaviour
         foreach (var l in quitar)
             Pag.tinta.Remove(l);
         Pag.tinta.AddRange(nuevas);
-        for (int i = 0; i < burbujas.Count; i += 2)
-            StartCoroutine(Burbuja(hojaTinta.TransformPoint(new Vector3(burbujas[i].x - 0.5f, burbujas[i].y - 0.5f, 0f)), (i / 2) * 0.01f));
+        for (int i = 0; i < burbujas.Count; i++)
+            StartCoroutine(Burbuja(hojaTinta.TransformPoint(new Vector3(burbujas[i].x - 0.5f, burbujas[i].y - 0.5f, 0f)), i * 0.015f));
         RehacerTinta();
         GuardarBoceto();
         if (Time.time - ultimoBorradoTinta > 0.25f)
             control.SonidoBurbuja(hojaTinta.TransformPoint(new Vector3(q.x - 0.5f, q.y - 0.5f, 0f)));
         ultimoBorradoTinta = Time.time;
+    }
+
+    // v65: EL GROSOR (pulgar + anular izquierdos), como dentro de los archivos: pellizca con la derecha SOBRE un nodo y
+    // sube o baja = el grosor de ese nodo; pellizca en el aire y sube o baja = el grosor de la tinta nueva.
+    void GrosorTinta()
+    {
+        var der = control.Der;
+        if (!der.valida || !der.pellizco)
+        {
+            SoltarGrosor();
+            return;
+        }
+        Vector3 p = der.PuntoPellizco;
+        if (!grosorActivo)
+        {
+            grosorActivo = true;
+            alturaGrosor = p.y;
+            lineaGrosor = null;
+            Vector3 l = hojaTinta.InverseTransformPoint(p);
+            if (Mathf.Abs(l.z * escalaMesa) < 0.04f)
+            {
+                Vector2 dedo = EnPx(new Vector3(l.x + 0.5f, l.y + 0.5f, 0f));
+                float mejor = 14f;
+                foreach (var linea in Pag.tinta)
+                {
+                    if (!linea.vector)
+                        continue;
+                    for (int i = 0; i < linea.p.Count; i++)
+                    {
+                        float d = Vector2.Distance(dedo, EnPx(linea.p[i]));
+                        if (d < mejor)
+                        {
+                            mejor = d;
+                            lineaGrosor = linea;
+                            nodoGrosor = i;
+                        }
+                    }
+                }
+            }
+            if (lineaGrosor != null)
+            {
+                GuardarDeshacer();
+                grosorInicio = lineaGrosor.p[nodoGrosor].z;
+            }
+            else
+            {
+                grosorInicio = anchoPincelMesa;
+            }
+        }
+        float dy = p.y - alturaGrosor;
+        if (lineaGrosor != null && nodoGrosor < lineaGrosor.p.Count)
+        {
+            Vector3 n = lineaGrosor.p[nodoGrosor];
+            n.z = Mathf.Clamp(grosorInicio * Mathf.Exp(dy * control.SensibilidadGrosor), 0.15f, 5f);
+            lineaGrosor.p[nodoGrosor] = n;
+            mallaSucia = true;
+            textoAyuda.text = Idioma.T("Grosor del nodo") + " x" + n.z.ToString("0.0");
+        }
+        else
+        {
+            anchoPincelMesa = Mathf.Clamp(grosorInicio * Mathf.Exp(dy * control.SensibilidadGrosor * 2f), 0.3f, 4f);
+            textoAyuda.text = Idioma.T("Grosor de la tinta") + " x" + anchoPincelMesa.ToString("0.0");
+        }
+    }
+
+    void SoltarGrosor()
+    {
+        if (!grosorActivo)
+            return;
+        grosorActivo = false;
+        if (lineaGrosor != null)
+            GuardarBoceto();
+        lineaGrosor = null;
+    }
+
+    // v65: el TAMAÑO DE LA GOMA (puño izquierdo + pellizco derecho; arriba = más grande, abajo = más chica).
+    void DialGoma()
+    {
+        float y = control.Der.PuntoPellizco.y;
+        if (!gomaDial)
+        {
+            gomaDial = true;
+            gomaAltura = y;
+            gomaInicio = tamanoGomaMesa;
+            TerminarLinea();
+        }
+        tamanoGomaMesa = Mathf.Clamp(gomaInicio * Mathf.Exp((y - gomaAltura) * control.SensibilidadGrosor * 3f), 0.3f, 6f);
+        textoAyuda.text = Idioma.T("Borrador") + " x" + tamanoGomaMesa.ToString("0.0");
     }
 
     void NodosTinta(Vector3 q, bool tocando)
@@ -1765,7 +1886,7 @@ public class MesaEntrada : MonoBehaviour
         for (int i = 0; i <= pasos; i++)
         {
             float t = i / (float)pasos;
-            float radio = 5f + 4f * Mathf.Lerp(a.z, b.z, t);
+            float radio = (5f + 4f * Mathf.Lerp(a.z, b.z, t)) * tamanoGomaMesa;
             float cx = Mathf.Lerp(pxA, pxB, t), cy = Mathf.Lerp(pyA, pyB, t);
             int x0 = Mathf.Max(0, Mathf.FloorToInt(cx - radio)), x1 = Mathf.Min(AnchoTex - 1, Mathf.CeilToInt(cx + radio));
             int y0 = Mathf.Max(0, Mathf.FloorToInt(cy - radio)), y1 = Mathf.Min(AltoTex - 1, Mathf.CeilToInt(cy + radio));

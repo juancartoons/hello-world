@@ -252,6 +252,30 @@ public class PanelMuneca : MonoBehaviour
             mesaDesplegada = false;
         if (MesaEntrada.Activa != modoMesa || mesaDesplegada != desplegadaAplicada)
             AplicarModoMesa(MesaEntrada.Activa);
+        ActualizarBotonRojo();
+    }
+
+    // v65: el botón rojo va EN TU MUÑECA izquierda (como la carátula de un reloj, un poco más chico): un disco plano
+    // de medio centímetro de alto, mirándote.
+    void ActualizarBotonRojo()
+    {
+        bool ver = MesaEntrada.Activa && visible && !mesaDesplegada && control != null && control.Cabeza != null && control.Izq.valida;
+        if (ver && botonRojo == null)
+            CrearBotonRojo();
+        if (botonRojo == null)
+            return;
+        if (botonRojo.gameObject.activeSelf != ver)
+            botonRojo.gameObject.SetActive(ver);
+        if (!ver)
+            return;
+        var muneca = ManosUtil.Hueso(control.Izq.esqueleto, "WristRoot", "Wrist");
+        Vector3 m = muneca != null ? muneca.position : control.Izq.pulgar;
+        Vector3 haciaOjos = control.Cabeza.position - m;
+        if (haciaOjos.sqrMagnitude < 1e-6f)
+            return;
+        Vector3 pos = m + haciaOjos.normalized * 0.025f;
+        botonRojo.transform.SetPositionAndRotation(pos,
+            Quaternion.LookRotation(pos - control.Cabeza.position, Vector3.up) * Quaternion.Euler(90f, 0f, 0f));
     }
 
     bool mesaDesplegada, desplegadaAplicada;
@@ -259,18 +283,17 @@ public class PanelMuneca : MonoBehaviour
 
     void CrearBotonRojo()
     {
-        if (botonRojo != null || contenido == null)
+        if (botonRojo != null)
             return;
         var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         go.name = "BotonRojoMesa";
-        go.transform.SetParent(contenido.transform, false);
-        Vector3 centro = btnFondo != null ? btnFondo.transform.localPosition : Vector3.zero;
-        go.transform.localPosition = new Vector3(0f, centro.y, centro.z - 0.004f);
-        go.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-        go.transform.localScale = new Vector3(0.03f, 0.003f, 0.03f);
+        go.transform.localScale = new Vector3(0.028f, 0.0025f, 0.028f);   // 2,8 cm de ancho y medio centímetro de alto
         var r = go.GetComponent<Renderer>();
-        Material baseM = btnFondo != null ? btnFondo.materialNormal : null;
+        var refs = FindFirstObjectByType<Referencias>(FindObjectsInactive.Include);
+        Material baseM = refs != null && refs.materialImagen != null ? refs.materialImagen : (btnFondo != null ? btnFondo.materialNormal : null);
         var rojo = baseM != null ? new Material(baseM) : r.sharedMaterial;
+        if (rojo.HasProperty("_BaseMap"))
+            rojo.SetTexture("_BaseMap", Texture2D.whiteTexture);
         if (rojo.HasProperty("_BaseColor"))
             rojo.SetColor("_BaseColor", new Color(0.86f, 0.16f, 0.14f));
         if (rojo.HasProperty("_Color"))
@@ -296,14 +319,11 @@ public class PanelMuneca : MonoBehaviour
         desplegadaAplicada = mesaDesplegada;
         if (contenido == null)
             return;
-        CrearBotonRojo();
         foreach (var g in escondidosMesa)
             if (g != null)
                 g.SetActive(true);
         escondidosMesa.Clear();
         bool rojo = en && !mesaDesplegada;
-        if (botonRojo != null && botonRojo.gameObject.activeSelf != rojo)
-            botonRojo.gameObject.SetActive(rojo);
         if (!en)
             return;
         foreach (Transform h in contenido.transform)

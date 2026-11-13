@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v64***
+*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v65***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -910,3 +910,11 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - HECHO: micrófono, música y ojo visibles en la mesa (mic y ojo apagados al entrar; música en arpa la primera vez) y la música suena al dibujar en la mesa.
 - POR PROBAR: tamaños del rectángulo y del título; el ancho de la tinta de la mesa; la raya de las invisibles (largo de cada raya).
 - IDEA (sin HY): "Entintando" con letra a mano y una pincelada que se dibuja sola debajo.
+
+## v65
+- HECHO: Propiedades · Tinta · "Al borrar un nodo": Unir (por defecto, como siempre) o Cortar. Vale dentro de los archivos y en la mesa.
+- HECHO: la goma/puño de la mesa borra NODOS (como adentro); la tinta pintada se borra por pedacitos.
+- HECHO: mesa: gesto de grosor (pulgar + anular izq.): pellizco derecho sobre un nodo = grosor del nodo; en el aire = grosor de la tinta nueva. Puño izq. + pellizco der. = tamaño del borrador. Al entrar, la tinta pasa con su grosor y el de cada nodo.
+- HECHO: botón rojo del reloj en la mesa: plano (medio centímetro), 2,8 cm, rojo liso, justo en la muñeca.
+- HECHO: Propiedades siempre se abre a la derecha (cada vez que lo abres); Ajustes del lápiz y Plastilina a la izquierda.
+- POR PROBAR: el gesto de grosor en la mesa (que no se confunda con nodos), el tamaño del botón rojo.
