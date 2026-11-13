@@ -31,20 +31,20 @@ public class TutorialRellenos : TarjetaTutorial
         {
             case 0:
                 return Tx(
-                    "Open the palette (left palm), tap FILL (at 2 o'clock, 3 green facets) and then the BUCKET: it turns yellow. Now draw a C: it fills LIVE while you draw, and stays filled when you let go, even if it isn't closed. Tap the bucket again = off.",
-                    "Abre la paleta (palma izquierda), toca RELLENO (a las 2, 3 facetas verdes) y luego la CUBETA (el balde): se pone amarilla. Ahora dibuja una C: se va rellenando EN VIVO y al soltar queda rellena, aunque no la cierres. Otra vez la cubeta = apagada.");
+                    "Open the palette (left palm) and tap FILL (3 green facets): it turns white and LINE turns grey, and Properties · Fill opens. In \"How it fills\" choose \"While drawing\". Now draw a C: it fills LIVE while you draw, and stays filled when you let go, even if it isn't closed. Choose \"Normal\" to turn it off.",
+                    "Abre la paleta (palma izquierda) y toca RELLENO (3 facetas verdes): queda en blanco, LÍNEA queda en gris y se abre Propiedades · Relleno. En \"Cómo rellena\" elige \"Al dibujar\". Ahora dibuja una C: se va rellenando EN VIVO y al soltar queda rellena, aunque no la cierres. Elige \"Normal\" para apagarlo.");
             case 1:
                 return Tx(
-                    "Open the palette and tap FILL (at 2 o'clock): now the colors are for the fill (the line keeps its own). Pick one and tap INSIDE a shape (open or closed) for a moment: it fills. Keep a black outline and another fill color, like a nose in profile. You can undo it.",
-                    "Abre la paleta y toca RELLENO (a las 2): ahora los colores son del relleno (la línea guarda el suyo). Elige uno y toca DENTRO de una forma (abierta o cerrada) un instante: se rellena. Así el contorno queda negro y el relleno de otro color, como una nariz de lado. Se puede deshacer.");
+                    "Tap FILL on the palette: now the colors are for the fill (the line keeps its own); the chosen color has a glowing ring. Tap INSIDE a closed shape for a moment: it fills. For OPEN lines, choose \"Bucket\" in Properties · Fill. Keep a black outline and another fill color, like a nose in profile. You can undo it.",
+                    "Toca RELLENO en la paleta: ahora los colores son del relleno (la línea guarda el suyo); el color elegido tiene un aro que brilla. Toca DENTRO de una figura cerrada un instante: se rellena. Para líneas ABIERTAS, elige \"Cubeta\" en Propiedades · Relleno. Así el contorno queda negro y el relleno de otro color, como una nariz de lado. Se puede deshacer.");
             case 2:
                 return Tx(
-                    "Tap the CHECKERED circle (at 12 o'clock on the palette): your line won't show, but it closes and fills. While editing (palette, nodes or eraser) it shows light gray so you can find it. With FILL open, invisible ink + tap inside = remove the fill.",
-                    "Toca el círculo a CUADRITOS (a las 12 de la paleta): tu línea no se verá, pero sí cierra y rellena. Mientras editas (paleta, nodos o borrador) se ve gris clarito para encontrarla. Con RELLENO abierto, tinta invisible + tocar dentro = quitar el relleno.");
+                    "Invisible ink is the CHECKERED circle among the colors (next to #): your line won't show, but it closes and fills. With \"Preview\" (Properties · Ink) a thin dashed line shows where it is; while editing it shows light gray. With FILL chosen, invisible ink + tap inside = remove the fill.",
+                    "La tinta invisible es el círculo a CUADRITOS entre los colores (junto al #): tu línea no se verá, pero sí cierra y rellena. Con \"Previsualizar\" (Propiedades · Tinta) una raya intermitente muestra dónde está; mientras editas se ve gris clarito. Con RELLENO elegido, tinta invisible + tocar dentro = quitar el relleno.");
             default:
                 return Tx(
-                    "• Nose in profile: black outline + tap inside with skin color.\n• Spots and shadows with no outline: bucket + invisible ink.\n• Puppet path: draw it with invisible ink (it won't show in videos).\n• Cheeks: an oval with the bucket and pink.",
-                    "• Nariz de lado: contorno negro + toca dentro con color piel.\n• Manchas y sombras sin borde: cubeta + tinta invisible.\n• Camino del títere: dibújalo con tinta invisible (no sale en el video).\n• Mejillas: un óvalo con la cubeta y color rosado.");
+                    "• Nose in profile: black outline + tap inside with skin color.\n• Spots and shadows with no outline: \"While drawing\" + invisible ink.\n• Puppet path: draw it with invisible ink (it won't show in videos).\n• Cheeks: an oval with the bucket and pink.",
+                    "• Nariz de lado: contorno negro + toca dentro con color piel.\n• Manchas y sombras sin borde: \"Al dibujar\" + tinta invisible.\n• Camino del títere: dibújalo con tinta invisible (no sale en el video).\n• Mejillas: un óvalo con la cubeta y color rosado.");
         }
     }
 

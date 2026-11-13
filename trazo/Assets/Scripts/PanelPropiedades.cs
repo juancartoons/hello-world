@@ -164,7 +164,7 @@ public class PanelPropiedades : MonoBehaviour
         adelante.Normalize();
         // v64: a un lado (a la derecha), para no tapar lo que dibujas.
         Vector3 derecha = Vector3.Cross(Vector3.up, adelante).normalized;
-        Vector3 pos = cab.position + adelante * 0.42f + derecha * 0.3f + Vector3.up * 0.08f;
+        Vector3 pos = cab.position + adelante * 0.36f + derecha * 0.44f + Vector3.up * 0.06f;   // v66: más a un lado
         transform.SetPositionAndRotation(pos, Quaternion.LookRotation(pos - cab.position, Vector3.up));
         colocado = true;
     }

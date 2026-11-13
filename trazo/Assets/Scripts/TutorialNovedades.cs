@@ -30,7 +30,7 @@ public class TutorialNovedades : TarjetaTutorial
     readonly List<Vector3> otra = new List<Vector3>();
     readonly List<Vector3> tramo = new List<Vector3>();
 
-    protected override int Paginas => 31;
+    protected override int Paginas => 32;
 
     protected override void ArmarExtra()
     {
@@ -83,7 +83,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 27: return Tx("28 · Huge desk, ink lines, semi passthrough and more", "28 · Mesa gigante, tinta en líneas, semipassthrough y más");
             case 28: return Tx("29 · New palette, eyedropper and desk tools", "29 · Paleta nueva, gotero y herramientas de la mesa");
             case 29: return Tx("30 · Draw and Ink modes, sound on the desk", "30 · Modos Dibujar y Entintar, sonido en la mesa");
-            default: return Tx("31 · Thickness and eraser on the desk", "31 · Grosor y borrador en la mesa");
+            case 30: return Tx("31 · Thickness and eraser on the desk", "31 · Grosor y borrador en la mesa");
+            default: return Tx("32 · Trace an image on the desk", "32 · Calcar una imagen en la mesa");
         }
     }
 
@@ -140,6 +141,10 @@ public class TutorialNovedades : TarjetaTutorial
                     "DESERT SUNSET: a new living background: dunes all around you lit by a low golden sun, violet shadows, a pink and purple sky with thin clouds, the first stars and the wind lifting dust far away. Say \"desert\". LAYERS: each one shows a thumbnail on its left; say \"layer 2\" to jump to it; leave your finger still on the name to rename it; delete with the little trash can (tap twice). The camera is a layer of its own (\"+ Camera\" = another one). The panels open with either hand, whatever the other one is doing.",
                     "ATARDECER EN EL DESIERTO: un fondo vivo nuevo: dunas a tu alrededor con la luz dorada del sol bajito, sombras violeta, un cielo rosado y morado con nubes finas, las primeras estrellas y el viento levantando polvo a lo lejos. Di \"desierto\". CAPAS: cada una muestra su miniatura a la izquierda; di \"capa 2\" para ir a ella; deja el dedo quieto en el nombre para cambiarlo; borra con el basurerito (toca dos veces). La cámara es su propia capa (\"+ Cámara\" = otra). Las persianas se abren con cualquier mano, haga lo que haga la otra.");
             default:
+                return Tx(
+                    "IMPORT IMAGE (left of the desk): choose one of your images and it goes onto the disc sheet to trace it while inking. When you ENTER, that image (or the sample drawing) comes into your file as a REFERENCE IMAGE, in the same place, behind your ink. On the desk the ink now follows your finger like inside your files (faster and more precise), lines keep more nodes, the nodes show (small) while you erase, and a little ball on your finger shows the ink thickness or the eraser size (pink). The ink sheet is closer to the drawing. Properties opens further to the side.",
+                    "IMPORTAR IMAGEN (a la izquierda de la mesa): elige una de tus imágenes y va a la hoja del disco para calcarla entintando. Al ENTRAR, esa imagen (o el dibujo de muestra) pasa a tu archivo como IMAGEN DE REFERENCIA, en el mismo lugar, detrás de tu tinta. En la mesa la tinta ahora sigue a tu dedo como adentro de los archivos (más rápida y precisa), las líneas guardan más nodos, los nodos se ven (pequeños) mientras borras y una bolita en tu dedo muestra el grosor de la tinta o el tamaño de la goma (rosada). La hoja de tinta está más pegada al dibujo. Propiedades se abre más a un lado.");
+            case 30:
                 return Tx(
                     "INK ON THE DESK, like inside your files: with the THICKNESS gesture (left thumb + ring finger), pinch on a node with your right hand and move up or down = that node's thickness; pinch in the air = thickness of new ink. LEFT FIST + right pinch, up or down = eraser size. The eraser removes the NODES it touches: in Properties · Ink, \"When erasing a node\": Join (the line continues, as always) or Cut (the line splits there); it works on the desk and inside your files. On the desk the watch shows a small flat red button right on your wrist. Properties always opens to your right, and the pencil and clay panels to your left.",
                     "LA TINTA EN LA MESA, como dentro de tus archivos: con el gesto de GROSOR (pulgar + anular izquierdos), pellizca con la derecha sobre un nodo y sube o baja = el grosor de ese nodo; pellizca en el aire = el grosor de la tinta nueva. PUÑO IZQUIERDO + pellizco derecho, arriba o abajo = el tamaño del borrador. El borrador quita los NODOS que toca: en Propiedades · Tinta, \"Al borrar un nodo\": Unir (la línea sigue, como siempre) o Cortar (la línea queda partida ahí); vale en la mesa y dentro de tus archivos. En la mesa, el reloj muestra un botón rojo pequeño y plano justo en tu muñeca. Propiedades siempre se abre a tu derecha, y los paneles del lápiz y de la plastilina a tu izquierda.");

@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v65***
+*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v66***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -918,3 +918,13 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - HECHO: botón rojo del reloj en la mesa: plano (medio centímetro), 2,8 cm, rojo liso, justo en la muñeca.
 - HECHO: Propiedades siempre se abre a la derecha (cada vez que lo abres); Ajustes del lápiz y Plastilina a la izquierda.
 - POR PROBAR: el gesto de grosor en la mesa (que no se confunda con nodos), el tamaño del botón rojo.
+
+## v66
+- HECHO: mesa: bolita del dedo con el grosor de la tinta o el tamaño de la goma (rosada); grosor mínimo x0,1.
+- HECHO: tinta de la mesa más fluida: el dedo como adentro (sin filtro), todo en LateUpdate y solo se rehace la línea que dibujas.
+- HECHO: las líneas de la mesa guardan más nodos (máx. ~1 cm entre nodos); los nodos (más pequeños) se ven al borrar.
+- HECHO: hoja de tinta más pegada al dibujo.
+- HECHO: "Importar imagen" en la mesa (buscador de imágenes): la imagen va a la hoja para calcarla (modo Entintar). Al entrar, la imagen o el dibujo de muestra pasa al archivo como imagen de referencia, en su lugar.
+- HECHO: Propiedades más a un lado (derecha); lápiz y plastilina más a la izquierda.
+- HECHO: tutorial de Rellenos actualizado a la paleta nueva (Línea/Relleno, "Cómo rellena", tinta invisible en el círculo).
+- IDEAS (sin HY): integrar el primer tutorial con la mesa (ver respuesta de la v66).

@@ -74,9 +74,32 @@ public class BuscadorImagenes : MonoBehaviour
     public bool Abierto => raiz != null && raiz.gameObject.activeSelf;
     bool VisorAbierto => visor != null && visor.gameObject.activeSelf;
 
+    // v66: la MESA DE ANIMACIÓN también lo abre ("Importar imagen"): la imagen que elijas (Importar o sacarla con el
+    // pellizco) va a la hoja del disco, para calcarla, en vez de ponerse en el dibujo.
+    static System.Action<string> paraMesa;
+
+    public static void AbrirParaMesa(Referencias refs, Transform cabeza, System.Action<string> alElegir)
+    {
+        Abrir(refs, cabeza);
+        paraMesa = alElegir;
+    }
+
+    // Si la mesa la pidió: se la entrega (y se cierra). Devuelve true si fue para la mesa.
+    bool EntregarAMesa(string archivo)
+    {
+        if (paraMesa == null)
+            return false;
+        var f = paraMesa;
+        paraMesa = null;
+        Cerrar();
+        f(archivo);
+        return true;
+    }
+
     // Lo abre el botón "Imagen +".
     public static void Abrir(Referencias refs, Transform cabeza)
     {
+        paraMesa = null;
         if (refs == null)
             return;
         var b = refs.GetComponent<BuscadorImagenes>();
@@ -222,6 +245,8 @@ public class BuscadorImagenes : MonoBehaviour
             return;
         string archivo = ImportarArchivo(lista[k]);
         if (archivo == null)
+            return;
+        if (EntregarAMesa(archivo))
             return;
         Vector3 pinza = der.PuntoPellizco;
         Quaternion mira = cabeza != null && (pinza - cabeza.position).sqrMagnitude > 1e-4f
@@ -730,6 +755,8 @@ public class BuscadorImagenes : MonoBehaviour
             return;
         string archivo = ImportarArchivo(lista[elegido]);
         if (archivo == null)
+            return;
+        if (EntregarAMesa(archivo))
             return;
         Cerrar();
         referencias.Poner(archivo, cabeza);
