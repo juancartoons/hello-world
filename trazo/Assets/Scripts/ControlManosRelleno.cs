@@ -25,21 +25,38 @@ public partial class ControlManos
     Color colorRellenoNuevo = new Color(1f, 0.82f, 0.1f);
     Color ultimoRellenoVisible = new Color(1f, 0.82f, 0.1f);
 
-    public bool CubetaActiva
+    // v63: CÓMO RELLENA (en Propiedades · Relleno):
+    //  0 Normal (por defecto): tocas dentro de una figura cerrada (o ya rellena) y se rellena.
+    //  1 Cubeta: también las líneas ABIERTAS: se rellenan como si sus puntas estuvieran unidas.
+    //  2 Al dibujar: cada línea nueva sale ya rellena con el color de relleno (y tocar funciona como la cubeta).
+    public static readonly string[] NombresModoRelleno = { "Normal", "Cubeta", "Al dibujar" };
+    public static readonly string[] ExplicacionModoRelleno =
+    {
+        "Tocas dentro de una figura cerrada y se rellena",
+        "También las líneas abiertas: se rellenan como si sus puntas estuvieran unidas",
+        "Cada línea nueva sale ya rellena con el color de relleno",
+    };
+    const string ClaveModoRelleno = "jcartoons_modo_relleno";
+
+    public int ModoRelleno
     {
         get
         {
             if (cubeta < 0)
-                cubeta = PlayerPrefs.GetInt(ClaveCubeta, 0) != 0 ? 1 : 0;
-            return cubeta == 1;
-        }
-        set
-        {
-            cubeta = value ? 1 : 0;
-            PlayerPrefs.SetInt(ClaveCubeta, cubeta);
-            PlayerPrefs.Save();
+                cubeta = Mathf.Clamp(PlayerPrefs.GetInt(ClaveModoRelleno, 0), 0, 2);
+            return cubeta;
         }
     }
+
+    public void ElegirModoRelleno(int m)
+    {
+        cubeta = Mathf.Clamp(m, 0, 2);
+        PlayerPrefs.SetInt(ClaveModoRelleno, cubeta);
+        PlayerPrefs.Save();
+        MostrarEtiqueta("Relleno: " + NombresModoRelleno[cubeta]);
+    }
+
+    public bool CubetaActiva => ModoRelleno == 2;
 
     // El color con el que se rellena: el elegido para el relleno; si es tinta invisible, el último que se veía.
     Color ColorDeRelleno => colorRellenoNuevo.a > 0.01f ? colorRellenoNuevo : ultimoRellenoVisible;
@@ -210,6 +227,9 @@ public partial class ControlManos
         foreach (var t in dibujo.trazos)
         {
             if (!Dibujo.Editable(t) || t.oculto || t.Dibujando || (soloConRelleno && !t.relleno))
+                continue;
+            // v63: en modo Normal, las líneas abiertas (sin relleno) no se rellenan al tocarlas.
+            if (!soloConRelleno && ModoRelleno == 0 && !t.cerrado && !t.relleno)
                 continue;
             if (!t.DentroDeRelleno(local, tolerancia))
                 continue;

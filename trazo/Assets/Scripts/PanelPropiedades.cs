@@ -287,6 +287,9 @@ public class PanelPropiedades : MonoBehaviour
         else if (firma.StartsWith("relleno"))
         {
             titulo.text = Idioma.T("Propiedades · Relleno");
+            // v63: cómo rellena (Normal por defecto, Cubeta para líneas abiertas, o rellenar al dibujar).
+            y = Opciones(y, "Cómo rellena", ControlManos.NombresModoRelleno, () => control.ModoRelleno, control.ElegirModoRelleno,
+                         () => ControlManos.ExplicacionModoRelleno[control.ModoRelleno]);
             y = Opciones(y, "Textura", Trazo.NombresTextura, () => control.TexturaElegida, control.ElegirTexturaRelleno,
                          () => "El relleno de las próximas figuras (y de las seleccionadas)");
             y = Opciones(y, "Velocidad", Trazo.NombresVelocidadTextura, () => control.VelocidadTexturaElegida, control.ElegirVelocidadRelleno,

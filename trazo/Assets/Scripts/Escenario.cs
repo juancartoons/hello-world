@@ -165,6 +165,9 @@ public class Escenario : MonoBehaviour
             if (sh != null)
             {
                 semiMaterial = new Material(sh);
+                // v63: la ventana a tu cuarto, más ABIERTA y clara: transparente del todo hasta 40°, blanco desde 75°.
+                semiMaterial.SetFloat("_Dentro", Mathf.Cos(40f * Mathf.Deg2Rad));
+                semiMaterial.SetFloat("_Fuera", Mathf.Cos(75f * Mathf.Deg2Rad));
                 semiEsfera = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 semiEsfera.name = "Semipassthrough";
                 Destroy(semiEsfera.GetComponent<Collider>());

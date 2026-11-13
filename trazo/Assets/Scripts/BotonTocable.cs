@@ -3,7 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 
-// Botón 3D del panel: se presiona tocándolo con la punta del índice DERECHO.
+// Botón 3D del panel: se presiona tocándolo con la punta del índice DERECHO (v63: en la mesa, también el izquierdo).
 [RequireComponent(typeof(Collider))]
 public class BotonTocable : MonoBehaviour
 {
@@ -63,13 +63,24 @@ public class BotonTocable : MonoBehaviour
     void Update()
     {
         var control = ControlManos.Instancia;
-        if (control == null || !control.Der.valida || miCollider == null)
+        // v63: en la mesa de animación también se toca con el índice IZQUIERDO.
+        bool izquierda = control != null && MesaEntrada.Activa && control.Izq.valida && !control.Izq.pellizco;
+        if (control == null || (!control.Der.valida && !izquierda) || miCollider == null)
         {
             dentro = false;
             return;
         }
-        Vector3 punta = control.Der.indice;
+        Vector3 punta = control.Der.valida ? control.Der.indice : control.Izq.indice;
         float d = Vector3.Distance(miCollider.ClosestPoint(punta), punta);
+        if (izquierda && control.Der.valida)
+        {
+            float di = Vector3.Distance(miCollider.ClosestPoint(control.Izq.indice), control.Izq.indice);
+            if (di < d)
+            {
+                d = di;
+                punta = control.Izq.indice;
+            }
+        }
         if (d < DistanciaCerca && esconderDedo)
             cercaCuadro = Time.frameCount;
         if (d < DistanciaEtiqueta)

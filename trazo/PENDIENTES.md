@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v62***
+*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v63***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -889,3 +889,12 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - HECHO: Propiedades siempre encima (con puntito azul en el dedo), pastillita más arriba y más al centro, paneles se arrastran con pellizco desde cualquier parte, aviso "¿Pasar a 3D?" al dibujar a más de 20 cm de la hoja 2D.
 - POR PROBAR: tamaño de la ventana del semipassthrough, que la tinta en líneas se sienta bien, la foto de "Ver en la mesa" (que no salgan cosas de más), el puntito del dedo en Propiedades.
 - FALTA: rediseño de la línea en la paleta (esperando indicaciones). Ver en la mesa: por ahora solo para mirar (no se dibuja sobre tu hoja del archivo).
+
+## v63
+- HECHO: PALETA NUEVA: botones Línea y Relleno (el activo en blanco, el otro gris; al tocar se abren sus Propiedades), la tinta invisible dentro del círculo de colores, aro con brillo en el color elegido, IMÁN en un circulito encima de Línea (independiente) y GOTERO arriba (copia de la paleta, de una línea o de un relleno y deja el dedo listo para pegar; el dedo jeringa sigue igual).
+- HECHO: Propiedades · Relleno · "Cómo rellena": Normal (por defecto, figuras cerradas), Cubeta (también líneas abiertas) o Al dibujar (cada línea nueva sale rellena).
+- HECHO: MESA: el disco gira solo con la mano derecha pellizcando las reglas negras (brillan al acercarte). Herramientas: lápiz de verdad, lápices rojo y azul, goma, rapidógrafo (tinta en líneas) y plumilla (tinta pintada), con brillito en la elegida. Tinta en líneas como malla nítida (no se pixela con el zoom). Botar la hoja (pellizco + jalón rápido). Deshacer/Rehacer (botones y la flecha de la mano). Botones con cualquier mano (no mientras la izquierda pellizca).
+- HECHO: "Ver en la mesa" ahora es la mesa detrás de tu hoja 2D, y todo funciona como dentro del archivo. ✦ Volver la quita.
+- HECHO: semipassthrough con la ventana más amplia y clara.
+- POR PROBAR: tamaño de la ventana del semipassthrough; que las reglas sean fáciles de agarrar; la velocidad para botar la hoja; el gotero.
+- IDEA: más adelante, decidir si se deja solo el gotero o solo el dedo jeringa.

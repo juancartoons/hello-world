@@ -28,7 +28,9 @@ using UnityEngine;
 public class MesaEntrada : MonoBehaviour
 {
     static MesaEntrada instancia;
-    public static bool Activa => instancia != null && instancia.activa;
+    // v63: Activa = la mesa de verdad (todo lo de trabajar escondido). Con "Ver en la mesa" la mesa solo acompaña a tu
+    // archivo y todo funciona como siempre (entonces Activa es false).
+    public static bool Activa => instancia != null && instancia.activa && !instancia.verArchivo;
 
     const int Recientes = 7;
     const int AnchoTex = 800, AltoTex = 600;
@@ -131,7 +133,33 @@ public class MesaEntrada : MonoBehaviour
                                              new Color(0.95f, 0.62f, 0.66f) };
     const int Goma = 3;
     int colorLapiz;
-    readonly List<Transform> lapices = new List<Transform>();
+
+    // v63: LAS HERRAMIENTAS: 0 lápiz (de verdad), 1 lápiz rojo, 2 lápiz azul, 3 goma, 4 RAPIDÓGRAFO (tinta en líneas,
+    // nítida), 5 PLUMILLA de tinta china (tinta pintada). La elegida se levanta y BRILLA.
+    static readonly string[] NombresHerramienta =
+        { "Lápiz", "Lápiz rojo", "Lápiz azul", "Goma", "Rapidógrafo: tinta en líneas (nítida)", "Plumilla: tinta pintada (a mano)" };
+    readonly List<Transform> herramientas = new List<Transform>();
+    readonly List<Transform> cuerposHerramienta = new List<Transform>();
+    readonly List<Vector3> basesHerramienta = new List<Vector3>();
+    int herramientaActual;
+    Transform brilloHerramienta;
+
+    // v63: el disco gira SOLO con la mano derecha pellizcando una de las REGLAS negras (brillan al acercarte).
+    Material matReglas;
+    float brilloReglas;
+    // v63: pellizca la hoja y jálala rápido hacia afuera = la botas (se puede deshacer).
+    bool agarrandoHoja;
+    Vector3 agarrePrev, agarreInicio;
+    float agarreVel;
+    // v63: deshacer y rehacer en la mesa (los botones y la flecha de la mano, como siempre).
+    readonly List<string> deshacerMesa = new List<string>(), rehacerMesa = new List<string>();
+    // v63: la tinta en LÍNEAS se dibuja como una malla de verdad (nítida con cualquier zoom).
+    Mesh mallaTinta, mallaNodos;
+    bool mallaSucia, tintaRaster;
+    // v63: "Ver en la mesa": lo que se esconde mientras la mesa acompaña a tu archivo.
+    Transform tablero, orilla;
+    readonly List<Transform> pivotes = new List<Transform>();
+    readonly List<GameObject> escondidosVer = new List<GameObject>();
 
     // El bloc: hojear (ver las hojas seguidas, como un flip book).
     bool hojeando;
@@ -234,20 +262,26 @@ public class MesaEntrada : MonoBehaviour
         }
         if (!activa)
             return;
+        if (verArchivo)
+        {
+            AlinearConArchivo();   // v63: la mesa sigue a tu hoja (todo lo demás funciona como siempre)
+            return;
+        }
         control.Ocupado = true;
         if (animando)
             return;
         if (!Zoom())
         {
-            if (verArchivo)
-                SoltarNodo();
-            else if (hojeando)
+            if (hojeando)
                 Hojear();
             else
                 Dibujar();
             GirarDisco();
         }
-        RevisarSostenTinta();
+        ActualizarReglas();
+        ActualizarBrilloHerramienta();
+        if (mallaSucia)
+            ConstruirMallaTinta();
         if (sucioHoja)
         {
             sucioHoja = false;
@@ -269,7 +303,7 @@ public class MesaEntrada : MonoBehaviour
 
     void LateUpdate()
     {
-        if (activa && control != null)
+        if (activa && !verArchivo && control != null)
             control.Ocupado = true;
         if (control != null && control.Cabeza != null && flecha != null)
             ActualizarFlecha();
@@ -284,7 +318,7 @@ public class MesaEntrada : MonoBehaviour
     public static void VerEnLaMesa()
     {
         if (instancia != null && !Activa)
-            instancia.MostrarMesa(true);
+            instancia.MostrarMesa(true);   // (si ya la estabas viendo, la quita)
     }
 
     // v62: la voz "centrar mesa".
@@ -296,8 +330,19 @@ public class MesaEntrada : MonoBehaviour
 
     void MostrarMesa(bool conArchivo)
     {
+        if (verArchivo)
+        {
+            TerminarVer();
+            if (conArchivo)
+                return;
+        }
         if (activa || animando || control == null || dibujo == null)
             return;
+        if (conArchivo)
+        {
+            MostrarVer();
+            return;
+        }
         if (Titere.Activo)
         {
             dibujo.Mensaje("Primero suelta los personajes");
@@ -306,30 +351,111 @@ public class MesaEntrada : MonoBehaviour
         if (Funcion.Activa)
             Funcion.Alternar();
         // Guarda lo que estabas haciendo y deja la hoja en blanco (como Salir de siempre).
-        if (!conArchivo && dibujo.HayArchivoAbierto)
+        if (dibujo.HayArchivoAbierto)
             dibujo.ArchivoNuevo();
         CerrarPaneles();
         if (!Armar())
             return;
-        if (conArchivo)
-        {
-            if (!FotoDelArchivo())
-            {
-                dibujo.Mensaje("No se pudo poner tu hoja en la mesa");
-                return;
-            }
-            dibujo.gameObject.SetActive(false);   // tu archivo se queda abierto (escondido) mientras miras la mesa
-        }
-        verArchivo = conArchivo;
+        verArchivo = false;
         activa = true;
         control.Ocupado = true;
         PonerFondoDeMesa();
-        if (!conArchivo)
-            QuizasOtraMuestra();
+        QuizasOtraMuestra();
         Colocar();
         LlenarRecientes();
-        PonerHojaDeArchivo(conArchivo);
+        PonerHojaDeArchivo(false);
         StartCoroutine(Aparecer());
+    }
+
+    // ---------- v63: VER EN LA MESA: la mesa se pone DETRÁS de tu hoja 2D (su papel queda sobre el disco) y tú sigues
+    // trabajando en tu archivo como siempre (paleta, gestos, capas, Propiedades...). "✦ Volver" la quita.
+
+    void MostrarVer()
+    {
+        Vector3 punto, normal;
+        if (!dibujo.PlanoActivo || !dibujo.PlanoDeCapa(dibujo.capaActual, out punto, out normal))
+        {
+            dibujo.Mensaje("Ver en la mesa: elige una capa 2D (con su hoja)");
+            return;
+        }
+        if (!Armar())
+            return;
+        if (hojeando)
+            PararHojear();
+        TerminarLinea();
+        verArchivo = true;
+        activa = true;
+        escondidosVer.Clear();
+        foreach (Transform h in raiz)
+        {
+            bool queda = h == giratorio || h == tablero || h == orilla || h == btnEntrar.transform
+                         || (btnEntrar.etiqueta != null && h == btnEntrar.etiqueta.transform);
+            if (!queda && h.gameObject.activeSelf)
+            {
+                h.gameObject.SetActive(false);
+                escondidosVer.Add(h.gameObject);
+            }
+        }
+        // En el disco: tu hoja del archivo va ahí (la de la mesa, la de tinta y los pivotes se esconden).
+        var delDisco = new List<Transform> { hoja, hojaTinta };
+        delDisco.AddRange(pivotes);
+        foreach (var h in delDisco)
+            if (h != null && h.gameObject.activeSelf)
+            {
+                h.gameObject.SetActive(false);
+                escondidosVer.Add(h.gameObject);
+            }
+        giratorio.localRotation = Quaternion.identity;
+        Idioma.Poner(btnEntrar.etiqueta, "✦ Volver");
+        raiz.gameObject.SetActive(true);
+        AlinearConArchivo();
+        control.SonidoBurbuja(raiz.position);
+        dibujo.Mensaje("Tu hoja está en la mesa: sigue trabajando como siempre. ✦ Volver para quitarla");
+    }
+
+    void TerminarVer()
+    {
+        if (!verArchivo)
+            return;
+        verArchivo = false;
+        activa = false;
+        foreach (var g in escondidosVer)
+            if (g != null)
+                g.SetActive(true);
+        escondidosVer.Clear();
+        if (btnEntrar != null)
+            Idioma.Poner(btnEntrar.etiqueta, "✦ Entrar");
+        raiz.gameObject.SetActive(false);
+        raiz.localScale = Vector3.one * escalaMesa;
+        if (control != null && control.Cabeza != null)
+            control.SonidoBurbuja(control.Cabeza.position + control.Cabeza.forward * 0.4f);
+    }
+
+    // El papel de tu hoja (1,2 unidades del dibujo de ancho) queda justo sobre la hoja del disco.
+    void AlinearConArchivo()
+    {
+        Vector3 punto, normal;
+        if (dibujo == null || !dibujo.gameObject.activeInHierarchy || !dibujo.PlanoActivo
+            || !dibujo.PlanoDeCapa(dibujo.capaActual, out punto, out normal))
+        {
+            TerminarVer();
+            return;
+        }
+        Transform d = dibujo.transform;
+        Vector3 pMundo = d.TransformPoint(punto);
+        Vector3 n = d.TransformDirection(normal);
+        if (n.sqrMagnitude < 1e-8f)
+            return;
+        n.Normalize();
+        Vector3 arriba = Vector3.ProjectOnPlane(d.up, n);
+        if (arriba.sqrMagnitude < 1e-6f)
+            arriba = Vector3.ProjectOnPlane(Vector3.forward, n);
+        Quaternion giro = Quaternion.LookRotation(n, arriba.normalized);
+        float escala = Mathf.Max(0.01f, 1.2f * d.lossyScale.x / AnchoHoja);
+        Vector3 hojaLocal = giratorio.localPosition + new Vector3(0f, 0f, -0.0055f);
+        raiz.rotation = giro;
+        raiz.localScale = Vector3.one * escala;
+        raiz.position = pMundo - giro * (hojaLocal * escala);
     }
 
     // La foto de tu dibujo (como la miniatura, con el lápiz 2D incluido) para ponerla en la hoja del disco.
@@ -410,7 +536,7 @@ public class MesaEntrada : MonoBehaviour
         var cab = control.Cabeza;
         bool ver = false;
         Vector3 dir = Vector3.zero;
-        if (activa && !animando && hoja != null)
+        if (activa && !verArchivo && !animando && hoja != null)
         {
             dir = hoja.position - cab.position;
             ver = dir.sqrMagnitude > 1e-6f && Vector3.Angle(cab.forward, dir) > 50f;
@@ -425,30 +551,6 @@ public class MesaEntrada : MonoBehaviour
         puntaFlecha.localRotation = Quaternion.Euler(0f, 0f, a * Mathf.Rad2Deg);
     }
 
-    // v62: el truco escondido: deja el dedo 2 segundos sobre "Hoja de tinta" y cambias entre la tinta en LÍNEAS
-    // (vectores: se borran con burbujas y se editan sus nodos) y la tinta PINTADA de antes.
-    void RevisarSostenTinta()
-    {
-        var der = control.Der;
-        bool encima = activa && !animando && !verArchivo && der.valida && btnTinta != null
-                      && Vector3.Distance(der.indice, btnTinta.transform.position) < 0.03f * escalaMesa;
-        if (!encima)
-        {
-            sostenTintaDesde = -1f;
-            sostenTintaHecho = false;
-            return;
-        }
-        if (sostenTintaDesde < 0f)
-            sostenTintaDesde = Time.time;
-        if (sostenTintaHecho || Time.time - sostenTintaDesde < 2f)
-            return;
-        sostenTintaHecho = true;
-        tintaPintada = !tintaPintada;
-        PlayerPrefs.SetInt(ClaveTintaPintada, tintaPintada ? 1 : 0);
-        PlayerPrefs.Save();
-        AlternarTinta();   // deshace el toque del principio: la hoja de tinta queda como estaba
-        textoAyuda.text = Idioma.T(tintaPintada ? "Tinta: pintada (como antes)" : "Tinta: líneas (se borran con el puño y se editan con nodos)");
-    }
 
     // Todo lo de trabajar se cierra (paneles, ventanas, selección).
     void CerrarPaneles()
@@ -517,6 +619,7 @@ public class MesaEntrada : MonoBehaviour
         {
             zoomeando = true;
             manoGiro = -1;
+            agarrandoHoja = false;
             TerminarLinea();
             SoltarNodo();
             zoomDistancia = Mathf.Max(0.03f, dist);
@@ -551,17 +654,72 @@ public class MesaEntrada : MonoBehaviour
 
     // ---------- El bloc y los lápices ----------
 
-    void ElegirLapiz(int k)
+    void ElegirHerramienta(int k)
     {
-        colorLapiz = Mathf.Clamp(k, 0, ColoresLapiz.Length - 1);
-        for (int i = 0; i < lapices.Count; i++)
+        if (verArchivo || k < 0 || k >= NombresHerramienta.Length)
+            return;
+        TerminarLinea();
+        SoltarNodo();
+        if (k <= 2 || k == Goma)
         {
-            Vector3 p = lapices[i].localPosition;
-            float baseY = i == Goma ? -0.03f : 0f;
-            lapices[i].localPosition = new Vector3(p.x, baseY + (i == colorLapiz ? 0.012f : 0f), p.z);
+            colorLapiz = k;
+            if (k <= 2 && tintaPuesta)
+                AlternarTinta();   // con un lápiz se quita la hoja de tinta
         }
-        if (control != null && lapices.Count > 0)
-            control.SonidoBurbuja(lapices[colorLapiz].position);
+        else
+        {
+            if (colorLapiz == Goma)
+                colorLapiz = 0;
+            tintaPintada = k == 5;
+            PlayerPrefs.SetInt(ClaveTintaPintada, tintaPintada ? 1 : 0);
+            PlayerPrefs.Save();
+            if (!tintaPuesta)
+                AlternarTinta();   // con el rapidógrafo o la plumilla se pone la hoja de tinta
+        }
+        herramientaActual = k;
+        AcomodarHerramientas();
+        if (textoAyuda != null)
+            textoAyuda.text = Idioma.T(NombresHerramienta[k]);
+        if (control != null && k < herramientas.Count)
+            control.SonidoBurbuja(herramientas[k].position);
+    }
+
+    // La elegida se levanta un poquito (hacia ti y hacia arriba).
+    void AcomodarHerramientas()
+    {
+        for (int i = 0; i < herramientas.Count && i < basesHerramienta.Count; i++)
+            herramientas[i].localPosition = basesHerramienta[i] + (i == herramientaActual ? new Vector3(0f, 0.006f, -0.006f) : Vector3.zero);
+    }
+
+    // El brillito (late suave) alrededor de la herramienta elegida.
+    void ActualizarBrilloHerramienta()
+    {
+        if (brilloHerramienta == null || herramientaActual < 0 || herramientaActual >= cuerposHerramienta.Count)
+            return;
+        var h = herramientas[herramientaActual];
+        Vector3 tam = cuerposHerramienta[herramientaActual].localScale;
+        float late = 1f + 0.05f * Mathf.Sin(Time.time * 4f);
+        brilloHerramienta.localPosition = h.localPosition + new Vector3(0f, 0f, 0.003f);
+        brilloHerramienta.localScale = new Vector3((tam.x + 0.009f) * late, (tam.y + 0.009f) * late, 0.002f);
+    }
+
+    Transform NuevaHerramienta(Vector3 pos)
+    {
+        var t = new GameObject("Herramienta" + herramientas.Count).transform;
+        t.SetParent(raiz, false);
+        t.localPosition = pos;
+        herramientas.Add(t);
+        basesHerramienta.Add(pos);
+        return t;
+    }
+
+    void BotonHerramienta(Transform h, Vector2 tam, Material m)
+    {
+        int k = herramientas.IndexOf(h);
+        var b = PanelTutoriales.Boton(h, "", Vector3.zero, tam, m, m);
+        b.alTocar.AddListener(() => ElegirHerramienta(k));
+        BotonTocable.PonerNombre(b, NombresHerramienta[Mathf.Clamp(k, 0, NombresHerramienta.Length - 1)]);
+        cuerposHerramienta.Add(b.transform);
     }
 
     void CambiarHoja(int paso)
@@ -584,6 +742,7 @@ public class MesaEntrada : MonoBehaviour
             PararHojear();
         TerminarLinea();
         Normalizar();
+        GuardarDeshacer();
         boceto.paginas.Insert(boceto.actual + 1, new Pagina());
         boceto.actual++;
         tintaPuesta = false;
@@ -745,6 +904,8 @@ public class MesaEntrada : MonoBehaviour
         }
         DevolverFondo();
         verArchivo = false;
+        deshacerMesa.Clear();
+        rehacerMesa.Clear();
         foreach (var t in dibujo.trazos)
             if (t != null)
                 EfectosLinea.Materializar(t);
@@ -1057,7 +1218,7 @@ public class MesaEntrada : MonoBehaviour
             nodosVisibles = nodos;
             SoltarNodo();
             TerminarLinea();
-            RehacerTinta();
+            mallaSucia = true;
         }
         if (!der.valida || der.pellizco)
         {
@@ -1106,6 +1267,7 @@ public class MesaEntrada : MonoBehaviour
         if (actual == null || actualTinta != tintaPuesta || actual.c != c)
         {
             TerminarLinea();
+            GuardarDeshacer();
             actual = new Linea { c = c, vector = tintaPuesta && !tintaPintada && c != Goma };
             actualTinta = tintaPuesta;
             (tintaPuesta ? Pag.tinta : Pag.lapiz).Add(actual);
@@ -1116,7 +1278,14 @@ public class MesaEntrada : MonoBehaviour
             Vector3 ultimo = lista[lista.Count - 1];
             if (Vector2.Distance(ultimo, q) < 0.0015f)
                 return;
-            Trazar(ultimo, q, actualTinta, actual.c);
+            if (actual.vector)
+                mallaSucia = true;
+            else
+                Trazar(ultimo, q, actualTinta, actual.c);
+        }
+        else if (actual.vector)
+        {
+            mallaSucia = true;
         }
         else
         {
@@ -1139,7 +1308,7 @@ public class MesaEntrada : MonoBehaviour
         {
             // v62: la línea de tinta queda con sus NODOS (menos puntos, la misma forma) y se dibuja lisa.
             l.p = SimplificarHoja(l.p, 1.4f);
-            RehacerTinta();
+            mallaSucia = true;
         }
         GuardarBoceto();
     }
@@ -1152,15 +1321,119 @@ public class MesaEntrada : MonoBehaviour
             pxTinta[i] = vacioTinta;
         foreach (var l in Pag.tinta)
             RepintarLinea(l, true);
+        sucioTinta = true;
+        mallaSucia = true;   // v63: la tinta en líneas (y sus nodos) va en su malla
+    }
+
+    // ---------- v63: la malla de la tinta en líneas (cintas con puntas redondas) y la de sus nodos ----------
+
+    void HijoMalla(string nombre, Mesh malla, Material m, float z)
+    {
+        var go = new GameObject(nombre);
+        go.transform.SetParent(hojaTinta, false);
+        go.transform.localPosition = new Vector3(0f, 0f, z);
+        go.AddComponent<MeshFilter>().sharedMesh = malla;
+        var r = go.AddComponent<MeshRenderer>();
+        r.sharedMaterial = m;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
+    }
+
+    void ConstruirMallaTinta()
+    {
+        mallaSucia = false;
+        if (mallaTinta == null || mallaNodos == null)
+            return;
+        var v = new List<Vector3>();
+        var tri = new List<int>();
+        foreach (var l in Pag.tinta)
+            if (l.vector && l.p.Count > 0)
+                Cinta(l == actual ? l.p : Suave(l.p), v, tri);
+        mallaTinta.Clear();
+        mallaTinta.SetVertices(v);
+        mallaTinta.SetTriangles(tri, 0);
+        mallaTinta.RecalculateBounds();
+        var vn = new List<Vector3>();
+        var tn = new List<int>();
         if (nodosVisibles)
-        {
-            var azul = new Color(0.2f, 0.45f, 1f);
             foreach (var l in Pag.tinta)
                 if (l.vector)
                     foreach (var p in l.p)
-                        Sello(pxTinta, p.x * AnchoTex, p.y * AltoTex, l == lineaNodo ? 4.2f : 3.2f, azul, 0.95f, false);
+                        Disco(p, l == lineaNodo ? 0.0024f : 0.0017f, vn, tn);
+        mallaNodos.Clear();
+        mallaNodos.SetVertices(vn);
+        mallaNodos.SetTriangles(tn, 0);
+        mallaNodos.RecalculateBounds();
+    }
+
+    // De la hoja (u, v) a metros del papel, y de ahí a la malla (coordenadas de la hoja de tinta).
+    static Vector2 EnMetros(Vector3 q)
+    {
+        return new Vector2((q.x - 0.5f) * AnchoHoja, (q.y - 0.5f) * AltoHoja);
+    }
+
+    static Vector3 EnMalla(Vector2 m)
+    {
+        return new Vector3(m.x / AnchoHoja, m.y / AltoHoja, 0f);
+    }
+
+    static float AnchoTinta(float presion)
+    {
+        return 0.0011f + 0.0007f * Mathf.Clamp01(presion);
+    }
+
+    static void Cinta(List<Vector3> pts, List<Vector3> v, List<int> tri)
+    {
+        int n = pts.Count;
+        if (n == 0)
+            return;
+        if (n == 1)
+        {
+            Disco(pts[0], AnchoTinta(pts[0].z) * 0.5f, v, tri);
+            return;
         }
-        sucioTinta = true;
+        int inicio = v.Count;
+        for (int i = 0; i < n; i++)
+        {
+            Vector2 antes = EnMetros(pts[Mathf.Max(0, i - 1)]), despues = EnMetros(pts[Mathf.Min(n - 1, i + 1)]);
+            Vector2 t = despues - antes;
+            if (t.sqrMagnitude < 1e-12f)
+                t = Vector2.right;
+            t.Normalize();
+            Vector2 lado = new Vector2(-t.y, t.x) * (AnchoTinta(pts[i].z) * 0.5f);
+            Vector2 c = EnMetros(pts[i]);
+            v.Add(EnMalla(c + lado));
+            v.Add(EnMalla(c - lado));
+        }
+        for (int i = 0; i < n - 1; i++)
+        {
+            int k = inicio + i * 2;
+            tri.Add(k); tri.Add(k + 2); tri.Add(k + 1);
+            tri.Add(k + 1); tri.Add(k + 2); tri.Add(k + 3);
+            tri.Add(k); tri.Add(k + 1); tri.Add(k + 2);       // y por detrás
+            tri.Add(k + 1); tri.Add(k + 3); tri.Add(k + 2);
+        }
+        Disco(pts[0], AnchoTinta(pts[0].z) * 0.5f, v, tri);           // puntas redondas
+        Disco(pts[n - 1], AnchoTinta(pts[n - 1].z) * 0.5f, v, tri);
+    }
+
+    static void Disco(Vector3 q, float radio, List<Vector3> v, List<int> tri)
+    {
+        const int lados = 10;
+        Vector2 c = EnMetros(q);
+        int i0 = v.Count;
+        v.Add(EnMalla(c));
+        for (int k = 0; k < lados; k++)
+        {
+            float ang = k * Mathf.PI * 2f / lados;
+            v.Add(EnMalla(c + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * radio));
+        }
+        for (int k = 0; k < lados; k++)
+        {
+            int x = i0 + 1 + k, y = i0 + 1 + (k + 1) % lados;
+            tri.Add(i0); tri.Add(x); tri.Add(y);
+            tri.Add(i0); tri.Add(y); tri.Add(x);
+        }
     }
 
     // La curva lisa que pasa por los nodos (Catmull-Rom).
@@ -1264,6 +1537,7 @@ public class MesaEntrada : MonoBehaviour
         }
         if (tocada == null)
             return;
+        GuardarDeshacer();
         Pag.tinta.Remove(tocada);
         Burbujas(tocada);
         RehacerTinta();
@@ -1299,6 +1573,7 @@ public class MesaEntrada : MonoBehaviour
             }
             if (lineaNodo == null)
                 return;
+            GuardarDeshacer();
             control.SonidoBurbuja(hojaTinta.position);
         }
         if (nodoTomado < 0 || nodoTomado >= lineaNodo.p.Count)
@@ -1308,7 +1583,7 @@ public class MesaEntrada : MonoBehaviour
         }
         Vector3 p = lineaNodo.p[nodoTomado];
         lineaNodo.p[nodoTomado] = new Vector3(Mathf.Clamp01(q.x), Mathf.Clamp01(q.y), p.z);
-        RehacerTinta();
+        mallaSucia = true;
     }
 
     void SoltarNodo()
@@ -1317,7 +1592,7 @@ public class MesaEntrada : MonoBehaviour
             return;
         lineaNodo = null;
         nodoTomado = -1;
-        RehacerTinta();
+        mallaSucia = true;
         GuardarBoceto();
     }
 
@@ -1477,11 +1752,13 @@ public class MesaEntrada : MonoBehaviour
 
     // ---------- Girar el disco (pellizco en el disco, fuera de la hoja) ----------
 
+    // v63: el disco gira SOLO con la mano DERECHA pellizcando una de las REGLAS negras (arriba o abajo), que brillan
+    // al acercarte. Pellizcar la HOJA y jalarla rápido hacia afuera = botarla (con todo lo que tenga; Deshacer la trae).
     void GirarDisco()
     {
+        var m = control.Der;
         if (manoGiro >= 0)
         {
-            var m = manoGiro == 0 ? control.Izq : control.Der;
             if (!m.valida || !m.pellizco)
             {
                 manoGiro = -1;
@@ -1492,19 +1769,176 @@ public class MesaEntrada : MonoBehaviour
             anguloAntes = ang;
             return;
         }
-        for (int k = 0; k < 2; k++)
+        if (agarrandoHoja)
         {
-            var m = k == 0 ? control.Izq : control.Der;
-            if (!m.valida || !m.empezoPellizco || BotonTocable.DedoCerca)
-                continue;
-            Vector3 l = raiz.InverseTransformPoint(m.PuntoPellizco) - giratorio.localPosition;
-            if (new Vector2(l.x, l.y).magnitude < RadioDisco + 0.03f && Mathf.Abs(l.z) < 0.06f)
-            {
-                manoGiro = k;
-                anguloAntes = AnguloEnDisco(m.PuntoPellizco);
-                return;
-            }
+            SeguirAgarreHoja(m);
+            return;
         }
+        if (!m.valida || !m.empezoPellizco || BotonTocable.DedoCerca)
+            return;
+        if (ReglaCerca(m.PuntoPellizco, 0.012f))
+        {
+            manoGiro = 1;
+            anguloAntes = AnguloEnDisco(m.PuntoPellizco);
+            return;
+        }
+        if (SobreHoja(m.PuntoPellizco))
+        {
+            agarrandoHoja = true;
+            agarreInicio = agarrePrev = m.PuntoPellizco;
+            agarreVel = 0f;
+        }
+    }
+
+    // ¿Ese punto está sobre una de las reglas negras? (margen en medidas de la mesa)
+    bool ReglaCerca(Vector3 mundo, float margen)
+    {
+        Vector3 l = giratorio.InverseTransformPoint(mundo);
+        float yRegla = AltoHoja * 0.5f + 0.008f;
+        return Mathf.Abs(l.x) < (AnchoHoja + 0.05f) * 0.5f + margen && Mathf.Abs(Mathf.Abs(l.y) - yRegla) < 0.011f + margen
+               && Mathf.Abs(l.z) < 0.03f + margen;
+    }
+
+    bool SobreHoja(Vector3 mundo)
+    {
+        Vector3 l = hoja.InverseTransformPoint(mundo);
+        float d = -l.z * escalaMesa;
+        return Mathf.Abs(l.x) < 0.5f && Mathf.Abs(l.y) < 0.5f && d < 0.06f && d > -0.03f;
+    }
+
+    void ActualizarReglas()
+    {
+        if (matReglas == null)
+            return;
+        var der = control.Der;
+        bool cerca = manoGiro >= 0 || (der.valida && (ReglaCerca(der.PuntoPellizco, 0.03f) || ReglaCerca(der.indice, 0.03f)));
+        float meta = cerca ? 1f : 0f;
+        if (Mathf.Abs(brilloReglas - meta) < 0.001f)
+            return;
+        brilloReglas = Mathf.MoveTowards(brilloReglas, meta, Time.deltaTime * 5f);
+        Color c = Color.Lerp(new Color(0.08f, 0.08f, 0.09f), new Color(0.25f, 0.55f, 1f), brilloReglas);
+        if (matReglas.HasProperty("_BaseColor"))
+            matReglas.SetColor("_BaseColor", c);
+        if (matReglas.HasProperty("_Color"))
+            matReglas.SetColor("_Color", c);
+    }
+
+    void SeguirAgarreHoja(ManoSeguida m)
+    {
+        if (!m.valida || !m.pellizco)
+        {
+            agarrandoHoja = false;
+            return;
+        }
+        float dt = Mathf.Max(1e-3f, Time.deltaTime);
+        Vector3 p = m.PuntoPellizco;
+        Vector3 vel = (p - agarrePrev) / dt;
+        agarrePrev = p;
+        agarreVel = Mathf.Lerp(agarreVel, vel.magnitude, 1f - Mathf.Exp(-12f * dt));
+        if (Vector3.Distance(p, agarreInicio) > 0.12f && agarreVel > 0.9f)
+        {
+            agarrandoHoja = false;
+            BotarHoja(vel);
+        }
+    }
+
+    void BotarHoja(Vector3 vel)
+    {
+        if (hojeando)
+            PararHojear();
+        TerminarLinea();
+        SoltarNodo();
+        bool hayAlgo = (boceto.actual == 0 && boceto.antiguo) || Pag.lapiz.Count > 0 || Pag.tinta.Count > 0;
+        if (!hayAlgo)
+            return;
+        var tex = new Texture2D(AnchoTex, AltoTex, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+        tex.SetPixels32(HojaCompleta(boceto.actual));
+        tex.Apply(false);
+        GuardarDeshacer();
+        if (boceto.actual == 0)
+            boceto.antiguo = false;
+        Pag.lapiz.Clear();
+        Pag.tinta.Clear();
+        RehacerHoja();
+        GuardarBoceto();
+        StartCoroutine(HojaVolando(tex, vel));
+        textoAyuda.text = Idioma.T("¡Hoja a la basura! (Deshacer la trae de vuelta)");
+        control.SonidoBurbuja(hoja.position);
+    }
+
+    IEnumerator HojaVolando(Texture2D tex, Vector3 vel)
+    {
+        var m = new Material(matTransparente);
+        PonerTextura(m, tex);
+        var go = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        Destroy(go.GetComponent<Collider>());
+        var r = go.GetComponent<Renderer>();
+        r.sharedMaterial = m;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        Vector3 escala0 = hoja.lossyScale;
+        go.transform.SetPositionAndRotation(hoja.position, hoja.rotation);
+        go.transform.localScale = escala0;
+        Vector3 v = vel.normalized * Mathf.Clamp(vel.magnitude, 1f, 3f);
+        Vector3 giro = new Vector3(UnityEngine.Random.Range(-1f, 1f), UnityEngine.Random.Range(-1f, 1f), UnityEngine.Random.Range(-1f, 1f));
+        giro = (giro.sqrMagnitude > 1e-4f ? giro.normalized : Vector3.up) * 540f;
+        for (float t = 0f; t < 1f; t += Time.deltaTime / 0.9f)
+        {
+            v += Vector3.down * 2.5f * Time.deltaTime;
+            go.transform.position += v * Time.deltaTime;
+            go.transform.Rotate(giro * Time.deltaTime, Space.World);
+            go.transform.localScale = escala0 * Mathf.Lerp(1f, 0.55f, t);
+            if (m.HasProperty("_BaseColor"))
+                m.SetColor("_BaseColor", new Color(1f, 1f, 1f, 1f - t * t));
+            yield return null;
+        }
+        Destroy(go);
+        Destroy(m);
+        Destroy(tex);
+    }
+
+    // ---------- v63: DESHACER y REHACER en la mesa ----------
+
+    void GuardarDeshacer()
+    {
+        deshacerMesa.Add(JsonUtility.ToJson(boceto));
+        if (deshacerMesa.Count > 40)
+            deshacerMesa.RemoveAt(0);
+        rehacerMesa.Clear();
+    }
+
+    // La flecha de la mano (ControlManos) también llega aquí cuando estás en la mesa.
+    public static bool DeshacerRehacer(bool rehacer)
+    {
+        return Activa && !instancia.animando && instancia.DeshacerMesa(rehacer);
+    }
+
+    bool DeshacerMesa(bool rehacer)
+    {
+        var desde = rehacer ? rehacerMesa : deshacerMesa;
+        var hacia = rehacer ? deshacerMesa : rehacerMesa;
+        if (desde.Count == 0)
+        {
+            if (textoAyuda != null)
+                textoAyuda.text = Idioma.T(rehacer ? "Nada que rehacer" : "Nada que deshacer");
+            return false;
+        }
+        if (hojeando)
+            PararHojear();
+        actual = null;
+        lineaNodo = null;
+        nodoTomado = -1;
+        hacia.Add(JsonUtility.ToJson(boceto));
+        var g = JsonUtility.FromJson<Guardado>(desde[desde.Count - 1]);
+        desde.RemoveAt(desde.Count - 1);
+        if (g != null)
+            boceto = g;
+        Normalizar();
+        RehacerHoja();
+        GuardarBoceto();
+        control.SonidoBurbuja(hoja.position);
+        if (textoAyuda != null)
+            textoAyuda.text = Idioma.T(rehacer ? "Rehecho" : "Deshecho");
+        return true;
     }
 
     float AnguloEnDisco(Vector3 mundo)
@@ -1521,6 +1955,7 @@ public class MesaEntrada : MonoBehaviour
         if (hojeando)
             PararHojear();
         TerminarLinea();
+        GuardarDeshacer();
         Pag.lapiz.Clear();
         Pag.tinta.Clear();
         if (boceto.actual == 0)
@@ -1558,6 +1993,12 @@ public class MesaEntrada : MonoBehaviour
         btnTinta.etiqueta.text = Idioma.T(tintaPuesta ? "Quitar hoja de tinta" : "Hoja de tinta");
         btnTinta.Marcar(tintaPuesta);
         control.SonidoBurbuja(hoja.position);
+        // v63: la herramienta va con la hoja (tinta = rapidógrafo o plumilla; sin tinta = el lápiz).
+        if (tintaPuesta && herramientaActual <= 2)
+            herramientaActual = tintaPintada ? 5 : 4;
+        else if (!tintaPuesta && herramientaActual >= 4)
+            herramientaActual = colorLapiz == Goma ? 0 : colorLapiz;
+        AcomodarHerramientas();
     }
 
     void CerrarApp()
@@ -1656,9 +2097,9 @@ public class MesaEntrada : MonoBehaviour
         tintaPintada = PlayerPrefs.GetInt(ClaveTintaPintada, 0) == 1;
 
         // El tablero de madera (su cara de arriba en z = 0; lo de encima va hacia -z).
-        Pieza(PrimitiveType.Cube, new Vector3(0f, 0f, 0.012f), new Vector3(0.84f, 0.6f, 0.024f), Quaternion.identity, Textura(Madera()));
+        tablero = Pieza(PrimitiveType.Cube, new Vector3(0f, 0f, 0.012f), new Vector3(0.84f, 0.6f, 0.024f), Quaternion.identity, Textura(Madera()));
         // La orilla de aluminio de abajo (para que no se caigan los lápices).
-        Pieza(PrimitiveType.Cube, new Vector3(0f, -0.302f, -0.006f), new Vector3(0.84f, 0.012f, 0.03f), Quaternion.identity, Pintura(new Color(0.75f, 0.76f, 0.78f)));
+        orilla = Pieza(PrimitiveType.Cube, new Vector3(0f, -0.302f, -0.006f), new Vector3(0.84f, 0.012f, 0.03f), Quaternion.identity, Pintura(new Color(0.75f, 0.76f, 0.78f)));
 
         // El disco (gira) con la luz por debajo de la hoja.
         giratorio = new GameObject("Disco").transform;
@@ -1687,6 +2128,7 @@ public class MesaEntrada : MonoBehaviour
         hojaTinta.gameObject.SetActive(false);
         // Las reglas negras con pivotes (sujetan la hoja).
         var negro = Pintura(new Color(0.08f, 0.08f, 0.09f));
+        matReglas = negro;   // v63: solo las reglas lo usan (brillan cuando tu mano derecha se acerca)
         var metal = Pintura(new Color(0.55f, 0.56f, 0.6f));
         for (int s = -1; s <= 1; s += 2)
         {
@@ -1695,31 +2137,80 @@ public class MesaEntrada : MonoBehaviour
         }
         // v61: los PIVOTES abajo, justo en las perforaciones de la hoja (uno redondo al centro y dos planos a los lados).
         float yPivote = (AlturaHoyos - 0.5f) * AltoHoja;
-        Pieza(PrimitiveType.Cylinder, new Vector3(0f, yPivote, -0.0105f), new Vector3(0.0055f, 0.003f, 0.0055f), giroDisco, metal, giratorio);
+        pivotes.Add(Pieza(PrimitiveType.Cylinder, new Vector3(0f, yPivote, -0.0105f), new Vector3(0.0055f, 0.003f, 0.0055f), giroDisco, metal, giratorio));
         for (int s = -1; s <= 1; s += 2)
-            Pieza(PrimitiveType.Cube, new Vector3(s * SeparacionRanura * AnchoHoja, yPivote, -0.0105f), new Vector3(0.0165f, 0.0035f, 0.006f),
-                  Quaternion.identity, metal, giratorio);
+            pivotes.Add(Pieza(PrimitiveType.Cube, new Vector3(s * SeparacionRanura * AnchoHoja, yPivote, -0.0105f), new Vector3(0.0165f, 0.0035f, 0.006f),
+                              Quaternion.identity, metal, giratorio));
+
+        // v63: la TINTA EN LÍNEAS: una malla de verdad encima del papel de calcar (nítida con cualquier zoom), y sus nodos.
+        var matLineas = new Material(matImagen);
+        PonerTextura(matLineas, Texture2D.whiteTexture);
+        if (matLineas.HasProperty("_BaseColor"))
+            matLineas.SetColor("_BaseColor", new Color(0.04f, 0.04f, 0.06f));
+        mallaTinta = new Mesh { name = "TintaMesa", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
+        HijoMalla("TintaLineas", mallaTinta, matLineas, -0.0006f);
+        var matNodos = new Material(matImagen);
+        PonerTextura(matNodos, Texture2D.whiteTexture);
+        if (matNodos.HasProperty("_BaseColor"))
+            matNodos.SetColor("_BaseColor", new Color(0.2f, 0.45f, 1f));
+        mallaNodos = new Mesh { name = "NodosMesa" };
+        HijoMalla("TintaNodos", mallaNodos, matNodos, -0.0009f);
 
         // Los lápices y el clip de resorte (arriba a la derecha).
         Pieza(PrimitiveType.Cube, new Vector3(0.335f, 0.07f, -0.006f), new Vector3(0.12f, 0.016f, 0.01f), Quaternion.identity, metal);
-        // v60: tres lápices: grafito, rojo y azul. Toca uno para dibujar con él (el elegido se levanta).
+        // v63: LAS HERRAMIENTAS (toca una; la elegida se levanta y brilla).
         var madera = Pintura(new Color(0.85f, 0.72f, 0.52f));
+        var mina = Pintura(new Color(0.16f, 0.16f, 0.18f));
         for (int k = 0; k < 3; k++)
         {
-            float x = 0.3f + k * 0.035f;
-            int kk = k;
-            var cuerpo = Pintura(k == 0 ? new Color(0.12f, 0.12f, 0.14f) : ColoresLapiz[k]);
-            var b = PanelTutoriales.Boton(raiz, "", new Vector3(x, 0f, -0.008f), new Vector2(0.009f, 0.12f), cuerpo, cuerpo);
-            b.alTocar.AddListener(() => ElegirLapiz(kk));
-            lapices.Add(b.transform);
-            Pieza(PrimitiveType.Cylinder, new Vector3(x, -0.066f, -0.008f), new Vector3(0.006f, 0.006f, 0.006f), Quaternion.identity, madera);
+            // Lápices de verdad: cuerpo (amarillo el de grafito), la madera tallada y la punta; el de grafito con su gomita.
+            var h = NuevaHerramienta(new Vector3(0.3f + k * 0.035f, 0f, -0.008f));
+            var cuerpo = Pintura(k == 0 ? new Color(0.96f, 0.76f, 0.2f) : ColoresLapiz[k]);
+            BotonHerramienta(h, new Vector2(0.009f, 0.12f), cuerpo);
+            Pieza(PrimitiveType.Cylinder, new Vector3(0f, -0.066f, 0f), new Vector3(0.0075f, 0.006f, 0.0075f), Quaternion.identity, madera, h);
+            Pieza(PrimitiveType.Cylinder, new Vector3(0f, -0.0735f, 0f), new Vector3(0.003f, 0.0028f, 0.003f), Quaternion.identity,
+                  k == 0 ? mina : cuerpo, h);
+            if (k == 0)
+            {
+                Pieza(PrimitiveType.Cube, new Vector3(0f, 0.0625f, 0f), new Vector3(0.0098f, 0.006f, 0.0092f), Quaternion.identity, metal, h);
+                Pieza(PrimitiveType.Cube, new Vector3(0f, 0.069f, 0f), new Vector3(0.009f, 0.007f, 0.0088f), Quaternion.identity,
+                      Pintura(new Color(0.95f, 0.55f, 0.6f)), h);
+            }
         }
-        // v61: la GOMA (rosada, al lado de los lápices): tócala y lo que "dibujas" se borra.
-        var rosa = Pintura(ColoresLapiz[Goma]);
-        var goma = PanelTutoriales.Boton(raiz, "", new Vector3(0.4f, -0.03f, -0.008f), new Vector2(0.018f, 0.045f), rosa, rosa);
-        goma.alTocar.AddListener(() => ElegirLapiz(Goma));
-        lapices.Add(goma.transform);
-        ElegirLapiz(0);
+        // La goma (rosada).
+        var hGoma = NuevaHerramienta(new Vector3(0.4f, -0.03f, -0.008f));
+        BotonHerramienta(hGoma, new Vector2(0.018f, 0.045f), Pintura(ColoresLapiz[Goma]));
+        // El RAPIDÓGRAFO (acostado): cuerpo negro mate, anillo plateado y su aguja de metal = tinta en líneas.
+        var hRapido = NuevaHerramienta(new Vector3(0.35f, -0.095f, -0.008f));
+        BotonHerramienta(hRapido, new Vector2(0.085f, 0.01f), Pintura(new Color(0.07f, 0.07f, 0.08f)));
+        Pieza(PrimitiveType.Cube, new Vector3(-0.028f, 0f, 0f), new Vector3(0.006f, 0.0115f, 0.0105f), Quaternion.identity, metal, hRapido);
+        Pieza(PrimitiveType.Cube, new Vector3(-0.047f, 0f, 0f), new Vector3(0.01f, 0.006f, 0.006f), Quaternion.identity, metal, hRapido);
+        Pieza(PrimitiveType.Cube, new Vector3(-0.058f, 0f, 0f), new Vector3(0.012f, 0.0012f, 0.0012f), Quaternion.identity, metal, hRapido);
+        // La PLUMILLA de tinta china (acostada): mango de madera oscura, casquillo y la plumilla dorada = tinta pintada.
+        var hPluma = NuevaHerramienta(new Vector3(0.35f, -0.125f, -0.008f));
+        BotonHerramienta(hPluma, new Vector2(0.08f, 0.009f), Pintura(new Color(0.36f, 0.2f, 0.1f)));
+        Pieza(PrimitiveType.Cube, new Vector3(-0.044f, 0f, 0f), new Vector3(0.009f, 0.0095f, 0.009f), Quaternion.identity, metal, hPluma);
+        Pieza(PrimitiveType.Cube, new Vector3(-0.056f, 0f, 0f), new Vector3(0.016f, 0.005f, 0.002f), Quaternion.identity,
+              Pintura(new Color(0.88f, 0.68f, 0.22f)), hPluma);
+        // Su frasquito de tinta china.
+        Pieza(PrimitiveType.Cylinder, new Vector3(0.405f, -0.112f, -0.01f), new Vector3(0.015f, 0.009f, 0.015f), giroDisco,
+              Pintura(new Color(0.05f, 0.05f, 0.08f)));
+        // El brillito de la elegida.
+        var matBrillo = new Material(matTransparente);
+        if (matBrillo.HasProperty("_BaseColor"))
+            matBrillo.SetColor("_BaseColor", new Color(0.55f, 0.85f, 1f, 0.45f));
+        brilloHerramienta = Pieza(PrimitiveType.Cube, Vector3.zero, Vector3.one * 0.01f, Quaternion.identity, matBrillo);
+        colorLapiz = 0;
+        herramientaActual = 0;
+        AcomodarHerramientas();
+
+        // v63: DESHACER y REHACER (también con la flecha de la mano, como siempre).
+        var btnDeshacer = PanelTutoriales.Boton(raiz, "", new Vector3(-0.373f, 0.118f, -0.004f), new Vector2(0.052f, 0.018f), normal, marcado);
+        Idioma.Poner(btnDeshacer.etiqueta, "Deshacer");
+        btnDeshacer.alTocar.AddListener(() => DeshacerMesa(false));
+        var btnRehacer = PanelTutoriales.Boton(raiz, "", new Vector3(-0.287f, 0.118f, -0.004f), new Vector2(0.052f, 0.018f), normal, marcado);
+        Idioma.Poner(btnRehacer.etiqueta, "Rehacer");
+        btnRehacer.alTocar.AddListener(() => DeshacerMesa(true));
 
         // v60: EL BLOC (izquierda): más hojas para animar, con papel cebolla, y "Hojear" para verlas seguidas.
         Pieza(PrimitiveType.Cube, new Vector3(-0.33f, 0.06f, -0.006f), new Vector3(0.11f, 0.075f, 0.012f), Quaternion.identity,
@@ -1780,7 +2271,15 @@ public class MesaEntrada : MonoBehaviour
         Idioma.Poner(entrar.etiqueta, "✦ Entrar");
         entrar.etiqueta.color = UnityEngine.Color.white;
         entrar.textoNormal = UnityEngine.Color.white;
-        entrar.alTocar.AddListener(() => { if (!animando) EntrarABoceto(); });
+        entrar.alTocar.AddListener(() =>
+        {
+            if (animando)
+                return;
+            if (verArchivo)
+                TerminarVer();
+            else
+                EntrarABoceto();
+        });
         btnEntrar = entrar;
         var nueva = PanelTutoriales.Boton(raiz, "", new Vector3(0.33f, -0.16f, -0.004f), new Vector2(0.11f, 0.03f), normal, marcado);
         Idioma.Poner(nueva.etiqueta, "Hoja nueva");
@@ -1893,6 +2392,11 @@ public class MesaEntrada : MonoBehaviour
         if (textoBloc != null)
             textoBloc.text = Idioma.T("Hoja") + " " + (boceto.actual + 1) + " / " + boceto.paginas.Count;
         hojaTinta.gameObject.SetActive(tintaPuesta);
+        if (!tintaPuesta && herramientaActual >= 4)
+        {
+            herramientaActual = colorLapiz == Goma ? 0 : colorLapiz;
+            AcomodarHerramientas();
+        }
         if (btnTinta != null)
         {
             btnTinta.etiqueta.text = Idioma.T(tintaPuesta ? "Quitar hoja de tinta" : "Hoja de tinta");
@@ -1905,6 +2409,11 @@ public class MesaEntrada : MonoBehaviour
     {
         if (l.p.Count == 0)
             return;
+        if (tinta && l.vector && !tintaRaster)
+        {
+            mallaSucia = true;   // v63: en la mesa va en su malla (nítida); en imagen solo para hojear y entrar
+            return;
+        }
         if (tinta && l.vector && l.p.Count >= 2)
         {
             // v62: la tinta en líneas: lisa, pasando por sus nodos.
@@ -1976,8 +2485,10 @@ public class MesaEntrada : MonoBehaviour
             var guardaVacio = vacioTinta;
             pxTinta = capa;
             vacioTinta = vacio;
+            tintaRaster = true;
             foreach (var l in pag.tinta)
                 RepintarLinea(l, true);
+            tintaRaster = false;
             pxTinta = guardaTinta;
             vacioTinta = guardaVacio;
             for (int i = 0; i < px.Length; i++)
@@ -2203,6 +2714,7 @@ public class MesaEntrada : MonoBehaviour
 
     void AlternarClave()
     {
+        GuardarDeshacer();
         Pag.clave = !Pag.clave;
         RehacerHoja();
         GuardarBoceto();

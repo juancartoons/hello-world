@@ -60,6 +60,7 @@ public partial class ControlManos
         public RamaPaleta rama;              // de qué raíz es hijo (null = siempre a la vista)
         public System.Func<bool> visible;    // null = siempre
         public System.Func<bool> amarillo;   // null = nunca
+        public System.Func<bool> gris;       // v63: fondo GRIS = no está activo (Línea / Relleno)
         public System.Action alTocar;
         public System.Func<string> texto;    // lo que dice el centro después de tocarlo
         public bool dedoEn;
@@ -82,7 +83,11 @@ public partial class ControlManos
     readonly List<Material> materialesPaleta = new List<Material>();
     readonly List<BotonPaleta> botonesPaleta = new List<BotonPaleta>();
     RamaPaleta ramaLinea, ramaRelleno, ramaAbierta;
-    BotonPaleta botonInvisible;
+    BotonPaleta botonInvisible, botonGotero, botonIman;
+    Transform aroElegido;   // v63: el aro con brillo detrás del color elegido
+    // v63: EL GOTERO: tócalo y luego toca un color (de la paleta, de una línea o de un relleno): se copia y tu dedo
+    // queda cargado (como la jeringa) para pegarlo tocando otra línea o relleno.
+    bool goteroActivo;
     Material materialCentroPaleta, materialCursorColor, gotaCubeta, degradadoAntes;
     TMP_Text textoCentro;
     Transform centroRelleno;
@@ -92,7 +97,8 @@ public partial class ControlManos
     float paletaDesde = -1f, paletaFueraDesde = -1f;
 
     public bool PaletaAbierta => paletaAbierta;
-    bool RellenoAbierto => paletaAbierta && ramaAbierta != null && ramaAbierta == ramaRelleno;
+    // v63: LÍNEA o RELLENO: el botón activo tiene fondo blanco y el otro gris. Los colores van a lo activo.
+    bool RellenoAbierto => paletaAbierta && ContextoRelleno;
 
     // Palma izquierda abierta, más o menos mirando hacia tu cara (pocas condiciones, para que salga fácil).
     bool PosePaleta(bool yaAbierta)
@@ -212,11 +218,22 @@ public partial class ControlManos
             {
                 ElegirColor(ColoresPaleta[tocado], botonesColor[tocado].position);
                 CargarJeringa(ColoresPaleta[tocado]);   // v44: el dedo se llena de ese color (la jeringa)
+                if (goteroActivo)
+                {
+                    goteroActivo = false;
+                    MostrarEtiqueta("Gotero: color copiado. Toca una línea o un relleno para pegarlo");
+                }
             }
             dedoEnColor = true;
             return;
         }
         dedoEnColor = false;
+        // v63: con el GOTERO prendido, tocar una línea o un relleno COPIA su color (antes que la jeringa).
+        if (goteroActivo && Vector3.Distance(punta, paleta.position) > 0.045f && RevisarGotero(punta))
+        {
+            dedoEnLinea = true;
+            return;
+        }
         // v44: con el dedo cargado (jeringa): tocar una línea o un relleno lo pinta (antes que el cuentagotas).
         // v46: va ANTES de la zona cerca de la paleta (antes no pintaba líneas que estaban a menos de 10 cm de ella).
         if (Vector3.Distance(punta, paleta.position) > 0.045f && RevisarJeringa(punta))
@@ -495,7 +512,7 @@ public partial class ControlManos
         ArmarBotonesPaleta(negro);
         ArmarBurbujaSecreta();
         ArmarDatosPaleta();
-        int lugares = ColoresPaleta.Length + 1;   // v53: + el "#"
+        int lugares = ColoresPaleta.Length + 2;   // v53: + el "#"; v63: + la tinta invisible
         for (int i = 0; i < ColoresPaleta.Length; i++)
         {
             float ang = Mathf.PI * 0.5f - i * Mathf.PI * 2f / lugares;
@@ -569,8 +586,14 @@ public partial class ControlManos
     void ArmarBotonesPaleta(Material negro)
     {
         // ---- Tinta invisible (a las 12): un círculo a cuadritos, como lo "transparente" de los programas de dibujo.
-        botonInvisible = CrearBotonPaleta("TintaInvisible", AnguloInvisible, 0.021f, negro, null);
-        botonInvisible.radioToque = 0.012f;
+        // v63: va DENTRO del círculo de colores (un color más), junto al "#".
+        botonInvisible = CrearBotonPaleta("TintaInvisible", AnguloInvisible, TamColor, negro, null);
+        {
+            int lugares = ColoresPaleta.Length + 2;
+            float ang = Mathf.PI * 0.5f - (ColoresPaleta.Length + 1) * Mathf.PI * 2f / lugares;
+            botonInvisible.t.localPosition = new Vector3(Mathf.Cos(ang) * RadioPaleta, Mathf.Sin(ang) * RadioPaleta, -0.001f);
+        }
+        botonInvisible.radioToque = 0.011f;
         botonInvisible.tono = 1.1f;
         var cuadros = new List<Vector2[]>();
         for (int fy = 0; fy < 4; fy++)
@@ -595,8 +618,11 @@ public partial class ControlManos
         var s = new List<Vector2[]>();
         LineaIcono(s, pincelada, 0.09f);
         IconoPaleta(ramaLinea.raiz.t, s, negro);
-        ramaLinea.raiz.alTocar = () => AbrirRama(ramaLinea);
-        ramaLinea.raiz.texto = () => ramaAbierta == ramaLinea ? "Línea" : "";
+        // v63: tocar LÍNEA = los colores van a la línea (fondo blanco; el Relleno queda gris) y se abre Propiedades.
+        ramaLinea.raiz.alTocar = () => { ContextoRelleno = false; ramaAbierta = null; claveCentroRelleno = null; };
+        ramaLinea.raiz.texto = () => "Línea: " + NombreColor(dibujo.ColorNuevo);
+        ramaLinea.raiz.amarillo = null;
+        ramaLinea.raiz.gris = () => ContextoRelleno;
 
         // v49: la línea en pocas preguntas claras: TEXTURA (lisa, lápiz, hebras) y VIDA (quieta, suave, nerviosa,
         // fuerte: ya trae su velocidad y su suavidad). Después: grosor vivo, imán, uniones, halo y cómo sigue el lápiz.
@@ -698,8 +724,11 @@ public partial class ControlManos
         {
             new[] { new Vector2(-0.3f, 0.15f), new Vector2(-0.1f, 0.1f), new Vector2(0.3f, 0.05f), new Vector2(0.3f, 0.3f), new Vector2(-0.3f, 0.3f) },
         }, ColorMaterial(new Color(0.62f, 0.82f, 0.55f)));
-        ramaRelleno.raiz.alTocar = () => AbrirRama(ramaRelleno);
-        ramaRelleno.raiz.texto = () => ramaAbierta == ramaRelleno ? "Relleno: " + NombreColor(colorRellenoNuevo) : "";
+        // v63: tocar RELLENO = los colores van al relleno (la Línea queda gris) y Propiedades muestra el relleno.
+        ramaRelleno.raiz.alTocar = () => { ContextoRelleno = true; ramaAbierta = null; claveCentroRelleno = null; };
+        ramaRelleno.raiz.texto = () => "Relleno: " + NombreColor(colorRellenoNuevo);
+        ramaRelleno.raiz.amarillo = null;
+        ramaRelleno.raiz.gris = () => !ContextoRelleno;
 
         // Textura (relleno vivo): tres manchas verdes de distinto tono.
         hijo = HijoRelleno(0, negro);
@@ -711,8 +740,6 @@ public partial class ControlManos
         hijo.texto = () => "Textura " + TexturaElegida + " · " + Trazo.NombresTextura[TexturaElegida];
         hijo.tono = 1.15f;
         // v49: DEGRADADO (reemplaza a la cubeta): tres franjas, del color de antes (arriba) al de ahora (abajo).
-        if (CubetaActiva)
-            CubetaActiva = false;   // la cubeta ya no tiene botón: que no quede prendida de antes
         hijo = HijoRelleno(1, negro);
         gotaCubeta = ColorMaterial(ColorDeRelleno);
         degradadoAntes = ColorMaterial(rellenoAnterior);
@@ -747,7 +774,94 @@ public partial class ControlManos
             h.visible = () => false;
         foreach (var h in ramaRelleno.hijos)
             h.visible = () => false;
-        ramaLinea.raiz.visible = () => false;
+
+        // ---- v63: EL GOTERO (a las 12, al nivel de Línea y Relleno): un tubito de vidrio con su perilla roja.
+        botonGotero = CrearBotonPaleta("Gotero", AnguloInvisible, 0.022f, negro, null);
+        botonGotero.radioToque = 0.012f;
+        botonGotero.tono = 1.25f;
+        var tubo = new List<Vector2[]>();
+        BarraIcono(tubo, new Vector2(-0.2f, -0.2f), new Vector2(0.08f, 0.08f), 0.11f);
+        IconoPaleta(botonGotero.t, tubo, ColorMaterial(new Color(0.62f, 0.78f, 0.92f)));
+        var punta = new List<Vector2[]>();
+        BarraIcono(punta, new Vector2(-0.27f, -0.27f), new Vector2(-0.18f, -0.18f), 0.04f);
+        IconoPaleta(botonGotero.t, punta, negro);
+        IconoPaleta(botonGotero.t, new List<Vector2[]> { Circulo(new Vector2(0.16f, 0.16f), 0.12f) }, ColorMaterial(new Color(0.85f, 0.18f, 0.18f)));
+        botonGotero.amarillo = () => goteroActivo;
+        botonGotero.alTocar = () =>
+        {
+            goteroActivo = !goteroActivo;
+            MostrarEtiqueta(goteroActivo ? "Gotero: toca un color, una línea o un relleno para copiarlo" : "Gotero apagado");
+        };
+        botonGotero.texto = () => goteroActivo ? "Gotero: toca un color" : "Gotero";
+
+        // ---- v63: EL IMÁN: un círculo pequeño encima de Línea, siempre a la vista (funciona aunque Línea esté gris).
+        botonIman = CrearBotonPaleta("Iman", AnguloLinea, 0.012f, negro, null);
+        botonIman.t.localPosition = ramaLinea.raiz.t.localPosition + new Vector3(0f, 0.022f, 0f);
+        botonIman.radioToque = 0.008f;
+        botonIman.tono = 1.3f;
+        var herradura = new List<Vector2[]>();
+        LineaIcono(herradura, new[] { new Vector2(-0.17f, 0.12f), new Vector2(-0.17f, -0.06f), new Vector2(-0.1f, -0.2f),
+                                      new Vector2(0f, -0.24f), new Vector2(0.1f, -0.2f), new Vector2(0.17f, -0.06f), new Vector2(0.17f, 0.12f) }, 0.11f);
+        IconoPaleta(botonIman.t, herradura, ColorMaterial(new Color(0.88f, 0.15f, 0.15f)));
+        botonIman.amarillo = () => CapaPaleta() != null && CapaPaleta().iman;
+        botonIman.alTocar = () => dibujo.AlternarIman();
+        botonIman.texto = () => CapaPaleta() != null && CapaPaleta().iman ? "Imán: Sí" : "Imán: No";
+
+        // ---- v63: el aro con brillo detrás del color elegido.
+        aroElegido = new GameObject("AroElegido").transform;
+        aroElegido.SetParent(paleta, false);
+        DiscoPaleta(aroElegido, ColorMaterial(new Color(0.55f, 0.85f, 1f)), 1f, Vector3.zero);
+        DiscoPaleta(aroElegido, negro, 0.86f, new Vector3(0f, 0f, -0.01f));
+    }
+
+    // v63: con el GOTERO prendido: tocar una línea copia su color (o, con Relleno activo, el de su relleno). El dedo
+    // queda cargado para pegarlo. Devuelve true si copió.
+    public bool GoteroActivo => goteroActivo;
+
+    bool RevisarGotero(Vector3 punta)
+    {
+        if (!goteroActivo || dibujo == null)
+            return false;
+        Vector3 local = dibujo.transform.InverseTransformPoint(punta);
+        float escala = dibujo.EscalaMundo;
+        Trazo cerca = null;
+        float mejor = float.MaxValue;
+        foreach (var t in dibujo.trazos)
+        {
+            if (!Dibujo.Editable(t) || t.oculto)
+                continue;
+            float d = t.DistanciaACurva(local) * escala;
+            if (d < t.ancho * escala * 0.5f + 0.012f && d < mejor)
+            {
+                mejor = d;
+                cerca = t;
+            }
+        }
+        Color c;
+        if (ContextoRelleno)
+        {
+            Trazo f = FiguraBajo(local, 0.02f, true);
+            if (f != null)
+                c = f.ColorDelRelleno;
+            else if (cerca != null)
+                c = cerca.relleno ? cerca.ColorDelRelleno : cerca.color;
+            else
+                return false;
+            PonerColorRellenoNuevo(c);
+        }
+        else
+        {
+            if (cerca == null)
+                return false;
+            c = cerca.color;
+            dibujo.ColorNuevo = c;
+        }
+        goteroActivo = false;
+        CargarJeringa(c);
+        jeringaEsperaSalir = true;   // no pega en el mismo lugar de donde copiaste: primero saca el dedo
+        Burbuja(punta, 1.3f);
+        MostrarEtiqueta("Gotero: color copiado. Toca una línea o un relleno para pegarlo");
+        return true;
     }
 
     // Un "#".
@@ -836,7 +950,8 @@ public partial class ControlManos
             if (!ver)
                 b.dedoEn = false;
             else if (b.fondo != null)
-                PonerColorMaterial(b.fondo, b.amarillo != null && b.amarillo() ? AmarilloOpcion : Color.white);
+                PonerColorMaterial(b.fondo, b.amarillo != null && b.amarillo() ? AmarilloOpcion
+                                            : b.gris != null && b.gris() ? new Color(0.6f, 0.61f, 0.64f) : Color.white);
         }
         ActualizarArco(ramaLinea);
         ActualizarArco(ramaRelleno);
@@ -847,6 +962,21 @@ public partial class ControlManos
             botonesColor[i].localScale = Vector3.one * TamColor * (i == marcado ? 1.3f : 1f);
         if (botonInvisible != null)
             botonInvisible.t.localScale = Vector3.one * botonInvisible.tamano * (marcado < 0 ? 1.3f : 1f);
+        // v63: el AR0 con brillo (late un poquito) detrás del color elegido.
+        if (aroElegido != null)
+        {
+            Transform elegido = marcado < 0 ? (botonInvisible != null ? botonInvisible.t : null)
+                              : marcado < botonesColor.Count ? botonesColor[marcado] : null;
+            bool ver = elegido != null && elegido.gameObject.activeInHierarchy;
+            if (aroElegido.gameObject.activeSelf != ver)
+                aroElegido.gameObject.SetActive(ver);
+            if (ver)
+            {
+                Vector3 p = elegido.localPosition;
+                aroElegido.localPosition = new Vector3(p.x, p.y, p.z + 0.0008f);
+                aroElegido.localScale = Vector3.one * TamColor * (1.62f + 0.06f * Mathf.Sin(Time.time * 5f));
+            }
+        }
         PonerColorMaterial(gotaCubeta, ColorDeRelleno);
         if (degradadoAntes != null)
             PonerColorMaterial(degradadoAntes, rellenoAnterior);

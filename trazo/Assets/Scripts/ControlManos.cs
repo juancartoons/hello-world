@@ -389,8 +389,16 @@ public partial class ControlManos : MonoBehaviour
 
         if (Ocupado || ExportadorVideo.Exportando || Titere.Activo)
         {
-            SalirFlecha(flechaIzq, true);
-            SalirFlecha(flechaDer, false);
+            // v63: en la mesa de animación, la flecha de la mano (deshacer / rehacer) sí funciona.
+            if (MesaEntrada.Activa && !ExportadorVideo.Exportando && !Titere.Activo)
+            {
+                ActualizarFlechas();
+            }
+            else
+            {
+                SalirFlecha(flechaIzq, true);
+                SalirFlecha(flechaDer, false);
+            }
             // Otro objeto está usando las manos: no se dibuja ni se edita nada.
             if (GestoIzq != Gesto.Ninguno)
                 SalirDeGesto();
@@ -435,7 +443,8 @@ public partial class ControlManos : MonoBehaviour
                 if (!menuAbierto && !paletaAbierta && !protegido)
                 {
                     // v44: con el dedo cargado (jeringa), tocar una línea o un relleno lo pinta.
-                    if (!RevisarJeringa(Der.indice))
+                    // v63: con el GOTERO prendido, tocar una línea o un relleno copia su color.
+                    if (!(goteroActivo && RevisarGotero(Der.indice)) && !RevisarJeringa(Der.indice))
                         RevisarAgarreLinea();
                 }
                 break;
@@ -936,7 +945,6 @@ public partial class ControlManos : MonoBehaviour
             trazoActual = dibujo.NuevoTrazo();
             AplicarCubeta(trazoActual); // con la cubeta encendida se va rellenando mientras dibujas
             inicioTrazo = Time.time;
-            ContextoRelleno = false;   // v60: dibujar = Propiedades vuelve a la línea
         }
         trazoActual.AgregarPuntoCrudo(dibujo.ProyectarEnPlano(local));
     }
@@ -1138,7 +1146,6 @@ public partial class ControlManos : MonoBehaviour
             inicioRecta = Imantar(dibujo.ProyectarEnPlano(local), null);
             trazoActual = dibujo.NuevoTrazo();
             inicioTrazo = Time.time;
-            ContextoRelleno = false;   // v60: dibujar = Propiedades vuelve a la línea
         }
         trazoActual.PonerRecta(inicioRecta, Imantar(dibujo.ProyectarEnPlano(local), trazoActual));
     }
@@ -2192,7 +2199,7 @@ public partial class ControlManos : MonoBehaviour
         {
             e.armada = false;
             bool rehacer = !izquierda;
-            bool hecho = rehacer ? dibujo.Rehacer() : dibujo.Deshacer();
+            bool hecho = MesaEntrada.Activa ? MesaEntrada.DeshacerRehacer(rehacer) : rehacer ? dibujo.Rehacer() : dibujo.Deshacer();
             if (hecho)
                 MostrarEtiqueta(rehacer ? "Rehacer" : "Deshacer");
             if (simbolos != null)

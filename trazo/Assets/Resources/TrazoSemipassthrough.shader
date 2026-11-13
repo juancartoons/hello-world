@@ -7,8 +7,8 @@ Shader "TrazoVR/Semipassthrough"
     {
         _BaseColor ("Color de los lados", Color) = (1, 1, 1, 1)
         _Centro ("Centro de la ventana (mundo)", Vector) = (0, 0, 1, 0)
-        _Dentro ("Coseno: transparente desde aquí", Float) = 0.906
-        _Fuera ("Coseno: blanco desde aquí", Float) = 0.42
+        _Dentro ("Coseno: transparente desde aquí", Float) = 0.766
+        _Fuera ("Coseno: blanco desde aquí", Float) = 0.26
     }
 
     SubShader
