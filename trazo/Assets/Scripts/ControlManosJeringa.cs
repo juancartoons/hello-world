@@ -93,9 +93,10 @@ public partial class ControlManos
                 linea = t;
             }
         }
-        Trazo objetivo = linea;
-        bool esLinea = linea != null;
-        if (objetivo == null)
+        // v64: ESTRICTA: con LÍNEA elegida en la paleta solo pinta líneas; con RELLENO, solo rellenos.
+        Trazo objetivo = ContextoRelleno ? null : linea;
+        bool esLinea = objetivo != null;
+        if (ContextoRelleno)
             objetivo = FiguraBajo(local, 0.02f, false);
         if (objetivo == null)
         {

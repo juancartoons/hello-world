@@ -41,7 +41,8 @@ public partial class ControlManos
         IrAFotograma, BorraFotograma, BorraCapa, SeleccionaTodo, QuitaSeleccion, ApagaVoz, CopiarEstilo, PegarEstilo, PuntoClave,
         PuntoCorto,   // v53: "nariz", "oreja"... (con la cabeza invisible abierta)
         CaraPerfil, CaraFrente, FinDictado, ParteDictado, Funcion, Plastilina, ImportarSvg, CortarAqui, Propiedades, Entrar, FondoDirecto,
-        CentrarMesa, Semipassthrough, VerEnLaMesa   // v62 · v55/v56/v57/v58/v59/v60: el dictado de la cabeza
+        CentrarMesa, Semipassthrough, VerEnLaMesa,   // v62 ·
+        Salir   // v64 v55/v56/v57/v58/v59/v60: el dictado de la cabeza
     }
 
     // v43: los fondos que se pueden pedir por su nombre (el nombre exacto que tienen en Escenario).
@@ -298,6 +299,8 @@ public partial class ControlManos
                 new[] { "cara de frente", "cara frontal", "cabeza de frente" }, new[] { "front face", "face from the front" }));
         l.Add(C(ComandoVoz.Propiedades, "Propiedades", "Properties", new[] { "propiedades", "ajustes", "herramientas" }, new[] { "properties", "settings", "tools" }));
         l.Add(C(ComandoVoz.Entrar, "Entrar", "Enter", new[] { "entrar", "entra", "entrar a la hoja" }, new[] { "enter", "go in" }));
+        l.Add(C(ComandoVoz.Salir, "Salir", "Exit", new[] { "salir", "salir del archivo", "ir a la mesa", "volver a la mesa" },
+                new[] { "exit", "exit file", "go to the desk" }));
         l.Add(C(ComandoVoz.CentrarMesa, "Centrar mesa", "Center desk", new[] { "centrar mesa", "centra la mesa", "mesa al centro" },
                 new[] { "center desk", "center the desk" }));
         l.Add(C(ComandoVoz.VerEnLaMesa, "Ver en la mesa", "See on the desk", new[] { "ver en la mesa", "mesa de animación" },
@@ -604,6 +607,14 @@ public partial class ControlManos
             case ComandoVoz.Propiedades: PanelPropiedades.Alternar(); break;
             case ComandoVoz.Entrar: MesaEntrada.EntrarVoz(); break;
             case ComandoVoz.CentrarMesa: MesaEntrada.CentrarVoz(); break;
+            case ComandoVoz.Salir:
+                // v64: como el botón Salir del reloj (guarda y vuelve a la mesa).
+                if (!MesaEntrada.Activa)
+                {
+                    CerrarMenu();
+                    MesaEntrada.Salir();
+                }
+                break;
             case ComandoVoz.VerEnLaMesa: MesaEntrada.VerEnLaMesa(); break;
             case ComandoVoz.Semipassthrough:
             {

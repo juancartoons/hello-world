@@ -247,8 +247,42 @@ public class PanelMuneca : MonoBehaviour
         }
         ActualizarAviso();
         ActualizarRec();
-        if (MesaEntrada.Activa != modoMesa)
+        // v64: en la mesa, primero solo un BOTÓN ROJO redondo (como la carátula de un reloj); al tocarlo sale el panel.
+        if (!visible && mesaDesplegada)
+            mesaDesplegada = false;
+        if (MesaEntrada.Activa != modoMesa || mesaDesplegada != desplegadaAplicada)
             AplicarModoMesa(MesaEntrada.Activa);
+    }
+
+    bool mesaDesplegada, desplegadaAplicada;
+    BotonTocable botonRojo;
+
+    void CrearBotonRojo()
+    {
+        if (botonRojo != null || contenido == null)
+            return;
+        var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        go.name = "BotonRojoMesa";
+        go.transform.SetParent(contenido.transform, false);
+        Vector3 centro = btnFondo != null ? btnFondo.transform.localPosition : Vector3.zero;
+        go.transform.localPosition = new Vector3(0f, centro.y, centro.z - 0.004f);
+        go.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        go.transform.localScale = new Vector3(0.03f, 0.003f, 0.03f);
+        var r = go.GetComponent<Renderer>();
+        Material baseM = btnFondo != null ? btnFondo.materialNormal : null;
+        var rojo = baseM != null ? new Material(baseM) : r.sharedMaterial;
+        if (rojo.HasProperty("_BaseColor"))
+            rojo.SetColor("_BaseColor", new Color(0.86f, 0.16f, 0.14f));
+        if (rojo.HasProperty("_Color"))
+            rojo.SetColor("_Color", new Color(0.86f, 0.16f, 0.14f));
+        r.sharedMaterial = rojo;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        botonRojo = go.AddComponent<BotonTocable>();
+        botonRojo.materialNormal = rojo;
+        botonRojo.materialMarcado = rojo;
+        BotonTocable.PonerNombre(botonRojo, "Fondo");
+        botonRojo.alTocar.AddListener(() => mesaDesplegada = true);
+        go.SetActive(false);
     }
 
     // v62: EN LA MESA DE ANIMACIÓN el reloj sale solo con lo del FONDO (Fondo y las flechas de girar): lo demás se
@@ -259,23 +293,35 @@ public class PanelMuneca : MonoBehaviour
     void AplicarModoMesa(bool en)
     {
         modoMesa = en;
+        desplegadaAplicada = mesaDesplegada;
         if (contenido == null)
             return;
+        CrearBotonRojo();
+        foreach (var g in escondidosMesa)
+            if (g != null)
+                g.SetActive(true);
+        escondidosMesa.Clear();
+        bool rojo = en && !mesaDesplegada;
+        if (botonRojo != null && botonRojo.gameObject.activeSelf != rojo)
+            botonRojo.gameObject.SetActive(rojo);
         if (!en)
-        {
-            foreach (var g in escondidosMesa)
-                if (g != null)
-                    g.SetActive(true);
-            escondidosMesa.Clear();
             return;
-        }
         foreach (Transform h in contenido.transform)
         {
-            if (!h.gameObject.activeSelf || SirveEnMesa(h))
+            if (!h.gameObject.activeSelf || (botonRojo != null && h == botonRojo.transform))
+                continue;
+            // Con el botón rojo: solo él (y los avisos). Desplegado: lo del fondo.
+            bool queda = rojo ? EsAviso(h) : SirveEnMesa(h);
+            if (queda)
                 continue;
             h.gameObject.SetActive(false);
             escondidosMesa.Add(h.gameObject);
         }
+    }
+
+    bool EsAviso(Transform h)
+    {
+        return (textoAviso != null && textoAviso.transform.IsChildOf(h)) || (textoEstado != null && textoEstado.transform.IsChildOf(h));
     }
 
     bool SirveEnMesa(Transform h)

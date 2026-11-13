@@ -185,7 +185,7 @@ public class BotonVoz : MonoBehaviour
         ActualizarPanel(cabeza);
 
         // En la vista limpia el micrófono no se ve (ni se puede tocar).
-        if (VistaLimpia.Activa)
+        if (VistaLimpia.DelUsuario)
         {
             DedoCerca = false;
             if (micro.gameObject.activeSelf)

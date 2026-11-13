@@ -26,6 +26,17 @@ public static class VistaLimpia
         }
     }
 
+    // v64: solo la vista limpia que TÚ pusiste (en la mesa de animación el micrófono, la música y el ojo sí se ven).
+    public static bool DelUsuario
+    {
+        get
+        {
+            if (activa < 0)
+                activa = PlayerPrefs.GetInt(Clave, 0) == 1 ? 1 : 0;
+            return activa == 1;
+        }
+    }
+
     // ¿El cartel de cómic se esconde ahora? (Al ponerla, su propio aviso se ve un momento.)
     public static bool EsconderCartel => Activa && Time.time - cambio > VerAvisoCambio;
 

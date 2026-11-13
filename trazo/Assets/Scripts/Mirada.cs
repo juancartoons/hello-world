@@ -263,7 +263,7 @@ public class Mirada : MonoBehaviour
         }
         giroSuave = Quaternion.Slerp(giroSuave, giro, 1f - Mathf.Exp(-4f * Time.deltaTime));
 
-        bool quiere = !VistaLimpia.Activa && !ExportadorVideo.Exportando;
+        bool quiere = !VistaLimpia.DelUsuario && !ExportadorVideo.Exportando;   // v64: también en la mesa
         if (ojo.gameObject.activeSelf != quiere)
             ojo.gameObject.SetActive(quiere);
         if (quiere)

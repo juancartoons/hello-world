@@ -160,7 +160,9 @@ public class PanelPropiedades : MonoBehaviour
         if (adelante.sqrMagnitude < 1e-4f)
             adelante = Vector3.forward;
         adelante.Normalize();
-        Vector3 pos = cab.position + adelante * 0.45f + Vector3.up * 0.14f;
+        // v64: a un lado (a la derecha), para no tapar lo que dibujas.
+        Vector3 derecha = Vector3.Cross(Vector3.up, adelante).normalized;
+        Vector3 pos = cab.position + adelante * 0.42f + derecha * 0.3f + Vector3.up * 0.08f;
         transform.SetPositionAndRotation(pos, Quaternion.LookRotation(pos - cab.position, Vector3.up));
         colocado = true;
     }
@@ -316,6 +318,9 @@ public class PanelPropiedades : MonoBehaviour
                 y = Opciones(y, "Grosor vivo", new[] { "Sí", "No" }, () => tb.GrosorVivo ? 0 : 1,
                              i => { if ((i == 0) != tb.GrosorVivo) tb.AlternarGrosor(); }, () => "El grosor de la línea respira un poquito");
             }
+            y = Opciones(y, "Líneas invisibles", new[] { "Ocultas", "Previsualizar" }, () => Trazo.PrevisualizarInvisibles ? 1 : 0,
+                         i => dibujo.PonerPrevisualizarInvisibles(i == 1),
+                         () => Trazo.PrevisualizarInvisibles ? "Una raya intermitente muestra dónde están (no sale en fotos)" : "No se ven (solo su relleno)");
             y = Opciones(y, "Uniones", new[] { "Rectas", "Suaves" }, () => Trazo.UnionesSuaves ? 1 : 0,
                          i => { if ((i == 1) != Trazo.UnionesSuaves) Trazo.AlternarUniones(); }, () => "Cómo se juntan dos líneas que se unen");
             y = Opciones(y, "Imán", new[] { "Sí", "No" }, () => dibujo.CapaActual.iman ? 0 : 1,

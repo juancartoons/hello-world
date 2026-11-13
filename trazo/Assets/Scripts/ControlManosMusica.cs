@@ -299,6 +299,41 @@ public partial class ControlManos
         }
     }
 
+    // v64: LA MESA DE ANIMACIÓN también suena al dibujar (como siempre: una nota cada 3,5 cm, más aguda si subes,
+    // y el acorde al soltar). Los instrumentos de ritmo suenan como notas sueltas.
+    bool mesaSonando;
+    Vector3 mesaInicio, mesaPrevio;
+    float mesaRecorrido;
+
+    public void MusicaMesa(bool dibujando, Vector3 p)
+    {
+        if (!dibujando || !MusicaEncendida)
+        {
+            if (mesaSonando)
+            {
+                mesaSonando = false;
+                if (MusicaEncendida)
+                    AcordeMusical();
+            }
+            return;
+        }
+        if (!mesaSonando)
+        {
+            mesaSonando = true;
+            mesaInicio = mesaPrevio = p;
+            mesaRecorrido = 0f;
+            NotaMusical(IndiceNota(0f));
+            return;
+        }
+        mesaRecorrido += Vector3.Distance(p, mesaPrevio);
+        mesaPrevio = p;
+        if (mesaRecorrido >= PasoNota)
+        {
+            mesaRecorrido = 0f;
+            NotaMusical(IndiceNota(p.y - mesaInicio.y));
+        }
+    }
+
     // Agrandar o achicar con las dos manos (OK + OK): cada 7 % más grande, una nota más aguda;
     // cada 7 % más chico, una más grave (como una escalera de notas).
     void ActualizarMusicaTamano(bool puedeSonar)

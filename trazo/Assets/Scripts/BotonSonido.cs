@@ -327,7 +327,7 @@ public class BotonSonido : MonoBehaviour
             return;
         }
         // v39: en la vista limpia no se ve (ni se puede tocar).
-        if (VistaLimpia.Activa)
+        if (VistaLimpia.DelUsuario)
         {
             DedoCerca = false;
             arrastrando = false;

@@ -144,9 +144,20 @@ public class Escenario : MonoBehaviour
         ApuntarSemi();
     }
 
+    // v64: la ventana: fija = transparente hasta 40° y blanco desde 62° (menos degradado); sigue la mirada = más
+    // pequeña (25° a 55°) para que el blanco se note.
+    void VentanaSemi()
+    {
+        if (semiMaterial == null)
+            return;
+        semiMaterial.SetFloat("_Dentro", Mathf.Cos((SemiMirada ? 25f : 40f) * Mathf.Deg2Rad));
+        semiMaterial.SetFloat("_Fuera", Mathf.Cos((SemiMirada ? 55f : 62f) * Mathf.Deg2Rad));
+    }
+
     // La ventana mira hacia donde miras ahora (en horizontal).
     public void ApuntarSemi()
     {
+        VentanaSemi();
         Transform cab = camara != null ? camara.transform : (Camera.main != null ? Camera.main.transform : null);
         Vector3 f = cab != null ? cab.forward : Vector3.forward;
         f.y *= 0.3f;
@@ -165,9 +176,6 @@ public class Escenario : MonoBehaviour
             if (sh != null)
             {
                 semiMaterial = new Material(sh);
-                // v63: la ventana a tu cuarto, más ABIERTA y clara: transparente del todo hasta 40°, blanco desde 75°.
-                semiMaterial.SetFloat("_Dentro", Mathf.Cos(40f * Mathf.Deg2Rad));
-                semiMaterial.SetFloat("_Fuera", Mathf.Cos(75f * Mathf.Deg2Rad));
                 semiEsfera = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 semiEsfera.name = "Semipassthrough";
                 Destroy(semiEsfera.GetComponent<Collider>());
@@ -181,6 +189,7 @@ public class Escenario : MonoBehaviour
         }
         if (semiEsfera != null && semiEsfera.activeSelf != Semi)
             semiEsfera.SetActive(Semi);
+        VentanaSemi();
         SeguirCabeza();
     }
 

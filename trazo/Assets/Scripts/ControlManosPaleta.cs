@@ -280,7 +280,7 @@ public partial class ControlManos
             {
                 if (RellenoAbierto)
                 {
-                    PonerColorRellenoNuevo(cerca.relleno ? cerca.ColorDelRelleno : cerca.color);
+                    PonerColorRellenoNuevo(cerca.relleno ? cerca.ColorDelRelleno : colorRellenoNuevo);
                     PonerTextoCentro("Relleno: " + NombreColor(colorRellenoNuevo));
                 }
                 else
@@ -840,13 +840,10 @@ public partial class ControlManos
         Color c;
         if (ContextoRelleno)
         {
-            Trazo f = FiguraBajo(local, 0.02f, true);
-            if (f != null)
-                c = f.ColorDelRelleno;
-            else if (cerca != null)
-                c = cerca.relleno ? cerca.ColorDelRelleno : cerca.color;
-            else
+            Trazo f = FiguraBajo(local, 0.02f, true);   // v64: con Relleno, solo copia de rellenos
+            if (f == null)
                 return false;
+            c = f.ColorDelRelleno;
             PonerColorRellenoNuevo(c);
         }
         else

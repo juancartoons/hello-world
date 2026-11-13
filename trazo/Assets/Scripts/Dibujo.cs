@@ -843,6 +843,15 @@ public class Dibujo : MonoBehaviour
                 t.Reconstruir(true);
     }
 
+    // v64: ver (o no) las líneas invisibles como una raya intermitente.
+    public void PonerPrevisualizarInvisibles(bool ver)
+    {
+        Trazo.PrevisualizarInvisibles = ver;
+        foreach (var t in trazos)
+            if (t != null && t.Invisible)
+                t.Reconstruir(true);
+    }
+
     // La cubeta: rellena una forma (aunque esté abierta) con un color. Con tinta invisible = quita el relleno.
     public void RellenarConColor(Trazo t, Color c)
     {

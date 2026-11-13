@@ -1113,6 +1113,7 @@ public class Trazo : MonoBehaviour
             curvaT.Clear();
         }
 
+        ActualizarRaya();   // v64
         if (!soloLinea)
             ConstruirRelleno();
 
@@ -1170,10 +1171,99 @@ public class Trazo : MonoBehaviour
         float m = i < multiplicadores.Count ? multiplicadores[i] : 1f;
         if (CerradoAhora)
             return ancho * 0.5f * 0.85f * m;
-        float t = Mathf.Clamp01(recorrido / total);
-        float seno = Mathf.Max(0f, Mathf.Sin(Mathf.PI * t));
-        float perfil = Mathf.Max(puntaMinima, Mathf.Pow(seno, 0.55f));
-        return ancho * 0.5f * perfil * m;
+        return ancho * 0.5f * PerfilPunta(Mathf.Clamp01(recorrido / total)) * m;
+    }
+
+    // v64: el grosor a lo largo de una línea abierta (1 en el centro, en punta en los extremos). La mesa de animación
+    // usa este mismo para su tinta, así las puntas son iguales que dentro de los archivos.
+    public static float PerfilPunta(float t)
+    {
+        float seno = Mathf.Max(0f, Mathf.Sin(Mathf.PI * Mathf.Clamp01(t)));
+        return Mathf.Max(puntaMinima, Mathf.Pow(seno, 0.55f));
+    }
+
+    // ---------- v64: LÍNEAS INVISIBLES PREVISUALIZADAS: una raya delgada negra intermitente (como la de la mitad de
+    // la carretera) donde hay tinta invisible. Se elige en Propiedades · Tinta. No sale en fotos ni videos.
+    const string ClaveRaya = "jcartoons_ver_invisibles";
+    static int rayaPref = -1;
+    static Material materialRaya;
+    LineRenderer raya;
+
+    public static bool PrevisualizarInvisibles
+    {
+        get
+        {
+            if (rayaPref < 0)
+                rayaPref = PlayerPrefs.GetInt(ClaveRaya, 1) == 1 ? 1 : 0;
+            return rayaPref == 1;
+        }
+        set
+        {
+            rayaPref = value ? 1 : 0;
+            PlayerPrefs.SetInt(ClaveRaya, rayaPref);
+            PlayerPrefs.Save();
+        }
+    }
+
+    static Material MaterialRaya()
+    {
+        if (materialRaya != null)
+            return materialRaya;
+        var refs = FindFirstObjectByType<Referencias>(FindObjectsInactive.Include);
+        Material origen = refs != null ? (refs.materialImagenTransparente != null ? refs.materialImagenTransparente : refs.materialImagen) : null;
+        if (origen == null)
+            return null;
+        var tex = new Texture2D(16, 1, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Repeat, filterMode = FilterMode.Point };
+        var px = new Color32[16];
+        for (int i = 0; i < px.Length; i++)
+            px[i] = i < 9 ? new Color32(255, 255, 255, 255) : new Color32(255, 255, 255, 0);
+        tex.SetPixels32(px);
+        tex.Apply(false);
+        materialRaya = new Material(origen);
+        if (materialRaya.HasProperty("_BaseMap"))
+        {
+            materialRaya.SetTexture("_BaseMap", tex);
+            materialRaya.SetTextureScale("_BaseMap", new Vector2(60f, 1f));
+        }
+        if (materialRaya.HasProperty("_MainTex"))
+        {
+            materialRaya.SetTexture("_MainTex", tex);
+            materialRaya.SetTextureScale("_MainTex", new Vector2(60f, 1f));
+        }
+        if (materialRaya.HasProperty("_BaseColor"))
+            materialRaya.SetColor("_BaseColor", new Color(0.05f, 0.05f, 0.06f, 1f));
+        return materialRaya;
+    }
+
+    void ActualizarRaya()
+    {
+        bool ver = Invisible && !oculto && !verInvisibles && PrevisualizarInvisibles && curva.Count >= 2;
+        if (!ver)
+        {
+            if (raya != null && raya.enabled)
+                raya.enabled = false;
+            return;
+        }
+        if (raya == null)
+        {
+            var m = MaterialRaya();
+            if (m == null)
+                return;
+            var go = new GameObject("RayaInvisible");
+            go.layer = 0;   // como el boceto: no sale en fotos ni videos
+            go.transform.SetParent(transform, false);
+            raya = go.AddComponent<LineRenderer>();
+            raya.useWorldSpace = false;
+            raya.textureMode = LineTextureMode.Tile;
+            raya.alignment = LineAlignment.View;
+            raya.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            raya.receiveShadows = false;
+            raya.sharedMaterial = m;
+            raya.widthMultiplier = 0.0016f;
+        }
+        raya.enabled = true;
+        raya.positionCount = curva.Count;
+        raya.SetPositions(curva.ToArray());
     }
 
     Vector3 Tangente(int i)

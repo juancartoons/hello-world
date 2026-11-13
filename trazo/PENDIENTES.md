@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v63***
+*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v64***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -898,3 +898,15 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - HECHO: semipassthrough con la ventana más amplia y clara.
 - POR PROBAR: tamaño de la ventana del semipassthrough; que las reglas sean fáciles de agarrar; la velocidad para botar la hoja; el gotero.
 - IDEA: más adelante, decidir si se deja solo el gotero o solo el dedo jeringa.
+
+## v64
+- HECHO: MESA con dos MODOS (a la derecha, en un rectángulo dibujado): Entintando (rapidógrafo, plumilla, goma, frasco) y Dibujando (3 lápices de verdad acostados, goma); botón de abajo para cambiar. "Dibujar" quita el dibujo de muestra. Con muestra, la mesa empieza Entintando. "Hoja nueva" a la izquierda (donde estaba Hoja de tinta). "Hojear" → "Reproducir". Primera hoja de arriba: "+ Archivo nuevo".
+- HECHO: tinta en líneas con puntas iguales a las de los archivos (Trazo.PerfilPunta); la goma/puño borra solo el pedazo que toca (en burbujas) y la línea queda partida.
+- HECHO: reloj en la mesa: primero un botón rojo pequeño; al tocarlo sale el panel del Fondo.
+- HECHO: voz "salir" / "exit" (como el botón Salir del reloj).
+- HECHO: gotero y dedo jeringa estrictos (Línea solo líneas, Relleno solo rellenos).
+- HECHO: Propiedades · Tinta · "Líneas invisibles": Ocultas / Previsualizar (raya intermitente negra; por defecto Previsualizar; no sale en fotos).
+- HECHO: Propiedades se abre a un lado (derecha). Semipassthrough: con mirada más chico (25°–55°), fijo con menos degradado (40°–62°).
+- HECHO: micrófono, música y ojo visibles en la mesa (mic y ojo apagados al entrar; música en arpa la primera vez) y la música suena al dibujar en la mesa.
+- POR PROBAR: tamaños del rectángulo y del título; el ancho de la tinta de la mesa; la raya de las invisibles (largo de cada raya).
+- IDEA (sin HY): "Entintando" con letra a mano y una pincelada que se dibuja sola debajo.
