@@ -454,6 +454,10 @@ public partial class ControlManos : MonoBehaviour
                 break;
         }
 
+        // v67: dónde estás trabajando (para abrir los paneles al lado, sin taparlo).
+        if (Der.valida && (trazoActual != null || GestoIzq == Gesto.Nodos || GestoIzq == Gesto.Grosor || GestoIzq == Gesto.Borrar
+                           || (GestoIzq == Gesto.Dibujar && dibujo.UsaHoja)))
+            ZonaTrabajo.Anotar(Der.indice);
         if (GestoIzq != Gesto.Nodos && GestoIzq != Gesto.Grosor && GestoIzq != Gesto.Borrar)
             OcultarModoNodos();
         if (GestoIzq != Gesto.Nodos && figuras != null)

@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v66***
+*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v67***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -928,3 +928,11 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - HECHO: Propiedades más a un lado (derecha); lápiz y plastilina más a la izquierda.
 - HECHO: tutorial de Rellenos actualizado a la paleta nueva (Línea/Relleno, "Cómo rellena", tinta invisible en el círculo).
 - IDEAS (sin HY): integrar el primer tutorial con la mesa (ver respuesta de la v66).
+
+## v67
+- HECHO: ZONA DE TRABAJO (ZonaTrabajo.cs): Propiedades se abre a la derecha de tus últimos movimientos (no según la mirada) y se desliza si te vas a otra zona (salvo que lo muevas tú). Lápiz y Plastilina a la izquierda.
+- HECHO: mesa: botón "Original: 100 % · 50 % · oculto" entintando. Bolita en vivo al cambiar grosor o goma (en el pellizco).
+- HECHO: la imagen calcada entra PEGADA a la hoja 2D de la tinta. En la mesa no se ven las imágenes de referencia ni sus botones (Despegar/Ver).
+- HECHO: botón rojo de la muñeca: disco plano acostado sobre el dorso (canto oscuro, cara abombada, brillito), sigue el giro de la mano.
+- HECHO: X en la cara de muestra de las bocas (CerrarBocas.cs) con pregunta antes de borrar (Deshacer la devuelve).
+- POR PROBAR: que la zona de trabajo se sienta natural; el botón rojo visto en ángulo.

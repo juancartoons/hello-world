@@ -30,7 +30,7 @@ public class TutorialNovedades : TarjetaTutorial
     readonly List<Vector3> otra = new List<Vector3>();
     readonly List<Vector3> tramo = new List<Vector3>();
 
-    protected override int Paginas => 32;
+    protected override int Paginas => 33;
 
     protected override void ArmarExtra()
     {
@@ -84,7 +84,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 28: return Tx("29 · New palette, eyedropper and desk tools", "29 · Paleta nueva, gotero y herramientas de la mesa");
             case 29: return Tx("30 · Draw and Ink modes, sound on the desk", "30 · Modos Dibujar y Entintar, sonido en la mesa");
             case 30: return Tx("31 · Thickness and eraser on the desk", "31 · Grosor y borrador en la mesa");
-            default: return Tx("32 · Trace an image on the desk", "32 · Calcar una imagen en la mesa");
+            case 31: return Tx("32 · Trace an image on the desk", "32 · Calcar una imagen en la mesa");
+            default: return Tx("33 · Panels beside your drawing, Original and the mouths' X", "33 · Paneles junto a tu dibujo, Original y la X de las bocas");
         }
     }
 
@@ -141,6 +142,10 @@ public class TutorialNovedades : TarjetaTutorial
                     "DESERT SUNSET: a new living background: dunes all around you lit by a low golden sun, violet shadows, a pink and purple sky with thin clouds, the first stars and the wind lifting dust far away. Say \"desert\". LAYERS: each one shows a thumbnail on its left; say \"layer 2\" to jump to it; leave your finger still on the name to rename it; delete with the little trash can (tap twice). The camera is a layer of its own (\"+ Camera\" = another one). The panels open with either hand, whatever the other one is doing.",
                     "ATARDECER EN EL DESIERTO: un fondo vivo nuevo: dunas a tu alrededor con la luz dorada del sol bajito, sombras violeta, un cielo rosado y morado con nubes finas, las primeras estrellas y el viento levantando polvo a lo lejos. Di \"desierto\". CAPAS: cada una muestra su miniatura a la izquierda; di \"capa 2\" para ir a ella; deja el dedo quieto en el nombre para cambiarlo; borra con el basurerito (toca dos veces). La cámara es su propia capa (\"+ Cámara\" = otra). Las persianas se abren con cualquier mano, haga lo que haga la otra.");
             default:
+                return Tx(
+                    "PROPERTIES opens to the RIGHT OF WHAT YOU ARE DRAWING (your last movements), even if you look elsewhere; if you go draw somewhere else, it slides there (unless you moved it yourself). The pencil and clay panels go to the left. On the desk, while inking, \"Original: 100 % · 50 % · hidden\" shows or hides what is underneath, to check your ink alone. While you change the ink thickness or the eraser size, the little ball grows live in your pinch. The image you traced comes into your file STUCK to your ink sheet. Reference images and their buttons no longer stay floating on the desk. The red button on the wrist is now a flat disc lying on the back of your hand. The sample face with mouths has an X: it asks before deleting them (Undo brings them back).",
+                    "PROPIEDADES se abre a la DERECHA DE LO QUE ESTÁS DIBUJANDO (tus últimos movimientos), aunque mires a otro lado; si te vas a dibujar a otro lugar, se desliza hasta allá (salvo que lo hayas movido tú). Los paneles del lápiz y la plastilina van a la izquierda. En la mesa, entintando, \"Original: 100 % · 50 % · oculto\" muestra o esconde lo de abajo, para revisar tu tinta sola. Mientras cambias el grosor de la tinta o el tamaño de la goma, la bolita crece en vivo en tu pellizco. La imagen que calcaste entra a tu archivo PEGADA a tu hoja de tinta. Las imágenes de referencia y sus botones ya no se quedan flotando en la mesa. El botón rojo de la muñeca ahora es un disco plano acostado sobre el dorso de tu mano. La cara de muestra de las bocas tiene una X: pregunta antes de borrarlas (Deshacer las devuelve).");
+            case 31:
                 return Tx(
                     "IMPORT IMAGE (left of the desk): choose one of your images and it goes onto the disc sheet to trace it while inking. When you ENTER, that image (or the sample drawing) comes into your file as a REFERENCE IMAGE, in the same place, behind your ink. On the desk the ink now follows your finger like inside your files (faster and more precise), lines keep more nodes, the nodes show (small) while you erase, and a little ball on your finger shows the ink thickness or the eraser size (pink). The ink sheet is closer to the drawing. Properties opens further to the side.",
                     "IMPORTAR IMAGEN (a la izquierda de la mesa): elige una de tus imágenes y va a la hoja del disco para calcarla entintando. Al ENTRAR, esa imagen (o el dibujo de muestra) pasa a tu archivo como IMAGEN DE REFERENCIA, en el mismo lugar, detrás de tu tinta. En la mesa la tinta ahora sigue a tu dedo como adentro de los archivos (más rápida y precisa), las líneas guardan más nodos, los nodos se ven (pequeños) mientras borras y una bolita en tu dedo muestra el grosor de la tinta o el tamaño de la goma (rosada). La hoja de tinta está más pegada al dibujo. Propiedades se abre más a un lado.");

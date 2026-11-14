@@ -79,6 +79,9 @@ public class MesaEntrada : MonoBehaviour
     Mesh mallaActual;
     bool mallaActualSucia;
     readonly Dictionary<string, Color32[]> imagenesHoja = new Dictionary<string, Color32[]>();
+    // v67: entintando, cómo se ve lo de abajo (lápiz, muestra o imagen): 0 = 100 %, 1 = 50 %, 2 = oculto.
+    int vistaOriginal;
+    BotonTocable btnOriginal;
     static bool sonidoMesaListo;
     TextMeshPro textoAyuda;
     float cerrarAppHasta;
@@ -1016,6 +1019,8 @@ public class MesaEntrada : MonoBehaviour
     void PasarBocetoAlDibujo()
     {
         // v66: la imagen de la hoja (o el dibujo de muestra) entra como imagen de referencia, en su lugar.
+        // v67: se pone AL FINAL (cuando tu tinta ya tiene su hoja 2D) y queda PEGADA a ella (se mueve con tu dibujo).
+        System.Action pasarImagen;
         {
             var cabR = control.Cabeza;
             Vector3 adel = Vector3.ProjectOnPlane(cabR.forward, Vector3.up);
@@ -1031,13 +1036,15 @@ public class MesaEntrada : MonoBehaviour
                 }
             if (boceto.paginas.Count == 1)
                 conImagen = Pag;
-            PasarImagenDeReferencia(conImagen, boceto.antiguo && (boceto.actual == 0 || boceto.paginas.Count > 1),
-                                    cabR.position + adel * 0.7f, adel, 0.9f * AltoHoja / AnchoHoja);
+            bool conMuestra = boceto.antiguo && (boceto.actual == 0 || boceto.paginas.Count > 1);
+            Vector3 centroR = cabR.position + adel * 0.7f;
+            pasarImagen = () => PasarImagenDeReferencia(conImagen, conMuestra, centroR, adel, 0.9f * AltoHoja / AnchoHoja);
         }
         // v62: con VARIAS hojas en el bloc, entran TODAS como cuadros de animación.
         if (boceto.paginas.Count > 1 && dibujo.animacion != null)
         {
             PasarBlocComoCuadros();
+            pasarImagen();
             boceto = new Guardado();
             tintaPuesta = false;
             RehacerHoja();
@@ -1109,6 +1116,7 @@ public class MesaEntrada : MonoBehaviour
         {
             dibujo.Mensaje("Hoja nueva");
         }
+        pasarImagen();
         // La hoja de la mesa queda lista para otro boceto (si hay más hojas en el bloc, se quedan; sale la que entró).
         if (boceto.paginas.Count > 1)
         {
@@ -1808,6 +1816,9 @@ public class MesaEntrada : MonoBehaviour
             Vector3 l = (tintaPuesta ? hojaTinta : hoja).InverseTransformPoint(der.indice);
             float d = -l.z * escalaMesa;
             ver = Mathf.Abs(l.x) < 0.6f && Mathf.Abs(l.y) < 0.6f && d < 0.1f && d > -0.05f;
+        }
+        if (der.valida && hoja != null)
+        {
             float metrosPorPx = AnchoHoja / AnchoTex * escalaMesa;
             if (goma)
                 diametro = 2f * 8f * tamanoGomaMesa * metrosPorPx;
@@ -1815,6 +1826,14 @@ public class MesaEntrada : MonoBehaviour
                 diametro = AnchoTintaMesa * anchoPincelMesa * escalaMesa;
             else
                 diametro = 5f * metrosPorPx;
+        }
+        // v67: mientras cambias el grosor o el tamaño de la goma, la bolita se queda en tu pellizco y crece en vivo.
+        bool ajustando = (grosorActivo || gomaDial) && der.valida;
+        if (ajustando)
+        {
+            ver = true;
+            if (grosorActivo && lineaGrosor != null && nodoGrosor < lineaGrosor.p.Count)
+                diametro = AnchoTintaMesa * (lineaGrosor.a > 0f ? lineaGrosor.a : 1f) * lineaGrosor.p[nodoGrosor].z * escalaMesa;
         }
         if (ver && bolaDedo == null)
         {
@@ -1835,7 +1854,7 @@ public class MesaEntrada : MonoBehaviour
             bolaDedo.gameObject.SetActive(ver);
         if (!ver)
             return;
-        bolaDedo.position = der.indice;
+        bolaDedo.position = ajustando ? der.PuntoPellizco : der.indice;
         bolaDedo.localScale = Vector3.one * Mathf.Max(0.0015f, diametro);
         Color c = goma ? new Color(0.95f, 0.45f, 0.52f) : tintaPuesta ? new Color(0.05f, 0.05f, 0.07f) : ColoresLapiz[Mathf.Clamp(colorLapiz, 0, 2)];
         if (matBolaDedo.HasProperty("_BaseColor"))
@@ -2009,7 +2028,9 @@ public class MesaEntrada : MonoBehaviour
         float altoImagen = h * k / AltoTex * alto;
         float centroY = ((ZonaY0 + ZonaY1) * 0.5f / AltoTex - 0.5f) * alto;
         Vector3 pos = centro + Vector3.up * centroY + adelante * 0.004f;   // detrás de tu tinta
-        refs.PonerEn(archivo, pos, Quaternion.LookRotation(adelante, Vector3.up), altoImagen);
+        var img = refs.PonerEn(archivo, pos, Quaternion.LookRotation(adelante, Vector3.up), altoImagen);
+        if (img != null)
+            refs.AlSoltar(img);   // v67: pegada a la hoja 2D de tu tinta (como cuando la acercas con el imán)
     }
 
     // v65: el TAMAÑO DE LA GOMA (puño izquierdo + pellizco derecho; arriba = más grande, abajo = más chica).
@@ -2497,8 +2518,25 @@ public class MesaEntrada : MonoBehaviour
         if (frasco != null && frasco.gameObject.activeSelf != t)
             frasco.gameObject.SetActive(t);
         tituloModo.text = Idioma.T(t ? "Entintando" : "Dibujando");
+        if (btnOriginal != null)
+        {
+            if (btnOriginal.gameObject.activeSelf != t)
+            {
+                btnOriginal.gameObject.SetActive(t);
+                btnOriginal.etiqueta.gameObject.SetActive(t);
+            }
+            Idioma.Poner(btnOriginal.etiqueta, vistaOriginal == 0 ? "Original: 100 %" : vistaOriginal == 1 ? "Original: 50 %" : "Original: oculto");
+        }
         Idioma.Poner(btnModo.etiqueta, t ? "Dibujar" : "Entintar");
         AcomodarHerramientas();
+    }
+
+    void SiguienteVistaOriginal()
+    {
+        vistaOriginal = (vistaOriginal + 1) % 3;
+        if (!hojeando)
+            RehacerHoja();
+        control.SonidoBurbuja(btnOriginal.transform.position);
     }
 
     // El botón de abajo: pasa al otro modo. Al pasar a DIBUJAR, el dibujo de muestra se va (la hoja queda en blanco).
@@ -2520,6 +2558,8 @@ public class MesaEntrada : MonoBehaviour
         else
         {
             PonerModoTinta(true);
+            if (vistaOriginal > 0)
+                RehacerHoja();
         }
         if (textoAyuda != null)
             textoAyuda.text = Idioma.T(tintaPuesta ? "Entintando: rapidógrafo (líneas) o plumilla (pintada)" : "Dibujando con lápiz");
@@ -2741,6 +2781,9 @@ public class MesaEntrada : MonoBehaviour
         Pieza(PrimitiveType.Cube, new Vector3(-0.044f, 0f, 0f), new Vector3(0.009f, 0.0095f, 0.009f), Quaternion.identity, metal, hPluma);
         Pieza(PrimitiveType.Cube, new Vector3(-0.056f, 0f, 0f), new Vector3(0.016f, 0.005f, 0.002f), Quaternion.identity,
               Pintura(new Color(0.88f, 0.68f, 0.22f)), hPluma);
+        // v67: "Original": cómo se ve lo de abajo mientras entintas (100 % · 50 % · oculto), para revisar tu tinta sola.
+        btnOriginal = PanelTutoriales.Boton(raiz, "", new Vector3(0.34f, -0.022f, -0.004f), new Vector2(0.15f, 0.018f), normal, marcado);
+        btnOriginal.alTocar.AddListener(SiguienteVistaOriginal);
         // Su frasquito de tinta china (solo en modo Entintar).
         frasco = Pieza(PrimitiveType.Cylinder, new Vector3(0.405f, 0.01f, -0.01f), new Vector3(0.015f, 0.009f, 0.015f), giroDisco,
                        Pintura(new Color(0.05f, 0.05f, 0.08f)));
@@ -2940,6 +2983,13 @@ public class MesaEntrada : MonoBehaviour
         fondoGoma = pxFondo;
         foreach (var l in Pag.lapiz)
             RepintarLinea(l, false);
+        // v67: entintando, lo de abajo al 50 % o escondido (solo se ve el papel, su número y tu tinta).
+        if (tintaPuesta && vistaOriginal > 0)
+        {
+            float f = vistaOriginal == 1 ? 0.5f : 1f;
+            for (int i = 0; i < pxHoja.Length; i++)
+                pxHoja[i] = Color32.Lerp(pxHoja[i], pxFondo[i], f);
+        }
         RehacerTinta();   // papel de calcar (deja ver el lápiz, un poco más claro) y la tinta encima
         if (textoBloc != null)
             textoBloc.text = Idioma.T("Hoja") + " " + (boceto.actual + 1) + " / " + boceto.paginas.Count;

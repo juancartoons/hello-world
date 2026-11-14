@@ -162,9 +162,11 @@ public class PanelPropiedades : MonoBehaviour
         if (adelante.sqrMagnitude < 1e-4f)
             adelante = Vector3.forward;
         adelante.Normalize();
-        // v64: a un lado (a la derecha), para no tapar lo que dibujas.
-        Vector3 derecha = Vector3.Cross(Vector3.up, adelante).normalized;
-        Vector3 pos = cab.position + adelante * 0.36f + derecha * 0.44f + Vector3.up * 0.06f;   // v66: más a un lado
+        // v67: a la DERECHA DE LO QUE ESTÁS DIBUJANDO (tus últimos movimientos), aunque mires a otro lado.
+        Vector3 pos = ZonaTrabajo.PosicionAlLado(cab, true, Ancho * 0.5f);
+        posAuto = pos;
+        movidoAMano = false;
+        deslizando = false;
         transform.SetPositionAndRotation(pos, Quaternion.LookRotation(pos - cab.position, Vector3.up));
         colocado = true;
     }
@@ -205,11 +207,48 @@ public class PanelPropiedades : MonoBehaviour
         puntaDedo.localScale = Vector3.one * (0.009f / s);
     }
 
+    // v67: si tu zona de trabajo se va lejos, el panel se desliza suave a su nuevo lado (salvo que lo hayas movido tú).
+    Vector3 posAuto, objetivo;
+    bool movidoAMano, deslizando;
+    float proximaZona;
+
+    void SeguirZona()
+    {
+        var cab = control.Cabeza;
+        if (cab == null || !colocado)
+            return;
+        if (!movidoAMano && !deslizando && (transform.position - posAuto).sqrMagnitude > 0.0004f)
+            movidoAMano = true;   // lo moviste tú: se queda donde lo pusiste
+        if (movidoAMano)
+            return;
+        if (Time.time >= proximaZona)
+        {
+            proximaZona = Time.time + 1f;
+            bool dedoLejos = !control.Der.valida || Vector3.Distance(control.Der.indice, transform.position) > 0.3f;
+            Vector3 nueva = ZonaTrabajo.PosicionAlLado(cab, true, Ancho * 0.5f);
+            if (dedoLejos && Vector3.Distance(nueva, posAuto) > 0.25f)
+            {
+                objetivo = nueva;
+                deslizando = true;
+            }
+        }
+        if (!deslizando)
+            return;
+        posAuto = Vector3.Lerp(posAuto, objetivo, 1f - Mathf.Exp(-3f * Time.deltaTime));
+        if ((posAuto - objetivo).sqrMagnitude < 0.0001f)
+        {
+            posAuto = objetivo;
+            deslizando = false;
+        }
+        transform.SetPositionAndRotation(posAuto, Quaternion.LookRotation(posAuto - cab.position, Vector3.up));
+    }
+
     void Update()
     {
         if (control == null || dibujo == null)
             return;
         ActualizarPuntaDedo();
+        SeguirZona();
         if (Time.time < proximo)
             return;
         proximo = Time.time + 0.25f;

@@ -88,13 +88,20 @@ public class Referencias : MonoBehaviour
 
     void Update()
     {
+        // v67: en la mesa de animación no se ve ninguna imagen de referencia (vuelven al entrar a un dibujo).
+        bool enMesa = MesaEntrada.Activa;
+        foreach (var img in imagenes)
+            if (img.raiz != null && img.raiz.gameObject.activeSelf == enMesa)
+                img.raiz.gameObject.SetActive(!enMesa);
+        if (enMesa && seleccionada != null)
+            Seleccionar(null);
         Imagen borrar = null;
         // La X (arriba a la derecha, afuera de la esquina) de cada imagen: tocarla = quitar la imagen.
         foreach (var img in imagenes)
         {
             if (img.quitar == null || img.raiz == null)
                 continue;
-            bool verX = !ocultas && img.render != null && img.render.enabled;
+            bool verX = !ocultas && img.render != null && img.render.enabled && !MesaEntrada.Activa && img.raiz.gameObject.activeInHierarchy;
             if (img.quitar.gameObject.activeSelf != verX)
                 img.quitar.gameObject.SetActive(verX);
             if (!verX)
@@ -113,7 +120,8 @@ public class Referencias : MonoBehaviour
         {
             if (img.boton == null || img.raiz == null)
                 continue;
-            bool ver = img.datos.pegada && !ocultas;
+            // v67: en la mesa de animación (o si su imagen no se ve) los botones "Despegar" y "Ver" no se quedan flotando.
+            bool ver = img.datos.pegada && !ocultas && !MesaEntrada.Activa && img.raiz.gameObject.activeInHierarchy;
             if (img.boton.gameObject.activeSelf != ver)
                 img.boton.gameObject.SetActive(ver);
             if (!ver)

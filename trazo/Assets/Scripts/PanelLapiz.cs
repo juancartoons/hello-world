@@ -157,8 +157,7 @@ public class PanelLapiz : MonoBehaviour
                 adelante = Vector3.forward;
             adelante.Normalize();
             // v65: a un lado (a tu izquierda; Propiedades sale a la derecha), para no tapar lo que dibujas.
-            Vector3 izquierda = -Vector3.Cross(Vector3.up, adelante).normalized;
-            Vector3 pos = cab.position + adelante * 0.36f + izquierda * 0.44f + Vector3.up * 0.06f;   // v66: más a un lado
+            Vector3 pos = ZonaTrabajo.PosicionAlLado(cab, false, 0.16f);   // v67: a la izquierda de lo que estás dibujando
             transform.SetPositionAndRotation(pos, Quaternion.LookRotation(pos - cab.position, Vector3.up));
         }
         Refrescar(false);

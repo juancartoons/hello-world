@@ -255,57 +255,103 @@ public class PanelMuneca : MonoBehaviour
         ActualizarBotonRojo();
     }
 
-    // v65: el botón rojo va EN TU MUÑECA izquierda (como la carátula de un reloj, un poco más chico): un disco plano
-    // de medio centímetro de alto, mirándote.
+    // v67: el botón rojo va ACOSTADO sobre el dorso de tu muñeca izquierda, como la carátula de un reloj: un disco
+    // plano con su canto (medio centímetro) y la cara un poquito abombada. Sigue el giro de tu mano: según cómo la
+    // muevas lo ves de lado (como una moneda) o más redondo, por la perspectiva.
     void ActualizarBotonRojo()
     {
         bool ver = MesaEntrada.Activa && visible && !mesaDesplegada && control != null && control.Cabeza != null && control.Izq.valida;
-        if (ver && botonRojo == null)
+        if (ver && botonRojoRaiz == null)
             CrearBotonRojo();
-        if (botonRojo == null)
+        if (botonRojoRaiz == null)
             return;
-        if (botonRojo.gameObject.activeSelf != ver)
-            botonRojo.gameObject.SetActive(ver);
+        if (botonRojoRaiz.gameObject.activeSelf != ver)
+            botonRojoRaiz.gameObject.SetActive(ver);
         if (!ver)
             return;
-        var muneca = ManosUtil.Hueso(control.Izq.esqueleto, "WristRoot", "Wrist");
-        Vector3 m = muneca != null ? muneca.position : control.Izq.pulgar;
-        Vector3 haciaOjos = control.Cabeza.position - m;
-        if (haciaOjos.sqrMagnitude < 1e-6f)
+        var esq = control.Izq.esqueleto;
+        var muneca = ManosUtil.Hueso(esq, "WristRoot", "Wrist");
+        var indice = ManosUtil.Hueso(esq, "Index1", "IndexProximal");
+        var menique = ManosUtil.Hueso(esq, "Pinky1", "LittleProximal");
+        if (muneca == null || indice == null || menique == null)
             return;
-        Vector3 pos = m + haciaOjos.normalized * 0.025f;
-        botonRojo.transform.SetPositionAndRotation(pos,
-            Quaternion.LookRotation(pos - control.Cabeza.position, Vector3.up) * Quaternion.Euler(90f, 0f, 0f));
+        Vector3 m = muneca.position;
+        Vector3 haciaDedos = (indice.position + menique.position) * 0.5f - m;
+        Vector3 dorso = Vector3.Cross(indice.position - m, menique.position - m);
+        if (dorso.sqrMagnitude < 1e-10f || haciaDedos.sqrMagnitude < 1e-8f)
+            return;
+        dorso.Normalize();
+        if (Vector3.Dot(dorso, control.Cabeza.position - m) < 0f)
+            dorso = -dorso;   // el lado del dorso (el que te mira cuando ves la hora)
+        Vector3 adelante = Vector3.ProjectOnPlane(haciaDedos, dorso);
+        if (adelante.sqrMagnitude < 1e-8f)
+            return;
+        Vector3 pos = m + dorso * 0.012f + haciaDedos.normalized * 0.008f;
+        botonRojoRaiz.SetPositionAndRotation(pos, Quaternion.LookRotation(adelante.normalized, dorso));
     }
 
     bool mesaDesplegada, desplegadaAplicada;
     BotonTocable botonRojo;
+    Transform botonRojoRaiz;
+
+    static Material Pintado(Material baseM, Color c)
+    {
+        var m = new Material(baseM);
+        if (m.HasProperty("_BaseMap"))
+            m.SetTexture("_BaseMap", Texture2D.whiteTexture);
+        if (m.HasProperty("_BaseColor"))
+            m.SetColor("_BaseColor", c);
+        if (m.HasProperty("_Color"))
+            m.SetColor("_Color", c);
+        return m;
+    }
 
     void CrearBotonRojo()
     {
-        if (botonRojo != null)
+        if (botonRojoRaiz != null)
             return;
-        var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        go.name = "BotonRojoMesa";
-        go.transform.localScale = new Vector3(0.028f, 0.0025f, 0.028f);   // 2,8 cm de ancho y medio centímetro de alto
-        var r = go.GetComponent<Renderer>();
         var refs = FindFirstObjectByType<Referencias>(FindObjectsInactive.Include);
         Material baseM = refs != null && refs.materialImagen != null ? refs.materialImagen : (btnFondo != null ? btnFondo.materialNormal : null);
-        var rojo = baseM != null ? new Material(baseM) : r.sharedMaterial;
-        if (rojo.HasProperty("_BaseMap"))
-            rojo.SetTexture("_BaseMap", Texture2D.whiteTexture);
-        if (rojo.HasProperty("_BaseColor"))
-            rojo.SetColor("_BaseColor", new Color(0.86f, 0.16f, 0.14f));
-        if (rojo.HasProperty("_Color"))
-            rojo.SetColor("_Color", new Color(0.86f, 0.16f, 0.14f));
-        r.sharedMaterial = rojo;
-        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        botonRojo = go.AddComponent<BotonTocable>();
-        botonRojo.materialNormal = rojo;
-        botonRojo.materialMarcado = rojo;
+        if (baseM == null)
+            return;
+        botonRojoRaiz = new GameObject("BotonRojoMesa").transform;
+        var canto = Pintado(baseM, new Color(0.55f, 0.07f, 0.08f));
+        // El canto (más oscuro): 2,6 cm de ancho y medio centímetro de alto.
+        var b = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        b.name = "Canto";
+        b.transform.SetParent(botonRojoRaiz, false);
+        b.transform.localPosition = new Vector3(0f, 0.0025f, 0f);
+        b.transform.localScale = new Vector3(0.026f, 0.0025f, 0.026f);
+        var rb = b.GetComponent<Renderer>();
+        rb.sharedMaterial = canto;
+        rb.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        // La cara, un poquito abombada.
+        var c = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        c.name = "Cara";
+        Destroy(c.GetComponent<Collider>());
+        c.transform.SetParent(botonRojoRaiz, false);
+        c.transform.localPosition = new Vector3(0f, 0.005f, 0f);
+        c.transform.localScale = new Vector3(0.0245f, 0.004f, 0.0245f);
+        var rc = c.GetComponent<Renderer>();
+        rc.sharedMaterial = Pintado(baseM, new Color(0.88f, 0.16f, 0.15f));
+        rc.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        // Un brillito.
+        var s = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        s.name = "Brillo";
+        Destroy(s.GetComponent<Collider>());
+        s.transform.SetParent(botonRojoRaiz, false);
+        s.transform.localPosition = new Vector3(-0.005f, 0.0068f, 0.004f);
+        s.transform.localScale = new Vector3(0.006f, 0.0012f, 0.004f);
+        var rs = s.GetComponent<Renderer>();
+        rs.sharedMaterial = Pintado(baseM, new Color(1f, 0.55f, 0.52f));
+        rs.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        botonRojo = b.AddComponent<BotonTocable>();
+        botonRojo.materialNormal = canto;
+        botonRojo.materialMarcado = canto;
+        botonRojo.distancia = 0.012f;
         BotonTocable.PonerNombre(botonRojo, "Fondo");
         botonRojo.alTocar.AddListener(() => mesaDesplegada = true);
-        go.SetActive(false);
+        botonRojoRaiz.gameObject.SetActive(false);
     }
 
     // v62: EN LA MESA DE ANIMACIÓN el reloj sale solo con lo del FONDO (Fondo y las flechas de girar): lo demás se
