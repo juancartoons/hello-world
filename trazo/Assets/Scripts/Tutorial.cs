@@ -143,6 +143,11 @@ public class Tutorial : MonoBehaviour
     TextMeshPro eslogan;
     Transform logo;          // v49: el logo (si está): reemplaza a las letras, que siguen marcando el ritmo invisibles
     Material matLogo;
+    // v68: el aviso de manos bajo el logo (dibujo de los guantes + "se usa con las manos").
+    Transform avisoManos;
+    Material matAviso;
+    Mesh mallaAviso;
+    TextMeshPro avisoUno, avisoDos;
     readonly List<Material> matsLogoFondo = new List<Material>();   // v50: las capas de atrás (el volumen 3D)
     Mesh mallaLogo;
     MunecoGuia munecoTitulo;
@@ -504,6 +509,8 @@ public class Tutorial : MonoBehaviour
             eslogan.gameObject.SetActive(false);
         }
 
+        CrearAvisoManos();
+
         munecoTitulo = new MunecoGuia(titulo, materialNegro, 0.0048f);
         munecoTitulo.escala = 0.22f;
         munecoTitulo.temblor = 0.003f;
@@ -523,7 +530,7 @@ public class Tutorial : MonoBehaviour
             return;
         }
         float t = Time.time - tituloDesde;
-        const float fadeDesde = 4.7f, fadeDura = 1.4f;
+        const float fadeDesde = 7.2f, fadeDura = 1.4f; // v68: más tiempo, para leer el aviso de manos
         float f = 1f - Mathf.Clamp01((t - fadeDesde) / fadeDura);
         // Se mece un poquito de lado a lado: así se nota la profundidad de las letras.
         titulo.rotation = tituloGiro * Quaternion.Euler(Mathf.Sin(t * 0.7f) * 3f, Mathf.Sin(t * 0.9f) * 11f, 0f);
@@ -555,6 +562,17 @@ public class Tutorial : MonoBehaviour
         }
         if (eslogan != null)
             eslogan.alpha = Mathf.Clamp01((t - 1.65f) / 0.6f) * f;
+        // v68: los guantes se dibujan de izquierda a derecha y luego aparece el mensaje.
+        if (matAviso != null)
+        {
+            matAviso.SetFloat("_Revela", Mathf.Clamp01((t - 2.3f) / 1.1f));
+            matAviso.SetFloat("_Alfa", f);
+        }
+        float alfaAviso = Mathf.Clamp01((t - 3.1f) / 0.6f) * f;
+        if (avisoUno != null)
+            avisoUno.alpha = alfaAviso;
+        if (avisoDos != null)
+            avisoDos.alpha = alfaAviso * 0.8f;
         if (logo != null && matLogo != null)
         {
             // Las letras siguen marcando el ritmo (chispas, muñequito), pero no se ven: se ve el logo.
@@ -686,6 +704,55 @@ public class Tutorial : MonoBehaviour
         if (mallaLogo != null)
             Destroy(mallaLogo);
         mallaLogo = null;
+        avisoManos = null;
+        avisoUno = null;
+        avisoDos = null;
+        if (matAviso != null)
+            Destroy(matAviso);
+        matAviso = null;
+        if (mallaAviso != null)
+            Destroy(mallaAviso);
+        mallaAviso = null;
+    }
+
+    // v68: bajo el logo, los dos guantes (izquierda: pulgar + índice para dibujar; derecha: el índice traza
+    // una línea) y el mensaje "JCartoons se usa con las manos", en el idioma elegido y debajo en el otro.
+    void CrearAvisoManos()
+    {
+        if (titulo == null)
+            return;
+        float abajo = logo != null ? logo.localPosition.y - logo.localScale.y * 0.5f : -0.13f;
+        float yManos = abajo - 0.1f;
+        var tex = Resources.Load<Texture2D>("AvisoManos");
+        if (tex != null && materialLogo != null)
+        {
+            matAviso = new Material(materialLogo);
+            matAviso.SetTexture("_BaseMap", tex);
+            matAviso.SetFloat("_Revela", 0f);
+            matAviso.SetFloat("_Alfa", 1f);
+            matAviso.SetFloat("_Ola", 0f);
+            mallaAviso = MallaLogo(1, 1);
+            var go = new GameObject("AvisoManos");
+            avisoManos = go.transform;
+            avisoManos.SetParent(titulo, false);
+            avisoManos.localPosition = new Vector3(0f, yManos, -0.004f);
+            avisoManos.localScale = new Vector3(0.34f, 0.34f * tex.height / (float)tex.width, 1f);
+            go.AddComponent<MeshFilter>().sharedMesh = mallaAviso;
+            var r = go.AddComponent<MeshRenderer>();
+            r.sharedMaterial = matAviso;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            r.receiveShadows = false;
+        }
+        float yTexto = yManos - 0.11f;
+        avisoUno = CrearTexto(titulo,
+            Tx("JCartoons is made for your hands. Put your controllers away.", "JCartoons se usa con las manos. Deja los controles a un lado."),
+            new Vector3(0f, yTexto, 0f), new Vector2(0.7f, 0.045f), 0.3f, new Color(0.18f, 0.18f, 0.28f));
+        avisoUno.alpha = 0f;
+        avisoDos = CrearTexto(titulo,
+            Tx("JCartoons se usa con las manos. Deja los controles a un lado.", "JCartoons is made for your hands. Put your controllers away."),
+            new Vector3(0f, yTexto - 0.042f, 0f), new Vector2(0.6f, 0.032f), 0.22f, new Color(0.3f, 0.3f, 0.42f));
+        avisoDos.fontStyle = FontStyles.Italic;
+        avisoDos.alpha = 0f;
     }
 
     void TerminarTitulo()

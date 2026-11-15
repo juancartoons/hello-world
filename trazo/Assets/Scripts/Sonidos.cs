@@ -3,7 +3,7 @@ using UnityEngine;
 // Sonidos hechos por la app (sin archivos de audio): todo se calcula con matemáticas al empezar.
 public static class Sonidos
 {
-    static AudioClip burbuja, magia, paso, ding, tada, cristal;
+    static AudioClip burbuja, magia, paso, ding, tada, cristal, gesto;
     const int Frecuencia = 44100;
 
     // Opción secreta de la paleta (la burbujita de arriba a la derecha): con burbujas (el "plop" de siempre) o sin
@@ -856,6 +856,27 @@ public static class Sonidos
             Eco(datos, 0.32f);
             magia = Clip("Magia", datos, 0.85f);
             return magia;
+        }
+    }
+
+    // v68: "tic" muy corto y suave cuando un gesto de la mano se activa (dibujar, grosor, nodos...).
+    public static AudioClip Gesto
+    {
+        get
+        {
+            if (gesto != null)
+                return gesto;
+            var datos = new float[Mathf.RoundToInt(Frecuencia * 0.09f)];
+            for (int i = 0; i < datos.Length; i++)
+            {
+                float t = i / (float)Frecuencia;
+                float ataque = Mathf.Clamp01(t / 0.003f);
+                float a = Mathf.Sin(2f * Mathf.PI * 1568f * t) * Mathf.Exp(-t * 55f);
+                float b = Mathf.Sin(2f * Mathf.PI * 2349f * t) * Mathf.Exp(-t * 80f) * 0.35f;
+                datos[i] = (a + b) * ataque;
+            }
+            gesto = Clip("Gesto", datos, 0.35f);
+            return gesto;
         }
     }
 

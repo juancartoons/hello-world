@@ -82,7 +82,7 @@ public partial class ControlManos : MonoBehaviour
     public bool NodosIzquierdo => Izq.valida && Vector3.Distance(Izq.pulgar, Izq.medio) < 0.022f
                                   && Vector3.Distance(Izq.pulgar, Izq.indice) > 0.035f;
     // v65: el gesto de GROSOR (pulgar + anular izquierdos), para la mesa.
-    public bool GrosorIzquierdo => Izq.valida && Vector3.Distance(Izq.pulgar, Izq.anular) < 0.022f
+    public bool GrosorIzquierdo => Izq.valida && Vector3.Distance(Izq.pulgar, Izq.anular) < 0.024f
                                    && Vector3.Distance(Izq.pulgar, Izq.medio) > 0.03f && Vector3.Distance(Izq.pulgar, Izq.indice) > 0.035f;
     public float SensibilidadGrosor => sensibilidadGrosor;
 
@@ -735,8 +735,8 @@ public partial class ControlManos : MonoBehaviour
             // Medio, anular o meñique con el índice estirado (así no se confunde con el puño).
             if (dMedio < pellizcoEntra && dMedio <= dAnular && dMedio <= dMenique)
                 nuevo = Gesto.Nodos;
-            else if (dAnular < pellizcoEntra && dAnular <= dMenique)
-                nuevo = Gesto.Grosor;
+            else if (dAnular < pellizcoEntra * 1.15f && dAnular <= dMenique)
+                nuevo = Gesto.Grosor; // v68: un poquito más fácil (a veces no entraba)
             else if (dMenique < pellizcoEntra)
                 nuevo = Gesto.Recta;
         }
@@ -850,6 +850,7 @@ public partial class ControlManos : MonoBehaviour
             // La mano se esconde y en su lugar aparece un borrador (solo es un símbolo).
             OcultarMano(true, true);
         }
+        AvisarGesto(g); // v68: las puntas de los dedos que lo forman brillan y suena un "tic" suave
     }
 
     void SalirDeGesto()
@@ -2462,6 +2463,7 @@ public partial class ControlManos : MonoBehaviour
 
     void LateUpdate()
     {
+        ActualizarBrilloDedos(); // v68
         Actualizar2030();
         ActualizarGuante();
         EjecutarLapiz();

@@ -4,6 +4,7 @@ Shader "TrazoVR/Encima"
     Properties
     {
         _BaseColor ("Color", Color) = (0.2, 0.8, 0.3, 1)
+        _Alfa ("Opacidad (v68: Propiedades aparece semitransparente)", Float) = 1
     }
     SubShader
     {
@@ -16,6 +17,7 @@ Shader "TrazoVR/Encima"
             ZTest Always
             ZWrite Off
             Cull Off
+            Blend SrcAlpha OneMinusSrcAlpha
 
             HLSLPROGRAM
             #pragma vertex Vert
@@ -25,6 +27,7 @@ Shader "TrazoVR/Encima"
 
             CBUFFER_START(UnityPerMaterial)
                 half4 _BaseColor;
+                float _Alfa;
             CBUFFER_END
 
             struct Attributes
@@ -51,7 +54,7 @@ Shader "TrazoVR/Encima"
             half4 Frag(Varyings i) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
-                return half4(_BaseColor.rgb, 1);
+                return half4(_BaseColor.rgb, saturate(_Alfa));
             }
             ENDHLSL
         }

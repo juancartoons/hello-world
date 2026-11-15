@@ -101,7 +101,10 @@ public class PanelPropiedades : MonoBehaviour
         // donde lo dejes (y si quedó muy lejos de ti, se trae).
         var cab = instancia.control != null ? instancia.control.Cabeza : null;
         if (!yaAbierto || !instancia.colocado || (cab != null && Vector3.Distance(cab.position, instancia.transform.position) > 1.6f))
+        {
             instancia.Colocar();
+            instancia.EmpezarAparecer();
+        }
         instancia.firma = "";
         instancia.Refrescar();
     }
@@ -243,12 +246,145 @@ public class PanelPropiedades : MonoBehaviour
         transform.SetPositionAndRotation(posAuto, Quaternion.LookRotation(posAuto - cab.position, Vector3.up));
     }
 
+    // ---------- v68: que SE NOTE cuando se abre ----------
+    // 1) Sale chiquito y semitransparente desde tu dedo (el botón que tocaste) y crece hasta su lugar.
+    // 2) Si quedó fuera de tu vista, una lucecita en la orilla de lo que ves (con su nombre) te dice hacia dónde
+    //    está, hasta que lo mires (o pasen unos segundos).
+    const float DuraAparecer = 0.5f;
+    bool apareciendo, porMirar;
+    float aparecerDesde, porMirarDesde;
+    Vector3 aparecerDesdePos, aparecerHacia;
+    Transform aviso;
+    TextMeshPro avisoTexto;
+    Material matAviso;
+
+    void EmpezarAparecer()
+    {
+        var cab = control.Cabeza;
+        aparecerHacia = transform.position;
+        var der = control.Der;
+        if (der.valida && cab != null && Vector3.Distance(der.indice, cab.position) < 0.9f)
+            aparecerDesdePos = der.indice;
+        else if (cab != null)
+            aparecerDesdePos = cab.position + cab.forward * 0.45f - Vector3.up * 0.15f;
+        else
+            aparecerDesdePos = aparecerHacia;
+        aparecerDesde = Time.time;
+        apareciendo = true;
+        porMirar = true;
+        porMirarDesde = Time.time;
+        Aparecer();
+    }
+
+    void Aparecer()
+    {
+        float k = Mathf.Clamp01((Time.time - aparecerDesde) / DuraAparecer);
+        float e = 1f - (1f - k) * (1f - k) * (1f - k);
+        transform.position = Vector3.Lerp(aparecerDesdePos, aparecerHacia, e);
+        transform.localScale = Vector3.one * Mathf.Lerp(0.12f, 1f, e);
+        PonerAlfa(Mathf.Lerp(0.3f, 1f, e * e));
+        if (k >= 1f)
+        {
+            apareciendo = false;
+            transform.position = aparecerHacia;
+            transform.localScale = Vector3.one;
+            PonerAlfa(1f);
+        }
+    }
+
+    void PonerAlfa(float a)
+    {
+        foreach (var m in new[] { normal, marcado, matPanel })
+            if (m != null && m.HasProperty("_Alfa"))
+                m.SetFloat("_Alfa", a);
+        foreach (var r in GetComponentsInChildren<Renderer>(true))
+        {
+            var m = r.sharedMaterial;
+            if (m != null && m.HasProperty("_Alfa") && m.shader == shaderEncima)
+                m.SetFloat("_Alfa", a);
+        }
+        foreach (var t in textosEncima)
+            if (t != null)
+                t.alpha = a;
+    }
+
+    void ActualizarAvisoOrilla()
+    {
+        var cab = control.Cabeza;
+        bool ver = false;
+        Vector3 dir = Vector3.forward;
+        if (porMirar && cab != null)
+        {
+            Vector3 hacia = transform.position - cab.position;
+            float ang = Vector3.Angle(cab.forward, hacia);
+            if (ang < 24f || Time.time - porMirarDesde > 9f)
+            {
+                porMirar = false;   // ya lo viste (o ya pasó un rato)
+            }
+            else if (ang > 30f && !apareciendo)
+            {
+                ver = true;
+                dir = Vector3.RotateTowards(cab.forward, hacia.normalized, 25f * Mathf.Deg2Rad, 0f);
+            }
+        }
+        if (aviso == null)
+        {
+            if (!ver)
+                return;
+            aviso = new GameObject("AvisoPropiedades").transform;
+            var bola = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            Destroy(bola.GetComponent<Collider>());
+            bola.transform.SetParent(aviso, false);
+            bola.transform.localScale = Vector3.one * 0.022f;
+            var r = bola.GetComponent<Renderer>();
+            matAviso = Encima(marcado, 4003);
+            r.sharedMaterial = matAviso;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            avisoTexto = PanelTutoriales.Texto(aviso, Idioma.T("Propiedades"), new Vector3(0f, -0.028f, 0f), new Vector2(0.16f, 0.022f), 0.16f, null);
+            avisoTexto.fontStyle = FontStyles.Bold;
+            var mt = avisoTexto.fontMaterial;
+            if (mt != null)
+            {
+                mt.renderQueue = 4004;
+                mt.SetFloat("unity_GUIZTestMode", (float)UnityEngine.Rendering.CompareFunction.Always);
+            }
+        }
+        if (aviso.gameObject.activeSelf != ver)
+            aviso.gameObject.SetActive(ver);
+        if (!ver)
+            return;
+        Vector3 p = cab.position + dir * 0.6f;
+        aviso.SetPositionAndRotation(p, Quaternion.LookRotation(p - cab.position, Vector3.up));
+        float pulso = 0.5f + 0.5f * Mathf.Sin(Time.time * 7f);
+        aviso.localScale = Vector3.one * (1f + 0.25f * pulso);
+        if (matAviso != null && matAviso.HasProperty("_Alfa"))
+            matAviso.SetFloat("_Alfa", 0.55f + 0.45f * pulso);
+    }
+
+    void OnDisable()
+    {
+        if (aviso != null)
+            aviso.gameObject.SetActive(false);
+        porMirar = false;
+        if (apareciendo)
+        {
+            apareciendo = false;
+            transform.position = aparecerHacia;
+            transform.localScale = Vector3.one;
+            PonerAlfa(1f);
+        }
+    }
+
     void Update()
     {
         if (control == null || dibujo == null)
             return;
+        if (apareciendo)
+            Aparecer();
+        ActualizarAvisoOrilla();
         ActualizarPuntaDedo();
-        SeguirZona();
+        if (!apareciendo)
+            SeguirZona();
         if (Time.time < proximo)
             return;
         proximo = Time.time + 0.25f;
@@ -459,6 +595,8 @@ public class PanelPropiedades : MonoBehaviour
     {
         if (instancia == this)
             instancia = null;
+        if (aviso != null)
+            Destroy(aviso.gameObject);
     }
 }
 

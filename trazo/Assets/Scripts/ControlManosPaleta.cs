@@ -38,9 +38,11 @@ public partial class ControlManos
         new Color(0.5f, 0.3f, 0.15f),
         new Color(0.96f, 0.75f, 0.6f),
     };
-    const float RadioPaleta = 0.04f;    // dónde van los colores (metros)
-    const float TamColor = 0.02f;       // tamaño de cada color
-    const float RadioBotones = 0.073f;  // el arco de botones alrededor de la paleta
+    // v68: todo un poco más separado (el #, la tinta invisible y el negro quedaban muy juntos).
+    const float RadioPaleta = 0.046f;   // dónde van los colores (metros)
+    const float TamColor = 0.019f;      // tamaño de cada color
+    const float RadioBotones = 0.082f;  // el arco de botones alrededor de la paleta
+    const float Angulo3D = 330f;        // v68: el botón 3D (a las 4)
     const float AnguloLinea = 150f, AnguloRelleno = 30f, AnguloInvisible = 90f; // a las 10, a las 2 y a las 12
     const float PasoHijos = 22f;        // grados entre un hijo y el siguiente (deja ver el arco que los une)
     const float PrimerHijo = 24f;       // grados de la raíz a su primer hijo
@@ -82,7 +84,7 @@ public partial class ControlManos
     Transform botonHex;   // v53: el "#" es uno más de los colores principales (para la línea o el relleno)
     readonly List<Material> materialesPaleta = new List<Material>();
     readonly List<BotonPaleta> botonesPaleta = new List<BotonPaleta>();
-    RamaPaleta ramaLinea, ramaRelleno, ramaAbierta;
+    RamaPaleta ramaLinea, ramaRelleno, ramaAbierta, rama3D;
     BotonPaleta botonInvisible, botonGotero, botonIman;
     Transform aroElegido;   // v63: el aro con brillo detrás del color elegido
     // v63: EL GOTERO: tócalo y luego toca un color (de la paleta, de una línea o de un relleno): se copia y tu dedo
@@ -497,8 +499,8 @@ public partial class ControlManos
         var blanco = ColorMaterial(Color.white);
         var vidrioDisco = MaterialVidrioPaleta(0.35f, 0.82f, new Color(0.97f, 0.97f, 0.98f), 0);
         if (vidrioDisco == null)
-            DiscoPaleta(paleta, negro, 0.118f, new Vector3(0f, 0f, 0.002f));
-        DiscoPaleta(paleta, vidrioDisco ?? blanco, 0.11f, new Vector3(0f, 0f, 0.001f));
+            DiscoPaleta(paleta, negro, 0.131f, new Vector3(0f, 0f, 0.002f));
+        DiscoPaleta(paleta, vidrioDisco ?? blanco, 0.123f, new Vector3(0f, 0f, 0.001f));
         // El centro: gris clarito (así se ve también una línea blanca). De vidrio más esmerilado que el disco grande,
         // así se distingue de él sin necesitar un aro.
         var vidrioCentro = MaterialVidrioPaleta(0.74f, 0.92f, new Color(0.84f, 0.85f, 0.88f), 1);
@@ -796,7 +798,8 @@ public partial class ControlManos
 
         // ---- v63: EL IMÁN: un círculo pequeño encima de Línea, siempre a la vista (funciona aunque Línea esté gris).
         botonIman = CrearBotonPaleta("Iman", AnguloLinea, 0.012f, negro, null);
-        botonIman.t.localPosition = ramaLinea.raiz.t.localPosition + new Vector3(0f, 0.022f, 0f);
+        // v68: hacia afuera de Línea (antes quedaba pegado a Línea y cerca del gotero).
+        botonIman.t.localPosition = ramaLinea.raiz.t.localPosition * ((RadioBotones + 0.026f) / RadioBotones);
         botonIman.radioToque = 0.008f;
         botonIman.tono = 1.3f;
         var herradura = new List<Vector2[]>();
@@ -807,11 +810,98 @@ public partial class ControlManos
         botonIman.alTocar = () => dibujo.AlternarIman();
         botonIman.texto = () => CapaPaleta() != null && CapaPaleta().iman ? "Imán: Sí" : "Imán: No";
 
+        Armar3D(negro);
+
         // ---- v63: el aro con brillo detrás del color elegido.
         aroElegido = new GameObject("AroElegido").transform;
         aroElegido.SetParent(paleta, false);
         DiscoPaleta(aroElegido, ColorMaterial(new Color(0.55f, 0.85f, 1f)), 1f, Vector3.zero);
         DiscoPaleta(aroElegido, negro, 0.86f, new Vector3(0f, 0f, -0.01f));
+    }
+
+    // ---- v68: EL BOTÓN 3D (a las 4): letras "3D" y un cubito. Al tocarlo salen sus satélites: esfera, cubo,
+    // cilindro, "a líneas" (la figura elegida se vuelve líneas) y quitar figura. (Antes estaban en el reloj.)
+    void Armar3D(Material negro)
+    {
+        rama3D = CrearRama("3D", Angulo3D, negro);
+        rama3D.sentido = -1f;
+        rama3D.raiz.radioToque = 0.012f;
+        rama3D.raiz.alTocar = () => { ramaAbierta = ramaAbierta == rama3D ? null : rama3D; };
+        rama3D.raiz.texto = () => ramaAbierta == rama3D ? "Figuras 3D" : "3D";
+        rama3D.raiz.tono = 0.95f;
+        IconoCubo(rama3D.raiz.t, new Vector2(0f, -0.13f), 0.13f);
+        var go = new GameObject("Texto3D", typeof(RectTransform));
+        go.transform.SetParent(rama3D.raiz.t, false);
+        go.transform.localPosition = new Vector3(0f, 0.16f, -0.02f);
+        var t = go.AddComponent<TextMeshPro>();
+        t.text = "3D";
+        t.enableAutoSizing = true;
+        t.fontSizeMin = 0.01f;
+        t.fontSizeMax = 3f;
+        t.alignment = TextAlignmentOptions.Center;
+        t.fontStyle = FontStyles.Bold;
+        t.color = new Color(0.1f, 0.1f, 0.14f);
+        t.rectTransform.sizeDelta = new Vector2(0.5f, 0.24f);
+
+        var gris = ColorMaterial(new Color(0.55f, 0.62f, 0.75f));
+        // Esfera: un círculo azul grisáceo con su brillo.
+        var b = CrearBotonPaleta("3DEsfera", Angulo3D, 0.02f, negro, rama3D);
+        IconoPaleta(b.t, new List<Vector2[]> { Circulo(Vector2.zero, 0.25f) }, gris);
+        IconoPaleta(b.t, new List<Vector2[]> { Circulo(new Vector2(-0.08f, 0.09f), 0.07f) }, ColorMaterial(Color.white));
+        b.t.GetChild(b.t.childCount - 1).localPosition = new Vector3(0f, 0f, -0.01f);
+        b.alTocar = () => { if (figuras != null) figuras.Agregar(0); };
+        b.texto = () => "Esfera";
+        b.tono = 1.1f;
+        // Cubo.
+        b = CrearBotonPaleta("3DCubo", Angulo3D, 0.02f, negro, rama3D);
+        IconoCubo(b.t, Vector2.zero, 0.22f);
+        b.alTocar = () => { if (figuras != null) figuras.Agregar(1); };
+        b.texto = () => "Cubo";
+        b.tono = 1f;
+        // Cilindro: un rectángulo con su tapa ovalada.
+        b = CrearBotonPaleta("3DCilindro", Angulo3D, 0.02f, negro, rama3D);
+        IconoPaleta(b.t, new List<Vector2[]> { new[] { new Vector2(-0.18f, 0.14f), new Vector2(0.18f, 0.14f), new Vector2(0.18f, -0.2f), new Vector2(-0.18f, -0.2f) } }, gris);
+        var tapa = new Vector2[12];
+        for (int k = 0; k < tapa.Length; k++)
+        {
+            float a = k * Mathf.PI * 2f / tapa.Length;
+            tapa[k] = new Vector2(Mathf.Cos(a) * 0.18f, 0.14f + Mathf.Sin(a) * 0.07f);
+        }
+        IconoPaleta(b.t, new List<Vector2[]> { tapa }, ColorMaterial(new Color(0.78f, 0.83f, 0.92f)));
+        b.t.GetChild(b.t.childCount - 1).localPosition = new Vector3(0f, 0f, -0.01f);
+        b.alTocar = () => { if (figuras != null) figuras.Agregar(2); };
+        b.texto = () => "Cilindro";
+        b.tono = 0.9f;
+        // A líneas: un cubito hecho solo de rayas.
+        b = CrearBotonPaleta("3DALineas", Angulo3D, 0.02f, negro, rama3D);
+        var rayas = new List<Vector2[]>();
+        Vector2 arr = new Vector2(0f, 0.22f), der = new Vector2(0.2f, 0.11f), cen = new Vector2(0f, 0f), izq = new Vector2(-0.2f, 0.11f);
+        Vector2 abajo = new Vector2(0f, -0.24f);
+        LineaIcono(rayas, new[] { izq, arr, der, cen, izq, izq + (abajo - cen), abajo, der + (abajo - cen), der }, 0.045f);
+        BarraIcono(rayas, cen, abajo, 0.045f);
+        IconoPaleta(b.t, rayas, negro);
+        b.alTocar = () => { if (figuras != null) figuras.ConvertirSeleccionada(); };
+        b.texto = () => "A líneas";
+        b.tono = 1.2f;
+        // Quitar figura: una X roja.
+        b = CrearBotonPaleta("3DQuitar", Angulo3D, 0.02f, negro, rama3D);
+        var equis = new List<Vector2[]>();
+        BarraIcono(equis, new Vector2(-0.18f, -0.18f), new Vector2(0.18f, 0.18f), 0.09f);
+        BarraIcono(equis, new Vector2(-0.18f, 0.18f), new Vector2(0.18f, -0.18f), 0.09f);
+        IconoPaleta(b.t, equis, ColorMaterial(new Color(0.88f, 0.15f, 0.15f)));
+        b.alTocar = () => { if (figuras != null) figuras.QuitarSeleccionada(); };
+        b.texto = () => "Quitar figura";
+        b.tono = 0.8f;
+    }
+
+    // Un cubito visto de lado (tres caras de distinto gris): c = centro, r = medio ancho.
+    void IconoCubo(Transform padre, Vector2 c, float r)
+    {
+        Vector2 arr = c + new Vector2(0f, r), der = c + new Vector2(r * 0.9f, r * 0.5f), cen = c, izq = c + new Vector2(-r * 0.9f, r * 0.5f);
+        Vector2 baja = new Vector2(0f, -r * 1.1f);
+        IconoPaleta(padre, new List<Vector2[]> { new[] { izq, arr, der, cen } }, ColorMaterial(new Color(0.85f, 0.88f, 0.95f)));
+        IconoPaleta(padre, new List<Vector2[]> { new[] { izq, cen, cen + baja, izq + baja } }, ColorMaterial(new Color(0.55f, 0.62f, 0.75f)));
+        IconoPaleta(padre, new List<Vector2[]> { new[] { cen, der, der + baja, cen + baja } }, ColorMaterial(new Color(0.38f, 0.44f, 0.56f)));
     }
 
     // v63: con el GOTERO prendido: tocar una línea copia su color (o, con Relleno activo, el de su relleno). El dedo
@@ -939,6 +1029,7 @@ public partial class ControlManos
     {
         AcomodarHijos(ramaLinea);
         AcomodarHijos(ramaRelleno);
+        AcomodarHijos(rama3D);
         foreach (var b in botonesPaleta)
         {
             bool ver = (b.rama == null || b.rama == ramaAbierta) && (b.visible == null || b.visible());
@@ -952,6 +1043,7 @@ public partial class ControlManos
         }
         ActualizarArco(ramaLinea);
         ActualizarArco(ramaRelleno);
+        ActualizarArco(rama3D);
         // El color marcado (más grande) es el de lo que está abierto: relleno o línea.
         Color objetivo = RellenoAbierto ? colorRellenoNuevo : dibujo.ColorNuevo;
         int marcado = IndiceColor(objetivo);
@@ -1068,7 +1160,9 @@ public partial class ControlManos
             tocado.dedoEn = true;
             if (tocado.alTocar != null)
                 tocado.alTocar();
-            AbrirPropiedadesHerramienta();
+            bool es3D = rama3D != null && (tocado == rama3D.raiz || tocado.rama == rama3D);
+            if (!es3D)
+                AbrirPropiedadesHerramienta();   // v68: las figuras 3D no abren Propiedades
             Burbuja(tocado.t.position, tocado.tono);
             claveMuestra = int.MinValue;
             claveCentroRelleno = null;
