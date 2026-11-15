@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 17 de octubre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v67***
+*Actualizado: 15 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v68***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -936,3 +936,12 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - HECHO: botón rojo de la muñeca: disco plano acostado sobre el dorso (canto oscuro, cara abombada, brillito), sigue el giro de la mano.
 - HECHO: X en la cara de muestra de las bocas (CerrarBocas.cs) con pregunta antes de borrar (Deshacer la devuelve).
 - POR PROBAR: que la zona de trabajo se sienta natural; el botón rojo visto en ángulo.
+
+## v68
+- HECHO: pantalla de título con el aviso de manos: los guantes de Juan Carlos (OK de dibujar a la izquierda; la derecha va dibujando la línea de izquierda a derecha) y "JCartoons se usa con las manos" en los dos idiomas. El título dura un poco más (7 s) para leerlo.
+- HECHO: al activarse un gesto, las puntas de los dedos que lo forman brillan en celeste y suena un "tic" suave (ControlManosBrilloDedos.cs). Grosor (pulgar + anular) un poquito más fácil.
+- HECHO: Propiedades sale chiquito y semitransparente desde el dedo y crece hasta su lugar; si queda fuera de la vista, una lucecita con su nombre en la orilla de la vista hasta que lo mires.
+- HECHO: botón 3D en la paleta con satélites (esfera, cubo, cilindro, a líneas, quitar figura); ya no están en el reloj. Paleta más separada (#, invisible y negro; imán hacia afuera de Línea).
+- HECHO: deslizar el índice de arriba a abajo de la vista = siguiente fondo (ControlManosDeslizarFondo.cs).
+- POR PROBAR: que el deslizar no se active al bajar la mano para descansar; el tamaño del aviso de manos en el título.
+- PENDIENTE (decidir): el concepto 2D / 3D (la mesa como modo 2D, un solo paso "Pasar a 3D", qué pasa con "Ver en la mesa") y el tutorial.

@@ -2464,6 +2464,7 @@ public partial class ControlManos : MonoBehaviour
     void LateUpdate()
     {
         ActualizarBrilloDedos(); // v68
+        ActualizarDeslizarFondo(); // v68: índice de arriba a abajo = siguiente fondo
         Actualizar2030();
         ActualizarGuante();
         EjecutarLapiz();

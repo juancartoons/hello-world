@@ -30,7 +30,7 @@ public class TutorialNovedades : TarjetaTutorial
     readonly List<Vector3> otra = new List<Vector3>();
     readonly List<Vector3> tramo = new List<Vector3>();
 
-    protected override int Paginas => 33;
+    protected override int Paginas => 34;
 
     protected override void ArmarExtra()
     {
@@ -85,7 +85,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 29: return Tx("30 · Draw and Ink modes, sound on the desk", "30 · Modos Dibujar y Entintar, sonido en la mesa");
             case 30: return Tx("31 · Thickness and eraser on the desk", "31 · Grosor y borrador en la mesa");
             case 31: return Tx("32 · Trace an image on the desk", "32 · Calcar una imagen en la mesa");
-            default: return Tx("33 · Panels beside your drawing, Original and the mouths' X", "33 · Paneles junto a tu dibujo, Original y la X de las bocas");
+            case 32: return Tx("33 · Panels beside your drawing, Original and the mouths' X", "33 · Paneles junto a tu dibujo, Original y la X de las bocas");
+            default: return Tx("34 · Glowing fingertips, the 3D button and swipe the background", "34 · Dedos que brillan, el botón 3D y desliza el fondo");
         }
     }
 
@@ -142,6 +143,10 @@ public class TutorialNovedades : TarjetaTutorial
                     "DESERT SUNSET: a new living background: dunes all around you lit by a low golden sun, violet shadows, a pink and purple sky with thin clouds, the first stars and the wind lifting dust far away. Say \"desert\". LAYERS: each one shows a thumbnail on its left; say \"layer 2\" to jump to it; leave your finger still on the name to rename it; delete with the little trash can (tap twice). The camera is a layer of its own (\"+ Camera\" = another one). The panels open with either hand, whatever the other one is doing.",
                     "ATARDECER EN EL DESIERTO: un fondo vivo nuevo: dunas a tu alrededor con la luz dorada del sol bajito, sombras violeta, un cielo rosado y morado con nubes finas, las primeras estrellas y el viento levantando polvo a lo lejos. Di \"desierto\". CAPAS: cada una muestra su miniatura a la izquierda; di \"capa 2\" para ir a ella; deja el dedo quieto en el nombre para cambiarlo; borra con el basurerito (toca dos veces). La cámara es su propia capa (\"+ Cámara\" = otra). Las persianas se abren con cualquier mano, haga lo que haga la otra.");
             default:
+                return Tx(
+                    "When a hand gesture switches on, the FINGERTIPS that make it light up in light blue and you hear a soft \"tic\": thumb + index (draw), thumb + ring (thickness, now a little easier), thumb + middle (nodes). The palette has a new 3D button (\"3D\" and a little cube): tap it and its satellites come out: sphere, cube, cylinder, to lines and remove figure (they are no longer on the watch). The palette buttons are more spread out. PROPERTIES now comes out small from your finger and grows into place; if it ends up out of view, a little light on the edge of your view tells you where it is. SWIPE THE BACKGROUND: put your index finger just above your view and pull it down to just below it = next background, like scrolling a video. The title screen shows the gloves: JCartoons is made for your hands.",
+                    "Cuando un gesto de la mano se activa, las PUNTAS DE LOS DEDOS que lo forman se encienden en celeste y suena un \"tic\" suave: pulgar + índice (dibujar), pulgar + anular (grosor, ahora un poquito más fácil), pulgar + medio (nodos). La paleta tiene un botón 3D nuevo (\"3D\" y un cubito): tócalo y salen sus satélites: esfera, cubo, cilindro, a líneas y quitar figura (ya no están en el reloj). Los botones de la paleta están más separados. PROPIEDADES ahora sale chiquito desde tu dedo y crece hasta su lugar; si queda fuera de tu vista, una lucecita en la orilla de lo que ves te dice dónde está. DESLIZA EL FONDO: pon el índice un poquito arriba de tu vista y bájalo hasta un poquito abajo = siguiente fondo, como pasar un video. La pantalla de título muestra los guantes: JCartoons se usa con las manos.");
+            case 32:
                 return Tx(
                     "PROPERTIES opens to the RIGHT OF WHAT YOU ARE DRAWING (your last movements), even if you look elsewhere; if you go draw somewhere else, it slides there (unless you moved it yourself). The pencil and clay panels go to the left. On the desk, while inking, \"Original: 100 % · 50 % · hidden\" shows or hides what is underneath, to check your ink alone. While you change the ink thickness or the eraser size, the little ball grows live in your pinch. The image you traced comes into your file STUCK to your ink sheet. Reference images and their buttons no longer stay floating on the desk. The red button on the wrist is now a flat disc lying on the back of your hand. The sample face with mouths has an X: it asks before deleting them (Undo brings them back).",
                     "PROPIEDADES se abre a la DERECHA DE LO QUE ESTÁS DIBUJANDO (tus últimos movimientos), aunque mires a otro lado; si te vas a dibujar a otro lugar, se desliza hasta allá (salvo que lo hayas movido tú). Los paneles del lápiz y la plastilina van a la izquierda. En la mesa, entintando, \"Original: 100 % · 50 % · oculto\" muestra o esconde lo de abajo, para revisar tu tinta sola. Mientras cambias el grosor de la tinta o el tamaño de la goma, la bolita crece en vivo en tu pellizco. La imagen que calcaste entra a tu archivo PEGADA a tu hoja de tinta. Las imágenes de referencia y sus botones ya no se quedan flotando en la mesa. El botón rojo de la muñeca ahora es un disco plano acostado sobre el dorso de tu mano. La cara de muestra de las bocas tiene una X: pregunta antes de borrarlas (Deshacer las devuelve).");

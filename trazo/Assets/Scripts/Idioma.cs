@@ -549,6 +549,7 @@ public static class Idioma
         "Salir", "Exit",
         "Función", "Show",
         "Fin de la función", "End of the show",
+        "Quitar figura", "Remove figure",
         "Original: 100 %", "Original: 100 %",
         "Original: 50 %", "Original: 50 %",
         "Original: oculto", "Original: hidden",

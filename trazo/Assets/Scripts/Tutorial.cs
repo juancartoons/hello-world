@@ -144,9 +144,17 @@ public class Tutorial : MonoBehaviour
     Transform logo;          // v49: el logo (si está): reemplaza a las letras, que siguen marcando el ritmo invisibles
     Material matLogo;
     // v68: el aviso de manos bajo el logo (dibujo de los guantes + "se usa con las manos").
-    Transform avisoManos;
-    Material matAviso;
+    Transform avisoManos, avisoDibuja, avisoLinea;
+    Material matAviso, matDibuja, matLinea;
     Mesh mallaAviso;
+    const float AnchoAviso = 0.4f;   // metros (las tres imágenes miden lo mismo: 760 x 380 de su dibujo)
+    // Por dónde pasa la punta del índice derecho: la altura de la línea (en unidades del dibujo, 0 = arriba)
+    // cada 248/24 unidades, de x = 300 a x = 548 (donde termina la línea y está la mano en la imagen).
+    static readonly float[] AlturaLinea =
+    {
+        120.0f, 109.6f, 105.1f, 104.9f, 107.7f, 112.4f, 118.0f, 123.3f, 127.7f, 130.4f, 130.5f, 127.5f, 121.3f,
+        114.3f, 107.7f, 101.7f, 96.8f, 93.3f, 91.0f, 90.1f, 90.6f, 92.3f, 95.2f, 99.2f, 104.0f
+    };
     TextMeshPro avisoUno, avisoDos;
     readonly List<Material> matsLogoFondo = new List<Material>();   // v50: las capas de atrás (el volumen 3D)
     Mesh mallaLogo;
@@ -562,12 +570,14 @@ public class Tutorial : MonoBehaviour
         }
         if (eslogan != null)
             eslogan.alpha = Mathf.Clamp01((t - 1.65f) / 0.6f) * f;
-        // v68: los guantes se dibujan de izquierda a derecha y luego aparece el mensaje.
+        // v68: aparece la mano izquierda (el OK de dibujar); luego la derecha va dibujando la línea de izquierda a
+        // derecha (la línea sale de la punta de su índice) y aparece el mensaje.
         if (matAviso != null)
         {
-            matAviso.SetFloat("_Revela", Mathf.Clamp01((t - 2.3f) / 1.1f));
+            matAviso.SetFloat("_Revela", Mathf.Clamp01((t - 2.3f) / 0.8f));
             matAviso.SetFloat("_Alfa", f);
         }
+        ActualizarManoDibuja(t, f);
         float alfaAviso = Mathf.Clamp01((t - 3.1f) / 0.6f) * f;
         if (avisoUno != null)
             avisoUno.alpha = alfaAviso;
@@ -705,6 +715,14 @@ public class Tutorial : MonoBehaviour
             Destroy(mallaLogo);
         mallaLogo = null;
         avisoManos = null;
+        avisoDibuja = null;
+        avisoLinea = null;
+        if (matDibuja != null)
+            Destroy(matDibuja);
+        matDibuja = null;
+        if (matLinea != null)
+            Destroy(matLinea);
+        matLinea = null;
         avisoUno = null;
         avisoDos = null;
         if (matAviso != null)
@@ -715,6 +733,58 @@ public class Tutorial : MonoBehaviour
         mallaAviso = null;
     }
 
+    // Una de las tres imágenes del aviso (todas del mismo tamaño, una encima de otra).
+    Transform QuadAviso(string recurso, float y, float z, out Material m)
+    {
+        m = null;
+        var tex = Resources.Load<Texture2D>(recurso);
+        if (tex == null)
+            return null;
+        m = new Material(materialLogo);
+        m.SetTexture("_BaseMap", tex);
+        m.SetFloat("_Revela", 0f);
+        m.SetFloat("_Alfa", 1f);
+        m.SetFloat("_Ola", 0f);
+        var go = new GameObject(recurso);
+        var tr = go.transform;
+        tr.SetParent(titulo, false);
+        tr.localPosition = new Vector3(0f, y, z);
+        tr.localScale = new Vector3(AnchoAviso, AnchoAviso * 0.5f, 1f);
+        go.AddComponent<MeshFilter>().sharedMesh = mallaAviso;
+        var r = go.AddComponent<MeshRenderer>();
+        r.sharedMaterial = m;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
+        return tr;
+    }
+
+    // La mano derecha aparece al empezar la línea y la va dibujando: su índice sigue la curva y la línea se revela
+    // justo hasta la punta del dedo.
+    void ActualizarManoDibuja(float t, float f)
+    {
+        if (avisoDibuja == null || matDibuja == null)
+            return;
+        const float empieza = 2.9f, dura = 2.6f;
+        float aparece = Mathf.Clamp01((t - (empieza - 0.4f)) / 0.4f);
+        float u = Mathf.Clamp01((t - empieza) / dura);
+        u = u < 0.5f ? 2f * u * u : 1f - Mathf.Pow(-2f * u + 2f, 2f) / 2f;
+        float x = 300f + 248f * u;
+        float k = u * (AlturaLinea.Length - 1);
+        int i = Mathf.Min(AlturaLinea.Length - 2, Mathf.FloorToInt(k));
+        float y = Mathf.Lerp(AlturaLinea[i], AlturaLinea[i + 1], k - i);
+        // De unidades del dibujo (760 de ancho, y hacia abajo) a metros del título (y hacia arriba).
+        float escala = AnchoAviso / 760f;
+        Vector3 base0 = avisoManos != null ? avisoManos.localPosition : avisoDibuja.localPosition;
+        avisoDibuja.localPosition = new Vector3(base0.x + (x - 548f) * escala, base0.y - (y - 104f) * escala, avisoDibuja.localPosition.z);
+        matDibuja.SetFloat("_Alfa", aparece * f);
+        if (matLinea != null)
+        {
+            // La orilla suave del shader queda justo en la punta del índice.
+            matLinea.SetFloat("_Revela", u <= 0f ? 0f : (x / 760f) / 1.08f);
+            matLinea.SetFloat("_Alfa", f);
+        }
+    }
+
     // v68: bajo el logo, los dos guantes (izquierda: pulgar + índice para dibujar; derecha: el índice traza
     // una línea) y el mensaje "JCartoons se usa con las manos", en el idioma elegido y debajo en el otro.
     void CrearAvisoManos()
@@ -723,25 +793,19 @@ public class Tutorial : MonoBehaviour
             return;
         float abajo = logo != null ? logo.localPosition.y - logo.localScale.y * 0.5f : -0.13f;
         float yManos = abajo - 0.1f;
-        var tex = Resources.Load<Texture2D>("AvisoManos");
-        if (tex != null && materialLogo != null)
+        if (materialLogo != null)
         {
-            matAviso = new Material(materialLogo);
-            matAviso.SetTexture("_BaseMap", tex);
-            matAviso.SetFloat("_Revela", 0f);
-            matAviso.SetFloat("_Alfa", 1f);
-            matAviso.SetFloat("_Ola", 0f);
             mallaAviso = MallaLogo(1, 1);
-            var go = new GameObject("AvisoManos");
-            avisoManos = go.transform;
-            avisoManos.SetParent(titulo, false);
-            avisoManos.localPosition = new Vector3(0f, yManos, -0.004f);
-            avisoManos.localScale = new Vector3(0.34f, 0.34f * tex.height / (float)tex.width, 1f);
-            go.AddComponent<MeshFilter>().sharedMesh = mallaAviso;
-            var r = go.AddComponent<MeshRenderer>();
-            r.sharedMaterial = matAviso;
-            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            r.receiveShadows = false;
+            avisoManos = QuadAviso("AvisoManoOk", yManos, -0.004f, out matAviso);
+            avisoLinea = QuadAviso("AvisoLinea", yManos, -0.006f, out matLinea);
+            avisoDibuja = QuadAviso("AvisoManoDibuja", yManos, -0.009f, out matDibuja);
+            if (matLinea != null)
+                matLinea.SetFloat("_Revela", 0f);
+            if (matDibuja != null)
+            {
+                matDibuja.SetFloat("_Revela", 1f);
+                matDibuja.SetFloat("_Alfa", 0f);
+            }
         }
         float yTexto = yManos - 0.11f;
         avisoUno = CrearTexto(titulo,

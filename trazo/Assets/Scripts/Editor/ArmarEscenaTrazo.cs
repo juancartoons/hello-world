@@ -584,14 +584,16 @@ public static class ArmarEscenaTrazo
             new Vector2(-columna, -0.026f), new Vector2(columna, -0.026f),
             new Vector2(-columna, -0.054f), new Vector2(columna, -0.054f),
             new Vector2(columna, 0.012f), // Capas (donde antes estaba el imán)
-            new Vector2(-columna, -0.082f), new Vector2(columna, -0.082f), // girar el fondo 360
-            new Vector2(-columna, -0.110f), new Vector2(columna, -0.110f), // v39: vista limpia y la mesa
+            new Vector2(-columna, -0.026f), new Vector2(columna, -0.026f), // girar el fondo 360 (v68: suben, sin figuras)
+            new Vector2(-columna, -0.054f), new Vector2(columna, -0.054f), // v39: vista limpia y la mesa
         };
         var botones = new BotonTocable[nombres.Length];
         for (int i = 0; i < nombres.Length; i++)
         {
             if (i == 0)
                 continue;   // v43: el botón Plano del reloj ya no va (2D / 3D en cada capa)
+            if (i >= 5 && i <= 8)
+                continue;   // v68: las figuras 3D ya no van en el reloj (están en el botón 3D de la paleta)
             float ancho = i == 1 ? 0.095f : 0.043f;   // v43: Fondo, a lo ancho
             botones[i] = Boton(contenido.transform, nombres[i], new Vector3(lugares[i].x, lugares[i].y, 0f), matBoton, matBotonMarcado);
             botones[i].transform.localScale = new Vector3(ancho, 0.02f, 0.008f);
@@ -607,10 +609,10 @@ public static class ArmarEscenaTrazo
         panel.btnGuardar = botones[2];
         panel.btnCargar = botones[3];
         panel.btnBorrar = botones[4];
-        panel.btnEsfera = botones[5];
-        panel.btnCubo = botones[6];
-        panel.btnCilindro = botones[7];
-        panel.btnALineas = botones[8];
+        panel.btnEsfera = null;     // v68: en la paleta (botón 3D)
+        panel.btnCubo = null;
+        panel.btnCilindro = null;
+        panel.btnALineas = null;
         // Capas en profundidad (arriba al centro de tu vista).
         panel.btnCapas = botones[9];
         // "Quitar figura" ya no hace falta (la figura elegida tiene su X). La música se elige en el carrusel
@@ -627,7 +629,6 @@ public static class ArmarEscenaTrazo
         panel.btnCerrar.transform.localScale = new Vector3(0.016f, 0.016f, 0.008f);
         if (panel.btnCerrar.etiqueta != null)
             panel.btnCerrar.etiqueta.rectTransform.sizeDelta = new Vector2(0.014f, 0.014f);
-        Texto(contenido.transform, "Figuras 3D", new Vector3(0f, -0.007f, -0.001f), new Vector2(0.09f, 0.01f), new Color(0.3f, 0.3f, 0.35f));
         // Botón pequeño debajo del menú: abre la paleta de colores (por si el gesto de la palma no la abre).
         panel.btnColores = Boton(contenido.transform, "Colores", new Vector3(0f, -0.168f, 0f), matBoton, matBotonMarcado);
         panel.btnColores.transform.localScale = new Vector3(0.06f, 0.02f, 0.008f);
