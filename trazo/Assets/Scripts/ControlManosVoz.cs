@@ -422,7 +422,9 @@ public partial class ControlManos
         // v42: durante el tutorial solo valen los de la mano izquierda (y el silencio): nada que lo desordene.
         if (Tutorial.EnCurso && c.comando != ComandoVoz.Dibuja && c.comando != ComandoVoz.Borra && c.comando != ComandoVoz.Nodos
             && c.comando != ComandoVoz.Ya && c.comando != ComandoVoz.Deshaz && c.comando != ComandoVoz.Silencio
-            && c.comando != ComandoVoz.Hola)
+            && !(Tutorial.VozDelFinal && (c.comando == ComandoVoz.Color || c.comando == ComandoVoz.ColorLinea
+                                          || c.comando == ComandoVoz.Paleta || c.comando == ComandoVoz.Nubes
+                                          || c.comando == ComandoVoz.Avanza)))
             return;
         UltimoComandoVoz = ingles ? c.nombreEn : c.nombreEs;
         UltimoComandoHora = Time.time;
@@ -681,9 +683,6 @@ public partial class ControlManos
                 // v46: lo repite CON TU VOZ (la frase entera que dijiste). Mientras habla no se escucha a sí misma.
                 if (Time.time < Lipsync.HablandoHasta)
                     break;
-                if (Tutorial.Instancia != null && Tutorial.Instancia.EsperaHola)
-                    Tutorial.Instancia.DecirHolaConVoz();
-                else
                 {
                     var lip = FindFirstObjectByType<Lipsync>();
                     if (lip != null)

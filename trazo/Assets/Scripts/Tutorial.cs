@@ -85,8 +85,8 @@ public class Tutorial : MonoBehaviour
     {
         Nada, Titulo, Demo1, Paso1, Gota, Demo2, Paso2, Paso3, Corre, Paso4,
         Demo56, Paso5, Paso6, Regresa, Demo7, Paso7, Demo8, Paso8, Demo9, Paso9, Pausa, Final,
-        Hola,  // v44: al final, una cabeza que dice "hola"
-        Paso3D // v69: tocar "3D esto" en la mesa (el tutorial empieza en 2D, sobre la mesa)
+        Paso3D, // v69: tocar "3D esto" en la mesa (el tutorial empieza en 2D, sobre la mesa)
+        PasoColor, PasoCielo // v77: al final: el color con la palma y volar sobre las nubes
     }
     Estado estado = Estado.Nada;
     float desde;
@@ -283,6 +283,8 @@ public class Tutorial : MonoBehaviour
             if (!tituloHecho && control != null && control.Cabeza != null && dibujo != null && Time.timeSinceLevelLoad > 0.8f
                 && control.Cabeza.position.sqrMagnitude > 0.01f)
                 EmpezarTitulo();
+            ActualizarAvisoFinal();   // v77: el aviso del final se queda un rato (ya con el tutorial terminado)
+            ActualizarEfectos();
             return;
         }
         if (control == null || dibujo == null)
@@ -344,15 +346,8 @@ public class Tutorial : MonoBehaviour
                         siguiente();
                 }
                 break;
-            case Estado.Hola:
-                // Después de decir "hola", que se alcance a ver: la frase dos veces y un respiro, y luego el final.
-                if (holaHora > 0f && Time.time > holaHora)
-                {
-                    holaHora = -1f;
-                    MostrarBoton(btnHola, false);
-                    Pausa(EntrarFinal);
-                }
-                break;
+            case Estado.PasoColor: PasoColor(); break;
+            case Estado.PasoCielo: PasoCielo(); break;
             case Estado.Final:
                 ActualizarFigura();
                 if (T > 6.5f)
@@ -2499,7 +2494,7 @@ public class Tutorial : MonoBehaviour
             if (logradoPaso9 >= 0f && ((!sigue && Time.time - logradoPaso9 > 0.3f) || Time.time - logradoPaso9 > 12f))
             {
                 Exito(9, (a + b) * 0.5f);
-                Pausa(EntrarHola);   // v44: antes del final, la cabeza que dice "hola"
+                Pausa(EntrarPasoColor);   // v77: antes del final, el color con la palma y volar sobre las nubes
                 return;
             }
         }
@@ -2507,91 +2502,231 @@ public class Tutorial : MonoBehaviour
             PararPista();
     }
 
-    // ==================== v44: la cabeza que dice "hola" ====================
+    // ==================== v77: el final: el color con la palma y volar sobre las nubes ====================
 
-    BotonTocable btnHola;
-    float holaHora = -1f;
+    Color colorNuevoAntes, colorLineaAntes;
+    BotonTocable btnCielo, btnVolar;
+    Escenario escenarioTut;
+    bool cieloPuesto;
 
-    public bool EsperaHola => estado == Estado.Hola && holaHora < 0f;
+    // En estos pasos la voz también vale para los colores, la paleta, las nubes y volar.
+    public static bool VozDelFinal => Instancia != null
+        && (Instancia.estado == Estado.PasoColor || Instancia.estado == Estado.PasoCielo);
 
-    void EntrarHola()
+    static string ConVoz(string texto, string en, string es)
     {
-        var lip = FindFirstObjectByType<Lipsync>();
-        if (lip == null || control == null || control.Cabeza == null)
+        if (!conVoz || !Voz.Activa)
+            return texto;
+        return texto + "\n<color=#1F9E95>" + Tx("or say", "o di") + " \"" + Tx(en, es) + "\"</color>";
+    }
+
+    Vector3 FrenteATi(float distancia)
+    {
+        var cab = control != null ? control.Cabeza : null;
+        if (cab == null)
+            return raiz != null ? raiz.position : transform.position;
+        return cab.position + Horizontal(cab.forward) * distancia;
+    }
+
+    void Celebrar(Vector3 donde)
+    {
+        if (fuente != null)
+            fuente.PlayOneShot(Sonidos.Ding, 0.8f);
+        Confeti(donde, 45, 0.6f);
+        Chispas(donde, 12, 0.25f);
+    }
+
+    void EntrarPasoColor()
+    {
+        OcultarGuia();
+        OcultarFlecha();
+        colorNuevoAntes = dibujo.ColorNuevo;
+        var t = LineaPaso9();
+        colorLineaAntes = t != null ? t.color : dibujo.ColorNuevo;
+        PonerVineta(ConVoz(Tx("Look at the palm of your LEFT hand (open): your palette appears. Tap a color: that's your line's new color",
+                              "Mira la palma de tu mano IZQUIERDA (abierta): sale tu paleta. Toca un color: ese es el nuevo color de tu línea"),
+                           "red line", "línea roja"), VinetaLinea, -1);
+        Cambiar(Estado.PasoColor);
+    }
+
+    static bool MismoColor(Color a, Color b)
+    {
+        return Mathf.Abs(a.r - b.r) + Mathf.Abs(a.g - b.g) + Mathf.Abs(a.b - b.b) + Mathf.Abs(a.a - b.a) < 0.02f;
+    }
+
+    void PasoColor()
+    {
+        var t = LineaPaso9();
+        bool cambio = !MismoColor(dibujo.ColorNuevo, colorNuevoAntes) || (t != null && !MismoColor(t.color, colorLineaAntes));
+        if (!cambio)
+            return;
+        Celebrar(FrenteATi(0.45f));
+        Pausa(EntrarPasoCielo);
+    }
+
+    void EntrarPasoCielo()
+    {
+        OcultarGuia();
+        escenarioTut = FindFirstObjectByType<Escenario>();
+        if (escenarioTut == null || raiz == null)
         {
             EntrarFinal();
             return;
         }
-        OcultarGuia();
-        // Una cabeza (un círculo) con ojos y boca, y sus 7 bocas listas.
-        lip.CrearMuestra(control.Cabeza);
-        if (btnHola == null && raiz != null)
+        cieloPuesto = false;
+        if (btnCielo == null)
         {
-            btnHola = CrearBoton(Tx("Hello!", "¡Hola!"), new Vector3(0f, -0.2f, 0f), new Vector2(0.1f, 0.032f));
-            btnHola.alTocar.AddListener(DecirHola);
+            btnCielo = CrearBoton(Tx("Above the clouds", "Sobre las nubes"), new Vector3(0f, -0.2f, 0f), new Vector2(0.14f, 0.032f));
+            btnCielo.alTocar.AddListener(TocarCielo);
         }
-        MostrarBoton(btnHola, true);
-        PonerVineta(Tx("Last one: this head can talk. Say out loud \"HELLO, HOW ARE YOU?\": it repeats it with YOUR voice (or tap Hello!)",
-                       "Último: esta cabeza habla. Di en voz alta \"HOLA, ¿CÓMO ESTÁS?\": la repite con TU voz (o toca ¡Hola!)"), VinetaLinea, -1);
-        holaHora = -1f;
-        Cambiar(Estado.Hola);
-    }
-
-    // El botón: la boca dice "hola, ¿cómo estás?" (sin sonido: no hay voz grabada).
-    public void DecirHola()
-    {
-        if (estado != Estado.Hola)
-            return;
-        var lip = FindFirstObjectByType<Lipsync>();
-        HolaDicho(lip != null ? lip.GenerarDePalabra(Idioma.Ingles ? "hello, how are you?" : "hola, ¿cómo estás?") : 0f);
-    }
-
-    // v46: la voz: la cabeza repite TU frase con TU voz (la grabó la voz al oírte), con la boca moviéndose.
-    public void DecirHolaConVoz()
-    {
-        if (estado != Estado.Hola)
-            return;
-        var lip = FindFirstObjectByType<Lipsync>();
-        if (lip == null)
-            return;
-        holaHora = Time.time + 8f;   // ya no espera otro "hola" (mientras llega tu frase)
-        lip.RepetirMiVoz(Idioma.Ingles ? "hello, how are you?" : "hola, ¿cómo estás?", HolaDicho);
-    }
-
-    void HolaDicho(float dura)
-    {
-        if (estado != Estado.Hola)
-            return;
-        if (dura > 0f)
+        if (btnVolar == null)
         {
-            if (fuente != null)
-                fuente.PlayOneShot(Sonidos.Magia, 0.5f);
-            PonerVineta(Tx("\"Hello, how are you?\"", "\"¡Hola! ¿Cómo estás?\""), VinetaLinea, -1);
-            holaHora = Time.time + Mathf.Max(5f, dura * 2f + 2f);   // (holaHora = cuándo termina)
+            btnVolar = CrearBoton(Tx("Fly", "Volar"), new Vector3(0f, -0.2f, 0f), new Vector2(0.14f, 0.032f));
+            btnVolar.alTocar.AddListener(TocarVolar);
         }
-        else
+        MostrarBoton(btnCielo, true);
+        MostrarBoton(btnVolar, false);
+        PonerVineta(ConVoz(Tx("Now let's go above the clouds: tap \"Above the clouds\"", "Ahora vámonos sobre las nubes: toca «Sobre las nubes»"),
+                           "clouds", "nubes"), VinetaLinea, -1);
+        Cambiar(Estado.PasoCielo);
+    }
+
+    void TocarCielo()
+    {
+        if (estado != Estado.PasoCielo || escenarioTut == null)
+            return;
+        if (!escenarioTut.PonerVivo(FondosVivos.Nubes))
         {
-            holaHora = -1f;   // no se pudo: puede intentarlo otra vez
+            EntrarFinal();   // (sin los fondos vivos: TrazoVR > ★ Armar escena)
+            return;
+        }
+        SelectorFondos.RefrescarSiAbierto();
+    }
+
+    void TocarVolar()
+    {
+        if (estado != Estado.PasoCielo || escenarioTut == null)
+            return;
+        if (escenarioTut.VivoPuesto != FondosVivos.Nubes)
+            escenarioTut.PonerVivo(FondosVivos.Nubes);
+        if (!escenarioTut.Avanzando)
+            escenarioTut.AlternarAvanzar();
+        SelectorFondos.RefrescarSiAbierto();
+    }
+
+    void PasoCielo()
+    {
+        if (escenarioTut == null)
+        {
+            EntrarFinal();
+            return;
+        }
+        bool nubes = escenarioTut.VivoPuesto == FondosVivos.Nubes;
+        if (nubes && escenarioTut.Avanzando)
+        {
+            MostrarBoton(btnCielo, false);
+            MostrarBoton(btnVolar, false);
+            EntrarFinal();
+            return;
+        }
+        if (nubes != cieloPuesto)
+        {
+            cieloPuesto = nubes;
+            MostrarBoton(btnCielo, !nubes);
+            MostrarBoton(btnVolar, nubes);
+            if (nubes)
+            {
+                Celebrar(FrenteATi(0.5f) + Vector3.up * 0.15f);
+                PonerVineta(ConVoz(Tx("Beautiful! Now tap \"Fly\" and draw while you fly", "¡Qué bonito! Ahora toca «Volar» y dibuja mientras vuelas"),
+                                   "fly", "volar"), VinetaLinea, -1);
+            }
+            else
+            {
+                PonerVineta(ConVoz(Tx("Now let's go above the clouds: tap \"Above the clouds\"", "Ahora vámonos sobre las nubes: toca «Sobre las nubes»"),
+                                   "clouds", "nubes"), VinetaLinea, -1);
+            }
         }
     }
 
+    // El final (v77): el tutorial termina YA (sigues volando sobre las nubes en tu archivo 3D nuevo, para dibujar)
+    // y un aviso se queda unos segundos: dónde están los demás tutoriales. Luego se va solo.
     void EntrarFinal()
     {
         OcultarGuia();
         QuitarNumeros();
+        Terminar();
+        MostrarAvisoFinal();
+    }
+
+    Transform avisoFinal;
+    TextMeshPro avisoTitulo, avisoTexto;
+    float avisoFinalDesde = -1f;
+    const float DuraAvisoFinal = 10f;
+
+    void MostrarAvisoFinal()
+    {
+        QuitarAvisoFinal();
+        if (control == null || control.Cabeza == null)
+            return;
+        var cab = control.Cabeza;
+        Vector3 adelante = Horizontal(cab.forward);
+        avisoFinal = new GameObject("AvisoFinalTutorial").transform;
+        avisoFinal.SetParent(transform, false);
+        avisoFinal.SetPositionAndRotation(cab.position + adelante * 0.65f + Vector3.up * 0.1f, Quaternion.LookRotation(adelante, Vector3.up));
+        // Una placa blanca detrás (para leerlo bien sobre el cielo).
+        var placa = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        placa.name = "Placa";
+        Destroy(placa.GetComponent<Collider>());
+        placa.transform.SetParent(avisoFinal, false);
+        placa.transform.localPosition = new Vector3(0f, 0.012f, 0.004f);
+        placa.transform.localScale = new Vector3(0.46f, 0.15f, 1f);
+        Pintar(placa.GetComponent<Renderer>(), materialBoton);
+        avisoTitulo = CrearTexto(avisoFinal, Tx("You did it!", "¡Lo lograste!"), new Vector3(0f, 0.05f, 0f), new Vector2(0.42f, 0.06f), 1.2f, Color.white);
+        avisoTitulo.enableVertexGradient = true;
+        avisoTitulo.colorGradient = new VertexGradient(new Color(1f, 0.6f, 0.1f), new Color(1f, 0.3f, 0.6f), new Color(0.55f, 0.35f, 1f), new Color(0.2f, 0.65f, 1f));
+        avisoTitulo.outlineWidth = 0.2f;
+        avisoTitulo.outlineColor = new Color32(45, 30, 80, 255);
+        avisoTexto = CrearTexto(avisoFinal, Tx("Draw whatever you want while you fly.\nMore tutorials: the ? button on your wrist menu",
+                                               "Dibuja lo que quieras mientras vuelas.\n¿Más tutoriales? Botón ? del menú de tu muñeca"),
+                                new Vector3(0f, -0.018f, 0f), new Vector2(0.42f, 0.07f), 0.4f, Color.black);
+        avisoFinalDesde = Time.time;
+        avisoFinal.localScale = Vector3.one * 0.01f;
         if (fuente != null)
             fuente.PlayOneShot(Sonidos.Tada, 0.9f);
-        if (encabezado != null)
+        Confeti(avisoFinal.position, 90, 0.9f);
+        Chispas(avisoFinal.position, 20, 0.35f);
+    }
+
+    void ActualizarAvisoFinal()
+    {
+        if (avisoFinal == null)
+            return;
+        float t = Time.time - avisoFinalDesde;
+        if (t > DuraAvisoFinal)
         {
-            encabezado.text = Tx("You did it!", "¡Lo lograste!");
-            Confeti(encabezado.transform.position, 90, 0.9f);
-            Chispas(encabezado.transform.position, 20, 0.35f);
+            QuitarAvisoFinal();
+            return;
         }
-        PonerVineta(Tx("Now draw whatever you want! See it again: the ? button of the hand menu", "¡Ahora dibuja lo que quieras! Para verlo otra vez: botón ? del menú de la mano"), VinetaLinea, -1);
-        figuraTamObjetivo = 0f;
-        PlayerPrefs.SetInt(ClaveVisto, 1);
-        PlayerPrefs.Save();
-        Cambiar(Estado.Final);
+        float entra = Rebote(Mathf.Clamp01(t / 0.45f));
+        float sale = 1f - Mathf.Clamp01((t - (DuraAvisoFinal - 0.6f)) / 0.6f);
+        avisoFinal.localScale = Vector3.one * Mathf.Max(0.01f, entra * sale);
+        // Mira hacia ti (por si giras la cabeza).
+        if (control != null && control.Cabeza != null)
+        {
+            Vector3 mirar = avisoFinal.position - control.Cabeza.position;
+            mirar.y = 0f;
+            if (mirar.sqrMagnitude > 1e-6f)
+                avisoFinal.rotation = Quaternion.Slerp(avisoFinal.rotation, Quaternion.LookRotation(mirar, Vector3.up), 1f - Mathf.Exp(-4f * Time.deltaTime));
+        }
+    }
+
+    void QuitarAvisoFinal()
+    {
+        if (avisoFinal != null)
+            Destroy(avisoFinal.gameObject);
+        avisoFinal = null;
+        avisoTitulo = null;
+        avisoTexto = null;
     }
 
     // ==================== Pistas (repetir la demostración si no haces nada) ====================

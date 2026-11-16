@@ -10,6 +10,7 @@ public class TrazoLapiz
     public bool borra;              // true = goma de borrar
     public float radio;             // radio máximo (unidades del dibujo)
     public List<Vector4> puntos = new List<Vector4>(); // xyz = punto (dibujo), w = presión (0 a 1)
+    public int cuadro;              // v77: en una capa CUADRO A CUADRO: su fotograma + 1 (0 = del primer cuadro)
 }
 
 // Lápiz de boceto: en una capa de Boceto con Plano (2D), dibujar pinta sobre una HOJA (imagen),
@@ -54,7 +55,22 @@ public class HojasLapiz : MonoBehaviour
         public Vector3 origen, ejeU, ejeV, normal;
         public bool colocada;
         public GameObject papelAnim;   // v62: perforaciones y número del fotograma encima del papel
+        public int cuadroVisto = -1;   // v77: qué cuadro tiene pintado (-1 = todos: capa normal)
+        public Cebolla antes, despues; // v77: papel cebolla del lápiz (el cuadro anterior rojizo, el siguiente verdoso)
     }
+
+    class Cebolla
+    {
+        public RenderTexture rt;
+        public GameObject go;
+        public Material material;
+        public int visto = int.MinValue;
+        public int version = -1;
+    }
+
+    int version;   // v77: sube cada vez que cambian los trazos (así el papel cebolla sabe cuándo repintarse)
+    static readonly Color ColorAntes = new Color(0.9f, 0.25f, 0.2f, 0.5f);
+    static readonly Color ColorDespues = new Color(0.2f, 0.7f, 0.35f, 0.5f);
 
     float avisoBorde = -10f;
     bool redibujando;
@@ -77,6 +93,12 @@ public class HojasLapiz : MonoBehaviour
         {
             if (h.rt != null) h.rt.Release();
             if (h.material != null) Destroy(h.material);
+            foreach (var c in new[] { h.antes, h.despues })
+                if (c != null)
+                {
+                    if (c.rt != null) c.rt.Release();
+                    if (c.material != null) Destroy(c.material);
+                }
         }
     }
 
@@ -101,8 +123,12 @@ public class HojasLapiz : MonoBehaviour
                 capa = capa,
                 borra = borra,
                 radio = (borra ? radioGoma : radioLapiz) / dibujo.EscalaMundo,
+                cuadro = CuadroNuevo(capa),
             };
+            AsegurarCuadro(h, capa);
             trazos.Add(actual);
+            version++;
+            AsegurarClaves(capa, actual.cuadro);
         }
         Vector3 p = dibujo.ProyectarEnPlano(local);
         // ¿Se sale de la hoja? Avisa (la hoja tiene un borde delgado que siempre se ve).
@@ -137,6 +163,7 @@ public class HojasLapiz : MonoBehaviour
             return;
         trazos.Remove(actual);
         actual = null;
+        version++;
         dibujo.DescartarUltimoDeshacer();
         RedibujarTodo();
     }
@@ -158,7 +185,11 @@ public class HojasLapiz : MonoBehaviour
             capa = capa,
             borra = false,
             radio = radioLapiz / dibujo.EscalaMundo,
+            cuadro = CuadroNuevo(capa),
         };
+        AsegurarCuadro(h, capa);
+        version++;
+        AsegurarClaves(capa, t.cuadro);
         Vector3 pa = dibujo.ProyectarEnPlano(a), pb = dibujo.ProyectarEnPlano(b);
         var va = new Vector4(pa.x, pa.y, pa.z, Mathf.Clamp01(presionA));
         var vb = new Vector4(pb.x, pb.y, pb.z, Mathf.Clamp01(presionB));
@@ -179,6 +210,9 @@ public class HojasLapiz : MonoBehaviour
         if (h == null)
             return;
         trazos.Add(t);
+        version++;
+        if (!SeVe(t, h.cuadroVisto))
+            return;   // v77: es de otro cuadro (se pinta cuando vayas a ese cuadro)
         Sellar(h, t, t.puntos[0], t.puntos[0]);
         for (int i = 1; i < t.puntos.Count; i++)
             Sellar(h, t, t.puntos[i - 1], t.puntos[i]);
@@ -199,15 +233,15 @@ public class HojasLapiz : MonoBehaviour
     // Sellos del lápiz entre dos puntos (bien juntitos, para que la línea salga continua).
     void Sellar(Hoja h, TrazoLapiz t, Vector4 a, Vector4 b)
     {
-        var prev = EmpezarSellos(h, t);
+        var prev = EmpezarSellos(h.rt, t);
         SellosEntre(h, t, a, b);
         TerminarSellos(prev);
     }
 
-    RenderTexture EmpezarSellos(Hoja h, TrazoLapiz t)
+    RenderTexture EmpezarSellos(RenderTexture rt, TrazoLapiz t)
     {
         var prev = RenderTexture.active;
-        RenderTexture.active = h.rt;
+        RenderTexture.active = rt;
         GL.PushMatrix();
         GL.LoadOrtho();
         materialSello.SetPass(t.borra ? 1 : 0);
@@ -333,8 +367,13 @@ public class HojasLapiz : MonoBehaviour
 
     static void Limpiar(Hoja h)
     {
+        LimpiarRT(h.rt);
+    }
+
+    static void LimpiarRT(RenderTexture rt)
+    {
         var prev = RenderTexture.active;
-        RenderTexture.active = h.rt;
+        RenderTexture.active = rt;
         GL.Clear(false, true, Color.clear);
         RenderTexture.active = prev;
     }
@@ -366,6 +405,11 @@ public class HojasLapiz : MonoBehaviour
             bool ver = dibujo.CapaVisible(par.Key) && dibujo.EsBoceto(par.Key);
             if (h.go.activeSelf != ver)
                 h.go.SetActive(ver);
+            // v77: cuadro a cuadro: la hoja muestra solo el dibujo de ESTE cuadro (y el cebolla, los de al lado).
+            int c = CuadroVisible(par.Key);
+            if (c != h.cuadroVisto)
+                PintarHoja(h, par.Key, c);
+            ActualizarCebolla(h, par.Key, c);
         }
         ActualizarBotonPapel();
         ActualizarPapelAnimacion();
@@ -531,26 +575,182 @@ public class HojasLapiz : MonoBehaviour
 
     void RedibujarTodoInterno()
     {
+        version++;
         foreach (var h in hojas.Values)
             Limpiar(h);
         if (materialSello == null)
             return;
-        // Un solo "pase" por trazo (mucho más rápido que sello por sello).
+        // Las hojas que hagan falta (cada capa con lápiz tiene la suya).
+        foreach (var t in trazos)
+            if (t.puntos.Count > 0)
+                HojaDe(t.capa);
+        foreach (var par in hojas)
+            PintarHoja(par.Value, par.Key, CuadroVisible(par.Key));
+    }
+
+    // ---------- v77: CUADRO A CUADRO con el lápiz ----------
+
+    Animacion Anim => dibujo != null ? dibujo.animacion : null;
+    int FotogramaActual => Anim != null ? Anim.Fotograma : 0;
+    bool EnPausa => Anim == null || (!Anim.Reproduciendo && !ExportadorVideo.Exportando);
+
+    static int CuadroDe(TrazoLapiz t) => t.cuadro > 0 ? t.cuadro - 1 : 0;
+
+    static bool SeVe(TrazoLapiz t, int cuadro) => cuadro < 0 || CuadroDe(t) == cuadro;
+
+    int CuadroNuevo(int capa) => dibujo.EsCuadroACuadro(capa) ? FotogramaActual + 1 : 0;
+
+    // Qué cuadro se ve en esa capa: -1 = todo (capa normal). En pausa, el cuadro en el que estás (vacío si ahí no
+    // has dibujado: una hoja en blanco). Reproduciendo, cada dibujo se sostiene hasta el siguiente.
+    int CuadroVisible(int capa)
+    {
+        if (dibujo == null || !dibujo.EsCuadroACuadro(capa))
+            return -1;
+        int f = FotogramaActual;
+        if (EnPausa)
+            return f;
+        int mejor = int.MinValue;
+        foreach (var t in trazos)
+            if (t.capa == capa)
+            {
+                int c = CuadroDe(t);
+                if (c <= f && c > mejor)
+                    mejor = c;
+            }
+        return mejor == int.MinValue ? f : mejor;
+    }
+
+    // Antes de pintar: la hoja tiene que estar mostrando este cuadro.
+    void AsegurarCuadro(Hoja h, int capa)
+    {
+        int c = CuadroVisible(capa);
+        if (c != h.cuadroVisto)
+            PintarHoja(h, capa, c);
+    }
+
+    // Que la línea de tiempo marque los cuadros del lápiz (y así Reproducir llega hasta el último).
+    void AsegurarClaves(int capa, int cuadro)
+    {
+        var anim = Anim;
+        if (anim == null || cuadro <= 0 || !dibujo.EsCuadroACuadro(capa))
+            return;
+        int f = cuadro - 1;
+        if (!anim.EsClave(f, capa))
+            anim.GuardarClaveEn(f, capa);
+        // Lo que dibujaste antes de volverla cuadro a cuadro es del primer cuadro.
+        if (f > 0 && !anim.EsClave(0, capa))
+            foreach (var t in trazos)
+                if (t.capa == capa && t.cuadro == 0 && t.puntos.Count > 0)
+                {
+                    anim.GuardarClaveEn(0, capa);
+                    break;
+                }
+    }
+
+    void PintarHoja(Hoja h, int capa, int cuadro)
+    {
+        h.cuadroVisto = cuadro;
+        PintarEn(h.rt, h, capa, cuadro);
+    }
+
+    // Pinta en esa imagen los trazos de la capa (solo los de ese cuadro, si cuadro >= 0).
+    void PintarEn(RenderTexture rt, Hoja h, int capa, int cuadro)
+    {
+        LimpiarRT(rt);
+        if (materialSello == null)
+            return;
         foreach (var t in trazos)
         {
-            var h = HojaDe(t.capa);
-            if (h == null || t.puntos.Count == 0)
+            if (t.capa != capa || t.puntos.Count == 0 || !SeVe(t, cuadro))
                 continue;
-            var prev = EmpezarSellos(h, t);
+            var prev = EmpezarSellos(rt, t);
             for (int i = 0; i < t.puntos.Count; i++)
                 SellosEntre(h, t, t.puntos[Mathf.Max(0, i - 1)], t.puntos[i]);
             TerminarSellos(prev);
         }
     }
 
+    void ActualizarCebolla(Hoja h, int capa, int cuadro)
+    {
+        bool ver = cuadro >= 0 && EnPausa && PapelCebolla.Activo && capa == dibujo.capaActual && h.go.activeInHierarchy;
+        int antes = int.MinValue, despues = int.MaxValue;
+        if (ver)
+            foreach (var t in trazos)
+            {
+                if (t.capa != capa || t.puntos.Count == 0)
+                    continue;
+                int c = CuadroDe(t);
+                if (c < cuadro && c > antes)
+                    antes = c;
+                if (c > cuadro && c < despues)
+                    despues = c;
+            }
+        PonerCebolla(h, true, capa, ver && antes != int.MinValue ? antes : int.MinValue);
+        PonerCebolla(h, false, capa, ver && despues != int.MaxValue ? despues : int.MinValue);
+    }
+
+    void PonerCebolla(Hoja h, bool esAntes, int capa, int cuadro)
+    {
+        var c = esAntes ? h.antes : h.despues;
+        if (cuadro == int.MinValue)
+        {
+            if (c != null && c.go != null && c.go.activeSelf)
+                c.go.SetActive(false);
+            return;
+        }
+        if (c == null)
+        {
+            c = CrearCebolla(h, esAntes);
+            if (esAntes)
+                h.antes = c;
+            else
+                h.despues = c;
+            if (c == null)
+                return;
+        }
+        if (!c.go.activeSelf)
+            c.go.SetActive(true);
+        if (c.visto != cuadro || c.version != version)
+        {
+            c.visto = cuadro;
+            c.version = version;
+            PintarEn(c.rt, h, capa, cuadro);
+        }
+    }
+
+    Cebolla CrearCebolla(Hoja h, bool esAntes)
+    {
+        if (materialHoja == null || h.go == null)
+            return null;
+        var c = new Cebolla();
+        bool r8 = SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.R8);
+        int lado = Mathf.Min(resolucion, 2048);
+        c.rt = new RenderTexture(lado, lado, 0, r8 ? RenderTextureFormat.R8 : RenderTextureFormat.ARGB32);
+        c.rt.wrapMode = TextureWrapMode.Clamp;
+        c.rt.useMipMap = false;
+        c.rt.Create();
+        LimpiarRT(c.rt);
+        c.go = new GameObject(esAntes ? "CebollaLapizAntes" : "CebollaLapizDespues");
+        c.go.layer = 0;
+        c.go.transform.SetParent(h.go.transform, false);
+        c.go.AddComponent<MeshFilter>().sharedMesh = MallaHoja();
+        var mr = c.go.AddComponent<MeshRenderer>();
+        mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        mr.receiveShadows = false;
+        c.material = new Material(materialHoja);
+        c.material.SetTexture("_MainTex", c.rt);
+        c.material.SetColor("_BaseColor", esAntes ? ColorAntes : ColorDespues);
+        c.material.SetFloat("_Papel", 0f);
+        c.material.SetFloat("_Borde", 0f);
+        c.material.renderQueue = 3001;   // encima del papel blanco de la hoja
+        mr.sharedMaterial = c.material;
+        return c;
+    }
+
     public void Limpiar()
     {
         actual = null;
+        version++;
         trazos.Clear();
         foreach (var h in hojas.Values)
             Limpiar(h);
@@ -586,7 +786,7 @@ public class HojasLapiz : MonoBehaviour
 
     static bool Iguales(TrazoLapiz a, TrazoLapiz b)
     {
-        if (a.capa != b.capa || a.borra != b.borra || a.puntos.Count != b.puntos.Count)
+        if (a.capa != b.capa || a.borra != b.borra || a.cuadro != b.cuadro || a.puntos.Count != b.puntos.Count)
             return false;
         int n = a.puntos.Count;
         return n == 0 || (a.puntos[0] == b.puntos[0] && a.puntos[n - 1] == b.puntos[n - 1] && a.puntos[n / 2] == b.puntos[n / 2]);

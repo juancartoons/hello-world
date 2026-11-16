@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v76***
+*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v77***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -1001,3 +1001,9 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ## v76
 - HECHO: imágenes de referencia: 100% / 50% / 20% / oculta (y "Imágenes: ocultas") se revisa cada cuadro; si algo volvía a prender la imagen, se corrige.
+
+## v77
+- HECHO: casilla de las capas con peso: el dedo se suaviza, zona muerta, 4,5 cm por capa, 0,28 s mínimo entre cambios, y el montón se inclina suave (ya no tiembla).
+- HECHO: lápiz CUADRO A CUADRO (HojasLapiz): cada TrazoLapiz guarda su cuadro (cuadro = fotograma + 1; 0 = el primero). En pausa la hoja muestra solo ese cuadro (en blanco si no hay nada); al reproducir se sostiene hasta el siguiente. Papel cebolla del lápiz: dos hojas más (anterior rojiza, siguiente verdosa). Dibujar en un cuadro crea su clave en la línea de tiempo.
+- HECHO: tutorial: se quitó la cabeza que dice "hola". Final nuevo: mirar la palma y cambiar el color de la línea (botón o voz "línea roja") → "Sobre las nubes" (botón o voz "nubes") → "Volar" (botón o voz "volar"): el tutorial termina y sigues volando en tu archivo 3D nuevo; un aviso (10 s) dice dónde están los tutoriales.
+- POR PROBAR: lápiz cuadro a cuadro + cebolla en la mesa; el final del tutorial (con la voz y con botones); la casilla de las capas.

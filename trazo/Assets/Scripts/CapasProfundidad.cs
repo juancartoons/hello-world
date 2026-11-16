@@ -101,6 +101,9 @@ public class CapasProfundidad : MonoBehaviour
     float zInicio, desdeEmpuje, sacudida;
     bool arrastrandoAsa;                 // v75: el dedo está en la casilla de la derecha
     float yAsaInicio;
+    float yAsaSuave, zAsaSuave, dAsaVista, ultimoCambioAsa;   // v77: la casilla con "peso" (sin temblar)
+    const float PasoAsa = 0.045f;        // v77: cuánto hay que bajar o subir el dedo por cada capa
+    const float PausaAsa = 0.28f;        // v77: mínimo entre un cambio y el siguiente
     bool porPersiana;                     // v38: abiertas con la persiana (se quedan hasta que las recojas)
     bool abajoAhora;                      // v41: abiertas ABAJO de tu mirada (la pastilla estaba abajo)
     Persiana persianaArriba, tiradorArriba;
@@ -941,18 +944,28 @@ public class CapasProfundidad : MonoBehaviour
             }
             cercaCuadro = Time.frameCount;
             ultimoToque = Time.time;
-            float dy = p.y - yAsaInicio;
+            // v77: el dedo se suaviza (el temblor natural de la mano no mueve las capas) y lo hondo cuenta poco.
+            float kS = 1f - Mathf.Exp(-Time.deltaTime * 9f);
+            yAsaSuave = Mathf.Lerp(yAsaSuave, p.y, kS);
+            zAsaSuave = Mathf.Lerp(zAsaSuave, p.z, kS);
+            float dy = yAsaSuave - yAsaInicio;
             if (abajoAhora)
                 dy = -dy;   // (abajo, en espejo, las de adelante bajan)
-            float d = (p.z - zInicio) - dy;   // empujar o bajar = +; atraer o subir = −
-            z = Mathf.Clamp(d, -Empujon, Empujon);
-            if (Mathf.Abs(d) > Empujon)
+            float d = (zAsaSuave - zInicio) * 0.5f - dy;   // bajar (o empujar) = +; subir (o atraer) = −
+            if (Mathf.Abs(d) < 0.006f)
+                d = 0f;   // zona muerta: quieto = quieto
+            // Lo que se ve también va suave (el montón se inclina un poco hacia donde vas, sin vibrar).
+            dAsaVista = Mathf.Lerp(dAsaVista, d, 1f - Mathf.Exp(-Time.deltaTime * 7f));
+            z = Mathf.Clamp(dAsaVista / PasoAsa * Empujon * 0.6f, -Empujon, Empujon);
+            if (Mathf.Abs(d) > PasoAsa && Time.time - ultimoCambioAsa > PausaAsa)
             {
                 Cambiar(d > 0f ? 1 : -1, z);
+                ultimoCambioAsa = Time.time;
                 z = 0f;
+                dAsaVista = 0f;
                 esperarSalir = false;
-                zInicio = p.z;
-                yAsaInicio = p.y;
+                zInicio = zAsaSuave;
+                yAsaInicio = yAsaSuave;
             }
             return;
         }
@@ -963,6 +976,9 @@ public class CapasProfundidad : MonoBehaviour
             esperarSalir = false;
             zInicio = p.z;
             yAsaInicio = p.y;
+            yAsaSuave = p.y;
+            zAsaSuave = p.z;
+            dAsaVista = 0f;
             return;
         }
         // La parte de arriba de la tarjeta (la del nombre), lejos de "+ Capa" y de la X.
