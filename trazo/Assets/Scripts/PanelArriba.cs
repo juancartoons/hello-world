@@ -606,6 +606,239 @@ public class PanelArriba : MonoBehaviour
             TocarPestana(p);
     }
 
+    // v71: los botones Animar, Bocas y Títere del reloj: abren esa página (o la guardan si ya estaba abierta).
+    public void AlternarPestana(int p)
+    {
+        if (esAyuda)
+            return;
+        if (!visible)
+            AbrirDesdePersiana();
+        if (visible)
+            TocarPestana(p);
+    }
+
+    // ==================== v71: EN LA MESA DE ANIMACIÓN ====================
+    // Con tu archivo en la mesa (2D), esta misma línea de tiempo se pega ARRIBA DE LA MESA, en el lugar de los
+    // archivos recientes: la barra con sus cuadros y, debajo, el reproductor. Conserva todo: tocar o arrastrar la
+    // barra, mover claves, el ZOOM con las dos rayitas de los lados (pellízcalas y sepáralas o júntalas) y la BARRA
+    // SUJETA (doble toque izquierdo: tu mano derecha recorre el tiempo aunque no toque la barra).
+    // No se mueve con el asa ni tiene pestañas: Animar, Bocas y Títere se abren desde el reloj y su página sale a tu
+    // IZQUIERDA (como Propiedades a la derecha). En 3D vuelve a ser el panel de siempre (la pastilla de abajo).
+    bool enMesa;
+    Vector3 mesaPos;
+    Quaternion mesaRot = Quaternion.identity;
+    float mesaEscala = 1f;
+    readonly List<GameObject> escondidosEnMesa = new List<GameObject>();
+    BotonTocable btnCerrarPagina;
+    bool paginaPorColocar;
+    Vector3 paginaPos;
+    Quaternion paginaRot = Quaternion.identity;
+
+    public bool EnMesa => enMesa;
+
+    // La mesa llama esto cada cuadro: dónde va el panel (su origen), su giro y su tamaño.
+    public void PonerEnMesa(Vector3 pos, Quaternion rot, float escalaMundo)
+    {
+        if (esAyuda || contenido == null)
+            return;
+        mesaPos = pos;
+        mesaRot = rot;
+        mesaEscala = Mathf.Max(0.01f, escalaMundo);
+        if (!enMesa)
+            EntrarEnMesa();
+    }
+
+    public void QuitarDeMesa()
+    {
+        if (!enMesa)
+            return;
+        enMesa = false;
+        if (zoomeando)
+        {
+            zoomeando = false;
+            if (control != null)
+                control.Ocupado = false;
+        }
+        if (barraSujeta)
+        {
+            barraSujeta = false;
+            PintarSujeta();
+        }
+        Plegar(true, false);
+        foreach (var g in escondidosEnMesa)
+            if (g != null)
+                g.SetActive(true);
+        escondidosEnMesa.Clear();
+        if (btnCerrarPagina != null)
+        {
+            btnCerrarPagina.gameObject.SetActive(false);
+            if (btnCerrarPagina.etiqueta != null)
+                btnCerrarPagina.etiqueta.gameObject.SetActive(false);
+        }
+        if (paginas != null)
+        {
+            var tp = paginas.transform;
+            tp.localPosition = new Vector3(0f, espejoPuesto ? PaginasEspejo : SubirPaginas, 0f);
+            tp.localRotation = Quaternion.identity;
+            tp.localScale = Vector3.one;
+        }
+        transform.localScale = Vector3.one * escala;
+        anclado = false;
+        visible = false;   // en 3D sale otra vez con la pastillita de abajo
+        contenido.SetActive(false);
+    }
+
+    void EntrarEnMesa()
+    {
+        if (arrastrando || arrastrandoNodos)
+            SoltarAsa();
+        if (ayudaAbierta)
+            CerrarAyuda();
+        if (capasAbiertas)
+            AbrirCapas(false);
+        enMesa = true;
+        anclado = false;
+        arribaAhora = false;
+        AplicarEspejo(false);
+        visible = true;
+        contenido.SetActive(true);
+        Plegar(true, false);
+        // Fuera lo que no va en la mesa: el asa y su letrero, el alfiler, la ayuda, la X, las pestañas (todo lo de
+        // la franja de arriba), y el botón Zoom (el zoom es con las rayitas).
+        escondidosEnMesa.Clear();
+        foreach (Transform h in contenido.transform)
+        {
+            if (paginas != null && h.gameObject == paginas)
+                continue;
+            float y = h.localPosition.y;
+            if (y > 0.185f && y < 0.3f)
+                EsconderEnMesa(h.gameObject);
+        }
+        EsconderBotonEnMesa(btnZoom);
+        if (asaAbajo != null)
+            EsconderEnMesa(asaAbajo.gameObject);
+        ActualizarEnMesa();
+    }
+
+    void EsconderEnMesa(GameObject g)
+    {
+        if (g != null && g.activeSelf)
+        {
+            g.SetActive(false);
+            escondidosEnMesa.Add(g);
+        }
+    }
+
+    void EsconderBotonEnMesa(BotonTocable b)
+    {
+        if (b == null)
+            return;
+        EsconderEnMesa(b.gameObject);
+        if (b.etiqueta != null)
+            EsconderEnMesa(b.etiqueta.gameObject);
+    }
+
+    void ActualizarEnMesa()
+    {
+        if (control == null || contenido == null)
+            return;
+        transform.SetPositionAndRotation(mesaPos, mesaRot);
+        transform.localScale = Vector3.one * mesaEscala;
+        if (!contenido.activeSelf)
+            contenido.SetActive(true);
+        visible = true;
+        // Con la barra sujeta nunca se dibuja; con el dedo sobre la línea de tiempo o su página, tampoco.
+        if (barraSujeta)
+            barraCuadro = Time.frameCount;
+        if (control.Der.valida && Contiene(control.Der.indice))
+            mesaCuadro = Time.frameCount;
+        ColocarPaginaEnMesa();
+        if (!RevisarZoomBarra())
+            RevisarBarra();
+        Refrescar();
+    }
+
+    // La página abierta (Animar, Bocas o Títere) va a tu IZQUIERDA, mirando hacia ti, a tamaño normal.
+    void ColocarPaginaEnMesa()
+    {
+        if (paginas == null)
+            return;
+        bool abierta = !plegado;
+        if (btnCerrarPagina == null && abierta)
+            CrearCerrarPagina();
+        if (btnCerrarPagina != null && btnCerrarPagina.gameObject.activeSelf != abierta)
+        {
+            btnCerrarPagina.gameObject.SetActive(abierta);
+            if (btnCerrarPagina.etiqueta != null)
+                btnCerrarPagina.etiqueta.gameObject.SetActive(abierta);
+        }
+        if (!abierta)
+        {
+            paginaPorColocar = true;
+            return;
+        }
+        var cab = control != null ? control.Cabeza : null;
+        if (cab == null)
+            return;
+        if (paginaPorColocar || Vector3.Distance(cab.position, paginaPos) > 1.5f)
+        {
+            paginaPorColocar = false;
+            paginaPos = ZonaTrabajo.PosicionAlLado(cab, false, 0.27f);
+            Vector3 mirar = paginaPos - cab.position;
+            paginaRot = mirar.sqrMagnitude > 1e-6f ? Quaternion.LookRotation(mirar, Vector3.up) : cab.rotation;
+            if (control != null)
+                control.SonidoBurbuja(paginaPos);
+        }
+        var tp = paginas.transform;
+        float k = tp.parent != null ? Mathf.Max(0.01f, tp.parent.lossyScale.x) : 1f;
+        tp.localScale = Vector3.one / k;
+        tp.SetPositionAndRotation(paginaPos, paginaRot);
+    }
+
+    bool ContieneEnMesa(Vector3 mundo)
+    {
+        Vector3 l = transform.InverseTransformPoint(mundo);
+        if (Mathf.Abs(l.x) < 0.27f && l.y > AbajoPanel && l.y < 0.215f && Mathf.Abs(l.z) < 0.06f)
+            return true;
+        if (plegado || paginas == null || !paginas.activeInHierarchy)
+            return false;
+        Vector3 lp = paginas.transform.InverseTransformPoint(mundo);
+        return Mathf.Abs(lp.x) < 0.27f && lp.y > -0.165f && lp.y < 0.105f && Mathf.Abs(lp.z) < 0.06f;
+    }
+
+    // La X de la página abierta (solo en la mesa de animación; en 3D la página se guarda con su pestaña).
+    void CrearCerrarPagina()
+    {
+        if (paginas == null || btnSeguir == null)
+            return;
+        var cubo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        cubo.name = "BotonCerrarPagina";
+        cubo.transform.SetParent(paginas.transform, false);
+        cubo.transform.localPosition = new Vector3(0.228f, 0.072f, 0f);
+        cubo.transform.localScale = new Vector3(0.026f, 0.026f, 0.008f);
+        var r = cubo.GetComponent<Renderer>();
+        r.sharedMaterial = btnSeguir.materialNormal;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
+        btnCerrarPagina = cubo.AddComponent<BotonTocable>();
+        btnCerrarPagina.materialNormal = btnSeguir.materialNormal;
+        btnCerrarPagina.materialMarcado = btnSeguir.materialMarcado;
+        var go = new GameObject("TextoCerrarPagina", typeof(RectTransform));
+        go.transform.SetParent(paginas.transform, false);
+        go.transform.localPosition = new Vector3(0.228f, 0.072f, -0.0046f);
+        var t = go.AddComponent<TextMeshPro>();
+        t.text = "X";
+        t.enableAutoSizing = true;
+        t.fontSizeMin = 0.01f;
+        t.fontSizeMax = 0.2f;
+        t.alignment = TextAlignmentOptions.Center;
+        t.fontStyle = FontStyles.Bold;
+        t.color = Color.black;
+        t.rectTransform.sizeDelta = new Vector2(0.022f, 0.022f);
+        btnCerrarPagina.etiqueta = t;
+        btnCerrarPagina.alTocar.AddListener(() => Plegar(true, false));
+    }
+
     void CambiarZoom()
     {
         zoom = (zoom + 1) % Ventanas.Length;
@@ -675,12 +908,16 @@ public class PanelArriba : MonoBehaviour
     // v56: guarda la mesa (la función la esconde para que nada tape la escena).
     public void GuardarMesa()
     {
-        if (visible)
+        if (visible && !enMesa)
             Seguirme();
+        else if (enMesa && !plegado)
+            Plegar(true, false);   // v71: en la mesa de animación solo se guarda la página abierta
     }
 
     void Seguirme()
     {
+        if (enMesa)
+            return;   // v71: pegada a la mesa de animación (se va con la mesa)
         anclado = false;
         visible = false; // al volver a sacarla aparece frente a ti
         if (contenido != null)
@@ -725,6 +962,8 @@ public class PanelArriba : MonoBehaviour
             return true;
         if (contenido == null || !contenido.activeInHierarchy)
             return false;
+        if (enMesa)
+            return ContieneEnMesa(mundo);
         Vector3 l = transform.InverseTransformPoint(mundo);
         float abajo = listaArchivos != null && listaArchivos.activeSelf ? -0.33f : esAyuda ? AbajoAyuda : AbajoPanel;
         float arriba = capasAbiertas ? filaCapasY + Dibujo.NumeroDeCapas * pasoCapasY : plegado ? ArribaPlegado : ArribaDesplegado;
@@ -757,6 +996,13 @@ public class PanelArriba : MonoBehaviour
             respira.centro = new Vector3(0f, CentroMesa, 0f);
         }
         AsegurarPersianas();
+
+        // v71: EN LA MESA DE ANIMACIÓN: la línea de tiempo va pegada arriba de la mesa (ver "En la mesa" más abajo).
+        if (enMesa)
+        {
+            ActualizarEnMesa();
+            return;
+        }
 
         // Se queda hasta que la guardes (con el tirador de abajo o la X); movida con el asa, siempre visible.
         bool ver = visible || anclado;
@@ -843,7 +1089,7 @@ public class PanelArriba : MonoBehaviour
         tiradorAbajo.ancho = 0.05f;
         tiradorAbajo.alto = 0.012f;
         tiradorAbajo.pose = PoseTirador;
-        tiradorAbajo.visible = () => visible && !anclado;
+        tiradorAbajo.visible = () => visible && !anclado && !enMesa;
         tiradorAbajo.alAbrir = Seguirme;
         // Abajo se guarda bajándolo; arriba (v41), subiéndolo. ("arriba" = se jala hacia abajo.)
         tiradorAbajo.arriba = () => !arribaAhora;
@@ -863,7 +1109,7 @@ public class PanelArriba : MonoBehaviour
     }
 
     // v41: dónde está abierta la mesa: 1 = arriba, -1 = abajo, 0 = guardada (o fija en el aire, con el alfiler).
-    public int OrillaAbierta => visible && !anclado ? (arribaAhora ? 1 : -1) : 0;
+    public int OrillaAbierta => visible && !anclado && !enMesa ? (arribaAhora ? 1 : -1) : 0;
 
     // v41: acomoda las piezas: normal (pestañas y páginas ARRIBA del reproductor) o en espejo (DEBAJO).
     void AplicarEspejo(bool si)
@@ -942,6 +1188,12 @@ public class PanelArriba : MonoBehaviour
 
     public void AlternarMesa()
     {
+        if (enMesa)
+        {
+            if (dibujo != null)
+                dibujo.Mensaje("La línea de tiempo está en tu mesa, arriba de la hoja");
+            return;
+        }
         if (visible && !anclado)
             Seguirme();
         else
@@ -1725,7 +1977,7 @@ public class PanelArriba : MonoBehaviour
         {
             btnSeguir.Marcar(anclado); // el alfiler: oscuro = fijo aquí
         }
-        MostrarX(true); // v36: la X siempre está (guarda la mesa)
+        MostrarX(!enMesa); // v36: la X siempre está (guarda la mesa). v71: en la mesa de animación no va
 
         RefrescarCapas();
         if (pagina == 0)

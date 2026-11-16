@@ -303,8 +303,8 @@ public partial class ControlManos
                 new[] { "exit", "exit file", "go to the desk" }));
         l.Add(C(ComandoVoz.CentrarMesa, "Centrar mesa", "Center desk", new[] { "centrar mesa", "centra la mesa", "mesa al centro" },
                 new[] { "center desk", "center the desk" }));
-        l.Add(C(ComandoVoz.VerEnLaMesa, "Ver en la mesa", "See on the desk", new[] { "ver en la mesa", "mesa de animación" },
-                new[] { "see on the desk", "show on the desk", "animation desk" }));
+        l.Add(C(ComandoVoz.VerEnLaMesa, "Mesa (2D)", "Desk (2D)", new[] { "mesa dos de", "ver en la mesa", "mesa de animación" },
+                new[] { "desk two d", "see on the desk", "animation desk" }));
         l.Add(C(ComandoVoz.CortarAqui, "Cortar aquí", "Cut here",
                 new[] { "cortar aquí", "corta aquí", "cortar aqui", "separar aquí" }, new[] { "cut here", "split here" }));
         l.Add(C(ComandoVoz.Plastilina, "Plastilina", "Clay",

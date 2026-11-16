@@ -442,7 +442,7 @@ public partial class ControlManos : MonoBehaviour
             case Gesto.Nodos: if (!protegido) EditarNodos(); break;
             case Gesto.Grosor: if (!protegido) CambiarGrosor(); break;
             case Gesto.Borrar: if (!protegido) Borrar(); break;
-            case Gesto.Transformar: if (caja != null) caja.Actualizar(Izq, Der); break;
+            case Gesto.Transformar: if (caja != null && !transformarMesa) caja.Actualizar(Izq, Der); break;
             default:
                 if (!menuAbierto && !paletaAbierta && !protegido)
                 {
@@ -629,6 +629,9 @@ public partial class ControlManos : MonoBehaviour
             }
             return;
         }
+        // v71: en la mesa de animación (2D) se dibuja con solo TOCAR el papel, sin el OK (ver ControlManosContacto.cs).
+        if (ActualizarGestoContacto())
+            return;
         if (GestoIzq == Gesto.Dibujar && Der.pellizco && Der.TiempoPellizco > 0.1f && Izq.pellizco)
         {
             PasarATransformar();
@@ -822,7 +825,10 @@ public partial class ControlManos : MonoBehaviour
             var lineas = dibujo.Seleccionadas();
             if (lineas.Count > 0 && !LineasCerca(lineas, medio, 0.3f))
                 lineas.Clear();
-            if (caja != null)
+            // v71: en la MESA DE ANIMACIÓN (modo normal) el dibujo va pegado a la mesa: pellizcar con las dos manos sin
+            // nada elegido cerca mueve y agranda LA MESA (lo hace MesaEntrada), no el dibujo.
+            transformarMesa = MesaEntrada.MesaManda && (DibujoBloqueado || (lineas.Count == 0 && figura == null && imagen == null));
+            if (caja != null && !transformarMesa)
             {
                 if (DibujoBloqueado)
                 {
@@ -869,7 +875,11 @@ public partial class ControlManos : MonoBehaviour
             tintaPellizco = false;
             tintaCambio = false;
         }
-        if (GestoIzq == Gesto.Transformar && caja != null)
+        if (GestoIzq == Gesto.Transformar && transformarMesa)
+        {
+            transformarMesa = false;
+        }
+        else if (GestoIzq == Gesto.Transformar && caja != null)
         {
             caja.Terminar();
             bool eraFigura = figuras != null && figuras.Seleccionada != null && dibujo.Seleccion == null;

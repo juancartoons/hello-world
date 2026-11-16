@@ -933,6 +933,7 @@ public class Tutorial : MonoBehaviour
             Terminar();
         if (titere != null && titere.Encendido)
             titere.Parar();
+        MesaEntrada.SalirParaTutorial();   // v71: si estabas en la mesa con tu archivo, primero se guarda la mesa
         dibujo.ApartarParaTutorial();
         // v69: el tutorial empieza en 2D, SOBRE LA HOJA DE LA MESA (inclinada, como una mesa de animación).
         // Después del deshacer, "3D esto" lo pasa a 3D y sigue igual que siempre. (Primero sale la mesa, para saber

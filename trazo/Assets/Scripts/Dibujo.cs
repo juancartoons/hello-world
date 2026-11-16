@@ -489,7 +489,27 @@ public class Dibujo : MonoBehaviour
     }
 
     // Lo que se guarda: el dibujo de verdad (durante el tutorial, el que quedó apartado, no las líneas del tutorial).
+    // v71: la mesa de animación pone el dibujo DE PIE solo mientras se guarda (true antes, false después): así el
+    // archivo no queda acostado y chiquito donde estaba la mesa.
+    public System.Action<bool> poseAlGuardar;
+
     DatosDibujo DatosParaGuardar()
+    {
+        if (poseAlGuardar == null)
+            return DatosSinPose();
+        var avisar = poseAlGuardar;
+        avisar(true);
+        try
+        {
+            return DatosSinPose();
+        }
+        finally
+        {
+            avisar(false);
+        }
+    }
+
+    DatosDibujo DatosSinPose()
     {
         if (apartado == null)
             return CrearDatos();

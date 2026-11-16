@@ -25,8 +25,8 @@ public partial class ControlManos
     // Desde EntrarEnGesto: destello + "tic" (cada gesto con su tono).
     void AvisarGesto(Gesto g)
     {
-        if (g == Gesto.Ninguno || g == Gesto.Borrar)
-            return;
+        if (g == Gesto.Ninguno || g == Gesto.Borrar || gestoContacto)
+            return;   // (v71: al dibujar con solo tocar el papel no hay gesto de la mano que avisar)
         destelloDesde = Time.time;
         float tono = g == Gesto.Grosor ? 0.85f
                    : g == Gesto.Nodos ? 1.12f
@@ -90,6 +90,8 @@ public partial class ControlManos
                 switch (GestoIzq)
                 {
                     case Gesto.Dibujar:
+                        if (gestoContacto)
+                            break;   // v71: dibujas con solo tocar el papel (la izquierda no hace el OK)
                         puntosBrillo[n++] = Izq.pulgar;
                         puntosBrillo[n++] = Izq.indice;
                         break;

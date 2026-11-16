@@ -1,0 +1,2390 @@
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
+using UnityEngine.Events;
+
+// Panel de arriba, que desde la v36 es la MESA DE TRABAJO. v39: sale al JALAR HACIA ARRIBA la pastillita de abajo
+// ("Fotograma 12 · 0:01"), o con el botón Mesa del reloj. (Antes salía al mirar abajo.)
+//  - v37: va ABAJO en tu vista, como un espejo de las capas (que van arriba): unos 20° debajo de hacia donde miras.
+//    Te sigue con calma de lado y de arriba a abajo; mover un poco la cabeza no la mueve (así puedes mirarla), y
+//    con tu dedo encima se queda quieta. Las pestañas (Animar, Bocas, Títere) están ARRIBA del reproductor y sus
+//    páginas se despliegan hacia arriba.
+//  - No sale mientras dibujas ni justo después, ni mientras miras el menú de la muñeca o la paleta.
+//  - Se QUEDA a la vista y te sigue hasta que la guardes: con el tirador de abajo (bájalo) o su X (arriba a la
+//    derecha).
+//  - Si no la miras, se vuelve discreta (Respira); al mirarla despierta.
+//  - ASA (barra de arriba): pellízcala con la derecha y arrastra el panel a donde quieras.
+//    Mientras lo arrastras, pellizca también con la izquierda y separa/junta las manos = tamaño.
+//    Después de moverlo (o con "Fijar aquí") se queda fijo y siempre visible. "Seguirme" lo devuelve a la mesa.
+//  - Línea de tiempo (hasta 2000 fotogramas): toca la barra con el índice derecho para ir a un fotograma.
+//    "Zoom" cambia cuántos fotogramas caben en la barra (Todo, 400, 100, 25).
+//    Pellizca una clave (marca naranja) y arrástrala para moverla a otro fotograma.
+//  - Páginas: Animar (controles, capas, menú, exportar), Medios (videos, grabar el proceso, imágenes)
+//    Bocas (lipsync) y Títere (caminar con los dedos).
+//  - v41: PANELES FLEXIBLES (ver PanelesFlexibles.cs). Pellizca la pastillita "Fotograma" y llévala ARRIBA: ahí se
+//    jala hacia abajo y la mesa sale ARRIBA de tu mirada, en espejo: las pestañas (Animar, Bocas, Títere) quedan
+//    DEBAJO del reproductor y sus páginas se despliegan hacia abajo. El tirador para guardarla queda encima (súbelo).
+public class PanelArriba : MonoBehaviour
+{
+    public static readonly int[] Ventanas = { 0, 400, 100, 25 }; // 0 = todo
+
+    public ControlManos control;
+    public Dibujo dibujo;
+    public Animacion animacion;
+    public Escenario escenario;
+    public Lipsync lipsync;
+    public Referencias referencias;
+    public GrabadorProceso grabador;
+    public ExportadorVideo exportador;
+    public Titere titere;
+    public GameObject contenido;
+    [Tooltip("Barra de la línea de tiempo (un cubo hijo de Contenido)")]
+    public Transform barra;
+    public Transform cabezal;
+    [Tooltip("Barra para pellizcar y mover el panel")]
+    public Transform asa;
+    [Tooltip("Otra barra igual, abajo del panel")]
+    public Transform asaAbajo;
+    public Material materialClave;
+    public TMP_Text textoFotograma;
+
+    [Header("Pestañas")]
+    public GameObject paginaAnimar, paginaMedios, paginaBocas, paginaTitere;
+    [Tooltip("Las páginas con su fondo y el asa de abajo: se repliegan (como un archivador) y solo se asoman las pestañas")]
+    public GameObject paginas;
+    public BotonTocable btnPaginaAnimar, btnPaginaMedios, btnPaginaBocas, btnPaginaTitere, btnZoom, btnSeguir;
+    [Tooltip("Botón \"?\" de la esquina: abre abajo una copia azul del panel que explica cada botón")]
+    public BotonTocable btnAyuda;
+
+    [Header("Animar")]
+    public BotonTocable btnInicio, btnAnterior, btnPlay, btnSiguiente, btnClave, btnQuitarClave, btnFps;
+    public BotonTocable btnPlano, btnFondo, btnGuardar, btnCargar, btnBorrarTodo, btnSvg, btnFoto;
+    public BotonTocable[] btnCapas = new BotonTocable[0];
+    public BotonTocable[] btnVer = new BotonTocable[0];
+    // El estilo de cada capa, en su fila de la lista de Capas: Boceto (No/Gris/Azul) y Plano (propio/unido).
+    public BotonTocable[] btnBocetoCapa = new BotonTocable[0];
+    public BotonTocable[] btnPlanoCapa = new BotonTocable[0];
+    // Liberar: quita el encantamiento 2D de las líneas de esa capa (solo se ve si tiene líneas encantadas).
+    public BotonTocable[] btnLiberarCapa = new BotonTocable[0];
+    [Header("Capas (plegable, encima de la línea de tiempo)")]
+    [Tooltip("Botón \"+ Capa 1\": abre o cierra la lista de capas")]
+    public BotonTocable btnCapasPlegar;
+    [Tooltip("Las filas de capas (Capa, Ver y sus claves)")]
+    public GameObject capasDesplegable;
+    [Tooltip("Altura (local) de la fila de la Capa 1; las demás van encima")]
+    public float filaCapasY = 0.232f;
+    public float pasoCapasY = 0.028f;
+    bool capasAbiertas;
+    readonly List<Transform>[] marcasCapa = new List<Transform>[Dibujo.NumeroDeCapas];
+
+    [Header("Medios")]
+    public BotonTocable btnPausaGrabar;
+    public BotonTocable btnGrabar, btnVideoProceso, btnVelocidad, btnVideoAnim, btnImagenMas, btnImagenMenos, btnTemblor;
+    public BotonTocable btnHebras, btnGrosorVivo, btnCicloTemblor, btnImagenesVer;
+    public BotonTocable btnSuavidad, btnVelocidadTemblor, btnBoceto, btnUnirPlano, btnIman;
+    public TMP_Text textoMedios;
+    // v43: en la página Animar: el formato del video, el fondo verde y el papel cebolla.
+    public BotonTocable btnFormato, btnVerde, btnCebolla;
+    public BotonTocable btnCuadros;   // v46: "Cuadro a cuadro" (capas donde cada cuadro empieza vacío)
+    public BotonTocable btnCabeza;    // v51: "Cabeza invisible" (girar una cabeza dibujada)
+    readonly List<Transform> marcasCamara = new List<Transform>();
+
+    [Header("Bocas")]
+    public BotonTocable[] btnBocas = new BotonTocable[0];
+    public BotonTocable btnModoBoca, btnVoz, btnAudio, btnLipsync, btnQuitarAudio;
+    public TMP_Text textoBocas;
+
+    [Header("Títere")]
+    public BotonTocable btnMuneco, btnTitere, btnGrabarTitere, btnPierna1, btnPierna2, btnCuerpo, btnVoltear;
+    public BotonTocable btnPosar, btnCiclo, btnGuardarCiclo, btnBrazo1, btnBrazo2, btnPiso;
+    public TMP_Text textoTitere;
+
+    [Tooltip("Sin uso desde la v36 (ahora es la mesa de trabajo)")]
+    public float mirarArribaEntra = 0.35f;
+    public float mirarArribaSale = 0.15f;
+    public float distancia = 0.32f;
+    public float altura = 0.2f;
+    public float suavizado = 12f;
+
+    bool visible;
+    bool anclado;          // lo moviste: se queda fijo y siempre visible
+    // v36: la mesa de trabajo. v39: sale SOLO con la persiana de abajo (o el botón Mesa del reloj); mirar abajo
+    // ya no la saca (salía sin querer mientras dibujabas o mirabas el fondo).
+    // v37: la mesa abajo en tu vista (espejo de las capas) y las páginas arriba del reproductor.
+    public const float SubirPaginas = 0.40f;   // cuánto suben las páginas (lo usa también ★ Armar escena)
+    const float AbajoPanel = 0.09f;            // la orilla de abajo (bajo el reproductor)
+    const float ArribaPlegado = 0.25f;         // la orilla de arriba con las páginas guardadas (las pestañas)
+    const float ArribaDesplegado = 0.50f;      // y con una página abierta
+    const float AbajoAyuda = -0.06f;           // (la copia azul) la orilla de abajo del cuadro de explicación
+    const float DistanciaMesa = 0.55f;         // de tus ojos al centro de la mesa (metros)
+    const float BajoLaMirada = 26f;            // grados debajo de hacia donde miras (v38: un poquito más abajo)
+    const float CentroMesa = 0.165f;           // el centro de lo que siempre se ve (reproductor, tiempo y pestañas)
+    const float ZonaQuietaArriba = 22f;        // grados que puedes subir o bajar la cabeza sin que la mesa se mueva
+    const float ZonaQuietaLado = 20f;          // y girarla de lado
+    const float MasAltaMesa = -12f, MasBajaMesa = -75f;  // grados respecto al horizonte
+    // v41: la mesa ARRIBA (en espejo): pestañas y páginas debajo del reproductor.
+    const float SobreLaMirada = 20f;           // grados encima de hacia donde miras (el centro del reproductor y tiempo)
+    const float MasBajaArriba = 12f, MasAltaArriba = 75f; // grados respecto al horizonte
+    const float PestanasNormal = 0.232f, PestanasEspejo = 0.072f;   // la fila de las pestañas
+    const float PaginasEspejo = -0.036f;       // las páginas cuelgan debajo de las pestañas
+    const float AsaPaginas = 0.08f, AsaPaginasEspejo = -0.14f;      // el asa de las páginas (en su orilla de afuera)
+    const float ArribaEspejo = 0.24f;          // la orilla de arriba (el asa, la X y el tirador)
+    const float AbajoEspejoPlegado = 0.055f, AbajoEspejoDesplegado = -0.19f;
+    const float TiradorEspejo = 0.228f;        // el tirador, encima de la mesa
+    public static PanelArriba Principal { get; private set; }   // la mesa de verdad (no la copia azul)
+    bool arribaAhora;                          // abierta arriba (en espejo)
+    bool espejoPuesto;                         // las piezas ya están acomodadas en espejo
+    const float SeguirMesa = 2f;               // qué tan rápido te alcanza cuando ya te sigue
+    float inclinacion;                         // hacia dónde mira la mesa (grados; + arriba)
+    bool siguiendoLado, siguiendoArriba;
+    // v38: la persiana de abajo ("Fotograma 12 · 0:01"): tócala y sube la mano = sale la mesa. Un tirador debajo
+    // de la mesa la guarda (bájalo). v39: en la vista limpia la pastilla no se ve (queda el botón Mesa del reloj).
+    // v41: la pastilla puede ir arriba o abajo (PanelesFlexibles.cs).
+    Persiana persianaAbajo, tiradorAbajo;
+    Respira respira;
+    BotonTocable btnVolverArriba; // la X: guarda la mesa (vuelve a salir con la pastillita de abajo)
+    bool arrastrando;
+    bool escalando;
+    Vector3 desfaseAsa;
+    float distanciaEscala;
+    float escalaInicio = 1f;
+    float escala = 1f;
+    Quaternion giro = Quaternion.identity;
+    readonly List<Transform> marcas = new List<Transform>();
+    int claveArrastrada = -1;
+    int claveCamaraArrastrada = -1;   // v49: un rombito de la cámara agarrado (se corre como las claves del dibujo)
+    // v40: la línea de tiempo con gestos. Con el gesto de BORRAR (puño izquierdo) tocar una clave la quita; con el de
+    // DIBUJAR (pulgar + índice izquierdos) tocar la barra pone una clave ahí. Y la BARRA SUJETA: mientras arrastras
+    // el cabezal (o una clave), un doble toque izquierdo hace que la barra siga tu dedo solo de lado, aunque el dedo se
+    // salga lejos de la barra (así puedes mirar solo tu animación). Otro doble toque y vuelve a la normalidad.
+    static int barraCuadro = -10;
+    static float sinDibujarHasta = -10f;   // v42: un momento después de sujetar o soltar la barra, nada dibuja
+    public static bool DedoEnBarra => Time.frameCount - barraCuadro <= 1 || Time.time < sinDibujarHasta;
+    // v42: el dedo está sobre TODA la mesa (reproductor, línea de tiempo, pestañas y página abierta): ahí no se
+    // dibuja ni se borra (el dedo es de la mesa).
+    static int mesaCuadro = -10;
+    public static bool DedoEnMesa => Time.frameCount - mesaCuadro <= 1 || DedoEnBarra;
+    bool barraSujeta, encimaAntes;
+    float ultimoEnBarra = -10f;
+    Vector3 escalaCabezal;
+    int destinoClave;
+    int zoom = 2;          // índice en Ventanas
+    int inicioVentana;
+    int pagina;
+    bool plegado = true;   // las páginas guardadas: solo se asoman las pestañas
+    const string ClavePlegado = "jcartoons_panel_plegado", ClavePagina = "jcartoons_panel_pagina";
+
+    int Ventana => ventanaLibre > 0 ? Mathf.Clamp(ventanaLibre, 5, Mathf.Max(5, Animacion.TotalFotogramas))
+                 : Ventanas[zoom] <= 0 ? Animacion.TotalFotogramas : Mathf.Min(Ventanas[zoom], Animacion.TotalFotogramas);
+    int ventanaLibre;      // v52: el zoom con las agarraderas (0 = el del botón Zoom)
+
+    // ---------- Ayuda ----------
+    // El botón "?" crea una copia exacta de este panel, abajo y en azul. En la copia, cada botón
+    // NO hace nada: solo explica para qué sirve (con los pasos, si se combina con otros botones o gestos).
+    static bool creandoAyuda;
+    bool esAyuda;            // este panel es la copia azul
+    PanelArriba original;    // (en la copia) el panel de verdad
+    PanelArriba ayuda;       // (en el de verdad) la copia azul
+    bool ayudaAbierta;
+    TMP_Text textoAyuda;
+
+    void Awake()
+    {
+        if (creandoAyuda)
+            esAyuda = true;
+        else
+            Principal = this;
+    }
+
+    void Start()
+    {
+        if (esAyuda)
+        {
+            PrepararAyuda();
+            return;
+        }
+        if (control == null) control = FindFirstObjectByType<ControlManos>();
+        if (dibujo == null) dibujo = FindFirstObjectByType<Dibujo>();
+        if (animacion == null) animacion = FindFirstObjectByType<Animacion>();
+        if (escenario == null) escenario = FindFirstObjectByType<Escenario>();
+        if (lipsync == null) lipsync = FindFirstObjectByType<Lipsync>();
+        if (referencias == null) referencias = FindFirstObjectByType<Referencias>();
+        if (grabador == null) grabador = FindFirstObjectByType<GrabadorProceso>();
+        if (exportador == null) exportador = FindFirstObjectByType<ExportadorVideo>();
+        if (titere == null) titere = FindFirstObjectByType<Titere>();
+
+        Conectar(btnPaginaAnimar, () => TocarPestana(0));
+        Conectar(btnPaginaMedios, () => TocarPestana(1));
+        Conectar(btnPaginaBocas, () => TocarPestana(2));
+        Conectar(btnPaginaTitere, () => TocarPestana(3));
+        Conectar(btnZoom, CambiarZoom);
+        Conectar(btnSeguir, AlternarFijo);
+        CrearX();
+        Conectar(btnAyuda, AlternarAyuda);
+        // v44: la ayuda de la mesa ahora está en Mis archivos → Ayuda (y en el panel "?"): aquí el botón se esconde.
+        if (btnAyuda != null)
+        {
+            btnAyuda.gameObject.SetActive(false);
+            if (btnAyuda.etiqueta != null)
+                btnAyuda.etiqueta.gameObject.SetActive(false);
+        }
+        // Las capas ahora cuelgan en profundidad (ver CapasProfundidad.cs); la lista de antes ya no se abre.
+        Conectar(btnCapasPlegar, CapasProfundidad.Alternar);
+        PrepararCapas();
+
+        // v42: la etiqueta de cada botón es la palabra que se dice (ver EtiquetasBotones y ControlManosVoz). Donde el
+        // botón decía otra cosa, ahora dice lo mismo ("+ Clave" = "Clave", "- Clave" = "Quita clave").
+        BotonTocable.PonerVoz(btnInicio, ControlManos.ComandoVoz.Inicio);
+        BotonTocable.PonerVoz(btnAnterior, ControlManos.ComandoVoz.Anterior);
+        BotonTocable.PonerVoz(btnPlay, ControlManos.ComandoVoz.Play);
+        BotonTocable.PonerVoz(btnSiguiente, ControlManos.ComandoVoz.Siguiente);
+        BotonTocable.PonerVoz(btnClave, ControlManos.ComandoVoz.Clave);
+        BotonTocable.PonerVoz(btnQuitarClave, ControlManos.ComandoVoz.QuitaClave);
+        BotonTocable.PonerVoz(btnZoom, ControlManos.ComandoVoz.Zoom);
+        BotonTocable.PonerVoz(btnPaginaAnimar, ControlManos.ComandoVoz.Animar);
+        BotonTocable.PonerVoz(btnPaginaBocas, ControlManos.ComandoVoz.Bocas);
+        BotonTocable.PonerVoz(btnPaginaTitere, ControlManos.ComandoVoz.Titere);
+        BotonTocable.PonerVoz(btnVideoAnim, ControlManos.ComandoVoz.Video);
+        BotonTocable.PonerVoz(btnCapasPlegar, ControlManos.ComandoVoz.Capas);
+        BotonTocable.PonerNombre(btnFps, "Cuadros por segundo");
+        BotonTocable.PonerNombre(btnAyuda, "Ayuda de la mesa");
+        BotonTocable.PonerNombre(btnSeguir, "Fijar aquí / Seguirme");
+        BotonTocable.PonerNombre(btnVolverArriba, "Guardar la mesa");
+        if (btnClave != null)
+            btnClave.PonerTexto("Clave");
+        if (btnQuitarClave != null)
+            btnQuitarClave.PonerTexto("Quita clave");
+        if (btnVideoAnim != null)
+            btnVideoAnim.PonerTexto("Exportar");   // v43
+        BotonTocable.PonerNombre(btnFormato, "Formato del video");
+        BotonTocable.PonerNombre(btnVerde, "Fondo verde (solo en el video)");
+        BotonTocable.PonerVoz(btnCebolla, ControlManos.ComandoVoz.Cebolla);
+        BotonTocable.PonerVoz(btnCuadros, ControlManos.ComandoVoz.CuadroACuadro);
+        BotonTocable.PonerVoz(btnCabeza, ControlManos.ComandoVoz.CabezaInvisible);
+        Conectar(btnCabeza, CabezaInvisible.Alternar);
+        Conectar(btnFormato, () =>
+        {
+            // v47: horizontal → vertical → vertical 2K → horizontal...
+            ExportadorVideo.SiguienteFormato();
+            if (dibujo != null)
+                dibujo.Mensaje("Video: " + ExportadorVideo.NombreFormato);
+            Refrescar();
+        });
+        Conectar(btnVerde, () =>
+        {
+            ExportadorVideo.FondoVerde = !ExportadorVideo.FondoVerde;
+            if (dibujo != null)
+                dibujo.Mensaje(ExportadorVideo.FondoVerde ? "Fondo verde: Sí (solo en el MP4, para recortarlo)" : "Fondo verde: No (blanco)");
+            Refrescar();
+        });
+        Conectar(btnCebolla, () =>
+        {
+            PapelCebolla.Alternar();
+            Refrescar();
+        });
+        Conectar(btnCuadros, () =>
+        {
+            if (dibujo != null)
+                dibujo.AlternarCuadroACuadro();
+            Refrescar();
+        });
+
+        if (animacion != null)
+        {
+            Conectar(btnInicio, animacion.Inicio);
+            Conectar(btnAnterior, animacion.Anterior);
+            Conectar(btnPlay, animacion.AlternarReproducir);
+            Conectar(btnSiguiente, animacion.Siguiente);
+            Conectar(btnClave, animacion.AgregarClave);
+            Conectar(btnQuitarClave, animacion.QuitarClave);
+            Conectar(btnFps, animacion.CambiarFps);
+        }
+        Conectar(btnFondo, SiguienteFondo);
+        Conectar(btnFoto, TomarFoto);
+        if (dibujo != null)
+        {
+            Conectar(btnPlano, dibujo.AlternarPlano);
+            Conectar(btnGuardar, dibujo.Guardar);
+            Conectar(btnCargar, AbrirMisArchivos);
+            Conectar(btnBorrarTodo, dibujo.BorrarTodo);
+            Conectar(btnSvg, dibujo.ExportarSVG);
+            Conectar(btnUnirPlano, dibujo.AlternarUnirPlano);
+            Conectar(btnIman, dibujo.AlternarIman);
+            for (int i = 0; i < btnCapas.Length; i++)
+            {
+                int capa = i;
+                Conectar(btnCapas[i], () => dibujo.SeleccionarCapa(capa));
+            }
+            for (int i = 0; i < btnVer.Length; i++)
+            {
+                int capa = i;
+                Conectar(btnVer[i], () => dibujo.AlternarVerCapa(capa));
+            }
+            // Boceto y Plano de una capa: esa capa queda elegida y se cambia su estilo.
+            for (int i = 0; i < btnBocetoCapa.Length; i++)
+            {
+                int capa = i;
+                Conectar(btnBocetoCapa[i], () =>
+                {
+                    dibujo.SeleccionarCapa(capa);
+                    if (dibujo.temblor != null)
+                        dibujo.temblor.SiguienteBoceto();
+                });
+            }
+            for (int i = 0; i < btnPlanoCapa.Length; i++)
+            {
+                int capa = i;
+                Conectar(btnPlanoCapa[i], () =>
+                {
+                    dibujo.SeleccionarCapa(capa);
+                    dibujo.AlternarUnirPlano();
+                });
+            }
+            for (int i = 0; i < btnLiberarCapa.Length; i++)
+            {
+                int capa = i;
+                Conectar(btnLiberarCapa[i], () =>
+                {
+                    dibujo.LiberarCapa(capa);
+                    if (control != null && control.Der.valida)
+                        control.SonidoBurbuja(control.Der.indice);
+                });
+            }
+        }
+
+        if (grabador != null)
+        {
+            Conectar(btnGrabar, grabador.Alternar);
+            Conectar(btnPausaGrabar, grabador.AlternarPausa);
+        }
+        if (exportador != null)
+        {
+            Conectar(btnVideoProceso, exportador.ExportarProceso);
+            Conectar(btnVelocidad, exportador.CambiarVelocidad);
+            Conectar(btnVideoAnim, TocarExportar);   // v47: primero salen los tamaños, ahí mismo
+        }
+        if (dibujo != null && dibujo.temblor != null)
+        {
+            Conectar(btnTemblor, dibujo.temblor.Siguiente);
+            Conectar(btnHebras, dibujo.temblor.SiguienteHebras);
+            Conectar(btnGrosorVivo, dibujo.temblor.AlternarGrosor);
+            Conectar(btnCicloTemblor, dibujo.temblor.AlternarCiclo);
+            Conectar(btnSuavidad, dibujo.temblor.SiguienteSuavidad);
+            Conectar(btnVelocidadTemblor, dibujo.temblor.SiguienteVelocidad);
+            Conectar(btnBoceto, dibujo.temblor.SiguienteBoceto);
+        }
+        if (referencias != null)
+        {
+            Conectar(btnImagenMas, () => BuscadorImagenes.Abrir(referencias, control != null ? control.Cabeza : null));
+            Conectar(btnImagenMenos, referencias.QuitarSeleccionada);
+            Conectar(btnImagenesVer, referencias.AlternarTodas);
+        }
+
+        if (lipsync != null)
+        {
+            for (int i = 0; i < btnBocas.Length; i++)
+            {
+                int boca = i;
+                Conectar(btnBocas[i], () => lipsync.TocarBoca(boca));
+            }
+            Conectar(btnModoBoca, lipsync.AlternarModo);
+            Conectar(btnVoz, lipsync.AlternarVoz);
+            Conectar(btnAudio, lipsync.SiguienteAudio);
+            Conectar(btnLipsync, lipsync.Generar);
+            Conectar(btnQuitarAudio, lipsync.QuitarAudio);
+        }
+
+        if (titere != null)
+        {
+            Conectar(btnMuneco, titere.CrearOParar);
+            Conectar(btnTitere, titere.CambiarTipo);
+            Conectar(btnGrabarTitere, titere.Grabar);
+            Conectar(btnPierna1, () => titere.AsignarPierna(1));
+            Conectar(btnPierna2, () => titere.AsignarPierna(2));
+            Conectar(btnCuerpo, titere.AlternarCuerpo);
+            Conectar(btnVoltear, titere.Voltear);
+            Conectar(btnPosar, titere.AlternarPosar);
+            Conectar(btnCiclo, titere.CambiarCiclo);
+            Conectar(btnGuardarCiclo, titere.GuardarCiclo);
+            Conectar(btnBrazo1, () => titere.AsignarBrazo(1));
+            Conectar(btnBrazo2, () => titere.AsignarBrazo(2));
+            Conectar(btnPiso, titere.AlternarPiso);
+        }
+
+        // Como lo dejaste la última vez (la primera vez: replegado, en Animar).
+        PonerPagina(Mathf.Clamp(PlayerPrefs.GetInt(ClavePagina, 0), 0, 3), false);
+        Plegar(PlayerPrefs.GetInt(ClavePlegado, 1) == 1, false);
+        if (contenido != null)
+            contenido.SetActive(false);
+    }
+
+    // Pestaña tocada: si su página ya está abierta, se repliega; si no, se despliega esa página.
+    void TocarPestana(int p)
+    {
+        if (!plegado && p == pagina)
+        {
+            Plegar(true, true);
+            return;
+        }
+        PonerPagina(p);
+        Plegar(false, true);
+        if (!esAyuda)
+            PlayerPrefs.SetInt(ClavePagina, p);
+    }
+
+    void Plegar(bool si, bool guardar)
+    {
+        plegado = si;
+        if (paginas != null && paginas.activeSelf == si)
+            paginas.SetActive(!si);
+        MarcarPestanas();
+        if (guardar && !esAyuda)
+        {
+            PlayerPrefs.SetInt(ClavePlegado, si ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+    }
+
+    void MarcarPestanas()
+    {
+        if (btnPaginaAnimar != null) btnPaginaAnimar.Marcar(!plegado && pagina == 0);
+        if (btnPaginaMedios != null) btnPaginaMedios.Marcar(!plegado && pagina == 1);
+        if (btnPaginaBocas != null) btnPaginaBocas.Marcar(!plegado && pagina == 2);
+        if (btnPaginaTitere != null) btnPaginaTitere.Marcar(!plegado && pagina == 3);
+    }
+
+    // ---------- Capas plegables ----------
+
+    void PrepararCapas()
+    {
+        if (capasDesplegable == null)
+            return;
+        // Una tira por capa (alineada con la línea de tiempo) donde se ven las claves de esa capa.
+        var materialBarra = barra != null ? barra.GetComponent<Renderer>().sharedMaterial : null;
+        for (int i = 0; i < Dibujo.NumeroDeCapas; i++)
+        {
+            var tira = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            tira.name = "TiraCapa" + (i + 1);
+            Destroy(tira.GetComponent<Collider>());
+            tira.transform.SetParent(capasDesplegable.transform, false);
+            tira.transform.localPosition = new Vector3(barra != null ? barra.localPosition.x : 0f, filaCapasY + i * pasoCapasY, 0f);
+            tira.transform.localScale = new Vector3(barra != null ? barra.localScale.x : 0.44f, 0.006f, 0.004f);
+            var r = tira.GetComponent<Renderer>();
+            if (materialBarra != null)
+                r.sharedMaterial = materialBarra;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            marcasCapa[i] = new List<Transform>();
+        }
+        capasDesplegable.SetActive(false);
+    }
+
+    void AbrirCapas(bool abrir)
+    {
+        capasAbiertas = abrir;
+        if (capasDesplegable != null)
+            capasDesplegable.SetActive(abrir);
+    }
+
+    void RefrescarCapas()
+    {
+        if (dibujo == null)
+            return;
+        if (btnCapasPlegar != null)
+        {
+            btnCapasPlegar.PonerTexto(dibujo.NombreCapa(dibujo.capaActual));
+            btnCapasPlegar.Marcar(CapasProfundidad.Abierta);
+        }
+        if (!capasAbiertas || capasDesplegable == null || animacion == null || barra == null)
+            return;
+        for (int i = 0; i < btnCapas.Length && i < dibujo.capas.Count; i++)
+            if (btnCapas[i] != null)
+                btnCapas[i].Marcar(i == dibujo.capaActual);
+        for (int i = 0; i < btnVer.Length && i < dibujo.capas.Count; i++)
+        {
+            if (btnVer[i] == null)
+                continue;
+            bool capaVisible = dibujo.capas[i].visible;
+            btnVer[i].PonerTexto(capaVisible ? "Ver" : "Oculta");
+            btnVer[i].Marcar(!capaVisible);
+        }
+        for (int i = 0; i < btnBocetoCapa.Length && i < dibujo.capas.Count; i++)
+        {
+            if (btnBocetoCapa[i] == null)
+                continue;
+            int boceto = Mathf.Clamp(dibujo.capas[i].boceto, 0, 2);
+            btnBocetoCapa[i].PonerTexto("Lápiz: " + NombresBoceto[boceto]);
+            btnBocetoCapa[i].Marcar(boceto > 0);
+        }
+        for (int i = 0; i < btnPlanoCapa.Length && i < dibujo.capas.Count; i++)
+        {
+            if (btnPlanoCapa[i] == null)
+                continue;
+            btnPlanoCapa[i].PonerTexto(dibujo.capas[i].unido ? "Plano: unido" : "Plano: propio");
+            btnPlanoCapa[i].Marcar(dibujo.capas[i].unido);
+        }
+        for (int i = 0; i < btnLiberarCapa.Length && i < dibujo.capas.Count; i++)
+        {
+            var b = btnLiberarCapa[i];
+            if (b == null)
+                continue;
+            var c = dibujo.capas[i];
+            bool ver = esAyuda || dibujo.EncantadasEnCapa(i) > 0 || (!c.unido && c.hayPlano);
+            if (b.gameObject.activeSelf != ver)
+            {
+                b.gameObject.SetActive(ver);
+                if (b.etiqueta != null)
+                    b.etiqueta.gameObject.SetActive(ver);
+            }
+        }
+        for (int i = 0; i < Dibujo.NumeroDeCapas; i++)
+        {
+            var lista = marcasCapa[i];
+            if (lista == null)
+                continue;
+            int n = 0;
+            foreach (var c in animacion.ClavesDe(i))
+            {
+                if (!EnVentana(c.fotograma))
+                    continue;
+                if (n >= lista.Count)
+                {
+                    var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    go.name = "MarcaCapa";
+                    Destroy(go.GetComponent<Collider>());
+                    go.transform.SetParent(capasDesplegable.transform, false);
+                    var r = go.GetComponent<Renderer>();
+                    if (materialClave != null)
+                        r.sharedMaterial = materialClave;
+                    r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    lista.Add(go.transform);
+                }
+                var m = lista[n++];
+                if (!m.gameObject.activeSelf)
+                    m.gameObject.SetActive(true);
+                Vector3 pos = PosicionEnBarra(c.fotograma, -0.004f);
+                pos.y = filaCapasY + i * pasoCapasY;
+                m.localPosition = pos;
+                m.localScale = new Vector3(Ventana > 400 ? 0.002f : 0.0035f, 0.016f, 0.004f);
+            }
+            for (int k = n; k < lista.Count; k++)
+                if (lista[k].gameObject.activeSelf)
+                    lista[k].gameObject.SetActive(false);
+        }
+    }
+
+    bool muestraBocasHecha;
+
+    void PonerPagina(int p, bool conMuestra = true)
+    {
+        // Bocas sin ninguna boca guardada: aparece una muestra lista para probar (una vez por sesión).
+        if (p == 2 && conMuestra && !esAyuda && !muestraBocasHecha && lipsync != null && !lipsync.HayBocas && control != null && control.Cabeza != null)
+        {
+            muestraBocasHecha = true;
+            lipsync.CrearMuestra(control.Cabeza);
+        }
+        pagina = p;
+        if (paginaAnimar != null) paginaAnimar.SetActive(p == 0);
+        if (paginaMedios != null) paginaMedios.SetActive(p == 1);
+        if (paginaBocas != null) paginaBocas.SetActive(p == 2);
+        if (paginaTitere != null) paginaTitere.SetActive(p == 3);
+        MarcarPestanas();
+    }
+
+    // v42: la voz ("zoom", "animar", "bocas", "títere"): si la mesa está guardada, primero sale.
+    public void ComandoZoom()
+    {
+        if (!visible)
+            AbrirDesdePersiana();
+        CambiarZoom();
+    }
+
+    public void ComandoPestana(int p)
+    {
+        if (!visible)
+            AbrirDesdePersiana();
+        if (plegado || pagina != p)
+            TocarPestana(p);
+    }
+
+    void CambiarZoom()
+    {
+        zoom = (zoom + 1) % Ventanas.Length;
+        ventanaLibre = 0;
+        inicioVentana = 0;
+        AjustarVentana(true);
+        if (dibujo != null)
+            dibujo.Mensaje(Ventanas[zoom] <= 0 ? "Barra: todos los fotogramas" : "Barra: " + Ventanas[zoom] + " fotogramas");
+    }
+
+    // "Fijar aquí": el panel se queda donde está y siempre visible. "Seguirme": vuelve a ser la mesa.
+    void AlternarFijo()
+    {
+        if (anclado)
+        {
+            Seguirme();
+            return;
+        }
+        anclado = true;
+        if (dibujo != null)
+            dibujo.Mensaje("Panel fijo. Pellizca el asa (arriba) para moverlo");
+    }
+
+    // X arriba a la derecha: guarda la mesa (vuelve a salir con la pastillita de abajo). Si estaba fija, también la suelta.
+    void CrearX()
+    {
+        if (contenido == null || btnSeguir == null)
+            return;
+        var cubo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        cubo.name = "BotonVolverArriba";
+        cubo.transform.SetParent(contenido.transform, false);
+        cubo.transform.localPosition = new Vector3(0.237f, 0.222f, 0f);
+        cubo.transform.localScale = new Vector3(0.026f, 0.026f, 0.008f); // v37: un poco más grande
+        var r = cubo.GetComponent<Renderer>();
+        r.sharedMaterial = btnSeguir.materialNormal;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
+        btnVolverArriba = cubo.AddComponent<BotonTocable>();
+        btnVolverArriba.materialNormal = btnSeguir.materialNormal;
+        btnVolverArriba.materialMarcado = btnSeguir.materialMarcado;
+        var go = new GameObject("TextoX", typeof(RectTransform));
+        go.transform.SetParent(contenido.transform, false);
+        go.transform.localPosition = new Vector3(0.237f, 0.222f, -0.0046f);
+        var t = go.AddComponent<TextMeshPro>();
+        t.text = "X";
+        t.enableAutoSizing = true;
+        t.fontSizeMin = 0.01f;
+        t.fontSizeMax = 0.2f;
+        t.alignment = TextAlignmentOptions.Center;
+        t.fontStyle = FontStyles.Bold;
+        t.color = Color.black;
+        t.rectTransform.sizeDelta = new Vector2(0.022f, 0.022f);
+        btnVolverArriba.etiqueta = t;
+        btnVolverArriba.alTocar.AddListener(Seguirme);
+        MostrarX(false);
+    }
+
+    void MostrarX(bool ver)
+    {
+        if (btnVolverArriba == null || btnVolverArriba.gameObject.activeSelf == ver)
+            return;
+        btnVolverArriba.gameObject.SetActive(ver);
+        if (btnVolverArriba.etiqueta != null)
+            btnVolverArriba.etiqueta.gameObject.SetActive(ver);
+    }
+
+    // v56: guarda la mesa (la función la esconde para que nada tape la escena).
+    public void GuardarMesa()
+    {
+        if (visible)
+            Seguirme();
+    }
+
+    void Seguirme()
+    {
+        anclado = false;
+        visible = false; // al volver a sacarla aparece frente a ti
+        if (contenido != null)
+            contenido.SetActive(false);
+        if (dibujo != null)
+            dibujo.Mensaje(VistaLimpia.Activa ? "Para sacar la línea de tiempo: botón Línea de tiempo del reloj"
+                                              : "Jala la pastillita del fotograma para sacar la mesa");
+    }
+
+    void SiguienteFondo()
+    {
+        if (escenario == null)
+            return;
+        escenario.SiguienteModo();
+        if (dibujo != null)
+            dibujo.Mensaje(escenario.MensajeFondo);
+    }
+
+    // La foto se toma sin este panel en medio.
+    void TomarFoto()
+    {
+        if (dibujo == null)
+            return;
+        bool estaba = contenido != null && contenido.activeSelf;
+        if (estaba)
+            contenido.SetActive(false);
+        dibujo.TomarFoto();
+        if (estaba)
+            contenido.SetActive(true);
+    }
+
+    static void Conectar(BotonTocable boton, UnityAction accion)
+    {
+        if (boton != null)
+            boton.alTocar.AddListener(accion);
+    }
+
+    // ¿Este punto está sobre el panel? (Así los pellizcos ahí no seleccionan líneas.)
+    public bool Contiene(Vector3 mundo)
+    {
+        if (!esAyuda && ayuda != null && ayuda.Contiene(mundo))
+            return true;
+        if (contenido == null || !contenido.activeInHierarchy)
+            return false;
+        Vector3 l = transform.InverseTransformPoint(mundo);
+        float abajo = listaArchivos != null && listaArchivos.activeSelf ? -0.33f : esAyuda ? AbajoAyuda : AbajoPanel;
+        float arriba = capasAbiertas ? filaCapasY + Dibujo.NumeroDeCapas * pasoCapasY : plegado ? ArribaPlegado : ArribaDesplegado;
+        if (espejoPuesto)
+        {
+            // v41: en espejo (la mesa arriba), las pestañas y las páginas van debajo del reproductor.
+            abajo = plegado ? AbajoEspejoPlegado : AbajoEspejoDesplegado;
+            arriba = ArribaEspejo;
+        }
+        float lado = capasAbiertas ? 0.43f : 0.27f; // con Capas abiertas: Boceto, Plano y Liberar llegan hasta x = 0.42
+        return Mathf.Abs(l.x) < lado && l.y > abajo && l.y < arriba && Mathf.Abs(l.z) < 0.06f;
+    }
+
+    void Update()
+    {
+        if (esAyuda)
+        {
+            SeguirOriginal();
+            return;
+        }
+        var cabeza = control != null ? control.Cabeza : null;
+        if (cabeza == null || contenido == null)
+            return;
+
+        if (respira == null)
+        {
+            // Una interfaz que respira con tu atención (v36).
+            respira = gameObject.AddComponent<Respira>();
+            respira.contenido = contenido.transform;
+            respira.centro = new Vector3(0f, CentroMesa, 0f);
+        }
+        AsegurarPersianas();
+
+        // Se queda hasta que la guardes (con el tirador de abajo o la X); movida con el asa, siempre visible.
+        bool ver = visible || anclado;
+        if (ver != visible)
+        {
+            visible = ver;
+            contenido.SetActive(ver);
+            if (ver && !anclado)
+            {
+                // Aparece abajo en tu vista, hacia donde mirabas.
+                giro = GiroDeLado(cabeza);
+                inclinacion = Inclinacion(cabeza);
+                siguiendoLado = siguiendoArriba = false;
+                Colocar(cabeza, 1f);
+            }
+        }
+        if (!ver)
+        {
+            if (arrastrando)
+                SoltarAsa();
+            if (barraSujeta)
+            {
+                barraSujeta = false;
+                PintarSujeta();
+            }
+            return;
+        }
+
+        // v42: con la barra sujeta nunca se dibuja (ni por accidente); con el dedo sobre la mesa, tampoco.
+        if (barraSujeta)
+            barraCuadro = Time.frameCount;
+        if (control.Der.valida && Contiene(control.Der.indice))
+            mesaCuadro = Time.frameCount;
+        RevisarAsa(cabeza);
+        if (!anclado)
+        {
+            // Te sigue con calma (de lado y de arriba a abajo); con tu dedo encima se queda quieta.
+            bool quieta = arrastrando || (control.Der.valida && Contiene(control.Der.indice));
+            if (!quieta)
+                Seguir(cabeza);
+            Colocar(cabeza, 1f - Mathf.Exp(-suavizado * Time.deltaTime));
+        }
+        if (!arrastrando && !arrastrandoNodos && !RevisarZoomBarra())
+            RevisarBarra();
+        Refrescar();
+    }
+
+    // Hacia dónde miras, solo de lado (sin subir ni bajar).
+    static Quaternion GiroDeLado(Transform cabeza)
+    {
+        Vector3 adelante = cabeza.forward;
+        adelante.y = 0f;
+        if (adelante.sqrMagnitude < 1e-4f)
+        {
+            adelante = cabeza.up;   // mirando justo abajo: la coronilla dice hacia dónde estás
+            adelante.y = 0f;
+        }
+        return Quaternion.LookRotation(adelante.sqrMagnitude > 1e-6f ? adelante.normalized : Vector3.forward, Vector3.up);
+    }
+
+    // ---------- v38: la persiana de abajo y su tirador ----------
+
+    void AsegurarPersianas()
+    {
+        if (persianaAbajo != null)
+            return;
+        // En objetos aparte (no dentro del panel: la copia azul de la ayuda no los copia).
+        persianaAbajo = new GameObject("PersianaMesa").AddComponent<Persiana>();
+        persianaAbajo.seEsconde = true;    // en la vista limpia no se ve
+        persianaAbajo.sentido = 1;
+        // v41: arriba o abajo (se mueve con un pellizco; ver PanelesFlexibles.cs).
+        persianaAbajo.pose = PanelesFlexibles.PoseMesa;
+        persianaAbajo.arriba = () => PanelesFlexibles.MesaPastillaArriba;
+        persianaAbajo.alMoverA = MoverPastilla;
+        persianaAbajo.comandoVoz = ControlManos.ComandoVoz.Mesa;
+        persianaAbajo.visible = () => !visible && !Tutorial.EnCurso && !ExportadorVideo.Exportando;
+        persianaAbajo.puedeJalar = () => control != null && !control.TrazandoAhora;   // v44: sin depender de la otra mano
+        persianaAbajo.texto = TextoPastilla;
+        persianaAbajo.progreso = () => animacion != null ? animacion.Fotograma / (float)Mathf.Max(1, animacion.UltimoFotograma()) : 0f;
+        persianaAbajo.alAbrir = AbrirDesdePersiana;
+
+        tiradorAbajo = new GameObject("TiradorMesa").AddComponent<Persiana>();
+        tiradorAbajo.sentido = -1;
+        tiradorAbajo.ancho = 0.05f;
+        tiradorAbajo.alto = 0.012f;
+        tiradorAbajo.pose = PoseTirador;
+        tiradorAbajo.visible = () => visible && !anclado;
+        tiradorAbajo.alAbrir = Seguirme;
+        // Abajo se guarda bajándolo; arriba (v41), subiéndolo. ("arriba" = se jala hacia abajo.)
+        tiradorAbajo.arriba = () => !arribaAhora;
+        tiradorAbajo.comandoVoz = ControlManos.ComandoVoz.Mesa;
+    }
+
+    // v41: llevaste la pastillita arriba o abajo con un pellizco.
+    void MoverPastilla(bool arriba)
+    {
+        PanelesFlexibles.PonerMesaArriba(arriba);
+        if (dibujo == null)
+            return;
+        if (PanelesFlexibles.MesaPastillaArriba != arriba)
+            dibujo.Mensaje("Las capas ocupan esa orilla: mientras estén abiertas, la mesa sale en la otra");
+        else
+            dibujo.Mensaje(arriba ? "Mesa arriba: jala la pastillita hacia abajo" : "Mesa abajo: jala la pastillita hacia arriba");
+    }
+
+    // v41: dónde está abierta la mesa: 1 = arriba, -1 = abajo, 0 = guardada (o fija en el aire, con el alfiler).
+    public int OrillaAbierta => visible && !anclado ? (arribaAhora ? 1 : -1) : 0;
+
+    // v41: acomoda las piezas: normal (pestañas y páginas ARRIBA del reproductor) o en espejo (DEBAJO).
+    void AplicarEspejo(bool si)
+    {
+        espejoPuesto = si;
+        float y = si ? PestanasEspejo : PestanasNormal;
+        PonerAltura(btnPaginaAnimar, y);
+        PonerAltura(btnPaginaMedios, y);
+        PonerAltura(btnPaginaBocas, y);
+        PonerAltura(btnPaginaTitere, y);
+        if (paginas != null)
+        {
+            Vector3 p = paginas.transform.localPosition;
+            p.y = si ? PaginasEspejo : SubirPaginas;
+            paginas.transform.localPosition = p;
+        }
+        if (asaAbajo != null)
+        {
+            Vector3 a = asaAbajo.localPosition;
+            a.y = si ? AsaPaginasEspejo : AsaPaginas;
+            asaAbajo.localPosition = a;
+        }
+    }
+
+    static void PonerAltura(BotonTocable b, float y)
+    {
+        if (b == null)
+            return;
+        Vector3 p = b.transform.localPosition;
+        p.y = y;
+        b.transform.localPosition = p;
+        if (b.etiqueta != null)
+        {
+            Vector3 e = b.etiqueta.transform.localPosition;
+            e.y = y;
+            b.etiqueta.transform.localPosition = e;
+        }
+    }
+
+    // "Fotograma 12 · 0:01": en qué fotograma vas y a qué tiempo.
+    string TextoPastilla()
+    {
+        if (animacion == null)
+            return "Fotograma 1";
+        int f = animacion.Fotograma;
+        float seg = f / Mathf.Max(1f, animacion.fotogramasPorSegundo);
+        int s = Mathf.FloorToInt(seg);
+        return "Fotograma " + (f + 1) + " · " + (s / 60) + ":" + (s % 60).ToString("00");
+    }
+
+    // El tirador: debajo de la mesa, al centro. v41: con la mesa arriba, encima de ella.
+    void PoseTirador(Transform cabeza, out Vector3 pos, out Quaternion rot)
+    {
+        pos = transform.TransformPoint(new Vector3(0f, arribaAhora ? TiradorEspejo : AbajoPanel - 0.022f, 0f));
+        rot = transform.rotation;
+    }
+
+    // Jalaste la persiana: sale la mesa abajo en tu vista, con sus 3 pestañas guardadas.
+    // También la abre el botón Mesa del reloj (v39, para la vista limpia).
+    public void AbrirMesa()
+    {
+        AbrirDesdePersiana();
+    }
+
+    // v44: la ayuda de la mesa (la copia azul), desde Mis archivos o el panel "?".
+    public void AbrirAyudaMesa()
+    {
+        if (!visible)
+            AbrirMesa();
+        if (ayuda == null || !ayudaAbierta)
+            AlternarAyuda();
+    }
+
+    // v40: ¿la mesa se ve? (y la voz: "mesa" la saca o la guarda)
+    public bool MesaVisible => visible;
+
+    public void AlternarMesa()
+    {
+        if (visible && !anclado)
+            Seguirme();
+        else
+            AbrirDesdePersiana();
+    }
+
+    void AbrirDesdePersiana()
+    {
+        var cabeza = control != null ? control.Cabeza : null;
+        if (cabeza == null || contenido == null || visible)
+            return;
+        visible = true;
+        // v41: sale en la orilla donde está su pastilla (arriba en espejo; abajo como siempre).
+        arribaAhora = PanelesFlexibles.MesaPastillaArriba;
+        AplicarEspejo(arribaAhora);
+        contenido.SetActive(true);
+        Plegar(true, true);
+        if (!anclado)
+        {
+            giro = GiroDeLado(cabeza);
+            inclinacion = Inclinacion(cabeza);
+            siguiendoLado = siguiendoArriba = false;
+            Colocar(cabeza, 1f);
+        }
+    }
+
+    // Hacia dónde miras de arriba a abajo (grados; + arriba).
+    static float Inclinacion(Transform cabeza)
+    {
+        return Mathf.Asin(Mathf.Clamp(cabeza.forward.y, -1f, 1f)) * Mathf.Rad2Deg;
+    }
+
+    // Te sigue solo cuando giras o subes/bajas la cabeza bastante; entonces te alcanza con calma y se vuelve a quedar.
+    void Seguir(Transform cabeza)
+    {
+        float k = 1f - Mathf.Exp(-SeguirMesa * Time.deltaTime);
+        Quaternion lado = GiroDeLado(cabeza);
+        if (Quaternion.Angle(giro, lado) > ZonaQuietaLado)
+            siguiendoLado = true;
+        if (siguiendoLado)
+        {
+            giro = Quaternion.Slerp(giro, lado, k);
+            if (Quaternion.Angle(giro, lado) < 3f)
+                siguiendoLado = false;
+        }
+        float p = Inclinacion(cabeza);
+        if (Mathf.Abs(p - inclinacion) > ZonaQuietaArriba)
+            siguiendoArriba = true;
+        if (siguiendoArriba)
+        {
+            inclinacion = Mathf.Lerp(inclinacion, p, k);
+            if (Mathf.Abs(p - inclinacion) < 2f)
+                siguiendoArriba = false;
+        }
+    }
+
+    // La mesa: abajo en tu vista (BajoLaMirada grados debajo de hacia donde mira la mesa), mirando hacia tus ojos.
+    // v41: o arriba (SobreLaMirada grados encima).
+    void Colocar(Transform cabeza, float a)
+    {
+        float elevacion = arribaAhora ? Mathf.Clamp(inclinacion + SobreLaMirada, MasBajaArriba, MasAltaArriba)
+                                      : Mathf.Clamp(inclinacion - BajoLaMirada, MasBajaMesa, MasAltaMesa);
+        Vector3 hacia = giro * (Quaternion.Euler(-elevacion, 0f, 0f) * Vector3.forward);
+        Quaternion rot = Quaternion.LookRotation(hacia, Vector3.up);
+        // Lo que siempre se ve queda centrado en esa dirección (el panel crece desde más abajo).
+        // v42: arriba, más cerca de ti (v43: 4.5 cm, para no estirar tanto el brazo).
+        float distancia = arribaAhora ? DistanciaMesa - 0.145f : DistanciaMesa;   // v45: arriba, 10 cm más cerca
+        Vector3 pos = cabeza.position + hacia * distancia - rot * Vector3.up * (CentroMesa * escala);
+        transform.position = Vector3.Lerp(transform.position, pos, a);
+        transform.rotation = Quaternion.Slerp(transform.rotation, rot, a);
+    }
+
+    // ---------- Mover y cambiar el tamaño del panel ----------
+
+    void RevisarAsa(Transform cabeza)
+    {
+        if (control == null || asa == null)
+            return;
+        var der = control.Der;
+        var izq = control.Izq;
+        // v52: con el gesto de NODOS en la izquierda (medio + pulgar), toca la mesa con el índice derecho y llévala;
+        // al soltar la izquierda se queda ahí.
+        if (arrastrandoNodos)
+        {
+            if (control.GestoIzq != ControlManos.Gesto.Nodos)
+            {
+                arrastrandoNodos = false;
+                control.Ocupado = false;
+                return;
+            }
+            if (der.valida)
+            {
+                transform.position = der.indice + desfaseAsa;
+                Vector3 m = transform.position - cabeza.position;
+                if (m.sqrMagnitude > 1e-6f)
+                    transform.rotation = Quaternion.LookRotation(m, Vector3.up);
+            }
+            return;
+        }
+        if (!arrastrando && der.valida && !control.Ocupado && control.GestoIzq == ControlManos.Gesto.Nodos
+            && !BotonTocable.DedoCerca && Contiene(der.indice))
+        {
+            arrastrandoNodos = true;
+            anclado = true;
+            desfaseAsa = transform.position - der.indice;
+            control.Ocupado = true;
+            return;
+        }
+        if (arrastrando)
+        {
+            if (!der.valida || !der.pellizco)
+            {
+                SoltarAsa();
+                return;
+            }
+            transform.position = der.PuntoPellizco + desfaseAsa;
+            Vector3 mirar = transform.position - cabeza.position;
+            if (mirar.sqrMagnitude > 1e-6f)
+                transform.rotation = Quaternion.LookRotation(mirar, Vector3.up);
+
+            // Con la izquierda también pellizcando: separar/juntar las manos = tamaño.
+            if (izq.valida && izq.pellizco)
+            {
+                float d = Vector3.Distance(izq.PuntoPellizco, der.PuntoPellizco);
+                if (!escalando)
+                {
+                    escalando = true;
+                    distanciaEscala = Mathf.Max(0.02f, d);
+                    escalaInicio = escala;
+                }
+                else
+                {
+                    escala = Mathf.Clamp(escalaInicio * d / distanciaEscala, 0.4f, 3f);
+                    transform.localScale = Vector3.one * escala;
+                }
+            }
+            else
+            {
+                escalando = false;
+            }
+            return;
+        }
+        if (!der.valida || !der.empezoPellizco)
+            return;
+        Vector3 l = transform.InverseTransformPoint(der.PuntoPellizco);
+        bool enAsa = EnAsa(asa, l) || EnAsa(asaAbajo, l);
+        // v38: también pellizcando una parte vacía de la mesa (no un botón ni la línea de tiempo, donde se mueven claves).
+        bool enCuerpo = false;
+        if (!enAsa && Contiene(der.PuntoPellizco) && !BotonTocable.DedoCerca && control.GestoIzq == ControlManos.Gesto.Ninguno)
+        {
+            bool enBarra = false;
+            if (barra != null)
+            {
+                Vector3 lp = barra.InverseTransformPoint(der.PuntoPellizco);
+                enBarra = Mathf.Abs(lp.y) < 3f && Mathf.Abs(lp.z) < 4f && lp.x > -0.56f && lp.x < 0.56f;
+            }
+            enCuerpo = !enBarra;
+        }
+        if (!enAsa && !enCuerpo)
+            return;
+        arrastrando = true;
+        escalando = false;
+        anclado = true;
+        desfaseAsa = transform.position - der.PuntoPellizco;
+        control.Ocupado = true;
+    }
+
+    static bool EnAsa(Transform barra, Vector3 l)
+    {
+        if (barra == null || !barra.gameObject.activeInHierarchy)
+            return false;
+        Vector3 a = barra.localPosition;
+        return Mathf.Abs(l.x - a.x) < barra.localScale.x * 0.5f + 0.02f
+               && Mathf.Abs(l.y - a.y) < 0.025f && Mathf.Abs(l.z) < 0.05f;
+    }
+
+    bool arrastrandoNodos;
+
+    void SoltarAsa()
+    {
+        arrastrandoNodos = false;
+        arrastrando = false;
+        escalando = false;
+        if (control != null)
+            control.Ocupado = false;
+    }
+
+    void OnDisable()
+    {
+        if (arrastrando || arrastrandoNodos)
+            SoltarAsa();
+    }
+
+    // ---------- Línea de tiempo ----------
+
+    // Tocar la barra con el índice derecho = ir a ese fotograma (se puede arrastrar).
+    // Pellizcar una clave = arrastrarla a otro fotograma.
+    void RevisarBarra()
+    {
+        if (barra == null || animacion == null || control == null)
+            return;
+        var der = control.Der;
+        if (barraSujeta)
+            barraCuadro = Time.frameCount;
+
+        // v49: arrastrando un rombito de la cámara.
+        if (claveCamaraArrastrada >= 0)
+        {
+            barraCuadro = Time.frameCount;
+            if (!der.valida || !der.pellizco)
+            {
+                CamaraEscena.MoverClave(claveCamaraArrastrada, destinoClave);
+                claveCamaraArrastrada = -1;
+                return;
+            }
+            destinoClave = FotogramaEn(barra.InverseTransformPoint(der.PuntoPellizco).x);
+            return;
+        }
+        if (claveArrastrada >= 0)
+        {
+            if (barraSujeta)
+                barraCuadro = Time.frameCount;
+            if (!barraSujeta && (!der.valida || !der.pellizco))
+            {
+                animacion.MoverClave(claveArrastrada, destinoClave);
+                claveArrastrada = -1;
+                return;
+            }
+            if (der.valida)
+                destinoClave = FotogramaEn(barra.InverseTransformPoint(der.pellizco ? der.PuntoPellizco : der.indice).x);
+            return;
+        }
+        if (!der.valida)
+            return;
+
+        if (der.empezoPellizco)
+        {
+            Vector3 lp = barra.InverseTransformPoint(der.PuntoPellizco);
+            bool cerca = Mathf.Abs(lp.y) < 3f && Mathf.Abs(lp.z) < 4f && lp.x > -0.56f && lp.x < 0.56f;
+            if (cerca)
+            {
+                int f = FotogramaEn(lp.x);
+                int mejor = -1;
+                // Tolerancia: unos 1.3 cm de barra, en fotogramas.
+                int tolerancia = Mathf.Max(1, Mathf.RoundToInt(0.03f * Ventana));
+                foreach (var c in animacion.ClavesDe(dibujo != null ? dibujo.capaActual : 0))
+                {
+                    if (!EnVentana(c.fotograma))
+                        continue;
+                    int d = Mathf.Abs(c.fotograma - f);
+                    if (d <= tolerancia)
+                    {
+                        tolerancia = d;
+                        mejor = c.fotograma;
+                    }
+                }
+                // v49: las claves de la cámara (rombitos) también se pellizcan y se corren. En la capa de cámara,
+                // o si no hay una clave del dibujo ahí, mandan las de la cámara.
+                bool enCamara = dibujo != null && dibujo.EsCamara(dibujo.capaActual);
+                if (mejor < 0 || enCamara)
+                {
+                    int mejorCam = -1;
+                    int tolCam = Mathf.Max(1, Mathf.RoundToInt(0.03f * Ventana));
+                    foreach (var k in CamaraEscena.Claves)
+                    {
+                        if (k == null || !EnVentana(k.fotograma))
+                            continue;
+                        int d = Mathf.Abs(k.fotograma - f);
+                        if (d <= tolCam)
+                        {
+                            tolCam = d;
+                            mejorCam = k.fotograma;
+                        }
+                    }
+                    if (mejorCam >= 0)
+                    {
+                        claveCamaraArrastrada = mejorCam;
+                        destinoClave = mejorCam;
+                        control.SonidoBurbuja(der.PuntoPellizco);
+                        return;
+                    }
+                }
+                if (mejor >= 0)
+                {
+                    claveArrastrada = mejor;
+                    destinoClave = mejor;
+                    return;
+                }
+            }
+        }
+        if (der.pellizco)
+            return; // mientras pellizcas no se mueve el cabezal
+
+        Vector3 local = barra.InverseTransformPoint(der.indice);
+        bool encima = Mathf.Abs(local.y) < 1.2f && Mathf.Abs(local.z) < 2.5f && local.x > -0.55f && local.x < 0.55f;
+        // Cerca de la barra el dedo no dibuja ni borra líneas (es de la barra). Con la barra sujeta, siempre.
+        if (barraSujeta || (Mathf.Abs(local.y) < 2f && Mathf.Abs(local.z) < 4f && local.x > -0.6f && local.x < 0.6f))
+            barraCuadro = Time.frameCount;
+        bool nuevoToque = encima && !encimaAntes;
+        encimaAntes = encima;
+        if (encima)
+            ultimoEnBarra = Time.time;
+
+        // Con el gesto de borrar o de dibujar (ya hecho antes de tocar): un toque nuevo quita o pone una clave.
+        var gesto = control.GestoIzq;
+        if (!barraSujeta && (gesto == ControlManos.Gesto.Borrar || gesto == ControlManos.Gesto.Dibujar))
+        {
+            if (nuevoToque && control.SegundosEnGesto > 0.25f)
+            {
+                int f = FotogramaEn(local.x);
+                if (gesto == ControlManos.Gesto.Borrar)
+                {
+                    int clave = ClaveCerca(f);
+                    if (clave >= 0)
+                        animacion.QuitarClaveEn(clave);
+                    else if (dibujo != null)
+                        dibujo.Mensaje("Toca una clave (marca naranja) para quitarla");
+                }
+                else
+                {
+                    animacion.IrA(f);
+                    animacion.AgregarClave();
+                }
+                control.SonidoBurbuja(barra.TransformPoint(local));
+            }
+            return;
+        }
+
+        if (!encima && !barraSujeta)
+            return;
+        // Con la barra sujeta vale solo lo de lado (x), aunque el dedo esté lejos de la barra.
+        // v46: al ARRASTRAR se siente un poquito pesado: el cabezal sigue al dedo con algo de inercia (al tocar, va
+        // directo a ese cuadro).
+        float objetivo = Mathf.Clamp(local.x, -0.5f, 0.5f);
+        if (Time.frameCount - cuadroCabezal > 1)
+            xCabezal = objetivo;
+        else
+            xCabezal = Mathf.Lerp(xCabezal, objetivo, 1f - Mathf.Exp(-9f * Time.deltaTime));
+        cuadroCabezal = Time.frameCount;
+        int fotograma = FotogramaEn(xCabezal);
+        if (fotograma != animacion.Fotograma)
+            animacion.IrA(fotograma);
+    }
+
+    float xCabezal;            // v46: dónde va el cabezal (sigue al dedo con un poquito de peso)
+
+    // ---------- v47/v48: los tamaños del video, en una lista que baja desde Exportar ----------
+    // Tocar Exportar despliega hacia abajo los 4 tamaños y, al final, el botón "Hacer video >". Tocar un tamaño solo
+    // lo elige (queda marcado); el video empieza con "Hacer video >". Tocar Exportar otra vez cierra la lista.
+    GameObject opcionesExportar;
+    readonly List<BotonTocable> botonesTamano = new List<BotonTocable>();
+    BotonTocable btnHacerVideo;
+    static readonly string[] NombresTamano = { "Horizontal 1080p", "Vertical 1080p", "Horizontal 2K", "Vertical 2K" };
+    static readonly int[] FormatoDeTamano = { 0, 1, 3, 2 };   // el orden de los botones → ExportadorVideo.Formato
+    int tamanoElegido;
+
+    void TocarExportar()
+    {
+        if (exportador == null || btnVideoAnim == null)
+            return;
+        if (opcionesExportar == null)
+            ArmarOpcionesExportar();
+        bool abrir = !opcionesExportar.activeSelf;
+        opcionesExportar.SetActive(abrir);
+        btnVideoAnim.Marcar(abrir);
+        if (abrir)
+        {
+            tamanoElegido = System.Array.IndexOf(FormatoDeTamano, ExportadorVideo.Formato);
+            if (tamanoElegido < 0)
+                tamanoElegido = 0;
+            MarcarTamanos();
+            if (dibujo != null)
+                dibujo.Mensaje("Elige el tamaño y toca \"Hacer video >\"");
+        }
+    }
+
+    void ArmarOpcionesExportar()
+    {
+        opcionesExportar = new GameObject("OpcionesExportar");
+        opcionesExportar.transform.SetParent(btnVideoAnim.transform.parent, false);
+        // Debajo de Exportar, un poquito adelante del panel (flota encima de lo que haya ahí).
+        Vector3 inicio = btnVideoAnim.transform.localPosition + new Vector3(0f, 0f, -0.012f);
+        for (int i = 0; i < NombresTamano.Length; i++)
+        {
+            int cual = i;
+            var b = PanelTutoriales.Boton(opcionesExportar.transform, Idioma.T(NombresTamano[i]), inicio + new Vector3(0f, -0.028f * (i + 1), 0f),
+                                          new Vector2(0.11f, 0.024f), btnVideoAnim.materialNormal, btnVideoAnim.materialMarcado);
+            b.distancia = 0.013f;
+            b.alTocar.AddListener(() => ElegirTamano(cual));
+            botonesTamano.Add(b);
+        }
+        // El último paso: oscuro, para que se note que es el que hace el video.
+        btnHacerVideo = PanelTutoriales.Boton(opcionesExportar.transform, Idioma.T("Hacer video >"), inicio + new Vector3(0f, -0.028f * 5 - 0.006f, 0f),
+                                              new Vector2(0.11f, 0.03f), btnVideoAnim.materialMarcado, btnVideoAnim.materialNormal);
+        btnHacerVideo.etiqueta.color = Color.white;
+        btnHacerVideo.textoNormal = Color.white;
+        btnHacerVideo.distancia = 0.013f;
+        btnHacerVideo.alTocar.AddListener(HacerVideo);
+        opcionesExportar.SetActive(false);
+    }
+
+    void MarcarTamanos()
+    {
+        for (int i = 0; i < botonesTamano.Count; i++)
+            botonesTamano[i].Marcar(i == tamanoElegido);
+    }
+
+    void ElegirTamano(int boton)
+    {
+        tamanoElegido = Mathf.Clamp(boton, 0, FormatoDeTamano.Length - 1);
+        ExportadorVideo.Formato = FormatoDeTamano[tamanoElegido];
+        MarcarTamanos();
+        Refrescar();
+        if (dibujo != null)
+            dibujo.Mensaje("Video: " + ExportadorVideo.NombreFormato + " · toca \"Hacer video >\"");
+    }
+
+    void HacerVideo()
+    {
+        if (opcionesExportar != null)
+            opcionesExportar.SetActive(false);
+        btnVideoAnim.Marcar(false);
+        if (exportador != null)
+            exportador.ExportarAnimacion();
+    }
+    int cuadroCabezal = -10;
+
+    // La clave de la capa activa más cerca del fotograma f (unos 1.3 cm de barra), o -1.
+    int ClaveCerca(int f)
+    {
+        int mejor = -1;
+        int tolerancia = Mathf.Max(1, Mathf.RoundToInt(0.03f * Ventana));
+        foreach (var c in animacion.ClavesDe(dibujo != null ? dibujo.capaActual : 0))
+        {
+            if (!EnVentana(c.fotograma))
+                continue;
+            int d = Mathf.Abs(c.fotograma - f);
+            if (d <= tolerancia)
+            {
+                tolerancia = d;
+                mejor = c.fotograma;
+            }
+        }
+        return mejor;
+    }
+
+    // ¿El doble toque izquierdo es para la barra? (si la estás usando ahora, o si ya está sujeta: para soltarla)
+    public bool QuiereSujetar => visible && !esAyuda && (barraSujeta || claveArrastrada >= 0 || claveCamaraArrastrada >= 0 || Time.time - ultimoEnBarra < 0.8f);
+
+    public void AlternarSujeta()
+    {
+        barraSujeta = !barraSujeta;
+        sinDibujarHasta = Time.time + 0.8f;   // el doble toque es con el pellizco de dibujar: que no pinte nada
+        if (control != null && control.Cabeza != null)
+            control.SonidoBurbuja(control.Cabeza.position + control.Cabeza.forward * 0.4f);
+        if (dibujo != null)
+            dibujo.Mensaje(barraSujeta ? "Barra sujeta: mueve el dedo de lado (doble toque para soltarla)" : "Barra suelta");
+        PintarSujeta();
+    }
+
+    // El cabezal más alto mientras la barra está sujeta (para que se note).
+    void PintarSujeta()
+    {
+        if (cabezal == null)
+            return;
+        if (escalaCabezal == Vector3.zero)
+            escalaCabezal = cabezal.localScale;
+        cabezal.localScale = barraSujeta ? new Vector3(escalaCabezal.x * 1.4f, escalaCabezal.y * 1.7f, escalaCabezal.z) : escalaCabezal;
+    }
+
+    // ---------- v52: las AGARRADERAS del zoom y las CASILLAS (como en Flash) ----------
+    // Dos barritas verticales a los lados de la línea de tiempo. Pellízcalas con LAS DOS MANOS (una cada una) y
+    // sepáralas: los cuadros crecen (caben menos); júntalas: se achican (caben más). Mientras no abras los dos
+    // pellizcos, sigue agarrada aunque tus manos se alejen de la barra.
+    Transform agarraIzq, agarraDer;
+    bool zoomeando;
+    float zoomDistancia;
+    int zoomVentana;
+    Vector3 ultimoIzq, ultimoDer;
+    MeshFilter casillas;
+    int casillasInicio = -1, casillasVentana = -1;
+
+    bool RevisarZoomBarra()
+    {
+        if (esAyuda || barra == null || control == null || agarraIzq == null || !agarraIzq.gameObject.activeInHierarchy)
+            return false;
+        var izq = control.Izq;
+        var der = control.Der;
+        if (zoomeando)
+        {
+            barraCuadro = Time.frameCount;
+            bool i = izq.valida && izq.pellizco, d = der.valida && der.pellizco;
+            if (!i && !d)
+            {
+                zoomeando = false;
+                control.Ocupado = false;
+                return true;
+            }
+            if (i) ultimoIzq = izq.PuntoPellizco;
+            if (d) ultimoDer = der.PuntoPellizco;
+            float dist = Vector3.Distance(ultimoIzq, ultimoDer);
+            int v = Mathf.RoundToInt(zoomVentana * zoomDistancia / Mathf.Max(0.01f, dist));
+            v = Mathf.Clamp(v, 5, Mathf.Max(5, Animacion.TotalFotogramas));
+            if (v != Ventana || ventanaLibre == 0)
+            {
+                ventanaLibre = v;
+                int f = animacion != null ? animacion.Fotograma : 0;
+                inicioVentana = Mathf.Clamp(f - v / 2, 0, Mathf.Max(0, Animacion.TotalFotogramas - v));
+            }
+            return true;
+        }
+        if (!izq.valida || !der.valida || !izq.pellizco || !der.pellizco || !(izq.empezoPellizco || der.empezoPellizco))
+            return false;
+        const float cerca = 0.045f;
+        bool normal = Vector3.Distance(izq.PuntoPellizco, agarraIzq.position) < cerca && Vector3.Distance(der.PuntoPellizco, agarraDer.position) < cerca;
+        bool cruzado = Vector3.Distance(izq.PuntoPellizco, agarraDer.position) < cerca && Vector3.Distance(der.PuntoPellizco, agarraIzq.position) < cerca;
+        if (!normal && !cruzado)
+            return false;
+        zoomeando = true;
+        ultimoIzq = izq.PuntoPellizco;
+        ultimoDer = der.PuntoPellizco;
+        zoomDistancia = Mathf.Max(0.02f, Vector3.Distance(ultimoIzq, ultimoDer));
+        zoomVentana = Ventana;
+        control.Ocupado = true;
+        barraCuadro = Time.frameCount;
+        control.SonidoBurbuja(barra.position);
+        return true;
+    }
+
+    void RefrescarAgarraderas()
+    {
+        if (agarraIzq == null)
+        {
+            agarraIzq = Agarradera("AgarraderaIzq");
+            agarraDer = Agarradera("AgarraderaDer");
+        }
+        bool ver = barra.gameObject.activeInHierarchy;
+        if (agarraIzq.gameObject.activeSelf != ver)
+        {
+            agarraIzq.gameObject.SetActive(ver);
+            agarraDer.gameObject.SetActive(ver);
+        }
+        if (!ver)
+            return;
+        float lado = 0.014f / Mathf.Max(0.01f, barra.lossyScale.x);
+        agarraIzq.position = barra.TransformPoint(new Vector3(-0.5f - lado, 0f, 0f));
+        agarraDer.position = barra.TransformPoint(new Vector3(0.5f + lado, 0f, 0f));
+        float grande = zoomeando ? 1.3f : 1f;
+        agarraIzq.localScale = new Vector3(0.006f, 0.04f, 0.006f) * grande;
+        agarraDer.localScale = agarraIzq.localScale;
+    }
+
+    Transform Agarradera(string nombre)
+    {
+        var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        go.name = nombre;
+        Destroy(go.GetComponent<Collider>());
+        go.transform.SetParent(contenido.transform, false);
+        go.transform.localRotation = Quaternion.identity;
+        var r = go.GetComponent<Renderer>();
+        var rc = cabezal != null ? cabezal.GetComponent<Renderer>() : null;
+        if (rc != null)
+            r.sharedMaterial = rc.sharedMaterial;
+        else if (materialClave != null)
+            r.sharedMaterial = materialClave;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
+        return go.transform;
+    }
+
+    // Una casilla por cuadro (con rayitas entre ellas) y una sombreada cada 5, como en Flash. Con muchos cuadros
+    // (más de 150 en la barra) no caben: se esconden.
+    void RefrescarCasillas()
+    {
+        if (casillas == null)
+        {
+            var go = new GameObject("Casillas");
+            go.transform.SetParent(barra, false);
+            go.transform.localPosition = new Vector3(0f, 0f, -0.55f);
+            go.transform.localRotation = Quaternion.identity;
+            go.transform.localScale = Vector3.one;
+            casillas = go.AddComponent<MeshFilter>();
+            casillas.sharedMesh = new Mesh { name = "Casillas" };
+            var mr = go.AddComponent<MeshRenderer>();
+            var baseMat = barra.GetComponent<Renderer>().sharedMaterial;
+            var rayas = new Material(baseMat);
+            var sombra = new Material(baseMat);
+            PintarMaterial(rayas, new Color(0.35f, 0.35f, 0.4f));
+            PintarMaterial(sombra, new Color(0.72f, 0.72f, 0.76f));
+            mr.sharedMaterials = new[] { sombra, rayas };
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            mr.receiveShadows = false;
+        }
+        int v = Ventana;
+        if (v == casillasVentana && inicioVentana == casillasInicio)
+            return;
+        casillasVentana = v;
+        casillasInicio = inicioVentana;
+        var mesh = casillas.sharedMesh;
+        mesh.Clear();
+        bool ver = v <= 150;
+        casillas.gameObject.SetActive(ver);
+        if (!ver)
+            return;
+        var verts = new List<Vector3>();
+        var sombras = new List<int>();
+        var rayasT = new List<int>();
+        float w = 1f / Mathf.Max(1, v - 1);
+        float grosor = Mathf.Min(w * 0.12f, 0.004f);
+        for (int k = 0; k < v; k++)
+        {
+            int f = inicioVentana + k;
+            float x = k * w - 0.5f;
+            float x0 = Mathf.Max(-0.5f, x - w * 0.5f), x1 = Mathf.Min(0.5f, x + w * 0.5f);
+            if ((f + 1) % 5 == 0)
+                Cuadro(verts, sombras, x0, x1, -0.5f, 0.5f);
+            if (k > 0)
+                Cuadro(verts, rayasT, x0 - grosor, x0 + grosor, -0.5f, 0.5f);
+        }
+        mesh.SetVertices(verts);
+        mesh.subMeshCount = 2;
+        mesh.SetTriangles(sombras, 0);
+        mesh.SetTriangles(rayasT, 1);
+        mesh.RecalculateBounds();
+    }
+
+    static void Cuadro(List<Vector3> verts, List<int> tris, float x0, float x1, float y0, float y1)
+    {
+        int b = verts.Count;
+        verts.Add(new Vector3(x0, y0, 0f));
+        verts.Add(new Vector3(x0, y1, 0f));
+        verts.Add(new Vector3(x1, y1, 0f));
+        verts.Add(new Vector3(x1, y0, 0f));
+        tris.Add(b); tris.Add(b + 1); tris.Add(b + 2);
+        tris.Add(b); tris.Add(b + 2); tris.Add(b + 3);
+    }
+
+    static void PintarMaterial(Material m, Color c)
+    {
+        if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
+        if (m.HasProperty("_Color")) m.SetColor("_Color", c);
+    }
+
+    // La ventana sigue al cabezal: si se sale, se vuelve a centrar.
+    void AjustarVentana(bool forzar)
+    {
+        int v = Ventana;
+        int maxInicio = Mathf.Max(0, Animacion.TotalFotogramas - v);
+        int f = animacion != null ? animacion.Fotograma : 0;
+        if (forzar || f < inicioVentana || f > inicioVentana + v - 1)
+            inicioVentana = f - v / 2;
+        inicioVentana = Mathf.Clamp(inicioVentana, 0, maxInicio);
+    }
+
+    bool EnVentana(int f)
+    {
+        return f >= inicioVentana && f <= inicioVentana + Ventana - 1;
+    }
+
+    int FotogramaEn(float xLocal)
+    {
+        int f = inicioVentana + Mathf.RoundToInt(Mathf.Clamp01(xLocal + 0.5f) * (Ventana - 1));
+        return Mathf.Clamp(f, 0, Animacion.TotalFotogramas - 1);
+    }
+
+    Vector3 PosicionEnBarra(int f, float z)
+    {
+        float x = (f - inicioVentana) / (float)Mathf.Max(1, Ventana - 1) - 0.5f;
+        Vector3 mundo = barra.TransformPoint(new Vector3(x, 0f, 0f));
+        Vector3 local = contenido.transform.InverseTransformPoint(mundo);
+        local.z = z;
+        return local;
+    }
+
+    void Refrescar()
+    {
+        if (animacion != null && barra != null)
+        {
+            if (claveArrastrada < 0)
+                AjustarVentana(false);
+
+            if (cabezal != null)
+            {
+                bool verCabezal = EnVentana(animacion.Fotograma);
+                if (cabezal.gameObject.activeSelf != verCabezal)
+                    cabezal.gameObject.SetActive(verCabezal);
+                if (verCabezal)
+                    cabezal.localPosition = PosicionEnBarra(animacion.Fotograma, -0.006f);
+            }
+
+            // La barra muestra las claves de la CAPA ACTIVA (las de cada capa se ven en la lista de capas).
+            int n = 0;
+            foreach (var c in animacion.ClavesDe(dibujo != null ? dibujo.capaActual : 0))
+            {
+                int fm = c.fotograma == claveArrastrada ? destinoClave : c.fotograma;
+                if (!EnVentana(fm))
+                    continue;
+                if (n >= marcas.Count)
+                {
+                    var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    go.name = "Marca";
+                    Destroy(go.GetComponent<Collider>());
+                    go.transform.SetParent(contenido.transform, false);
+                    go.transform.localScale = new Vector3(0.004f, 0.03f, 0.004f);
+                    var r = go.GetComponent<Renderer>();
+                    if (materialClave != null)
+                        r.sharedMaterial = materialClave;
+                    r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    marcas.Add(go.transform);
+                }
+                var m = marcas[n++];
+                if (!m.gameObject.activeSelf)
+                    m.gameObject.SetActive(true);
+                m.localPosition = PosicionEnBarra(fm, -0.005f);
+                float ancho = Ventana > 400 ? 0.002f : 0.004f;
+                m.localScale = new Vector3(ancho, c.fotograma == claveArrastrada ? 0.045f : 0.03f, 0.004f);
+            }
+            for (int i = n; i < marcas.Count; i++)
+                if (marcas[i].gameObject.activeSelf)
+                    marcas[i].gameObject.SetActive(false);
+
+            // v43: las claves de la CÁMARA: rombitos encima de la barra.
+            int nc = 0;
+            foreach (var k in CamaraEscena.Claves)
+            {
+                if (!EnVentana(k.fotograma))
+                    continue;
+                if (nc >= marcasCamara.Count)
+                {
+                    var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                    go.name = "MarcaCamara";
+                    Destroy(go.GetComponent<Collider>());
+                    go.transform.SetParent(contenido.transform, false);
+                    go.transform.localRotation = Quaternion.Euler(0f, 0f, 45f);
+                    go.transform.localScale = new Vector3(0.007f, 0.007f, 0.004f);
+                    var r = go.GetComponent<Renderer>();
+                    var rc = cabezal != null ? cabezal.GetComponent<Renderer>() : null;
+                    if (rc != null)
+                        r.sharedMaterial = rc.sharedMaterial;
+                    else if (materialClave != null)
+                        r.sharedMaterial = materialClave;
+                    r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    marcasCamara.Add(go.transform);
+                }
+                var mc = marcasCamara[nc++];
+                if (!mc.gameObject.activeSelf)
+                    mc.gameObject.SetActive(true);
+                int fk = k.fotograma == claveCamaraArrastrada ? destinoClave : k.fotograma;
+                mc.localPosition = PosicionEnBarra(fk, -0.005f) + new Vector3(0f, 0.022f, 0f);
+                mc.localScale = Vector3.one * (k.fotograma == claveCamaraArrastrada ? 0.011f : 0.007f) + new Vector3(0f, 0f, -0.003f);
+            }
+            for (int i = nc; i < marcasCamara.Count; i++)
+                if (marcasCamara[i].gameObject.activeSelf)
+                    marcasCamara[i].gameObject.SetActive(false);
+            RefrescarCasillas();
+            RefrescarAgarraderas();
+
+            if (textoFotograma != null)
+            {
+                string texto = "Fotograma " + (animacion.Fotograma + 1) + " / " + Animacion.TotalFotogramas;
+                if (animacion.EsClave(animacion.Fotograma))
+                    texto += "  (clave de " + (dibujo != null ? dibujo.CapaActual.nombre : "") + ")";
+                if (Ventanas[zoom] > 0 || ventanaLibre > 0)
+                    texto += "   ·   barra " + (inicioVentana + 1) + "-" + (inicioVentana + Ventana);
+                textoFotograma.text = Idioma.T(texto);
+            }
+            if (btnPlay != null)
+            {
+                btnPlay.PonerTexto(animacion.Reproduciendo ? "Pausa" : "Play");
+                if (!esAyuda)
+                    btnPlay.comandoVoz = animacion.Reproduciendo ? ControlManos.ComandoVoz.Pausa : ControlManos.ComandoVoz.Play;
+            }
+            if (btnFps != null)
+                btnFps.PonerTexto(animacion.fotogramasPorSegundo + " fps");
+        }
+        if (btnZoom != null)
+            btnZoom.PonerTexto(ventanaLibre > 0 ? "Zoom: " + Ventana : Ventanas[zoom] <= 0 ? "Zoom: todo" : "Zoom: " + Ventanas[zoom]);
+        if (btnAyuda != null)
+            btnAyuda.Marcar(ayuda != null && ayudaAbierta);
+        if (btnSeguir != null)
+        {
+            btnSeguir.Marcar(anclado); // el alfiler: oscuro = fijo aquí
+        }
+        MostrarX(true); // v36: la X siempre está (guarda la mesa)
+
+        RefrescarCapas();
+        if (pagina == 0)
+        {
+            // Animar y Medios son una sola página.
+            RefrescarAnimar();
+            RefrescarMedios();
+        }
+        else if (pagina == 1)
+            RefrescarMedios();
+        else if (pagina == 2)
+            RefrescarBocas();
+        else
+            RefrescarTitere();
+    }
+
+    void RefrescarTitere()
+    {
+        if (titere == null)
+            return;
+        var p = titere.Elegido;
+        if (btnTitere != null)
+            btnTitere.PonerTexto("Tipo: " + titere.NombreTipo);
+        if (btnMuneco != null)
+        {
+            bool mueve = titere.Encendido || titere.Grabando;
+            btnMuneco.PonerTexto(mueve ? "Parar" : "Crear " + titere.NombreTipo);
+            btnMuneco.Marcar(mueve);
+        }
+        if (btnPosar != null)
+        {
+            btnPosar.PonerTexto(titere.Posando ? "Terminar" : "Posar dedos");
+            btnPosar.Marcar(titere.Posando);
+        }
+        if (btnCiclo != null)
+            btnCiclo.PonerTexto("Ciclo: " + titere.NombreCiclo);
+        if (btnGrabarTitere != null)
+        {
+            btnGrabarTitere.PonerTexto(titere.Grabando ? "Parar" : "Grabar");
+            btnGrabarTitere.Marcar(titere.Grabando);
+        }
+        if (btnVoltear != null)
+            btnVoltear.Marcar(p != null && p.voltear);
+        if (btnPierna1 != null)
+            btnPierna1.Marcar(p != null && dibujo != null && dibujo.BuscarPorId(p.pierna1) != null);
+        if (btnPierna2 != null)
+            btnPierna2.Marcar(p != null && dibujo != null && dibujo.BuscarPorId(p.pierna2) != null);
+        if (btnBrazo1 != null)
+            btnBrazo1.Marcar(p != null && dibujo != null && dibujo.BuscarPorId(p.brazo1) != null);
+        if (btnBrazo2 != null)
+            btnBrazo2.Marcar(p != null && dibujo != null && dibujo.BuscarPorId(p.brazo2) != null);
+        if (textoTitere != null)
+            textoTitere.text = Idioma.T(titere.Posando
+                ? "Acomoda las piernas con el índice y el medio · pellizco IZQUIERDO = guardar clave"
+                : titere.Encendido
+                ? "Mano a los lados = caminar/correr · golpe rápido hacia arriba = saltar · palma arriba (o Parar) = apagar"
+                : "Crear = aparece y se enciende solo · choca esos cinco para encender otro · elegido: " + (p != null ? p.nombre : "ninguno") + " · pisos: " + titere.pisos.Count);
+    }
+
+    void RefrescarAnimar()
+    {
+        if (btnPlano != null && dibujo != null)
+        {
+            btnPlano.PonerTexto(dibujo.plano ? "Plano (2D)" : "Libre (3D)");
+            btnPlano.Marcar(dibujo.plano);
+        }
+        if (btnFondo != null && escenario != null)
+            btnFondo.PonerTexto("Fondo: " + escenario.NombreModo);
+
+        if (dibujo == null)
+            return;
+        for (int i = 0; i < btnCapas.Length && i < dibujo.capas.Count; i++)
+            if (btnCapas[i] != null)
+                btnCapas[i].Marcar(i == dibujo.capaActual);
+        for (int i = 0; i < btnVer.Length && i < dibujo.capas.Count; i++)
+        {
+            if (btnVer[i] == null)
+                continue;
+            bool capaVisible = dibujo.capas[i].visible;
+            btnVer[i].PonerTexto(capaVisible ? "Ver" : "Oculta");
+            btnVer[i].Marcar(!capaVisible);
+        }
+    }
+
+    static readonly string[] NombresBoceto = { "No", "Sí", "Sí" };   // v42: lápiz sí o no
+
+    void RefrescarMedios()
+    {
+        bool grabando = grabador != null && grabador.Grabando;
+        if (btnGrabar != null)
+        {
+            btnGrabar.PonerTexto(grabando ? "Detener" : "Grabar");
+            btnGrabar.Marcar(grabando);
+        }
+        if (btnPausaGrabar != null)
+        {
+            // Solo mientras grabas: Pausa / Reanudar.
+            if (btnPausaGrabar.gameObject.activeSelf != grabando)
+            {
+                btnPausaGrabar.gameObject.SetActive(grabando);
+                if (btnPausaGrabar.etiqueta != null)
+                    btnPausaGrabar.etiqueta.gameObject.SetActive(grabando);
+            }
+            if (grabando)
+            {
+                btnPausaGrabar.PonerTexto(grabador.Pausado ? "Reanudar" : "Pausa");
+                btnPausaGrabar.Marcar(grabador.Pausado);
+            }
+        }
+        if (btnVelocidad != null && exportador != null)
+            btnVelocidad.PonerTexto("Vel x" + exportador.velocidad);
+        if (dibujo != null && dibujo.temblor != null)
+        {
+            var tb = dibujo.temblor;
+            if (btnTemblor != null)
+            {
+                btnTemblor.PonerTexto("Temblor: " + tb.NombreNivel);
+                btnTemblor.Marcar(tb.Nivel > 0);
+            }
+            if (btnHebras != null)
+            {
+                btnHebras.PonerTexto("Hebras: " + tb.Hebras);
+                btnHebras.Marcar(tb.Hebras > 1);
+            }
+            if (btnGrosorVivo != null)
+                btnGrosorVivo.Marcar(tb.GrosorVivo);
+            if (btnCicloTemblor != null)
+            {
+                btnCicloTemblor.PonerTexto(tb.Ciclo3 ? "Ciclo de 3" : "Libre");
+                btnCicloTemblor.Marcar(tb.Ciclo3);
+            }
+            if (btnSuavidad != null)
+                btnSuavidad.PonerTexto("Suavidad: " + tb.NombreSuavidad);
+            if (btnVelocidadTemblor != null)
+                btnVelocidadTemblor.PonerTexto("Velocidad: " + tb.CambiosPorSegundo);
+            if (btnBoceto != null)
+            {
+                btnBoceto.PonerTexto("Lápiz: " + tb.NombreBoceto);
+                btnBoceto.Marcar(tb.Boceto > 0);
+            }
+        }
+        if (btnUnirPlano != null && dibujo != null)
+        {
+            btnUnirPlano.PonerTexto(dibujo.CapaActual.unido ? "Plano: unido" : "Plano: propio");
+            btnUnirPlano.Marcar(dibujo.CapaActual.unido);
+            if (btnIman != null)
+            {
+                btnIman.PonerTexto(dibujo.CapaActual.iman ? "Imán: Sí" : "Imán: No");
+                btnIman.Marcar(dibujo.CapaActual.iman);
+            }
+        }
+        if (btnImagenesVer != null && referencias != null)
+        {
+            btnImagenesVer.PonerTexto(referencias.Ocultas ? "Imágenes: ocultas" : "Imágenes: ver");
+            btnImagenesVer.Marcar(referencias.Ocultas);
+        }
+        if (textoMedios == null)
+            return;
+        string texto;
+        if (ExportadorVideo.Exportando)
+            texto = "Haciendo el video... (mira los avisos)";
+        else if (grabando)
+            texto = (grabador.Pausado ? "En pausa: " : "Grabando el proceso: ") + GrabadorProceso.Formato(grabador.TiempoGrabado);
+        else if (grabador != null && grabador.muestras.Count > 1)
+            texto = "Grabación lista: " + GrabadorProceso.Formato(grabador.Duracion) + " · toca Video proceso";
+        else if (!string.IsNullOrEmpty(Galeria.UltimoGuardado))
+            texto = Galeria.UltimoGuardado;
+        else
+            texto = "Exportar: la animación en MP4 (" + ExportadorVideo.NombreFormato + "), en Descargas → JCartoons";
+        textoMedios.text = Idioma.T(texto);
+        if (btnFormato != null)
+            btnFormato.PonerTexto(ExportadorVideo.NombreBotonFormato);
+        if (btnVerde != null)
+        {
+            btnVerde.PonerTexto(ExportadorVideo.FondoVerde ? "Fondo verde: Sí" : "Fondo verde: No");
+            btnVerde.Marcar(ExportadorVideo.FondoVerde);
+        }
+        if (btnCebolla != null)
+        {
+            btnCebolla.PonerTexto(PapelCebolla.Activo ? "Cebolla: Sí" : "Cebolla: No");
+            btnCebolla.Marcar(PapelCebolla.Activo);
+        }
+        if (btnCuadros != null && dibujo != null)
+        {
+            bool cuadros = dibujo.EsCuadroACuadro(dibujo.capaActual);
+            btnCuadros.PonerTexto(cuadros ? "Cuadro a cuadro: Sí" : "Cuadro a cuadro");
+            btnCuadros.Marcar(cuadros);
+        }
+    }
+
+    void RefrescarBocas()
+    {
+        if (lipsync == null)
+            return;
+        for (int i = 0; i < btnBocas.Length; i++)
+            if (btnBocas[i] != null)
+                btnBocas[i].Marcar(lipsync.TieneBoca(i));
+        if (btnModoBoca != null)
+            btnModoBoca.PonerTexto(lipsync.modoGuardar ? "Modo: Guardar" : "Modo: Probar");
+        if (btnVoz != null)
+        {
+            btnVoz.PonerTexto(lipsync.Grabando ? "Parar " + GrabadorProceso.Formato(lipsync.TiempoGrabando) : "Voz");
+            btnVoz.Marcar(lipsync.Grabando);
+        }
+        if (textoBocas == null)
+            return;
+        string audio = lipsync.Clip != null ? lipsync.Clip.name + " (" + lipsync.Clip.length.ToString("0.0") + " s)" : "sin audio";
+        textoBocas.text = Idioma.T("Capa de la boca: " + (dibujo != null ? dibujo.capaActual + 1 : 1) + " · Audio: " + audio
+                          + "\nGuardar: mueve los nodos de la boca y toca una forma · Lipsync crea las claves");
+    }
+
+    // ==================== Abrir dibujos guardados ====================
+    // "Cargar" muestra abajo la lista de tus dibujos (el más reciente primero). Toca uno para abrirlo.
+
+    GameObject listaArchivos;
+
+    // "Archivos": abre "Mis archivos" (dibujos, videos, fotos y SVG con miniatura).
+    void AbrirMisArchivos()
+    {
+        var nav = FindFirstObjectByType<NavegadorArchivos>();
+        if (nav != null)
+            nav.Abrir(control != null ? control.Cabeza : null);
+        else
+            AlternarArchivos();
+    }
+
+    void AlternarArchivos()
+    {
+        if (listaArchivos != null && listaArchivos.activeSelf)
+        {
+            CerrarArchivos();
+            return;
+        }
+        if (dibujo == null || btnCargar == null || btnCargar.etiqueta == null || contenido == null)
+            return;
+        var rutas = dibujo.ListaArchivos(12);
+        if (rutas.Count == 0)
+        {
+            dibujo.Mensaje("Aún no has guardado ningún dibujo");
+            return;
+        }
+        ayudaAbierta = false;
+        if (listaArchivos != null)
+            Destroy(listaArchivos);
+        listaArchivos = new GameObject("ListaArchivos");
+        listaArchivos.SetActive(false); // así los botones se arman antes de despertar
+        listaArchivos.transform.SetParent(contenido.transform, false);
+
+        var fondo = contenido.transform.Find("Fondo");
+        if (fondo != null)
+        {
+            var hoja = Instantiate(fondo.gameObject, listaArchivos.transform);
+            hoja.transform.localPosition = new Vector3(0f, -0.25f, 0.006f);
+            hoja.transform.localScale = new Vector3(0.5f, 0.15f, 1f);
+        }
+        for (int i = 0; i < rutas.Count; i++)
+        {
+            string ruta = rutas[i];
+            int fila = i / 3, columna = i % 3;
+            var pos = new Vector3(-0.155f + columna * 0.155f, -0.195f - fila * 0.034f, 0f);
+            var go = Instantiate(btnCargar.gameObject, listaArchivos.transform);
+            go.name = "Archivo";
+            go.transform.localPosition = pos;
+            go.transform.localRotation = Quaternion.identity;
+            go.transform.localScale = new Vector3(0.145f, 0.028f, 0.008f);
+            var b = go.GetComponent<BotonTocable>();
+            var texto = Instantiate(btnCargar.etiqueta.gameObject, listaArchivos.transform).GetComponent<TMP_Text>();
+            texto.rectTransform.localPosition = pos + new Vector3(0f, 0f, -0.0046f);
+            texto.rectTransform.localRotation = Quaternion.identity;
+            texto.rectTransform.sizeDelta = new Vector2(0.135f, 0.022f);
+            string nombre = System.IO.Path.GetFileNameWithoutExtension(ruta);
+            string fecha = System.IO.File.GetLastWriteTime(ruta).ToString("dd/MM HH:mm");
+            texto.text = nombre + "  ·  " + fecha;
+            b.etiqueta = texto;
+            b.alTocar.RemoveAllListeners();
+            b.alTocar.AddListener(() =>
+            {
+                CerrarArchivos();
+                dibujo.AbrirArchivo(ruta);
+            });
+            b.Marcar(dibujo.NombreArchivo == nombre);
+        }
+        listaArchivos.SetActive(true);
+        dibujo.Mensaje("Toca un dibujo para abrirlo (Cargar otra vez = cerrar)");
+    }
+
+    void CerrarArchivos()
+    {
+        if (listaArchivos != null)
+            listaArchivos.SetActive(false);
+    }
+
+    // ==================== Ayuda (copia azul) ====================
+
+    void AlternarAyuda()
+    {
+        CerrarArchivos();
+        if (ayuda == null)
+        {
+            GameObject copia;
+            creandoAyuda = true;
+            try
+            {
+                copia = Instantiate(gameObject, transform.parent);
+            }
+            finally
+            {
+                creandoAyuda = false;
+            }
+            copia.name = "PanelAyuda";
+            // Los textos de la copia cambian de idioma igual que los del panel.
+            var originales = GetComponentsInChildren<TMP_Text>(true);
+            var copias = copia.GetComponentsInChildren<TMP_Text>(true);
+            for (int i = 0; i < originales.Length && i < copias.Length; i++)
+                Idioma.Copiar(originales[i], copias[i]);
+            ayuda = copia.GetComponent<PanelArriba>();
+            ayuda.original = this;
+            ayudaAbierta = true;
+        }
+        else
+        {
+            ayudaAbierta = !ayudaAbierta;
+        }
+        if (dibujo != null)
+            dibujo.Mensaje(ayudaAbierta ? "Ayuda: toca cualquier botón del panel azul (abajo)" : "Ayuda cerrada");
+    }
+
+    void CerrarAyuda()
+    {
+        ayudaAbierta = false;
+    }
+
+    // La copia azul va justo debajo del panel de verdad (y se esconde con él).
+    void SeguirOriginal()
+    {
+        if (original == null)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        bool ver = original.ayudaAbierta && original.contenido != null && original.contenido.activeSelf;
+        if (contenido != null && contenido.activeSelf != ver)
+            contenido.SetActive(ver);
+        if (!ver)
+            return;
+        var o = original.transform;
+        transform.localScale = o.localScale;
+        // v36: la mesa está abajo, así que la copia azul va ENCIMA de ella (v37: también encima de las páginas abiertas).
+        float sube = (original.plegado ? ArribaPlegado : ArribaDesplegado) - AbajoAyuda + 0.01f;
+        // v41: con la mesa arriba (en espejo), la copia va DEBAJO de ella (la copia siempre va normal, desplegada).
+        if (original.espejoPuesto)
+            sube = -(ArribaDesplegado - (original.plegado ? AbajoEspejoPlegado : AbajoEspejoDesplegado) + 0.01f);
+        transform.SetPositionAndRotation(o.position + o.up * (sube * o.lossyScale.y), o.rotation);
+    }
+
+    void PrepararAyuda()
+    {
+        Idioma.alCambiar += AlCambiarIdioma;
+        // v41: la copia azul siempre va normal (aunque la mesa de verdad esté arriba, en espejo).
+        AplicarEspejo(false);
+        // La X de "volver arriba" no va en la copia azul.
+        if (contenido != null)
+        {
+            foreach (var nombre in new[] { "BotonVolverArriba", "TextoX" })
+            {
+                var x = contenido.transform.Find(nombre);
+                if (x != null)
+                {
+                    x.SetParent(null, false);
+                    Destroy(x.gameObject);
+                }
+            }
+        }
+        var copiaLista = contenido != null ? contenido.transform.Find("ListaArchivos") : null;
+        if (copiaLista != null)
+        {
+            copiaLista.SetParent(null, false); // fuera de la copia (así sus botones no cuentan)
+            Destroy(copiaLista.gameObject);
+        }
+        // 1) Todo en azul.
+        var mapa = new Dictionary<Material, Material>();
+        foreach (var r in GetComponentsInChildren<Renderer>(true))
+        {
+            if (r.GetComponent<TMP_Text>() != null || r.sharedMaterial == null)
+                continue;
+            r.sharedMaterial = Azul(r.sharedMaterial, mapa);
+        }
+        var botones = GetComponentsInChildren<BotonTocable>(true);
+        foreach (var b in botones)
+        {
+            b.materialNormal = Azul(b.materialNormal, mapa);
+            b.materialMarcado = Azul(b.materialMarcado, mapa);
+            b.alTocar.RemoveAllListeners();
+        }
+
+        // 2) El cuadro donde sale la explicación (debajo de la copia).
+        if (contenido != null && textoFotograma != null)
+        {
+            var hoja = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            hoja.name = "FondoAyuda";
+            Destroy(hoja.GetComponent<Collider>());
+            hoja.transform.SetParent(contenido.transform, false);
+            hoja.transform.localPosition = new Vector3(0f, AbajoAyuda + 0.075f, 0.006f); // v37: justo bajo el reproductor
+            hoja.transform.localScale = new Vector3(0.5f, 0.14f, 1f);
+            var rh = hoja.GetComponent<Renderer>();
+            var fondo = contenido.transform.Find("Fondo");
+            if (fondo != null && fondo.GetComponent<Renderer>() != null)
+                rh.sharedMaterial = fondo.GetComponent<Renderer>().sharedMaterial;
+            rh.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            rh.receiveShadows = false;
+
+            var go = Instantiate(textoFotograma.gameObject, contenido.transform);
+            go.name = "TextoAyuda";
+            textoAyuda = go.GetComponent<TMP_Text>();
+            textoAyuda.rectTransform.localPosition = new Vector3(0f, AbajoAyuda + 0.075f, -0.002f);
+            textoAyuda.rectTransform.localRotation = Quaternion.identity;
+            textoAyuda.rectTransform.sizeDelta = new Vector2(0.47f, 0.128f);
+            textoAyuda.alignment = TextAlignmentOptions.TopLeft;
+            textoAyuda.fontStyle = FontStyles.Normal;
+            textoAyuda.enableAutoSizing = true;
+            textoAyuda.fontSizeMin = 0.04f;
+            textoAyuda.fontSizeMax = 0.13f;
+            textoAyuda.color = new Color(0.05f, 0.1f, 0.3f);
+            MostrarAyuda("AYUDA\nEste panel azul es una copia del de arriba. Toca cualquier botón aquí y te explico para qué sirve " +
+                         "y cómo usarlo. Aquí los botones no cambian nada de tu dibujo.\nToca \"?\" para cerrar la ayuda.");
+        }
+
+        // 3) Cada botón explica lo suyo (las pestañas, además, cambian de página en la copia).
+        var textos = TextosAyuda();
+        Conectar(btnPaginaAnimar, () => PonerPagina(0));
+        Conectar(btnPaginaMedios, () => PonerPagina(1));
+        Conectar(btnPaginaBocas, () => PonerPagina(2));
+        Conectar(btnPaginaTitere, () => PonerPagina(3));
+        foreach (var b in botones)
+        {
+            if (b == btnAyuda)
+                continue;
+            string texto;
+            if (!textos.TryGetValue(b, out texto))
+                texto = "Este botón: " + (b.etiqueta != null ? b.etiqueta.text : b.name);
+            Conectar(b, () => MostrarAyuda(texto));
+        }
+        if (btnAyuda != null)
+        {
+            btnAyuda.gameObject.SetActive(true);   // v44: en la copia azul sí está (para cerrarla)
+            if (btnAyuda.etiqueta != null)
+                btnAyuda.etiqueta.gameObject.SetActive(true);
+        }
+        Conectar(btnAyuda, () => { if (original != null) original.CerrarAyuda(); });
+        PonerPagina(original != null ? original.pagina : 0);
+        Plegar(false, false); // en la copia azul las páginas se ven siempre (para explicar sus botones)
+        if (contenido != null)
+            contenido.SetActive(true);
+    }
+
+    string ayudaActual = "";
+
+    void MostrarAyuda(string texto)
+    {
+        ayudaActual = texto ?? "";
+        if (textoAyuda == null)
+            return;
+        // En inglés: la explicación completa traducida (si la hay); si no, por partes.
+        string titulo = ayudaActual.Split('\n')[0];
+        string en;
+        textoAyuda.text = Idioma.Ingles && AyudaIngles.TryGetValue(titulo, out en) ? en : Idioma.T(ayudaActual);
+    }
+
+    void AlCambiarIdioma()
+    {
+        if (esAyuda)
+            MostrarAyuda(ayudaActual);
+    }
+
+    void OnDestroy()
+    {
+        Idioma.alCambiar -= AlCambiarIdioma;
+        if (Principal == this)
+            Principal = null;
+    }
+
+    // La ayuda en inglés (la clave es el título, la primera línea en español).
+    static readonly Dictionary<string, string> AyudaIngles = new Dictionary<string, string>
+    {
+        { "AYUDA", "HELP\nThis blue panel is a copy of the one above. Tap any button here and I'll explain what it does and how to use it. Here the buttons don't change your drawing.\nTap \"?\" to close help." },
+        { "ANIMAR (página)", "ANIMATE (page)\nThe tabs peek out at the top of the panel, like in a filing cabinet (below it, if the desk is at the top): tap one to open its page and tap it again to put it away.\nAnim video: your animation as an MP4 (also in My files → Share). Onion skin and frame by frame will come here." },
+        { "LIBERAR (de esta capa)", "RELEASE (this layer)\nWhat you draw in Plane 2D stays enchanted on its layer's sheet: nodes, handles, lasso and moving it stay inside that sheet.\nRelease removes the spell: if you have selected (blue) lines of this layer, only those; otherwise the whole layer. Then they move freely in 3D. Can be undone." },
+        { "BOCETO (de esta capa)", "SKETCH (this layer)\nNo = normal ink. Gray or Blue = sketch pencil: it does not appear in photos or videos (to draw on top in another layer)." },
+        { "PLANO (de esta capa)", "PLANE (this layer)\nOwn: the layer has its own sheet in Plane 2D. Joined: it uses the same sheet as the other joined layers (sketch behind, ink in front)." },
+        { "BOCAS (página)", "MOUTHS (page)\nLipsync: save mouth shapes (A, E, I, O, U, M...) and the app makes the keys from your voice or an audio." },
+        { "TÍTERE (página)", "PUPPET (page)\nCharacters that walk, run and jump with your hand. Create, record, walk cycles and build your own characters." },
+        { "ZOOM", "ZOOM\nHow many frames fit on the timeline: All, 400, 100 or 25. With fewer frames the keys (orange marks) are farther apart and easier to touch." },
+        { "FIJAR AQUÍ / SEGUIRME", "PIN HERE / FOLLOW ME\nThe pin: tap it and the panel stays in place and always visible (dark pin). Tap it again: it goes back to being the work desk (pull the frame pill to bring it out).\nAlso: pinch the blue handle to move it; pinching with your left hand too, spread your hands = bigger." },
+        { "INICIO", "START\nGoes to frame 1." },
+        { "< (ANTERIOR)", "< (PREVIOUS)\nGoes back one frame. You can also touch the timeline with your right index finger." },
+        { "> (SIGUIENTE)", "> (NEXT)\nGoes forward one frame." },
+        { "PLAY / PAUSA", "PLAY / PAUSE\nPlays the animation: lines morph between keys.\nTo animate: 1) go to another frame (touch the bar), 2) move the nodes (left thumb + middle), 3) a key is saved by itself, 4) Play." },
+        { "+ CLAVE", "+ KEY\nSaves the current shape of the active layer's lines at this frame (orange mark). Usually not needed: editing on a frame saves the key by itself." },
+        { "- CLAVE", "- KEY\nRemoves the active layer's key at this frame.\nTo MOVE a key: pinch it on the bar and drag it." },
+        { "FPS", "FPS\nAnimation speed: 12, 24, 30 or 60 frames per second." },
+        { "CAPAS (en profundidad)", "LAYERS (in depth)\nOpens the layers hanging one behind the other, close to you at the top center of your view (also with the Layers button on the hand menu). Push the current one = the whole stack moves back and the layer in front arrives; pull it toward you = the one behind. + Layer = a new layer in front (up to 12). They close by themselves after 20 seconds." },
+        { "CAPA 1-4", "LAYER 1-4\nChoose the layer you draw on. Each layer has its own style: wobble and strands in the palette (left palm) > LINE; Pencil and Plane here, in its row.\nTip: pencil on layer 1 (Pencil: Yes, in Plane 2D) and ink on layer 2." },
+        { "VER / OCULTA", "SHOW / HIDDEN\nShows or hides that layer. A hidden layer can't be edited." },
+        { "LIBRE (3D) / PLANO (2D)", "FREE (3D) / PLANE (2D)\nPlane: you draw on an invisible sheet in front of you (if you move your finger more than ~2.5 cm toward you, the line ends, like lifting the pencil; if you push it BEHIND the sheet, the line goes on and you see a copy of your hand on the sheet). Free: you draw in the air, in 3D.\nWith a Sketch layer in Plane mode, you draw with a pencil on paper." },
+        { "FONDO", "BACKGROUND\nGrid → White → Reality (passthrough) → 360. At 360 a small window opens with all the 3D 360 backgrounds (Rome, Shanghai, Venice, the sea, fields...) and your own 360 photos: tap one to try it." },
+        { "ARCHIVOS", "FILES\nOpens \"My files\": your drawings, videos, photos and SVG with a thumbnail. Filters on top. Tap one to select it, then Open (or View) or Delete (tap again to confirm).\nAt the top: the current file with Save, Save copy and Rename, and the language button." },
+        { "CREAR SVG", "CREATE SVG\nExports the lines as vector curves (for Illustrator, Inkscape...). In Plane mode it's seen straight on; in 3D, from where you are." },
+        { "FOTO", "PHOTO\nSaves a PNG image of the drawing from where you are. Panels, nodes, images and sketch layers don't appear.\nWHERE: Quest Files app → Downloads → JCartoons." },
+        { "GRABAR (proceso)", "RECORD (process)\nRecords how you draw: your hands and the lines appearing. Tap again (Stop) to finish.\nThen: Process video turns it into an MP4." },
+        { "PAUSA / REANUDAR", "PAUSE / RESUME\nOnly shows while recording the process. Pause stops recording for a moment (that time isn't in the video); Resume keeps recording. What you do while paused appears all at once when you resume." },
+        { "VIDEO PROCESO", "PROCESS VIDEO\nTurns your recording into an MP4: lines + your hands (gloves and sleeves). Choose the speed first with Speed.\nWHERE: Quest Files app → Downloads → JCartoons." },
+        { "VEL x1 / x2 / x4 / x8", "SPEED x1 / x2 / x4 / x8\nHow fast the process video plays." },
+        { "VIDEO ANIM", "ANIM VIDEO\nExports the animation as an MP4 (1280x720), with the mouths' audio if there is one. You need at least 2 keys.\nWHERE: Quest Files app → Downloads → JCartoons." },
+        { "IMAGEN +", "IMAGE +\nOpens your Quest images (Downloads, Camera, screenshots, WhatsApp, Facebook...). Tap one to see it big and choose: Import (it appears in front of you) or, if it's a 360 photo, 360 background. Or pinch it and pull it out of the panel: it stays where you drop it.\nTo trace: in Plane mode, drop the image near the plane and it sticks behind it." },
+        { "IMAGEN -", "IMAGE -\nRemoves the selected image (bluish one). Pinch an image to select it, or tap the X on its corner." },
+        { "IMÁGENES: VER / OCULTAS", "IMAGES: SHOW / HIDDEN\nHides or shows all reference images at once." },
+        { "TEMBLOR (capa activa)", "WOBBLE (active layer)\nLive lines, like hand-drawn animation: No, Soft, Medium, Strong. It doesn't change your nodes, only how they look." },
+        { "HEBRAS (capa activa)", "STRANDS (active layer)\n1, 3 or 5 thin strands per line (they join at the ends).\nStrand width: width gesture (left thumb + ring) + right pinch in the air, up or down." },
+        { "GROSOR VIVO (capa activa)", "LIVE WIDTH (active layer)\nThe width goes up and down along the line, like brush pressure." },
+        { "CICLO DE 3 / LIBRE (capa activa)", "CYCLE OF 3 / FREE (active layer)\nCycle of 3: the wobble repeats 3 drawings (classic style). Free: always different." },
+        { "SUAVIDAD (capa activa)", "SMOOTHNESS (active layer)\nHow wavy the wobble is: Soft, Normal or Nervous." },
+        { "VELOCIDAD (capa activa)", "SPEED (active layer)\nHow many times per second the wobble changes: 4, 8, 12 or 24." },
+        { "BOCETO (capa activa)", "SKETCH (active layer)\nThe layer looks like gray or blue pencil and does NOT appear in photos or videos.\nIn Plane (2D) you draw with a real pencil on a sheet: closer to the plane = darker. The left fist (sideways) is the eraser." },
+        { "PLANO: UNIDO / PROPIO (capa activa)", "PLANE: JOINED / OWN (active layer)\nJoined: the layer shares the sheet with the others, half a millimeter in front (like acetate over paper). Own: the layer has its own plane.\nWhen joining, its lines stick to the plane." },
+        { "FORMA DE BOCA", "MOUTH SHAPE\nSave mode: 1) draw the mouth on its own layer and pick it, 2) move its nodes for this shape, 3) tap this button: it's saved (looks dark).\nTest mode: tapping it puts that mouth on the current frame." },
+        { "MODO: GUARDAR / PROBAR", "MODE: SAVE / TEST\nSave: tapping a shape saves it. Test: tapping a shape puts it on the current frame (to fix by hand)." },
+        { "VOZ", "VOICE\nRecords your voice with the headset microphone. Tap again to stop. Then tap Lipsync." },
+        { "AUDIO", "AUDIO\nChoose an audio from the Dibujos/Audio folder (wav or mp3) instead of recording your voice." },
+        { "LIPSYNC", "LIPSYNC\nMakes the mouth keys from the audio. First: save the shapes (Rest, A, E, I, O, U, M) and record Voice or pick Audio. Then Play.\nIf you have no mouths, a sample face with all of them appears when you open this page." },
+        { "QUITAR AUDIO", "REMOVE AUDIO\nRemoves the audio from the animation." },
+        { "TIPO", "TYPE\nChoose which character Create makes: Stick, Muscular, Chubby, Skinny or Kid." },
+        { "CREAR / PARAR", "CREATE / STOP\nCreate: the character appears (on Layer 4) and turns on with your RIGHT hand (hold it in front of you for a second). Sideways = walk/run · hand down = crouch · flick up = jump.\nTurn off: Stop, palm up or high five with the other hand. Hide them: Show/Hidden of Layer 4. Delete one: bring your hand close and tap the X on its frame." },
+        { "GRABAR (títere)", "RECORD (puppet)\nCounts 3 seconds and saves one key per frame of the characters that are on (in their layer). Stop = finish. Then: Play, fix keys and export with Anim video." },
+        { "POSAR DEDOS", "POSE FINGERS\nYour right index and middle fingers pose the character's legs; LEFT pinch = save a key. Tap again to finish." },
+        { "CICLO", "CYCLE\nThe walk: Normal, With style (Richard Williams: high step, big arms), Sneaky (Ken Harris: crouched, the foot passes fast through the middle and lands carefully) or your saved cycles." },
+        { "GUARDAR CICLO", "SAVE CYCLE\nSave your own walk: 1) animate at least 3 keys of a step with the character's legs (the last equal to the first), 2) tap Save cycle, 3) pick it with Cycle." },
+        { "VOLTEAR", "FLIP\nThe selected character faces the other way." },
+        { "PISO +/-", "FLOOR +/-\nPinch a line (it turns blue) and tap Floor: that line becomes a floor or platform (climbs ramps, falls if it ends). Again = it stops being a floor.\nIt only walks on floors at its own depth." },
+        { "PIERNA 1 / 2", "LEG 1 / 2\nTo build your own character: 1) draw a leg (hip to foot), 2) pinch it, 3) tap Leg 1. Do the same with the other one (Leg 2). With both legs it can walk." },
+        { "PIERNA 2", "LEG 2\nYour character's second leg: pinch it and tap this button. (See also Leg 1.)" },
+        { "BRAZO 1 / 2", "ARM 1 / 2\nPinch an arm line (shoulder to hand) and tap Arm 1 or Arm 2. Arms swing while walking." },
+        { "BRAZO 2", "ARM 2\nThe second arm: pinch it and tap this button." },
+        { "CUERPO +/-", "BODY +/-\nPinch a line (torso, head, hat...) and tap Body: it moves with the hip. Again = removes it from the body." },
+    };
+
+    // Un color azul con la misma claridad que el original (blanco → celeste, negro → azul oscuro).
+    static Material Azul(Material m, Dictionary<Material, Material> mapa)
+    {
+        if (m == null)
+            return null;
+        Material copia;
+        if (mapa.TryGetValue(m, out copia))
+            return copia;
+        Color c = m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.HasProperty("_Color") ? m.GetColor("_Color") : Color.white;
+        float l = c.grayscale;
+        var azul = new Color(l * 0.72f, l * 0.84f + 0.04f, Mathf.Min(1f, l * 0.55f + 0.42f), c.a);
+        copia = new Material(m);
+        if (copia.HasProperty("_BaseColor")) copia.SetColor("_BaseColor", azul);
+        if (copia.HasProperty("_Color")) copia.SetColor("_Color", azul);
+        mapa[m] = copia;
+        mapa[copia] = copia;
+        return copia;
+    }
+
+    static void Poner(Dictionary<BotonTocable, string> d, BotonTocable b, string texto)
+    {
+        if (b != null)
+            d[b] = texto;
+    }
+
+    Dictionary<BotonTocable, string> TextosAyuda()
+    {
+        var d = new Dictionary<BotonTocable, string>();
+        // Pestañas y barra de arriba
+        Poner(d, btnPaginaAnimar, "ANIMAR (página)\nLas pestañas se asoman arriba del panel, como en un archivador (debajo, si la mesa está arriba): toca una para abrir su página y tócala otra vez para guardarla.\nVideo anim: tu animación en MP4 (también en Mis archivos → Compartir).");
+        Poner(d, btnCebolla, "PAPEL CEBOLLA\nEn pausa ves clarito la clave anterior (rojiza) y la siguiente (verdosa) de tu capa, para calcar el movimiento. No sale en fotos ni videos. Al crear una capa Cuadro a cuadro se prende sola (este botón la apaga).");
+        Poner(d, btnCabeza, "CABEZA INVISIBLE\nDibuja en una capa la cabeza de tu personaje DE FRENTE o DE PERFIL: el contorno (la línea más grande) y los rasgos (ojos, nariz, boca, orejas; sin cabello). Toca esto y di cómo la dibujaste: la app la vuelve un huevo 3D invisible y la puedes GIRAR: Perfil, 3/4 y Frente para los dos lados (o pellízcala con la derecha y arrastra). \"Usar esta vista\" cambia tus líneas por esa vista (deshacer la devuelve).");
+        Poner(d, btnCuadros, "CUADRO A CUADRO\nLa única excepción de la app: en estas capas cada cuadro es un dibujo propio y un cuadro nuevo empieza VACÍO (como los programas de animación de siempre). Ves el cuadro anterior en rojizo y el siguiente en verdoso.\nAvanza con > y dibuja; cada dibujo dura hasta el siguiente. Si tu capa ya tiene dibujo, se crea una capa nueva \"Cuadros\" (así no se mezclan). Voz: \"cuadro a cuadro\".");
+        if (btnLiberarCapa != null)
+            foreach (var b in btnLiberarCapa)
+                Poner(d, b, "LIBERAR (de esta capa)\nLo que dibujas en Plano 2D queda encantado en la hoja de su capa: nodos, tiradores, lazo y moverlo se quedan dentro de esa hoja.\nLiberar quita el encantamiento: si tienes líneas elegidas (azules) de esta capa, solo esas; si no, toda la capa. Después se mueven libres en 3D. Se puede deshacer.");
+        Poner(d, btnPaginaMedios, "MEDIOS (página)\nVideos, grabar tu proceso, imágenes de referencia y el estilo de la capa activa: líneas vivas, boceto, plano e imán.");
+        Poner(d, btnPaginaBocas, "BOCAS (página)\nLipsync: guarda formas de boca (A, E, I, O, U, M...) y la app crea las claves según tu voz o un audio.");
+        Poner(d, btnPaginaTitere, "TÍTERE (página)\nPersonajes que caminan, corren y saltan con tu mano. Crear, grabar, ciclos de caminado y armar tus propios personajes.");
+        if (btnBocetoCapa != null)
+            foreach (var b in btnBocetoCapa)
+                Poner(d, b, "BOCETO (de esta capa)\nNo = tinta normal. Gris o Azul = lápiz de boceto: no sale en fotos ni videos (para dibujar encima en otra capa).");
+        if (btnPlanoCapa != null)
+            foreach (var b in btnPlanoCapa)
+                Poner(d, b, "PLANO (de esta capa)\nPropio: la capa tiene su propia hoja en Plano 2D. Unido: usa la misma hoja que las otras capas unidas (boceto atrás, tinta adelante).");
+        Poner(d, btnZoom, "ZOOM\nCuántos fotogramas caben en la barra de tiempo: Todo, 400, 100 o 25. Con menos fotogramas ves las claves (marcas naranjas) más separadas y es más fácil tocarlas.");
+        Poner(d, btnSeguir, "FIJAR AQUÍ / SEGUIRME\nEl alfiler: tócalo y el panel se queda en ese lugar y siempre visible (alfiler oscuro). Tócalo otra vez: vuelve a ser la mesa de trabajo (sale al jalar la pastillita del fotograma).\nTambién: pellizca el asa azul para moverlo; pellizcando además con la izquierda, separa las manos = más grande.");
+
+        // Animar
+        Poner(d, btnInicio, "INICIO\nVa al fotograma 1.");
+        Poner(d, btnAnterior, "< (ANTERIOR)\nRetrocede un fotograma. También puedes tocar la barra de tiempo con el índice derecho.");
+        Poner(d, btnSiguiente, "> (SIGUIENTE)\nAvanza un fotograma.");
+        Poner(d, btnPlay, "PLAY / PAUSA\nReproduce la animación: las líneas se transforman entre las claves.\nPara animar: 1) ve a otro fotograma (toca la barra), 2) mueve los nodos (izquierda pulgar + medio), 3) se guarda una clave sola, 4) Play.");
+        Poner(d, btnClave, "+ CLAVE\nGuarda la forma actual de todas las líneas en este fotograma (marca naranja). Normalmente no hace falta: al editar en un fotograma, la clave se guarda sola.");
+        Poner(d, btnQuitarClave, "- CLAVE\nQuita la clave de este fotograma.\nPara MOVER una clave: pellízcala en la barra y arrástrala.");
+        Poner(d, btnFps, "FPS\nVelocidad de la animación: 12, 24, 30 o 60 cuadros por segundo.");
+        Poner(d, btnCapasPlegar, "CAPAS (en profundidad)\nAbre las capas colgadas una detrás de otra, cerca de ti, arriba al centro de tu vista (también con el botón Capas del menú de la mano). Empuja la actual = todo el montón se va al fondo y llega la capa de adelante; atráela hacia ti = la de atrás. + Capa = una capa nueva adelante (hasta 12). Se cierran solas a los 20 segundos.\nLa barra grande muestra las claves de la capa activa.");
+        if (btnCapas != null)
+            foreach (var b in btnCapas)
+                Poner(d, b, "CAPA 1-4\nElige en qué capa dibujas. Cada capa tiene su estilo: temblor y hebras en la paleta (palma izquierda) > LÍNEA; Lápiz y Plano aquí, en su fila.\nIdea: lápiz en la capa 1 (Lápiz: Sí, en Plano 2D) y tinta encima en la capa 2.");
+        if (btnVer != null)
+            foreach (var b in btnVer)
+                Poner(d, b, "VER / OCULTA\nMuestra o esconde esa capa. Una capa oculta no se puede editar.");
+        Poner(d, btnPlano, "LIBRE (3D) / PLANO (2D)\nPlano: dibujas sobre una hoja invisible frente a ti (si alejas el dedo hacia ti más de ~2.5 cm, la línea se corta, como levantar el lápiz; si lo pasas DETRÁS de la hoja, la línea sigue y ves una copia de tu mano sobre la hoja). Libre: dibujas en el aire, en 3D.\nCon una capa de Boceto en Plano, dibujas con lápiz sobre papel.");
+        Poner(d, btnFondo, "FONDO\nCuadrícula → Blanco → Realidad (passthrough) → 360. Al llegar a 360 se abre una ventanita con todos los fondos 360 en 3D (Roma, Shanghai, Venecia, el mar, campos...) y tus fotos 360: toca uno para probarlo.");
+        Poner(d, btnGuardar, "GUARDAR\nGuarda el dibujo con su propio nombre (Dibujo 1, Dibujo 2...). Si ya tiene nombre, lo actualiza.\nPara empezar uno NUEVO: Borrar todo y luego Guardar (recibe otro nombre).");
+        Poner(d, btnCargar, "ARCHIVOS\nAbre \"Mis archivos\": tus dibujos, videos, fotos y SVG con una miniatura. Filtros arriba. Toca uno para elegirlo y luego Abrir (o Ver) o Borrar (pide tocar otra vez).\nGuarda antes lo que tienes (Guardar). Si te arrepientes de abrir otro: deshacer.");
+        Poner(d, btnBorrarTodo, "BORRAR TODO\nBorra todo el dibujo y empieza uno nuevo (al guardar recibe otro nombre). Se puede deshacer.");
+        Poner(d, btnSvg, "CREAR SVG\nExporta las líneas como curvas vectoriales (para Illustrator, Inkscape...). En Plano se ve de frente al plano; en 3D, desde donde estás.");
+        Poner(d, btnFoto, "FOTO\nGuarda una imagen PNG del dibujo desde donde estás. Los paneles, nodos, imágenes y capas de boceto no salen.\nDÓNDE QUEDA: app Archivos del Quest → Descargas → JCartoons.");
+
+        // Medios
+        Poner(d, btnGrabar, "GRABAR (proceso)\nGraba cómo dibujas: tus manos y cómo aparecen las líneas. Toca otra vez (Detener) para parar.\nDespués: Video proceso lo convierte en MP4.");
+        Poner(d, btnPausaGrabar, "PAUSA / REANUDAR\nSolo aparece mientras grabas el proceso. Pausa deja de grabar un momento (ese tiempo no sale en el video); Reanudar sigue grabando. Lo que hagas en pausa aparece de una vez al reanudar.");
+        Poner(d, btnVideoProceso, "VIDEO PROCESO\nConvierte tu grabación (botón Grabar) en un video MP4: líneas + manos en gris. Elige antes la velocidad con Vel.\nDÓNDE QUEDA: app Archivos del Quest → Descargas → JCartoons (también lo dice abajo en esta página).");
+        Poner(d, btnVelocidad, "VEL x1 / x2 / x4 / x8\nQué tan rápido se ve el video del proceso.");
+        Poner(d, btnVideoAnim, "EXPORTAR\nTócalo y baja una lista: elige el tamaño (Horizontal 1080p, Vertical 1080p para celular, Horizontal 2K o Vertical 2K, más nítidos) y toca \"Hacer video >\" abajo. Se hace el MP4, con el audio de las bocas si hay. Necesitas al menos 2 claves.\nDÓNDE QUEDA: app Archivos del Quest → Descargas → JCartoons. (WhatsApp lo achica: mándalo como Documento.)");
+        Poner(d, btnImagenMas, "IMAGEN +\nAbre las imágenes de tu Quest (Descargas, Cámara, capturas, WhatsApp, Facebook...). Toca una para verla en grande y elige: Importar (aparece frente a ti) o, si es una foto 360, Fondo 360. O pellízcala y sácala del panel: queda donde la sueltes.\nPara calcar: en Plano, suelta la imagen cerca del plano y se pega detrás.");
+        Poner(d, btnImagenMenos, "IMAGEN -\nQuita la imagen seleccionada (la que tiene tono azul). Pellizca una imagen para elegirla.");
+        Poner(d, btnImagenesVer, "IMÁGENES: VER / OCULTAS\nEsconde o muestra todas las imágenes de referencia a la vez.");
+        Poner(d, btnTemblor, "TEMBLOR (capa activa)\nLíneas vivas, como en la animación dibujada a mano: No, Suave, Medio, Fuerte. No cambia tus nodos, solo cómo se ven.");
+        Poner(d, btnHebras, "HEBRAS (capa activa)\n1, 3 o 5 hebras finas por línea (en las puntas se juntan).\nGrosor de las hebras: gesto de grosor (izquierda pulgar + anular) + pellizco derecho en el aire, sube o baja.");
+        Poner(d, btnGrosorVivo, "GROSOR VIVO (capa activa)\nEl grosor sube y baja a lo largo de la línea, como la presión de un pincel.");
+        Poner(d, btnCicloTemblor, "CICLO DE 3 / LIBRE (capa activa)\nCiclo de 3: el temblor repite 3 dibujos (estilo clásico). Libre: siempre distinto.");
+        Poner(d, btnSuavidad, "SUAVIDAD (capa activa)\nQué tan ondulado es el temblor: Suave, Normal o Nervioso.");
+        Poner(d, btnVelocidadTemblor, "VELOCIDAD (capa activa)\nCuántas veces por segundo cambia el temblor: 4, 8, 12 o 24.");
+        Poner(d, btnBoceto, "BOCETO (capa activa)\nLa capa se ve como lápiz gris o azul y NO sale en fotos ni videos.\nEn Plano (2D) dibujas con lápiz de verdad sobre una hoja: más cerca del plano = más oscuro. El puño izquierdo (de lado) es la goma.");
+        Poner(d, btnUnirPlano, "PLANO: UNIDO / PROPIO (capa activa)\nUnido: la capa comparte la hoja con las otras, medio milímetro delante (como acetatos sobre papel). Propio: la capa tiene su propio plano.\nAl unir, sus líneas se pegan al plano.");
+        Poner(d, btnIman, "IMÁN: SÍ / NO (capa activa)\nSí: las puntas de las líneas se pegan a otras y las figuras se cierran solas. No: las líneas quedan como las dibujas. En boceto se apaga solo.");
+
+        // Bocas
+        if (btnBocas != null)
+            foreach (var b in btnBocas)
+                Poner(d, b, "FORMA DE BOCA\nModo Guardar: 1) dibuja la boca en su propia capa y elígela, 2) mueve sus nodos para esta forma, 3) toca este botón: queda guardada (se ve oscuro).\nModo Probar: tocarlo pone esa boca en el fotograma actual.");
+        Poner(d, btnModoBoca, "MODO: GUARDAR / PROBAR\nGuardar: tocar una forma la guarda. Probar: tocar una forma la pone en el fotograma actual (para corregir a mano).");
+        Poner(d, btnVoz, "VOZ\nGraba tu voz con el micrófono de las gafas. Toca otra vez para parar. Después toca Lipsync.");
+        Poner(d, btnAudio, "AUDIO\nElige un audio de la carpeta Dibujos/Audio (wav o mp3) en vez de grabar tu voz.");
+        Poner(d, btnLipsync, "LIPSYNC\nCrea las claves de la boca según el audio. Antes: guarda las formas (Reposo, A, E, I, O, U, M) y graba Voz o elige Audio. Luego Play.\nSi no tienes bocas, al abrir esta página aparece una cara de muestra con todas listas.");
+        Poner(d, btnQuitarAudio, "QUITAR AUDIO\nQuita el audio de la animación.");
+
+        // Títere
+        Poner(d, btnTitere, "TIPO\nElige qué personaje crea el botón Crear: Palito, Musculoso, Gordito, Flaco o Niño.");
+        Poner(d, btnMuneco, "CREAR / PARAR\nCrear: aparece el personaje (en la Capa 4) y se enciende con tu mano DERECHA (ponla frente a ti un segundo). Lados = caminar/correr · mano abajo = agacharse · golpe arriba = saltar.\nApagar: Parar, palma arriba o choca los cinco con la otra mano. Esconderlos: Ver/Oculta de la Capa 4. Borrar uno: acerca la mano y toca la X de su marco.");
+        Poner(d, btnGrabarTitere, "GRABAR (títere)\nCuenta 3 segundos y guarda una clave por fotograma de los personajes encendidos. Parar = terminar. Después: Play, corrige claves y exporta con Video anim (página Animar).");
+        Poner(d, btnPosar, "POSAR DEDOS\nEl índice y el medio derechos acomodan las piernas del personaje; pellizco IZQUIERDO = guardar una clave. Toca otra vez para terminar.");
+        Poner(d, btnCiclo, "CICLO\nEl caminado: Normal, Con estilo (Richard Williams: paso alto, brazos grandes), Sigiloso (Ken Harris: agachado, el pie pasa rápido por el medio y se apoya con cuidado) o tus ciclos guardados.");
+        Poner(d, btnGuardarCiclo, "GUARDAR CICLO\nGuarda tu propio caminado: 1) anima al menos 3 claves de un paso con las piernas del personaje (la última igual a la primera), 2) toca Guardar ciclo, 3) elígelo con Ciclo.");
+        Poner(d, btnVoltear, "VOLTEAR\nEl personaje elegido mira hacia el otro lado.");
+        Poner(d, btnPiso, "PISO +/-\nPellizca una línea (queda azul) y toca Piso: esa línea será piso o plataforma (sube rampas, cae si se acaba). Otra vez = deja de ser piso.\nSolo pisa los pisos que están a su misma profundidad.");
+        Poner(d, btnPierna1, "PIERNA 1 / 2\nPara armar tu propio personaje: 1) dibuja una pierna (de la cadera al pie), 2) pellízcala, 3) toca Pierna 1. Haz lo mismo con la otra (Pierna 2). Con las dos piernas ya camina.");
+        Poner(d, btnPierna2, "PIERNA 2\nLa segunda pierna de tu personaje: pellízcala y toca este botón. (Mira también Pierna 1.)");
+        Poner(d, btnBrazo1, "BRAZO 1 / 2\nPellizca una línea de brazo (del hombro a la mano) y toca Brazo 1 o Brazo 2. Los brazos se balancean al caminar.");
+        Poner(d, btnBrazo2, "BRAZO 2\nEl segundo brazo: pellízcalo y toca este botón.");
+        Poner(d, btnCuerpo, "CUERPO +/-\nPellizca una línea (tronco, cabeza, sombrero...) y toca Cuerpo: se mueve junto con la cadera. Otra vez = la quita del cuerpo.");
+        return d;
+    }
+}

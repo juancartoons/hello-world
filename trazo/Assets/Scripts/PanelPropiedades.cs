@@ -513,7 +513,7 @@ public class PanelPropiedades : MonoBehaviour
         }
         // v62: en 2D, "Ver en la mesa" (tu hoja sobre el disco de la mesa de animación, sin salir del archivo).
         if (firma.Contains("+plano"))
-            y = Accion(y, "Ver en la mesa", MesaEntrada.VerEnLaMesa);
+            y = Accion(y, "Mesa (2D)", MesaEntrada.VerEnLaMesa);   // v71: ya no es una vista aparte: es el modo 2D
         // v62: la subopción del semipassthrough.
         if (firma.Contains("+semi") && esc != null)
             y = Opciones(y, "Semipassthrough", new[] { "Ventana fija", "Sigue tu mirada" }, () => esc.SemiMirada ? 1 : 0,

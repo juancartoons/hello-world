@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v70***
+*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v71***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -954,6 +954,19 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - HECHO: reloj sin el botón de la paleta ni el nombre JCartoons; "Función" pasa a TEATRO / THEATER y deja una copia para ver en Mis archivos (Teatro/<nombre>.jct; se reemplaza la del mismo archivo).
 - HECHO: MESA FLEXIBLE (opción C) y "3D ESTO" en la mesa.
 - HECHO: tutorial en 2D (hoja delante con la mesa abajo, arpa, el muñeco aparece al dibujar), paso "3D esto" después de Deshacer, y la primera vez termina en un archivo 3D nuevo.
-- PENDIENTE: en la mesa inicial, al empezar a dibujar crear el archivo y mostrar los menús; arriba, en lugar de los recientes, la línea de tiempo con sus cuadros y el reproductor (y las 3 pestañas como panel replegable).
+- HECHO (v71): en la mesa inicial, la primera línea crea el archivo y muestra los menús; arriba, la línea de tiempo (ver la sección v71).
 - HECHO (v70): el tutorial dibuja sobre la hoja inclinada de la mesa (mesa a su tamaño normal; línea, muñeco, bandera y punto A más chicos; la mano guía del tamaño de la mano real; "Saltar" arriba a la derecha).
 - POR PROBAR: Mesa flexible (botones abajo a la mano), 3D esto, el paso 3D del tutorial, los tramos de color al unir, el Teatro en Mis archivos.
+
+## v71 (la unión de las mesas)
+- RESPALDO: MesaEntrada.cs, PanelArriba.cs y PanelMuneca.cs de la v70 están en `trazo/Herramientas/respaldo-v70/` (la mesa con sus lápices, plumas y bloc tal como eran). La v70 completa es el commit f18e5f8.
+- HECHO: solo dos modos: 2D (la mesa: normal o flexible) y 3D. "Ver en la mesa" pasa a ser "Mesa (2D)" en Propiedades (trae la mesa flexible desde un archivo en 3D).
+- HECHO: la primera línea en la hoja de la mesa crea el archivo (capas Lápiz y Tinta, 2D) acostado en el disco, donde lo dibujaste (MesaEntrada.EntrarConArchivo). La mesa no se mueve; salen los menús normales.
+- HECHO: se dibuja con solo TOCAR el papel, sin el OK (ControlManosContacto.cs); el OK sigue funcionando.
+- HECHO: la línea de tiempo real (PanelArriba) se pega arriba de la mesa en lugar de los recientes (modo enMesa): barra con cuadros y reproductor debajo, zoom con las dos rayitas, barra sujeta con doble toque izquierdo; sin asa, sin pestañas, sin botón Zoom.
+- HECHO: Animar, Bocas y Títere son tres botones del reloj; en la mesa su página sale a la izquierda (con su X); en 3D, sobre el panel de siempre.
+- HECHO: mesa normal = la mesa manda (dos manos mueven y agrandan la mesa y el dibujo va con ella; regla negra + mano derecha gira el disco). Mesa flexible = mesa abajo y hoja de pie. 3D esto = el dibujo se pone de pie y la mesa se va.
+- HECHO: "◀ Mis archivos" (a la izquierda) guarda y vuelve a la mesa del principio; "Centrar mesa" sigue disponible; a la derecha, Dibujando / Entintando cambia entre las capas Lápiz y Tinta.
+- HECHO: el bloc ya no se ve (se arma y se esconde). Al guardar, el dibujo se guarda de pie (no acostado en la mesa).
+- HECHO: "Mesa flexible" y "3D esto" subieron a la fila de "Entrar" (la orilla de aluminio los tapaba).
+- POR PROBAR (todo esto es nuevo y solo pasó el revisor de código): la primera línea y que el dibujo quede en su lugar; dibujar al tocar (que no dibuje sin querer); la línea de tiempo en la mesa (tamaño y alcance); zoom con las rayitas; mover la mesa con dos manos; girar el disco; pasar a flexible y volver; 3D esto; Mis archivos; abrir de nuevo un archivo nacido en la mesa; el Teatro con la mesa; el tutorial (no debería cambiar).

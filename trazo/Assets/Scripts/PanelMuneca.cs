@@ -630,6 +630,24 @@ public class PanelMuneca : MonoBehaviour
             PanelPropiedades.Alternar();
         });
         BotonTocable.PonerVoz(btnPropiedades, ControlManos.ComandoVoz.Propiedades);
+        // v71: ANIMAR, BOCAS y TÍTERE (las tres páginas de la línea de tiempo) se abren desde aquí. En la mesa de
+        // animación su página sale a tu izquierda; en 3D, sobre el panel de la línea de tiempo, como siempre.
+        string[] paginasTiempo = { "Animar", "Bocas", "Títere" };
+        int[] cualPagina = { 0, 2, 3 };
+        var vozPagina = new[] { ControlManos.ComandoVoz.Animar, ControlManos.ComandoVoz.Bocas, ControlManos.ComandoVoz.Titere };
+        for (int i = 0; i < paginasTiempo.Length; i++)
+        {
+            int pag = cualPagina[i];
+            var bp = BotonRec(contenido.transform, paginasTiempo[i], new Vector3(-0.033f + i * 0.033f, -0.096f, 0f), 0.03f);
+            bp.alTocar.AddListener(() =>
+            {
+                if (control == null || control.panelArriba == null)
+                    return;
+                control.CerrarMenu();
+                control.panelArriba.AlternarPestana(pag);
+            });
+            BotonTocable.PonerVoz(bp, vozPagina[i]);
+        }
         // Copiar y pegar: dos iconos pequeñitos arriba, entre el ? y la X.
         var oscuro = new Material(btnColores.materialNormal);
         Pintar(oscuro, new Color(0.22f, 0.22f, 0.26f));
