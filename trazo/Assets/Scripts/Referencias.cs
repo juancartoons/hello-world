@@ -95,6 +95,15 @@ public class Referencias : MonoBehaviour
                 img.raiz.gameObject.SetActive(!enMesa);
         if (enMesa && seleccionada != null)
             Seleccionar(null);
+        // v76: 100% / 50% / 20% / oculta se respeta SIEMPRE (si algo vuelve a prender la imagen, se corrige aquí).
+        foreach (var img in imagenes)
+        {
+            if (img.render == null)
+                continue;
+            bool debeVerse = !ocultas && Mathf.Clamp(img.datos.vista, 0, 3) < 3;
+            if (img.render.enabled != debeVerse)
+                AplicarVista(img);
+        }
         Imagen borrar = null;
         // La X (arriba a la derecha, afuera de la esquina) de cada imagen: tocarla = quitar la imagen.
         foreach (var img in imagenes)

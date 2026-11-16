@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v75***
+*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v76***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -998,3 +998,6 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - HECHO: capas: los botones salen a los 0,3 s (antes 1 s); casilla a la derecha de la tarjeta con dos flechitas (solo para cambiar de capa con un dedo: empujar/bajar = siguiente, atraer/subir = anterior; varias seguidas).
 - HECHO: Propiedades (y los paneles a un lado) un poco más cerca del centro.
 - POR PROBAR: la casilla de las capas; cuadro a cuadro en la mesa; deshacer con la imagen de calcar; decir "mesa" en 3D.
+
+## v76
+- HECHO: imágenes de referencia: 100% / 50% / 20% / oculta (y "Imágenes: ocultas") se revisa cada cuadro; si algo volvía a prender la imagen, se corrige.
