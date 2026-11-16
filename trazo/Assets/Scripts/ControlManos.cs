@@ -988,7 +988,8 @@ public partial class ControlManos : MonoBehaviour
     //  2 Cuerda: el lápiz va detrás del dedo como si lo jalaras con un hilo corto: líneas muy limpias.
     public static readonly string[] NombresModoLapiz = { "Pegado", "Suave", "Cuerda" };
     public static readonly string[] ExplicacionModoLapiz = { "va justo en tu dedo", "un poco arrastrado, más liso", "te sigue con un hilo, muy liso" };
-    const string ClaveModoLapiz = "jcartoons_lapiz_modo";
+    // v74: clave nueva: así a todos les empieza en CUERDA (String), aunque antes tuvieran otro modo guardado.
+    const string ClaveModoLapiz = "jcartoons_lapiz_modo_v74";
     const float LargoCuerda = 0.007f; // metros de "hilo"
     int modoLapiz = -1; // -1 = aún no leído
 
@@ -997,7 +998,7 @@ public partial class ControlManos : MonoBehaviour
         get
         {
             if (modoLapiz < 0)
-                modoLapiz = Mathf.Clamp(PlayerPrefs.GetInt(ClaveModoLapiz, 0), 0, NombresModoLapiz.Length - 1);
+                modoLapiz = Mathf.Clamp(PlayerPrefs.GetInt(ClaveModoLapiz, 2), 0, NombresModoLapiz.Length - 1);   // v74: por defecto Cuerda
             return modoLapiz;
         }
     }

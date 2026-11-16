@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v73***
+*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v74***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -985,3 +985,6 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - HECHO: el reloj en la mesa tiene Archivos; abrir desde ahí un archivo solo 2D lo pone en la mesa; uno con 3D (o el Teatro) quita la mesa.
 - HECHO: "< Mis archivos" y la flecha de la mesa sin los símbolos ◀ ▶ (la letra no los tiene: salían cuadritos).
 - POR PROBAR: que no quede nada del archivo anterior al empezar otro; la imagen para calcar en la mesa; el tutorial hasta el final; Girar hacia mí.
+
+## v74
+- HECHO: el lápiz (2D en archivos) empieza en modo CUERDA (String). Se usa una clave nueva de PlayerPrefs para que también cambie en los visores que ya tenían otro modo guardado; después se recuerda lo que elijas en Propiedades.
