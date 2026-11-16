@@ -289,10 +289,11 @@ public class MesaEntrada : MonoBehaviour
     }
 
     // La voz ("entrar"): entra a tu boceto de la mesa.
+    // v72: ya no hay botón "Entrar" (en 2D ya estás adentro): la voz hace lo mismo que "3D esto".
     public static void EntrarVoz()
     {
         if (Activa && !instancia.animando)
-            instancia.EntrarABoceto();
+            instancia.Tocar3D();
     }
 
     void Update()
@@ -1606,7 +1607,73 @@ public class MesaEntrada : MonoBehaviour
         }
         if (i - 1 >= rutasRecientes.Count)
             return;
+        // v72: un archivo SOLO 2D no necesita "entrar": se abre aquí mismo, en la mesa. La zambullida queda para los
+        // archivos que tienen algo en 3D.
+        if (dibujo.ArchivoEs2D(rutasRecientes[i - 1]) && AbrirEnMesa(rutasRecientes[i - 1]))
+            return;
         StartCoroutine(Entrar(i - 1));
+    }
+
+    // Abre un archivo 2D sobre la hoja del disco (mesa normal), con la línea de tiempo arriba y los menús de siempre.
+    // Devuelve false si no se pudo (entonces se entra como antes).
+    bool AbrirEnMesa(string ruta)
+    {
+        if (animando || verArchivo || !activa || control == null || control.Cabeza == null || Titere.Activo)
+            return false;
+        control.MusicaMesa(false, Vector3.zero);
+        if (hojeando)
+            PararHojear();
+        TerminarLinea();
+        entrarArchivoPendiente = false;
+        if (!dibujo.gameObject.activeSelf)
+            dibujo.gameObject.SetActive(true);
+        fondoMesaPuesto = false;   // el archivo trae su propio fondo
+        dibujo.AbrirArchivo(ruta);
+        // La capa en la que quedas: una 2D con su hoja (la que tenías, si sirve).
+        Vector3 punto, normal;
+        int capa = -1;
+        if (dibujo.plano && !dibujo.EsCamara(dibujo.capaActual) && dibujo.PlanoDeCapa(dibujo.capaActual, out punto, out normal))
+            capa = dibujo.capaActual;
+        for (int k = 0; k < dibujo.capas.Count && capa < 0; k++)
+            if (!dibujo.EsCamara(k) && dibujo.capas[k].en2D && dibujo.PlanoDeCapa(k, out punto, out normal))
+                capa = k;
+        if (capa >= 0 && capa != dibujo.capaActual)
+            dibujo.SeleccionarCapa(capa);
+        if (capa < 0 || !dibujo.PlanoActivo)
+        {
+            // No resultó ser 2D: queda abierto como al entrar de siempre (sin la mesa).
+            activa = false;
+            control.Ocupado = false;
+            raiz.gameObject.SetActive(false);
+            return true;
+        }
+        PonerDibujoEn(hoja.position - hoja.forward * 0.0004f * giratorio.lossyScale.x, hoja.rotation, AnchoHoja * giratorio.lossyScale.x);
+        // Dibujando / Entintando: si el archivo tiene las capas "Lápiz" y "Tinta" (los que nacen en la mesa).
+        capaLapizMesa = -1;
+        capaTintaMesa = -1;
+        for (int k = 0; k < dibujo.capas.Count; k++)
+        {
+            if (dibujo.EsCamara(k))
+                continue;
+            if (capaLapizMesa < 0 && dibujo.capas[k].nombre == "Lápiz")
+                capaLapizMesa = k;
+            else if (capaTintaMesa < 0 && dibujo.capas[k].nombre == "Tinta")
+                capaTintaMesa = k;
+        }
+        foreach (var t in dibujo.trazos)
+            if (t != null)
+                EfectosLinea.Materializar(t);
+        activa = false;
+        control.Ocupado = false;
+        flexible = false;
+        int lapizGuardada = capaLapizMesa, tintaGuardada = capaTintaMesa;
+        conservarDisco = true;
+        MostrarVer(true);
+        conservarDisco = false;
+        capaLapizMesa = lapizGuardada;
+        capaTintaMesa = tintaGuardada;
+        control.SonidoBurbuja(hoja.position);
+        return true;
     }
 
     // v60: LA ZAMBULLIDA. El dibujo elegido aparece DE GOLPE en la hoja del disco (sin deslizarse). Luego tú te
@@ -3613,12 +3680,16 @@ public class MesaEntrada : MonoBehaviour
                 EntrarABoceto();
         });
         btnEntrar = entrar;
+        // v72: "✦ Entrar" YA NO SE VE: en 2D ya estás adentro de tu archivo; para pasar a 3D está "3D esto" y para
+        // tener la hoja libre, "Mesa flexible". (El botón se arma igual, por si se quiere volver a él.)
+        entrar.gameObject.SetActive(false);
+        entrar.etiqueta.gameObject.SetActive(false);
         // v69: MESA FLEXIBLE y "3D ESTO", debajo de Entrar.
         // v71: en la fila de "Entrar" (antes iban más abajo y la orilla de aluminio de la mesa los tapaba).
-        btnFlexible = PanelTutoriales.Boton(raiz, "", new Vector3(0.152f, -0.272f, -0.004f), new Vector2(0.112f, 0.024f), normal, marcado);
+        btnFlexible = PanelTutoriales.Boton(raiz, "", new Vector3(-0.03f, -0.272f, -0.004f), new Vector2(0.13f, 0.024f), normal, marcado);   // v72: al centro (ya no está Entrar)
         Idioma.Poner(btnFlexible.etiqueta, "Mesa flexible");
         btnFlexible.alTocar.AddListener(TocarFlexible);
-        btn3D = PanelTutoriales.Boton(raiz, "", new Vector3(0.256f, -0.272f, -0.004f), new Vector2(0.084f, 0.024f), normal, marcado);
+        btn3D = PanelTutoriales.Boton(raiz, "", new Vector3(0.105f, -0.272f, -0.004f), new Vector2(0.11f, 0.024f), normal, marcado);
         Idioma.Poner(btn3D.etiqueta, "3D esto");
         btn3D.alTocar.AddListener(Tocar3D);
         // v66: "Importar imagen" (como "Imagen +" de adentro): la imagen va a la hoja del disco, para calcarla entintando.

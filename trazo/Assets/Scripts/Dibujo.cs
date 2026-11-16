@@ -3047,6 +3047,34 @@ public class Dibujo : MonoBehaviour
         return true;
     }
 
+    // v72: ¿ese archivo es SOLO 2D? (todas sus líneas van en una hoja, tiene una capa 2D con su hoja y no trae
+    // figuras 3D). Los que son solo 2D se abren en la mesa; los que tienen algo en 3D, con la zambullida de siempre.
+    public bool ArchivoEs2D(string ruta)
+    {
+        var d = Leer(ruta);
+        if (d == null || d.capas == null)
+            return false;
+        if (d.figuras != null && d.figuras.Count > 0)
+            return false;
+        bool hayHoja = false;
+        foreach (var c in d.capas)
+            if (c != null && !c.camara && c.en2D && c.hayPlano)
+                hayHoja = true;
+        if (!hayHoja)
+            return false;
+        bool hayAlgo = d.lapiz != null && d.lapiz.Count > 0;
+        if (d.trazos != null)
+            foreach (var t in d.trazos)
+            {
+                if (t == null)
+                    continue;
+                if (!t.enHoja)
+                    return false;
+                hayAlgo = true;
+            }
+        return hayAlgo;
+    }
+
     // Menú de la mano: abre el dibujo guardado más reciente.
     public void Cargar()
     {

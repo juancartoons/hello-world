@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v71***
+*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v72***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -970,3 +970,8 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - HECHO: el bloc ya no se ve (se arma y se esconde). Al guardar, el dibujo se guarda de pie (no acostado en la mesa).
 - HECHO: "Mesa flexible" y "3D esto" subieron a la fila de "Entrar" (la orilla de aluminio los tapaba).
 - POR PROBAR (todo esto es nuevo y solo pasó el revisor de código): la primera línea y que el dibujo quede en su lugar; dibujar al tocar (que no dibuje sin querer); la línea de tiempo en la mesa (tamaño y alcance); zoom con las rayitas; mover la mesa con dos manos; girar el disco; pasar a flexible y volver; 3D esto; Mis archivos; abrir de nuevo un archivo nacido en la mesa; el Teatro con la mesa; el tutorial (no debería cambiar).
+
+## v72
+- HECHO: el botón "✦ Entrar" ya no se ve (en 2D ya estás adentro). La voz "entrar" hace lo mismo que "3D esto". "Mesa flexible" y "3D esto" quedaron al centro de la fila de abajo.
+- HECHO: al tocar un reciente, si el archivo es SOLO 2D (Dibujo.ArchivoEs2D: todas sus líneas en una hoja, una capa 2D con hoja y sin figuras 3D) se abre en la mesa (MesaEntrada.AbrirEnMesa); si tiene algo en 3D, entra con la zambullida de siempre. "+ Archivo nuevo" sigue entrando a un archivo en blanco en 3D.
+- POR PROBAR: abrir un reciente 2D en la mesa (que quede bien puesto en el disco) y uno con 3D (zambullida).
