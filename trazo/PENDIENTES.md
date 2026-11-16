@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v72***
+*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v73***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -975,3 +975,13 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - HECHO: el botón "✦ Entrar" ya no se ve (en 2D ya estás adentro). La voz "entrar" hace lo mismo que "3D esto". "Mesa flexible" y "3D esto" quedaron al centro de la fila de abajo.
 - HECHO: al tocar un reciente, si el archivo es SOLO 2D (Dibujo.ArchivoEs2D: todas sus líneas en una hoja, una capa 2D con hoja y sin figuras 3D) se abre en la mesa (MesaEntrada.AbrirEnMesa); si tiene algo en 3D, entra con la zambullida de siempre. "+ Archivo nuevo" sigue entrando a un archivo en blanco en 3D.
 - POR PROBAR: abrir un reciente 2D en la mesa (que quede bien puesto en el disco) y uno con 3D (zambullida).
+
+## v73
+- HECHO: el tutorial ya no se hunde en la hoja (la línea, el muñeco, el borrado y los nodos): el plano va 6 mm sobre el papel de la mesa.
+- HECHO: con tu archivo en la mesa, la imagen para calcar ya no queda tapada por el disco (el plano va 6 mm sobre el papel; antes casi pegado y solo se veía de lado o con ciertos tamaños).
+- HECHO: "Archivo nuevo" (también al salir a la mesa o con la primera línea) guarda y QUITA las imágenes de referencia del archivo anterior (antes se quedaban y aparecían en el nuevo, movidas y medio enterradas).
+- HECHO: los lápices, la goma, el rapidógrafo y la plumilla se ven a la derecha también con tu archivo (según la capa: Lápiz o Tinta); tocarlos cambia de capa.
+- HECHO: botón "Girar hacia mí" (flechita que gira) al lado de "Centrar mesa": gira la mesa para mirarte sin moverla ni cambiar su tamaño.
+- HECHO: el reloj en la mesa tiene Archivos; abrir desde ahí un archivo solo 2D lo pone en la mesa; uno con 3D (o el Teatro) quita la mesa.
+- HECHO: "< Mis archivos" y la flecha de la mesa sin los símbolos ◀ ▶ (la letra no los tiene: salían cuadritos).
+- POR PROBAR: que no quede nada del archivo anterior al empezar otro; la imagen para calcar en la mesa; el tutorial hasta el final; Girar hacia mí.

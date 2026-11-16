@@ -394,7 +394,7 @@ public class PanelMuneca : MonoBehaviour
     {
         if (h.name == "Fondo")
             return true;   // el vidrio de atrás del menú
-        foreach (var b in new[] { btnFondo, btnGirarIzq, btnGirarDer })
+        foreach (var b in new[] { btnFondo, btnGirarIzq, btnGirarDer, btnCargar })   // v73: + Archivos
         {
             if (b == null)
                 continue;

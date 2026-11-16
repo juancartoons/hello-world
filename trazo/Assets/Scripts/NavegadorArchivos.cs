@@ -551,7 +551,9 @@ public class NavegadorArchivos : MonoBehaviour
         {
             case "Dibujo":
                 Cerrar();
-                dibujo.AbrirArchivo(a.ruta);
+                // v73: desde la mesa: un archivo solo 2D se abre en la mesa; los demás, como siempre (la mesa se va).
+                if (!MesaEntrada.AbrirDesdeArchivos(a.ruta))
+                    dibujo.AbrirArchivo(a.ruta);
                 break;
             case "Foto":
                 VerFoto(a.ruta);
@@ -561,6 +563,7 @@ public class NavegadorArchivos : MonoBehaviour
                 break;
             case "Teatro":
                 Cerrar();
+                MesaEntrada.SalirParaAbrir();   // v73
                 if (dibujo.AbrirTeatro(a.ruta))
                     Funcion.VerTeatro();
                 break;

@@ -2504,10 +2504,16 @@ public class Dibujo : MonoBehaviour
             return;
         }
         bool hayAlgo = trazos.Count > 0 || (hojas != null && hojas.HayAlgo) || (figuras != null && figuras.HayFiguras);
-        if (hayAlgo && (HayCambios || string.IsNullOrEmpty(NombreArchivo)))
+        // v73: las imágenes de referencia también son del archivo (se guardan con él).
+        bool hayImagenes = Refs != null && Refs.EstadoActual().Count > 0;
+        if ((hayAlgo || hayImagenes) && (HayCambios || string.IsNullOrEmpty(NombreArchivo)))
             GuardarProyecto(true);
         string nombre = NombreArchivo;
         Aplicar(new DatosDibujo(), false);
+        // v73: el archivo nuevo empieza SIN las imágenes del anterior (antes se quedaban y aparecían en el nuevo,
+        // movidas y medio enterradas en la mesa).
+        if (hayImagenes)
+            Refs.Reemplazar(null);
         historial.Clear();
         rehacer.Clear();
         rehacerRespaldo.Clear();

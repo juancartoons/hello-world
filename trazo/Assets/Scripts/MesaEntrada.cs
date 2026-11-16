@@ -233,7 +233,13 @@ public class MesaEntrada : MonoBehaviour
     public static bool MesaManda => instancia != null && instancia.verArchivo && !instancia.flexible && !instancia.modoTutorial
                                     && !instancia.moviendoDibujo;
     public static bool ConArchivo => instancia != null && instancia.verArchivo && !instancia.modoTutorial;
-    static readonly float UnidadesHoja = 0.8f * AnchoHoja / AltoHoja;   // la hoja de la mesa, en unidades del dibujo (el papel mide 1,2 x 0,8)
+    static readonly float UnidadesHoja = 0.8f * AnchoHoja / AltoHoja;
+    // v73: tu hoja (el plano del archivo) va 6 mm sobre el papel de la mesa (con la mesa a tamaño normal). Antes iba
+    // casi pegada: el disco tapaba la imagen para calcar (solo se veía de lado) y las líneas se "hundían" en el papel.
+    const float SobrePapel = 0.006f;
+    Vector3 PuntoSobrePapel => hoja.position - hoja.forward * SobrePapel * giratorio.lossyScale.x;
+    BotonTocable btnGirarHaciaMi;
+    Transform iconoGiro;   // la hoja de la mesa, en unidades del dibujo (el papel mide 1,2 x 0,8)
     float anchoEntrada = 0.9f;      // cuánto mide la hoja de la mesa al pasar el boceto al dibujo (unidades del dibujo)
     bool dosCapasEntrada;           // crear siempre las capas Lápiz y Tinta
     int capaLapizMesa = -1, capaTintaMesa = -1;
@@ -522,6 +528,8 @@ public class MesaEntrada : MonoBehaviour
             bool queda = h == giratorio || h == tablero || h == orilla
                          || (modoTutorial && EsBoton(btnEntrar, h))
                          || (!modoTutorial && (EsBoton(btnMisArchivos, h) || EsBoton(btnModo, h) || EsBoton(btnCentrar, h)
+                                               || EsBoton(btnGirarHaciaMi, h) || h == iconoGiro
+                                               || herramientas.Contains(h) || h == frasco
                                                || (tituloModo != null && h == tituloModo.transform)))
                          || EsBoton(btnFlexible, h) || EsBoton(btn3D, h);
             if (!queda && h.gameObject.activeSelf)
@@ -580,7 +588,7 @@ public class MesaEntrada : MonoBehaviour
         if (!dibujo.gameObject.activeSelf)
             dibujo.gameObject.SetActive(true);
         dibujo.ArchivoNuevo();   // (la mesa del principio no tiene archivo: queda en blanco, lista)
-        Vector3 hojaPos = hoja.position - hoja.forward * 0.0004f * giratorio.lossyScale.x;
+        Vector3 hojaPos = PuntoSobrePapel;
         Quaternion hojaGiro = hoja.rotation;
         float hojaAncho = AnchoHoja * giratorio.lossyScale.x;
         anchoEntrada = UnidadesHoja;
@@ -705,7 +713,7 @@ public class MesaEntrada : MonoBehaviour
         }
         else
         {
-            centro = hoja.position - hoja.forward * 0.0004f * giratorio.lossyScale.x;
+            centro = PuntoSobrePapel;
             giro = hoja.rotation;
             ancho = AnchoHoja * giratorio.lossyScale.x;
         }
@@ -839,7 +847,7 @@ public class MesaEntrada : MonoBehaviour
             GirarDiscoConArchivo();
             ActualizarReglas();
             if (!camara)
-                PonerDibujoEn(hoja.position - hoja.forward * 0.0004f * giratorio.lossyScale.x, hoja.rotation, AnchoHoja * giratorio.lossyScale.x);
+                PonerDibujoEn(PuntoSobrePapel, hoja.rotation, AnchoHoja * giratorio.lossyScale.x);
         }
         // La línea de tiempo, pegada arriba de la mesa (donde iban los recientes).
         if (control.panelArriba != null)
@@ -860,6 +868,16 @@ public class MesaEntrada : MonoBehaviour
             tituloModo.text = Idioma.T(lapiz ? "Dibujando" : "Entintando");
             Idioma.Poner(btnModo.etiqueta, lapiz ? "Entintar" : "Dibujar");
         }
+        // v73: los lápices (Dibujando) o el rapidógrafo y la plumilla (Entintando) se siguen viendo, como al principio.
+        bool conLapiz = dibujo.UsaHoja;
+        for (int i = 0; i < herramientas.Count; i++)
+        {
+            bool ver = i == Goma || (i <= 2 ? conLapiz : !conLapiz);
+            if (herramientas[i].gameObject.activeSelf != ver)
+                herramientas[i].gameObject.SetActive(ver);
+        }
+        if (frasco != null && frasco.gameObject.activeSelf == conLapiz)
+            frasco.gameObject.SetActive(!conLapiz);
     }
 
     // El disco con tu archivo: pellizca una regla negra con la DERECHA y gíralo (tu dibujo gira con él).
@@ -945,7 +963,7 @@ public class MesaEntrada : MonoBehaviour
             r.sharedMaterial = m.matHojaTut;
         }
         m.modoTutorial = true;
-        centro = m.hoja.position - m.hoja.forward * 0.0015f;
+        centro = m.hoja.position - m.hoja.forward * SobrePapel;   // v73: (antes 1,5 mm: las líneas se hundían en el papel)
         giro = m.hoja.rotation;
         ancho = AnchoHoja * m.hoja.parent.lossyScale.x;
         return true;
@@ -1419,6 +1437,81 @@ public class MesaEntrada : MonoBehaviour
         PlayerPrefs.Save();
     }
 
+    // v73: la mesa gira (solo de lado) para mirarte de frente desde donde está; no cambia de lugar ni de tamaño.
+    void GirarHaciaMi()
+    {
+        if (control == null || control.Cabeza == null || raiz == null || moviendoDibujo || animando)
+            return;
+        Vector3 donde = raiz.position;
+        Vector3 hacia = Vector3.ProjectOnPlane(donde - control.Cabeza.position, Vector3.up);
+        if (hacia.sqrMagnitude < 1e-4f)
+            return;
+        hacia.Normalize();
+        float a = Inclinacion * Mathf.Deg2Rad;
+        Vector3 normal = Vector3.up * Mathf.Cos(a) - hacia * Mathf.Sin(a);
+        Vector3 subeTablero = hacia * Mathf.Cos(a) + Vector3.up * Mathf.Sin(a);
+        Quaternion nuevo = Quaternion.LookRotation(-normal, subeTablero);
+        if (verArchivo && flexible)
+        {
+            raiz.rotation = nuevo;   // (la flexible no usa el lugar guardado)
+        }
+        else
+        {
+            giroMesa = nuevo;
+            baseMesa = donde - giroMesa * desplazaMesa;
+            AplicarPose();
+        }
+        control.SonidoBurbuja(raiz.position);
+    }
+
+    // v73: abrir un archivo desde Mis archivos (el reloj) estando en la mesa. Devuelve true si ya lo abrió la mesa.
+    public static bool AbrirDesdeArchivos(string ruta)
+    {
+        var m = instancia;
+        if (m == null || m.animando || m.dibujo == null || m.control == null)
+            return false;
+        if (m.verArchivo)
+        {
+            if (!m.modoTutorial)
+                m.TerminarVer();   // tu archivo de la mesa queda de pie y se abre el otro
+            return false;
+        }
+        if (!Activa)
+            return false;
+        if (m.dibujo.ArchivoEs2D(ruta) && m.AbrirEnMesa(ruta))
+            return true;
+        m.QuitarMesa();
+        return false;
+    }
+
+    // v73: algo se abre desde Mis archivos (el Teatro, por ejemplo): la mesa se va.
+    public static void SalirParaAbrir()
+    {
+        var m = instancia;
+        if (m == null || m.animando)
+            return;
+        if (m.verArchivo && !m.modoTutorial)
+            m.TerminarVer();
+        else if (Activa)
+            m.QuitarMesa();
+    }
+
+    // La mesa del principio se va sin la zambullida (para lo que se abre desde Mis archivos).
+    void QuitarMesa()
+    {
+        control.MusicaMesa(false, Vector3.zero);
+        if (hojeando)
+            PararHojear();
+        TerminarLinea();
+        entrarArchivoPendiente = false;
+        if (!dibujo.gameObject.activeSelf)
+            dibujo.gameObject.SetActive(true);
+        DevolverFondo();
+        activa = false;
+        control.Ocupado = false;
+        raiz.gameObject.SetActive(false);
+    }
+
     void CentrarMesa()
     {
         escalaMesa = 1f;
@@ -1435,6 +1528,18 @@ public class MesaEntrada : MonoBehaviour
 
     void ElegirHerramienta(int k)
     {
+        // v73: con tu archivo en la mesa, un lápiz lleva a la capa Lápiz y el rapidógrafo o la plumilla a la capa Tinta.
+        if (verArchivo && !modoTutorial && k >= 0 && k != Goma)
+        {
+            int capa = k <= 2 ? capaLapizMesa : capaTintaMesa;
+            if (capa >= 0 && capa < dibujo.capas.Count && capa != dibujo.capaActual && !dibujo.EsCamara(capa))
+            {
+                dibujo.SeleccionarCapa(capa);
+                if (k < herramientas.Count)
+                    control.SonidoBurbuja(herramientas[k].position);
+            }
+            return;
+        }
         if (verArchivo || k < 0 || k >= NombresHerramienta.Length)
             return;
         TerminarLinea();
@@ -1647,7 +1752,7 @@ public class MesaEntrada : MonoBehaviour
             raiz.gameObject.SetActive(false);
             return true;
         }
-        PonerDibujoEn(hoja.position - hoja.forward * 0.0004f * giratorio.lossyScale.x, hoja.rotation, AnchoHoja * giratorio.lossyScale.x);
+        PonerDibujoEn(PuntoSobrePapel, hoja.rotation, AnchoHoja * giratorio.lossyScale.x);
         // Dibujando / Entintando: si el archivo tiene las capas "Lápiz" y "Tinta" (los que nacen en la mesa).
         capaLapizMesa = -1;
         capaTintaMesa = -1;
@@ -3624,7 +3729,7 @@ public class MesaEntrada : MonoBehaviour
             raiz.GetChild(k).gameObject.SetActive(false);
         // v71: "◀ Mis archivos" (donde iba el bloc): guarda tu archivo y vuelve a la mesa del principio, con tus recientes.
         btnMisArchivos = PanelTutoriales.Boton(raiz, "", new Vector3(-0.33f, 0.06f, -0.004f), new Vector2(0.13f, 0.03f), normal, marcado);
-        Idioma.Poner(btnMisArchivos.etiqueta, "◀ Mis archivos");
+        Idioma.Poner(btnMisArchivos.etiqueta, "< Mis archivos");   // v73: (la letra no tiene ◀: salía un cuadrito)
         btnMisArchivos.alTocar.AddListener(() =>
         {
             if (verArchivo && !animando && !moviendoDibujo)
@@ -3636,7 +3741,7 @@ public class MesaEntrada : MonoBehaviour
         // v62: la flecha que te dice dónde quedó la mesa (fuera de la mesa, para verla siempre).
         flecha = new GameObject("FlechaMesa").transform;
         flecha.SetParent(transform, false);
-        puntaFlecha = PanelTutoriales.Texto(flecha, "▶", Vector3.zero, new Vector2(0.05f, 0.05f), 0.4f, null).transform;
+        puntaFlecha = PanelTutoriales.Texto(flecha, ">", Vector3.zero, new Vector2(0.05f, 0.05f), 0.4f, null).transform;   // v73: (sin ▶)
         var nombreFlecha = PanelTutoriales.Texto(flecha, "", new Vector3(0f, -0.035f, 0f), new Vector2(0.1f, 0.02f), 0.12f, null);
         Idioma.Poner(nombreFlecha, "Tu mesa");
         var colorFlecha = new Color(0.2f, 0.45f, 1f);
@@ -3649,6 +3754,25 @@ public class MesaEntrada : MonoBehaviour
         Idioma.Poner(centrar.etiqueta, "Centrar mesa");
         centrar.alTocar.AddListener(CentrarMesa);
         btnCentrar = centrar;   // v71: también con tu archivo en la mesa
+        // v73: GIRAR HACIA TI (al lado de Centrar): la mesa se queda donde está y de su tamaño, pero gira para mirarte.
+        btnGirarHaciaMi = PanelTutoriales.Boton(raiz, "", new Vector3(0.412f, 0.15f, -0.004f), new Vector2(0.024f, 0.02f), normal, marcado);
+        btnGirarHaciaMi.alTocar.AddListener(GirarHaciaMi);
+        BotonTocable.PonerNombre(btnGirarHaciaMi, "Girar hacia mí");
+        iconoGiro = new GameObject("IconoGiro").transform;
+        iconoGiro.SetParent(raiz, false);
+        iconoGiro.localPosition = new Vector3(0.412f, 0.15f, -0.0095f);
+        var tintaIcono = Pintura(new Color(0.15f, 0.15f, 0.18f));
+        for (int a = 40; a <= 320; a += 28)
+        {
+            float r = a * Mathf.Deg2Rad;
+            Pieza(PrimitiveType.Cube, new Vector3(Mathf.Cos(r), Mathf.Sin(r), 0f) * 0.0062f, new Vector3(0.0028f, 0.0011f, 0.0008f),
+                  Quaternion.Euler(0f, 0f, a + 90f), tintaIcono, iconoGiro);
+        }
+        // La punta de la flecha (al final del círculo).
+        float rp = 330f * Mathf.Deg2Rad;
+        Vector3 punta = new Vector3(Mathf.Cos(rp), Mathf.Sin(rp), 0f) * 0.0062f;
+        Pieza(PrimitiveType.Cube, punta + new Vector3(-0.0012f, 0.0012f, 0f), new Vector3(0.0034f, 0.0011f, 0.0008f), Quaternion.Euler(0f, 0f, 60f), tintaIcono, iconoGiro);
+        Pieza(PrimitiveType.Cube, punta + new Vector3(0.0012f, 0.0012f, 0f), new Vector3(0.0034f, 0.0011f, 0.0008f), Quaternion.Euler(0f, 0f, 150f), tintaIcono, iconoGiro);
 
         // Arriba: tus dibujos recientes (hojas con su miniatura y su nombre).
         for (int i = 0; i < Recientes; i++)
