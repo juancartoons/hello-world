@@ -31,10 +31,19 @@ public class Funcion : MonoBehaviour
         if (instancia.activa)
             instancia.Salir();
         else
-            instancia.Entrar();
+            instancia.Entrar(true);
     }
 
-    void Entrar()
+    // v69: ver una copia de Teatro de Mis archivos (ya está abierta: no se vuelve a guardar).
+    public static void VerTeatro()
+    {
+        if (instancia == null)
+            instancia = new GameObject("Funcion").AddComponent<Funcion>();
+        if (!instancia.activa)
+            instancia.Entrar(false);
+    }
+
+    void Entrar(bool guardarCopia)
     {
         control = ControlManos.Instancia;
         dibujo = control != null ? control.dibujo : FindFirstObjectByType<Dibujo>();
@@ -47,6 +56,9 @@ public class Funcion : MonoBehaviour
             dibujo.Mensaje("Para la función necesitas una animación (al menos 2 claves, del dibujo o de la cámara)");
             return;
         }
+        // v69: THEATER: queda una copia para ver en Mis archivos (la de este archivo se reemplaza).
+        if (guardarCopia)
+            dibujo.GuardarTeatro();
         rig = r.transform;
         posAntes = rig.position;
         rotAntes = rig.rotation;
@@ -66,7 +78,7 @@ public class Funcion : MonoBehaviour
         if (!anim.Reproduciendo)
             anim.AlternarReproducir();
         Seguir(true);
-        dibujo.Mensaje("Función: mira y muévete libremente. Para salir: Salir (junto a tu mano izquierda) o di \"función\"");
+        dibujo.Mensaje("Teatro: mira y muévete libremente. Para salir: Salir (junto a tu mano izquierda) o di \"teatro\"");
     }
 
     void Salir()

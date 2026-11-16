@@ -29,7 +29,7 @@ using UnityEngine;
 // (Respaldo de la versión con pellizco: trazo/Respaldos/nodos-con-pellizco-v26.)
 public partial class ControlManos
 {
-    const float RadioToqueNodo = 0.018f;     // metros: qué tan cerca hay que tocar un nodo
+    const float RadioToqueNodo = 0.023f;     // v69: antes 0.018 (a veces no lo agarraba al primer toque)     // metros: qué tan cerca hay que tocar un nodo
     const float AlcancePlastilina = 0.08f;   // metros: hasta dónde llegan los vecinos de la plastilina
     const float EsperaNodoNuevo = 0.5f;      // segundos quieto sobre la línea para crear un nodo
     const float LargoMinimoLazo = 0.12f;     // metros que hay que recorrer antes de poder cerrar el lazo
@@ -242,10 +242,16 @@ public partial class ControlManos
         if (!dedoListoNodos)
         {
             // Recién entraste al modo: espera a que el dedo salga de lo que estaba tocando.
-            if (!tocaAlgo)
+            // v69: salvo un NODO: ese se agarra de una vez (antes había que sacar el dedo y volver a tocarlo).
+            if (!tocaAlgo || tipo == Objetivo.Nodo)
+            {
                 dedoListoNodos = true;
-            MostrarModoNodos(true, solo);
-            return;
+            }
+            else
+            {
+                MostrarModoNodos(true, solo);
+                return;
+            }
         }
 
         // 4. Tocó un nodo: se agarra (con su grupo del lazo, con plastilina o él solo).

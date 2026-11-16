@@ -604,9 +604,10 @@ public class PanelMuneca : MonoBehaviour
         // SALIR: guarda y cierra el dibujo (queda una hoja nueva). Con la hoja en blanco, cierra la app.
         btnSalir = BotonRec(contenido.transform, "Salir", new Vector3(0.032f, -0.139f, 0f), 0.058f);
         // v56: LA FUNCIÓN (reproductor inmersivo) al lado de Salir.
-        var btnFuncion = BotonRec(contenido.transform, "Función", new Vector3(-0.032f, -0.139f, 0f), 0.058f);
+        // v69: se llama TEATRO (Theater): además deja una copia para ver en Mis archivos.
+        var btnFuncion = BotonRec(contenido.transform, "Teatro", new Vector3(-0.032f, -0.139f, 0f), 0.058f);
         btnFuncion.alTocar.AddListener(Funcion.Alternar);
-        BotonTocable.PonerNombre(btnFuncion, "Función");
+        BotonTocable.PonerNombre(btnFuncion, "Teatro");
         btnSalir.alTocar.AddListener(Salir);
         BotonTocable.PonerNombre(btnSalir, "Salir");
         // v59: PROPIEDADES (los ajustes de lo que estás usando) al lado de Colores (que pasa a la derecha).
@@ -617,7 +618,11 @@ public class PanelMuneca : MonoBehaviour
             btnColores.etiqueta.transform.localPosition = new Vector3(0.032f, -0.168f, btnColores.etiqueta.transform.localPosition.z);
             btnColores.etiqueta.rectTransform.sizeDelta = new Vector2(0.054f, 0.016f);
         }
-        var btnPropiedades = BotonRec(contenido.transform, "Propiedades", new Vector3(-0.032f, -0.168f, 0f), 0.058f);
+        // v69: el botón de la paleta ya no va (la paleta sale de la palma): Propiedades queda solo, al centro.
+        btnColores.gameObject.SetActive(false);
+        if (btnColores.etiqueta != null)
+            btnColores.etiqueta.gameObject.SetActive(false);
+        var btnPropiedades = BotonRec(contenido.transform, "Propiedades", new Vector3(0f, -0.168f, 0f), 0.058f);
         btnPropiedades.alTocar.AddListener(() =>
         {
             if (control != null)

@@ -292,6 +292,10 @@ public class NavegadorArchivos : MonoBehaviour
                 foreach (var d in Directory.GetDirectories(dibujo.CarpetaVersiones))
                     foreach (var f in Directory.GetFiles(d))
                         Agregar(f, "Dibujo");
+            // v69: las copias de Teatro (nuestro propio video) van con los videos.
+            if ((filtro == 0 || filtro == 2) && Directory.Exists(dibujo.CarpetaTeatro))
+                foreach (var f in Directory.GetFiles(dibujo.CarpetaTeatro, "*" + Dibujo.ExtensionTeatro))
+                    Agregar(f, "Teatro");
             if (filtro == 0 || filtro == 2)
                 AgregarExportados(publica, carpeta, "*.mp4", "Video");
             if (filtro == 0 || filtro == 3)
@@ -554,6 +558,11 @@ public class NavegadorArchivos : MonoBehaviour
                 break;
             case "Video":
                 VerVideo(a.ruta);
+                break;
+            case "Teatro":
+                Cerrar();
+                if (dibujo.AbrirTeatro(a.ruta))
+                    Funcion.VerTeatro();
                 break;
             default:
                 dibujo.Mensaje("Los SVG se abren en el PC (Inkscape, Illustrator). Están en la app Archivos del Quest → Descargas → JCartoons → " + Path.GetFileName(a.ruta));

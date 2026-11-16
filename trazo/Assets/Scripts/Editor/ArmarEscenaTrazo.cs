@@ -567,7 +567,7 @@ public static class ArmarEscenaTrazo
         fondo.transform.localScale = new Vector3(0.105f, 0.257f, 1f);
         SinSombras(fondo.GetComponent<Renderer>(), matPanel);
 
-        Texto(contenido.transform, "JCartoons", new Vector3(0f, 0.09f, -0.001f), new Vector2(0.09f, 0.014f), Color.black);
+        // v69: sin el nombre "JCartoons" arriba del reloj.
         panel.textoEstado = Texto(contenido.transform, "", new Vector3(0f, -0.137f, -0.001f), new Vector2(0.098f, 0.022f), new Color(0.2f, 0.2f, 0.25f));
 
         // Dos columnas: (v43: sin Plano) Fondo · Guardar / Cargar · Borrar todo / Capas · Esfera / Cubo · Cilindro / A líneas

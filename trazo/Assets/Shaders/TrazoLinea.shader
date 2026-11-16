@@ -52,6 +52,7 @@ Shader "TrazoVR/Linea"
                 float2 uv2        : TEXCOORD1; // x: número de hebra, y: lugar a lo largo de la línea (0 a 1)
                 float4 vivoA      : TEXCOORD2; // estilo vivo de la capa (ver TrazoTemblor.hlsl)
                 float4 vivoB      : TEXCOORD3;
+                float4 tramo      : COLOR;     // v69: color propio del tramo (alfa 0.5) o tramo invisible (alfa 0.25)
                 UNITY_VERTEX_INPUT_INSTANCE_ID
             };
 
@@ -65,6 +66,7 @@ Shader "TrazoVR/Linea"
                 float lapiz       : TEXCOORD4; // v49: 1 = textura de lápiz
                 float3 grano      : TEXCOORD5; // v49: dónde está (en el dibujo) para el grano del papel
                 float4 ajusteLapiz : TEXCOORD6; // v52: grano, densidad, orilla borrosa, hervido (de 0 a 1; 0.55 = normal)
+                float4 tramo      : COLOR;
                 UNITY_VERTEX_OUTPUT_STEREO
             };
 
@@ -122,6 +124,7 @@ Shader "TrazoVR/Linea"
                 o.lugar = v.uv2.y;
                 o.lado = v.uv.y < 0.5 ? sign(v.uv.x) : 0.0;
                 o.lapiz = v.vivoB.z;
+                o.tramo = v.tramo;
                 o.grano = v.positionOS.xyz;
                 // v52: los ajustes del lápiz (empacados en vivoB.w: grano + 10·densidad + 100·borde + 1000·ancho + 10000·hervido).
                 float w = v.vivoB.w;
@@ -139,6 +142,13 @@ Shader "TrazoVR/Linea"
                 float luz = saturate(dot(normalize(i.normalWS), normalize(float3(0.3, 0.9, -0.3))));
                 float k = step(0.5, i.esTubo) * luz * luz;
                 float3 col = lerp(_BaseColor.rgb, _ColorLuz.rgb, k);
+                // v69: TRAMOS (líneas unidas de distinto color): alfa 0.25 = tramo invisible; alfa 0.5 = su propio color.
+                // Sin colores en la malla (alfa 0 o 1) se usa el color de la línea, como siempre.
+                float ta = i.tramo.a;
+                if (ta > 0.15 && ta < 0.35)
+                    clip(-1.0);
+                if (ta > 0.4 && ta < 0.6)
+                    col = lerp(i.tramo.rgb, _ColorLuz.rgb, k);
                 // v50: LÁPIZ natural (como grafito o pastel sobre papel): fibras finas A LO LARGO del trazo, orillas que se
                 // deshacen en granitos (no un corte), más oscuro al centro, presión que cambia a lo largo y un "hervido"
                 // suave a 8 cuadros por segundo. Sin transparencia: el grano se hace con granitos de pixeles (tramado).

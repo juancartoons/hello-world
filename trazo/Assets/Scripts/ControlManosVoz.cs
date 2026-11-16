@@ -311,8 +311,8 @@ public partial class ControlManos
                 new[] { "plastilina", "relleno de plastilina", "ajustes de plastilina" }, new[] { "clay", "plasticine", "clay fill" }));
         l.Add(C(ComandoVoz.ImportarSvg, "Importar SVG", "Import SVG",
                 new[] { "importar svg", "importa svg", "abrir svg" }, new[] { "import svg", "open svg" }));
-        l.Add(C(ComandoVoz.Funcion, "Función", "Show",
-                new[] { "función", "funcion", "ver función", "salir de la función", "la función" }, new[] { "show", "play show", "exit show", "start show" }));
+        l.Add(C(ComandoVoz.Funcion, "Teatro", "Theater",
+                new[] { "teatro", "el teatro", "salir del teatro", "función", "funcion", "la función" }, new[] { "theater", "theatre", "exit theater", "show", "start show" }));
         l.Add(C(ComandoVoz.FinDictado, "Fin del dictado", "End dictation",
                 new[] { "fin del dictado", "termina el dictado", "terminar dictado", "listo la cara" }, new[] { "end dictation", "stop dictation" }));
         l.Add(C(ComandoVoz.ParteDictado, "Parte de la cara", "Face part", CabezaInvisible.FrasesDictado(false), CabezaInvisible.FrasesDictado(true)));

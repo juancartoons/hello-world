@@ -13,6 +13,7 @@ public class DatosTrazo
     public List<Vector3> asaSalida = new List<Vector3>();
     public List<bool> asaManual = new List<bool>();
     public List<float> grosorNodo = new List<float>();
+    public List<Color> colorTramo = new List<Color>();   // v69: color de cada tramo (vacía = toda la línea igual)
     public bool cerrado;
     public bool relleno;
     public int colorRelleno;
@@ -1625,6 +1626,12 @@ public class Dibujo : MonoBehaviour
         return encontrado != null;
     }
 
+    static bool ColoresIguales(Color a, Color b)
+    {
+        return Mathf.Abs(a.r - b.r) < 0.004f && Mathf.Abs(a.g - b.g) < 0.004f && Mathf.Abs(a.b - b.b) < 0.004f
+               && Mathf.Abs(a.a - b.a) < 0.004f;
+    }
+
     // Une la punta "extremoA" de A (0 inicio, 1 final) con la punta "extremoB" de B. B desaparece.
     public void Unir(Trazo a, int extremoA, Trazo b, int extremoB)
     {
@@ -1632,6 +1639,12 @@ public class Dibujo : MonoBehaviour
             return;
         a.AsegurarAsas();
         b.AsegurarAsas();
+        // v69: si son de distinto COLOR (o una es invisible) o de distinto GROSOR, cada parte conserva el suyo:
+        // la línea unida guarda el color de cada tramo y el grosor de cada nodo (ya no se "contagian").
+        bool coloresDistintos = a.colorTramo.Count > 0 || b.colorTramo.Count > 0 || !ColoresIguales(a.color, b.color);
+        float anchoUnido = Mathf.Max(a.ancho, b.ancho);
+        float factorA = anchoUnido > 1e-6f ? a.ancho / anchoUnido : 1f;
+        float factorB = anchoUnido > 1e-6f ? b.ancho / anchoUnido : 1f;
         // v55: los NOMBRES de los nodos ("nariz", "mandíbula"...) se conservan al unir (cada uno con su nodo).
         var nombresA = NombresPorNodo(a);
         var nombresB = NombresPorNodo(b);
@@ -1645,6 +1658,12 @@ public class Dibujo : MonoBehaviour
             b.Invertir();
             System.Array.Reverse(nombresB);
         }
+        // (después de voltearlas: así cada lista de tramos ya va en el sentido de la unión)
+        List<Color> tramosA = coloresDistintos ? a.TramosCompletos() : null;
+        List<Color> tramosB = coloresDistintos ? b.TramosCompletos() : null;
+        if (factorA < 0.999f)
+            for (int i = 0; i < a.grosorNodo.Count; i++)
+                a.grosorNodo[i] *= factorA;
         int u = a.nodos.Count - 1;
         a.nombresNodo.Clear();
         for (int i = 0; i < nombresA.Length; i++)
@@ -1661,16 +1680,29 @@ public class Dibujo : MonoBehaviour
         // v40: por defecto la unión queda en ESQUINA (cada lado conserva su dirección: dos rectas siguen rectas);
         // con "Uniones: Suaves" en la paleta, se curva suave como antes.
         a.asaManual[u] = !Trazo.UnionesSuaves;
-        a.grosorNodo[u] = Mathf.Max(a.grosorNodo[u], b.grosorNodo[0]);
+        a.grosorNodo[u] = Mathf.Max(a.grosorNodo[u], b.grosorNodo[0] * factorB);
         for (int i = 1; i < b.nodos.Count; i++)
         {
             a.nodos.Add(b.nodos[i]);
             a.asaEntrada.Add(b.asaEntrada[i]);
             a.asaSalida.Add(b.asaSalida[i]);
             a.asaManual.Add(b.asaManual[i]);
-            a.grosorNodo.Add(b.grosorNodo[i]);
+            a.grosorNodo.Add(b.grosorNodo[i] * factorB);
         }
-        a.ancho = Mathf.Max(a.ancho, b.ancho);
+        a.ancho = anchoUnido;
+        if (coloresDistintos)
+        {
+            tramosA.AddRange(tramosB);
+            // El color "de la línea" es uno visible (si una era invisible): así la línea no se esconde entera.
+            if (a.color.a < 0.01f)
+                foreach (var c in tramosA)
+                    if (c.a >= 0.01f)
+                    {
+                        a.color = c;
+                        break;
+                    }
+            a.PonerTramos(tramosA);
+        }
         // Si la otra tenía relleno (por ejemplo una "C" hecha con la cubeta) y la nueva no, la unida lo conserva:
         // así dibujar cerca de una figura rellena no le cambia ni le quita el color.
         if (b.relleno && !a.relleno)
@@ -2916,6 +2948,55 @@ public class Dibujo : MonoBehaviour
         NombreArchivo = ruta == RutaGuardado ? "" : Path.GetFileNameWithoutExtension(ruta);
         HayCambios = false;
         Mensaje("Abierto: " + (string.IsNullOrEmpty(NombreArchivo) ? "guardado anterior" : NombreArchivo));
+    }
+
+    // ---------- v69: THEATER (nuestro propio "video"): cada vez que entras al Teatro se guarda una copia PARA VER de tu
+    // archivo en Mis archivos (Teatro/<nombre>.jct). Si vuelves a entrar desde el mismo archivo, se reemplaza.
+    public const string ExtensionTeatro = ".jct";
+    public string CarpetaTeatro => Path.Combine(CarpetaArchivos, "Teatro");
+
+    public string GuardarTeatro()
+    {
+        string nombre = string.IsNullOrEmpty(NombreArchivo) ? "Sin nombre" : NombreArchivo;
+        try
+        {
+            var d = DatosParaGuardar();
+            IncluirArchivos(d);
+            Directory.CreateDirectory(CarpetaTeatro);
+            string ruta = Path.Combine(CarpetaTeatro, nombre + ExtensionTeatro);
+            File.WriteAllText(ruta, JsonUtility.ToJson(d));
+            GuardarMiniatura(ruta);
+            return ruta;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("TrazoVR: no se pudo guardar el teatro: " + e.Message);
+            return null;
+        }
+    }
+
+    // Abre una copia de Teatro para verla (no queda como tu archivo: si la cambias y guardas, es un dibujo nuevo).
+    public bool AbrirTeatro(string ruta)
+    {
+        if (Titere.Activo)
+        {
+            Mensaje("Primero suelta los personajes");
+            return false;
+        }
+        var d = Leer(ruta);
+        if (d == null)
+        {
+            Mensaje("No se pudo abrir");
+            return false;
+        }
+        GuardarParaDeshacer();
+        SacarArchivos(d);
+        Aplicar(d, true);
+        if (d.conReferencias && Refs != null)
+            Refs.Reemplazar(d.referencias);
+        NombreArchivo = "";
+        HayCambios = false;
+        return true;
     }
 
     // Menú de la mano: abre el dibujo guardado más reciente.

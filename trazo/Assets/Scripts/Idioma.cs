@@ -549,6 +549,8 @@ public static class Idioma
         "Salir", "Exit",
         "Función", "Show",
         "Fin de la función", "End of the show",
+        "Teatro", "Theater",
+        "Teatro: mira y muévete libremente. Para salir: Salir (junto a tu mano izquierda) o di \"teatro\"", "Theater: look and move freely. To leave: Exit (next to your left hand) or say \"theater\"",
         "Quitar figura", "Remove figure",
         "Original: 100 %", "Original: 100 %",
         "Original: 50 %", "Original: 50 %",

@@ -155,7 +155,9 @@ public class Tutorial : MonoBehaviour
         120.0f, 109.6f, 105.1f, 104.9f, 107.7f, 112.4f, 118.0f, 123.3f, 127.7f, 130.4f, 130.5f, 127.5f, 121.3f,
         114.3f, 107.7f, 101.7f, 96.8f, 93.3f, 91.0f, 90.1f, 90.6f, 92.3f, 95.2f, 99.2f, 104.0f
     };
-    TextMeshPro avisoUno, avisoDos;
+    TextMeshPro avisoUno;
+    Material matPlaca;     // v69: la placa violeta detrás del mensaje (se lee sobre cualquier fondo)
+    Texture2D texPlaca;
     readonly List<Material> matsLogoFondo = new List<Material>();   // v50: las capas de atrás (el volumen 3D)
     Mesh mallaLogo;
     MunecoGuia munecoTitulo;
@@ -581,8 +583,8 @@ public class Tutorial : MonoBehaviour
         float alfaAviso = Mathf.Clamp01((t - 3.1f) / 0.6f) * f;
         if (avisoUno != null)
             avisoUno.alpha = alfaAviso;
-        if (avisoDos != null)
-            avisoDos.alpha = alfaAviso * 0.8f;
+        if (matPlaca != null)
+            matPlaca.SetFloat("_Alfa", alfaAviso);
         if (logo != null && matLogo != null)
         {
             // Las letras siguen marcando el ritmo (chispas, muñequito), pero no se ven: se ve el logo.
@@ -724,7 +726,12 @@ public class Tutorial : MonoBehaviour
             Destroy(matLinea);
         matLinea = null;
         avisoUno = null;
-        avisoDos = null;
+        if (matPlaca != null)
+            Destroy(matPlaca);
+        matPlaca = null;
+        if (texPlaca != null)
+            Destroy(texPlaca);
+        texPlaca = null;
         if (matAviso != null)
             Destroy(matAviso);
         matAviso = null;
@@ -807,16 +814,63 @@ public class Tutorial : MonoBehaviour
                 matDibuja.SetFloat("_Alfa", 0f);
             }
         }
-        float yTexto = yManos - 0.11f;
+        // v69: UN solo mensaje, en el idioma de la app, en letras blancas sobre una placa violeta (el violeta del
+        // contorno del logo): así se lee aunque detrás esté la realidad oscura (el Quest 2 la ve en blanco y negro).
+        float yTexto = yManos - 0.12f;
+        if (materialLogo != null)
+        {
+            texPlaca = TexturaPlaca(512, 64);
+            matPlaca = new Material(materialLogo);
+            matPlaca.SetTexture("_BaseMap", texPlaca);
+            matPlaca.SetFloat("_Revela", 1f);
+            matPlaca.SetFloat("_Alfa", 0f);
+            matPlaca.SetFloat("_Ola", 0f);
+            if (mallaAviso == null)
+                mallaAviso = MallaLogo(1, 1);
+            var placa = new GameObject("PlacaAviso");
+            placa.transform.SetParent(titulo, false);
+            placa.transform.localPosition = new Vector3(0f, yTexto, 0.002f);
+            placa.transform.localScale = new Vector3(0.5f, 0.0625f, 1f);
+            placa.AddComponent<MeshFilter>().sharedMesh = mallaAviso;
+            var rp = placa.AddComponent<MeshRenderer>();
+            rp.sharedMaterial = matPlaca;
+            rp.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            rp.receiveShadows = false;
+        }
         avisoUno = CrearTexto(titulo,
-            Tx("JCartoons is made for your hands. Put your controllers away.", "JCartoons se usa con las manos. Deja los controles a un lado."),
-            new Vector3(0f, yTexto, 0f), new Vector2(0.7f, 0.045f), 0.3f, new Color(0.18f, 0.18f, 0.28f));
+            Tx("This app is made for your hands. Put your controllers away.", "Esta app se usa con las manos. Deja los controles a un lado."),
+            new Vector3(0f, yTexto, 0f), new Vector2(0.46f, 0.04f), 0.3f, Color.white);
         avisoUno.alpha = 0f;
-        avisoDos = CrearTexto(titulo,
-            Tx("JCartoons se usa con las manos. Deja los controles a un lado.", "JCartoons is made for your hands. Put your controllers away."),
-            new Vector3(0f, yTexto - 0.042f, 0f), new Vector2(0.6f, 0.032f), 0.22f, new Color(0.3f, 0.3f, 0.42f));
-        avisoDos.fontStyle = FontStyles.Italic;
-        avisoDos.alpha = 0f;
+    }
+
+    // La placa: un rectángulo de esquinas redondas violeta oscuro, con una orilla clarita.
+    static Texture2D TexturaPlaca(int ancho, int alto)
+    {
+        var tex = new Texture2D(ancho, alto, TextureFormat.RGBA32, false);
+        tex.wrapMode = TextureWrapMode.Clamp;
+        var fondo = new Color(45f / 255f, 30f / 255f, 80f / 255f, 0.93f);
+        var orilla = new Color(1f, 1f, 1f, 0.45f);
+        float radio = alto * 0.45f;
+        var px = new Color[ancho * alto];
+        for (int y = 0; y < alto; y++)
+            for (int x = 0; x < ancho; x++)
+            {
+                // Distancia a la orilla del rectángulo redondeado (negativa adentro).
+                float qx = Mathf.Abs(x + 0.5f - ancho * 0.5f) - (ancho * 0.5f - radio);
+                float qy = Mathf.Abs(y + 0.5f - alto * 0.5f) - (alto * 0.5f - radio);
+                float fuera = new Vector2(Mathf.Max(qx, 0f), Mathf.Max(qy, 0f)).magnitude + Mathf.Min(Mathf.Max(qx, qy), 0f) - radio;
+                Color c;
+                if (fuera > 0.5f)
+                    c = new Color(0f, 0f, 0f, 0f);
+                else if (fuera > -2.5f)
+                    c = Color.Lerp(orilla, new Color(1f, 1f, 1f, 0f), Mathf.Clamp01(fuera + 0.5f));
+                else
+                    c = fondo;
+                px[y * ancho + x] = c;
+            }
+        tex.SetPixels(px);
+        tex.Apply(false, true);
+        return tex;
     }
 
     void TerminarTitulo()

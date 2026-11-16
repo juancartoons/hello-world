@@ -103,6 +103,33 @@ public class Trazo : MonoBehaviour
     public List<Vector3> asaSalida = new List<Vector3>();
     public List<bool> asaManual = new List<bool>();         // false: el asa se calcula sola (curva suave)
     public List<float> grosorNodo = new List<float>();      // grosor propio de cada nodo (1 = normal)
+    // v69: TRAMOS con su propio color (al unir una línea negra con una invisible, cada parte conserva el suyo).
+    // colorTramo[i] = el tramo del nodo i al i+1. Vacía = toda la línea del color "color". Si el número de tramos ya
+    // no cuadra con los nodos (por una edición que no los conoce) o recoloreas la línea entera, vuelve a un solo color.
+    public List<Color> colorTramo = new List<Color>();
+    Color colorTramoBase;
+    readonly List<Color32> coloresMalla = new List<Color32>();
+
+    public int Tramos => nodos.Count < 2 ? 0 : (cerrado ? nodos.Count : nodos.Count - 1);
+
+    // Los tramos completos (si no tiene, todos del color de la línea), para unir dos líneas.
+    public List<Color> TramosCompletos()
+    {
+        int n = Mathf.Max(0, nodos.Count - 1);
+        var r = new List<Color>(n);
+        bool propios = colorTramo.Count >= n && colorTramo.Count > 0;
+        for (int i = 0; i < n; i++)
+            r.Add(propios ? colorTramo[i] : color);
+        return r;
+    }
+
+    public void PonerTramos(List<Color> tramos)
+    {
+        colorTramo.Clear();
+        if (tramos != null)
+            colorTramo.AddRange(tramos);
+        colorTramoBase = color;
+    }
     public int id;
     public int capa;
     public bool visibleAnim = true;                         // false: no existe en este fotograma de la animación
@@ -787,6 +814,8 @@ public class Trazo : MonoBehaviour
         nodos.Reverse();
         asaManual.Reverse();
         grosorNodo.Reverse();
+        if (colorTramo.Count > 0)
+            colorTramo.Reverse();   // v69: cada tramo sigue con su color
         asaEntrada.Reverse();
         asaSalida.Reverse();
         var temporal = asaEntrada;
@@ -808,6 +837,13 @@ public class Trazo : MonoBehaviour
         asaSalida.RemoveAt(q);
         asaManual.RemoveAt(q);
         grosorNodo.RemoveAt(q);
+        // v69: al cerrar quitando el primer nodo, su tramo pasa a ser el que cierra la figura (va al final).
+        if (colorTramo.Count > 0 && q == 0)
+        {
+            Color c0 = colorTramo[0];
+            colorTramo.RemoveAt(0);
+            colorTramo.Add(c0);
+        }
         asaManual[0] = false;
         asaManual[nodos.Count - 1] = false;
         if (!UnionesSuaves)
@@ -905,6 +941,7 @@ public class Trazo : MonoBehaviour
             asaSalida = new List<Vector3>(asaSalida),
             asaManual = new List<bool>(asaManual),
             grosorNodo = new List<float>(grosorNodo),
+            colorTramo = TramosValidos() ? new List<Color>(colorTramo) : new List<Color>(),
             cerrado = cerrado,
             relleno = relleno,
             colorRelleno = colorRelleno,
@@ -992,6 +1029,11 @@ public class Trazo : MonoBehaviour
             grosorNodo.Add(g);
         }
         cerrado = a.cerrado && n >= 3;
+        // v69: los colores de cada tramo (si la línea se unió con otra de distinto estilo).
+        colorTramo.Clear();
+        if (a.colorTramo != null && a.colorTramo.Count > 0)
+            colorTramo.AddRange(a.colorTramo);
+        colorTramoBase = color;
         rellenoAbierto = a.rellenoAbierto && !cerrado;
         relleno = a.relleno && (cerrado || rellenoAbierto);
         colorFondo = a.colorFondo;
@@ -1155,6 +1197,7 @@ public class Trazo : MonoBehaviour
             malla.SetUVs(2, uvs3);
             malla.SetUVs(3, uvs4);
         }
+        ColorearTramos(total);   // v69
         malla.SetTriangles(indices, 0);
         malla.RecalculateBounds();
         var caja = malla.bounds;
@@ -2267,6 +2310,56 @@ public class Trazo : MonoBehaviour
     }
 
     // ---------- Curvas ----------
+
+    // v69: los tramos sirven si hay uno por cada tramo de la línea y nadie recoloreó la línea entera.
+    bool TramosValidos()
+    {
+        if (colorTramo.Count == 0)
+            return false;
+        int t = Tramos;
+        if (t == 0 || colorTramo.Count < t || colorTramo.Count > t + 1 || !MismoColor(color, colorTramoBase))
+        {
+            colorTramo.Clear();
+            return false;
+        }
+        return true;
+    }
+
+    static bool MismoColor(Color a, Color b)
+    {
+        return Mathf.Abs(a.r - b.r) < 0.004f && Mathf.Abs(a.g - b.g) < 0.004f && Mathf.Abs(a.b - b.b) < 0.004f
+               && Mathf.Abs(a.a - b.a) < 0.004f;
+    }
+
+    // v69: el color de cada vértice según su tramo (el shader lo usa en vez del color de la línea).
+    // Alfa 0.5 = este color; alfa 0.25 = tramo invisible (no se dibuja). Sin tramos no se ponen colores.
+    void ColorearTramos(float total)
+    {
+        if (crudos.Count > 0 || !TramosValidos() || uvs2.Count != vertices.Count || curvaSegmento.Count != muestras.Count
+            || largos.Count != muestras.Count || total <= 0f)
+            return;
+        coloresMalla.Clear();
+        bool lineal = QualitySettings.activeColorSpace == ColorSpace.Linear;
+        int m = muestras.Count;
+        for (int k = 0; k < vertices.Count; k++)
+        {
+            float dist = uvs2[k].y * total;
+            int lo = 0, hi = m - 1;
+            while (lo < hi)
+            {
+                int mid = (lo + hi) / 2;
+                if (largos[mid] < dist) lo = mid + 1; else hi = mid;
+            }
+            int s = Mathf.Clamp(curvaSegmento[lo], 0, colorTramo.Count - 1);
+            Color c = colorTramo[s];
+            if (lineal && c.a >= 0.01f)
+                c = c.linear;   // el color de la línea (material) también llega en lineal
+            coloresMalla.Add(c.a < 0.01f ? new Color32(0, 0, 0, 64) : new Color32(
+                (byte)Mathf.RoundToInt(Mathf.Clamp01(c.r) * 255f), (byte)Mathf.RoundToInt(Mathf.Clamp01(c.g) * 255f),
+                (byte)Mathf.RoundToInt(Mathf.Clamp01(c.b) * 255f), 128));
+        }
+        malla.SetColors(coloresMalla);
+    }
 
     void MuestrearBezier(List<Vector3> salida)
     {
