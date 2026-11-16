@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 15 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v68***
+*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v69***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -945,3 +945,15 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - HECHO: deslizar el índice de arriba a abajo de la vista = siguiente fondo (ControlManosDeslizarFondo.cs).
 - POR PROBAR: que el deslizar no se active al bajar la mano para descansar; el tamaño del aviso de manos en el título.
 - PENDIENTE (decidir): el concepto 2D / 3D (la mesa como modo 2D, un solo paso "Pasar a 3D", qué pasa con "Ver en la mesa") y el tutorial.
+
+## v69
+- RESPALDO: la mesa y el tutorial de la v68 están en `trazo/Herramientas/respaldo-v68/` (MesaEntrada.cs, Tutorial.cs, MunecoGuia.cs, TutorialMirada.cs). La v68 completa es el commit a859e10 de la rama.
+- HECHO: líneas unidas conservan el color (también la tinta invisible) y el grosor de cada parte (colorTramo en Trazo; shader TrazoLinea con COLOR).
+- HECHO: el nodo se agarra al primer toque (radio 2,3 cm y sin esperar al entrar al gesto si tocas un nodo).
+- HECHO: el aviso del título: un solo mensaje en el idioma de la app ("This app is made for your hands..."), letras blancas en placa violeta; la línea que dibuja la mano tiene borde blanco.
+- HECHO: reloj sin el botón de la paleta ni el nombre JCartoons; "Función" pasa a TEATRO / THEATER y deja una copia para ver en Mis archivos (Teatro/<nombre>.jct; se reemplaza la del mismo archivo).
+- HECHO: MESA FLEXIBLE (opción C) y "3D ESTO" en la mesa.
+- HECHO: tutorial en 2D (hoja delante con la mesa abajo, arpa, el muñeco aparece al dibujar), paso "3D esto" después de Deshacer, y la primera vez termina en un archivo 3D nuevo.
+- PENDIENTE: en la mesa inicial, al empezar a dibujar crear el archivo y mostrar los menús; arriba, en lugar de los recientes, la línea de tiempo con sus cuadros y el reproductor (y las 3 pestañas como panel replegable).
+- PENDIENTE: que el tutorial dibuje literalmente sobre la hoja inclinada de la mesa (hoy la hoja va delante de ti y la mesa abajo, como en Mesa flexible).
+- POR PROBAR: Mesa flexible (botones abajo a la mano), 3D esto, el paso 3D del tutorial, los tramos de color al unir, el Teatro en Mis archivos.

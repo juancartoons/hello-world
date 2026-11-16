@@ -2525,6 +2525,17 @@ public class Dibujo : MonoBehaviour
         ActualizarGuia();
     }
 
+    // v69: el tutorial se hace en 2D: una hoja (plano) en la capa actual, en ese punto y mirando hacia ti, sin avisos.
+    // (Al terminar, RecuperarDeTutorial devuelve las capas como estaban.)
+    public bool PlanoParaTutorial(Vector3 mundo, Vector3 adelanteMundo)
+    {
+        AsegurarCapas();
+        plano = true;
+        CapaActual.en2D = true;
+        DefinirPlano(transform.InverseTransformPoint(mundo), adelanteMundo);
+        return PlanoActivo;
+    }
+
     public void RecuperarDeTutorial()
     {
         if (apartado == null)

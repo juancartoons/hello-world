@@ -216,6 +216,11 @@ public class MesaEntrada : MonoBehaviour
     const string ClaveCebolla = "jcartoons_mesa_cebolla", ClaveTintaPintada = "jcartoons_mesa_tinta_pintada";
     bool cebollaMesa = true, tintaPintada;
     BotonTocable btnCebolla, btnEntrar;
+    // v69: MESA FLEXIBLE (opción C): tu boceto pasa a tu archivo (2D) y la mesa se queda ABAJO, quieta, con sus
+    // botones a la mano; la hoja y tus dibujos giran y crecen libres, como en 2D dentro de un archivo.
+    // "3D esto": lo mismo y además pasa a 3D (la mesa se va).
+    BotonTocable btnFlexible, btn3D;
+    bool flexible;
     float sostenTintaDesde = -1f;
     bool sostenTintaHecho, nodosVisibles;
     Linea lineaNodo;
@@ -290,7 +295,11 @@ public class MesaEntrada : MonoBehaviour
             return;
         if (verArchivo)
         {
-            AlinearConArchivo();   // v63: la mesa sigue a tu hoja (todo lo demás funciona como siempre)
+            // v63: la mesa sigue a tu hoja (todo lo demás funciona como siempre). v69: en Mesa flexible se queda abajo.
+            if (!flexible)
+                AlinearConArchivo();
+            else if (!dibujo.gameObject.activeInHierarchy || !dibujo.PlanoActivo)
+                TerminarVer();
             return;
         }
         control.Ocupado = true;
@@ -433,7 +442,7 @@ public class MesaEntrada : MonoBehaviour
     // ---------- v63: VER EN LA MESA: la mesa se pone DETRÁS de tu hoja 2D (su papel queda sobre el disco) y tú sigues
     // trabajando en tu archivo como siempre (paleta, gestos, capas, Propiedades...). "✦ Volver" la quita.
 
-    void MostrarVer()
+    void MostrarVer(bool silencio = false)
     {
         Vector3 punto, normal;
         if (!dibujo.PlanoActivo || !dibujo.PlanoDeCapa(dibujo.capaActual, out punto, out normal))
@@ -452,7 +461,8 @@ public class MesaEntrada : MonoBehaviour
         foreach (Transform h in raiz)
         {
             bool queda = h == giratorio || h == tablero || h == orilla || h == btnEntrar.transform
-                         || (btnEntrar.etiqueta != null && h == btnEntrar.etiqueta.transform);
+                         || (btnEntrar.etiqueta != null && h == btnEntrar.etiqueta.transform)
+                         || EsBoton(btnFlexible, h) || EsBoton(btn3D, h);
             if (!queda && h.gameObject.activeSelf)
             {
                 h.gameObject.SetActive(false);
@@ -471,9 +481,184 @@ public class MesaEntrada : MonoBehaviour
         giratorio.localRotation = Quaternion.identity;
         Idioma.Poner(btnEntrar.etiqueta, "✦ Volver");
         raiz.gameObject.SetActive(true);
-        AlinearConArchivo();
+        PonerTextoFlexible();
+        if (flexible)
+            PoseFlexible();
+        else
+            AlinearConArchivo();
         control.SonidoBurbuja(raiz.position);
-        dibujo.Mensaje("Tu hoja está en la mesa: sigue trabajando como siempre. ✦ Volver para quitarla");
+        if (!flexible && !silencio)
+            dibujo.Mensaje("Tu hoja está en la mesa: sigue trabajando como siempre. ✦ Volver para quitarla");
+    }
+
+    // ---------- v69: para el TUTORIAL (en 2D sobre la mesa) ----------
+    // La mesa abajo (como en Mesa flexible), sin sus botones; el tutorial pide después "3D esto".
+    public static bool TresDTocado { get; set; }
+
+    public static bool VerParaTutorial()
+    {
+        if (instancia == null || instancia.dibujo == null || instancia.control == null)
+        {
+            if (instancia == null)
+                return false;
+            instancia.control = ControlManos.Instancia;
+            instancia.dibujo = instancia.control != null ? instancia.control.dibujo : null;
+            if (instancia.dibujo == null)
+                return false;
+        }
+        var m = instancia;
+        if (m.activa || m.animando)
+            return false;
+        TresDTocado = false;
+        m.flexible = true;
+        m.MostrarVer(true);
+        if (!m.verArchivo)
+        {
+            m.flexible = false;
+            return false;
+        }
+        foreach (var b in new[] { m.btnEntrar, m.btnFlexible, m.btn3D })
+        {
+            if (b == null)
+                continue;
+            if (b.gameObject.activeSelf)
+            {
+                b.gameObject.SetActive(false);
+                m.escondidosVer.Add(b.gameObject);
+            }
+            if (b.etiqueta != null && b.etiqueta.gameObject.activeSelf)
+            {
+                b.etiqueta.gameObject.SetActive(false);
+                m.escondidosVer.Add(b.etiqueta.gameObject);
+            }
+        }
+        return true;
+    }
+
+    // Muestra (o esconde) "3D esto" durante el tutorial. Devuelve dónde está (para que la mano guía lo señale).
+    public static bool Boton3DTutorial(bool ver, out Vector3 donde)
+    {
+        donde = Vector3.zero;
+        if (instancia == null || !instancia.verArchivo || instancia.btn3D == null)
+            return false;
+        var b = instancia.btn3D;
+        b.gameObject.SetActive(ver);
+        if (b.etiqueta != null)
+            b.etiqueta.gameObject.SetActive(ver);
+        donde = b.transform.position;
+        return true;
+    }
+
+    public static void QuitarParaTutorial()
+    {
+        if (instancia != null && instancia.verArchivo)
+            instancia.TerminarVer();
+    }
+
+    static bool EsBoton(BotonTocable b, Transform h)
+    {
+        return b != null && (h == b.transform || (b.etiqueta != null && h == b.etiqueta.transform));
+    }
+
+    void PonerTextoFlexible()
+    {
+        if (btnFlexible != null)
+            Idioma.Poner(btnFlexible.etiqueta, !verArchivo ? "Mesa flexible" : flexible ? "Mesa flexible: sí" : "Mesa flexible: no");
+        if (btnFlexible != null)
+            btnFlexible.Marcar(verArchivo && flexible);
+    }
+
+    // v69: la mesa ABAJO, quieta (no sigue a tu hoja): un poco más baja y más chica que de costumbre.
+    void PoseFlexible()
+    {
+        Colocar();
+        raiz.position += Vector3.down * 0.22f;
+        raiz.localScale = Vector3.one * escalaMesa * 0.85f;
+    }
+
+    // Botón "Mesa flexible": en la mesa = tu boceto entra a tu archivo con la mesa abajo; con tu archivo = la mesa
+    // alterna entre ABAJO (flexible) y DETRÁS de tu hoja (como "Ver en la mesa").
+    void TocarFlexible()
+    {
+        if (animando || control == null || dibujo == null)
+            return;
+        if (!verArchivo)
+        {
+            EntrarFlexible(false);
+            return;
+        }
+        flexible = !flexible;
+        PonerTextoFlexible();
+        if (flexible)
+        {
+            PoseFlexible();
+            dibujo.Mensaje("Mesa flexible: tu hoja gira y crece libre; la mesa queda abajo");
+        }
+        else
+        {
+            AlinearConArchivo();
+        }
+    }
+
+    // Botón "3D esto".
+    void Tocar3D()
+    {
+        if (animando || control == null || dibujo == null)
+            return;
+        TresDTocado = true;
+        if (!verArchivo)
+            EntrarFlexible(true);
+        else
+            PasarA3D();
+    }
+
+    // Tu boceto pasa a tu archivo SIN la zambullida: la mesa baja y tú sigues ahí mismo con todo lo de adentro.
+    void EntrarFlexible(bool a3D)
+    {
+        control.MusicaMesa(false, Vector3.zero);
+        if (hojeando)
+            PararHojear();
+        TerminarLinea();
+        if (!dibujo.gameObject.activeSelf)
+            dibujo.gameObject.SetActive(true);
+        PasarBocetoAlDibujo();
+        // Sin nada dibujado, igual queda una hoja 2D delante de ti (para seguir dibujando en ella).
+        if (!dibujo.PlanoActivo)
+        {
+            var cab = control.Cabeza;
+            Vector3 adelante = Vector3.ProjectOnPlane(cab.forward, Vector3.up);
+            if (adelante.sqrMagnitude < 1e-4f)
+                adelante = Vector3.forward;
+            adelante.Normalize();
+            dibujo.PonerPlano(true);
+            dibujo.DefinirPlano(dibujo.transform.InverseTransformPoint(cab.position + adelante * 0.7f), adelante);
+        }
+        DevolverFondo();
+        deshacerMesa.Clear();
+        rehacerMesa.Clear();
+        foreach (var t in dibujo.trazos)
+            if (t != null)
+                EfectosLinea.Materializar(t);
+        activa = false;
+        control.Ocupado = false;
+        raiz.gameObject.SetActive(false);
+        flexible = true;
+        MostrarVer();
+        if (!verArchivo)
+            flexible = false;
+        else if (a3D)
+            PasarA3D();
+        else
+            dibujo.Mensaje("Mesa flexible: tu hoja gira y crece libre; la mesa queda abajo");
+    }
+
+    // Como "Pasar a 3D" adentro: la capa pasa a dibujo libre en 3D y la mesa se va.
+    void PasarA3D()
+    {
+        if (dibujo.PlanoActivo)
+            dibujo.PonerPlano(false);
+        flexible = false;
+        TerminarVer();
     }
 
     void TerminarVer()
@@ -482,12 +667,14 @@ public class MesaEntrada : MonoBehaviour
             return;
         verArchivo = false;
         activa = false;
+        flexible = false;
         foreach (var g in escondidosVer)
             if (g != null)
                 g.SetActive(true);
         escondidosVer.Clear();
         if (btnEntrar != null)
             Idioma.Poner(btnEntrar.etiqueta, "✦ Entrar");
+        PonerTextoFlexible();
         raiz.gameObject.SetActive(false);
         raiz.localScale = Vector3.one * escalaMesa;
         if (control != null && control.Cabeza != null)
@@ -2873,6 +3060,13 @@ public class MesaEntrada : MonoBehaviour
                 EntrarABoceto();
         });
         btnEntrar = entrar;
+        // v69: MESA FLEXIBLE y "3D ESTO", debajo de Entrar.
+        btnFlexible = PanelTutoriales.Boton(raiz, "", new Vector3(-0.085f, -0.305f, -0.004f), new Vector2(0.15f, 0.024f), normal, marcado);
+        Idioma.Poner(btnFlexible.etiqueta, "Mesa flexible");
+        btnFlexible.alTocar.AddListener(TocarFlexible);
+        btn3D = PanelTutoriales.Boton(raiz, "", new Vector3(0.085f, -0.305f, -0.004f), new Vector2(0.12f, 0.024f), normal, marcado);
+        Idioma.Poner(btn3D.etiqueta, "3D esto");
+        btn3D.alTocar.AddListener(Tocar3D);
         // v66: "Importar imagen" (como "Imagen +" de adentro): la imagen va a la hoja del disco, para calcarla entintando.
         var importar = PanelTutoriales.Boton(raiz, "", new Vector3(-0.33f, -0.097f, -0.004f), new Vector2(0.12f, 0.024f), normal, marcado);
         Idioma.Poner(importar.etiqueta, "Importar imagen");

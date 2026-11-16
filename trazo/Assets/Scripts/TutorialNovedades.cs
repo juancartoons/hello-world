@@ -30,7 +30,7 @@ public class TutorialNovedades : TarjetaTutorial
     readonly List<Vector3> otra = new List<Vector3>();
     readonly List<Vector3> tramo = new List<Vector3>();
 
-    protected override int Paginas => 34;
+    protected override int Paginas => 35;
 
     protected override void ArmarExtra()
     {
@@ -86,7 +86,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 30: return Tx("31 · Thickness and eraser on the desk", "31 · Grosor y borrador en la mesa");
             case 31: return Tx("32 · Trace an image on the desk", "32 · Calcar una imagen en la mesa");
             case 32: return Tx("33 · Panels beside your drawing, Original and the mouths' X", "33 · Paneles junto a tu dibujo, Original y la X de las bocas");
-            default: return Tx("34 · Glowing fingertips, the 3D button and swipe the background", "34 · Dedos que brillan, el botón 3D y desliza el fondo");
+            case 33: return Tx("34 · Glowing fingertips, the 3D button and swipe the background", "34 · Dedos que brillan, el botón 3D y desliza el fondo");
+            default: return Tx("35 · Flexible desk, Make it 3D, Theater and a 2D tutorial", "35 · Mesa flexible, 3D esto, Teatro y un tutorial en 2D");
         }
     }
 
@@ -143,6 +144,10 @@ public class TutorialNovedades : TarjetaTutorial
                     "DESERT SUNSET: a new living background: dunes all around you lit by a low golden sun, violet shadows, a pink and purple sky with thin clouds, the first stars and the wind lifting dust far away. Say \"desert\". LAYERS: each one shows a thumbnail on its left; say \"layer 2\" to jump to it; leave your finger still on the name to rename it; delete with the little trash can (tap twice). The camera is a layer of its own (\"+ Camera\" = another one). The panels open with either hand, whatever the other one is doing.",
                     "ATARDECER EN EL DESIERTO: un fondo vivo nuevo: dunas a tu alrededor con la luz dorada del sol bajito, sombras violeta, un cielo rosado y morado con nubes finas, las primeras estrellas y el viento levantando polvo a lo lejos. Di \"desierto\". CAPAS: cada una muestra su miniatura a la izquierda; di \"capa 2\" para ir a ella; deja el dedo quieto en el nombre para cambiarlo; borra con el basurerito (toca dos veces). La cámara es su propia capa (\"+ Cámara\" = otra). Las persianas se abren con cualquier mano, haga lo que haga la otra.");
             default:
+                return Tx(
+                    "On the desk there are two new buttons. FLEXIBLE DESK: your sketch goes into your file without leaving: the desk stays BELOW, still, with its buttons at hand, and your sheet and drawings turn and grow freely, like 2D inside a file (tap it again = the desk goes behind your sheet). MAKE IT 3D: the same, and your drawing jumps into 3D (the desk goes away). Joined lines now KEEP each part's color and thickness (an invisible line no longer turns the black one invisible). Nodes are grabbed on the first touch. THEATER (before \"Show\") also leaves a copy to watch in My files (Videos); doing it again from the same file replaces it. The watch menu no longer has the palette button or the JCartoons name. The tutorial now starts in 2D with the desk below, with harp music, and after Undo it asks you to tap Make it 3D. At the end of the first time you land in a new 3D file.",
+                    "En la mesa hay dos botones nuevos. MESA FLEXIBLE: tu boceto entra a tu archivo sin salir: la mesa se queda ABAJO, quieta, con sus botones a la mano, y tu hoja y tus dibujos giran y crecen libres, como en 2D dentro de un archivo (tócalo otra vez = la mesa va detrás de tu hoja). 3D ESTO: lo mismo y además tu dibujo pasa a 3D (la mesa se va). Las líneas unidas ahora CONSERVAN el color y el grosor de cada parte (una línea invisible ya no vuelve invisible a la negra). Los nodos se agarran al primer toque. TEATRO (antes \"Función\") además deja una copia para ver en Mis archivos (Videos); si lo haces otra vez desde el mismo archivo, se reemplaza. El reloj ya no tiene el botón de la paleta ni el nombre JCartoons. El tutorial ahora empieza en 2D con la mesa abajo, con música de arpa, y después de Deshacer te pide tocar 3D esto. Al terminar la primera vez quedas en un archivo 3D nuevo.");
+            case 33:
                 return Tx(
                     "When a hand gesture switches on, the FINGERTIPS that make it light up in light blue and you hear a soft \"tic\": thumb + index (draw), thumb + ring (thickness, now a little easier), thumb + middle (nodes). The palette has a new 3D button (\"3D\" and a little cube): tap it and its satellites come out: sphere, cube, cylinder, to lines and remove figure (they are no longer on the watch). The palette buttons are more spread out. PROPERTIES now comes out small from your finger and grows into place; if it ends up out of view, a little light on the edge of your view tells you where it is. SWIPE THE BACKGROUND: put your index finger just above your view and pull it down to just below it = next background, like scrolling a video. The title screen shows the gloves: JCartoons is made for your hands.",
                     "Cuando un gesto de la mano se activa, las PUNTAS DE LOS DEDOS que lo forman se encienden en celeste y suena un \"tic\" suave: pulgar + índice (dibujar), pulgar + anular (grosor, ahora un poquito más fácil), pulgar + medio (nodos). La paleta tiene un botón 3D nuevo (\"3D\" y un cubito): tócalo y salen sus satélites: esfera, cubo, cilindro, a líneas y quitar figura (ya no están en el reloj). Los botones de la paleta están más separados. PROPIEDADES ahora sale chiquito desde tu dedo y crece hasta su lugar; si queda fuera de tu vista, una lucecita en la orilla de lo que ves te dice dónde está. DESLIZA EL FONDO: pon el índice un poquito arriba de tu vista y bájalo hasta un poquito abajo = siguiente fondo, como pasar un video. La pantalla de título muestra los guantes: JCartoons se usa con las manos.");

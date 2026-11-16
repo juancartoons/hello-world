@@ -85,7 +85,8 @@ public class Tutorial : MonoBehaviour
     {
         Nada, Titulo, Demo1, Paso1, Gota, Demo2, Paso2, Paso3, Corre, Paso4,
         Demo56, Paso5, Paso6, Regresa, Demo7, Paso7, Demo8, Paso8, Demo9, Paso9, Pausa, Final,
-        Hola   // v44: al final, una cabeza que dice "hola"
+        Hola,  // v44: al final, una cabeza que dice "hola"
+        Paso3D // v69: tocar "3D esto" en la mesa (el tutorial empieza en 2D, sobre la mesa)
     }
     Estado estado = Estado.Nada;
     float desde;
@@ -331,6 +332,7 @@ public class Tutorial : MonoBehaviour
                     EntrarPaso9();
                 break;
             case Estado.Paso9: Paso9(); break;
+            case Estado.Paso3D: Paso3D(); break;
             case Estado.Pausa:
                 // Un respiro entre pasos: se ve que algo terminó antes de que empiece lo siguiente.
                 ActualizarFigura();
@@ -933,6 +935,11 @@ public class Tutorial : MonoBehaviour
             titere.Parar();
         dibujo.ApartarParaTutorial();
         Armar();
+        // v69: el tutorial empieza en 2D: tu línea va en una hoja (plano) delante de ti y la mesa queda abajo.
+        // Después del deshacer, "3D esto" lo pasa a 3D y sigue igual que siempre.
+        mesaTutorial = false;
+        if (dibujo.PlanoParaTutorial(raiz.position, raiz.forward))
+            mesaTutorial = MesaEntrada.VerParaTutorial();
         // En el tutorial, una línea solo empieza en el punto A (y solo en el paso 2).
         control.permitirEmpezarLinea = p => estado == Estado.Paso2 && raiz != null && Vector3.Distance(p, A) < 0.045f;
         Cambiar(Estado.Demo1);
@@ -940,6 +947,10 @@ public class Tutorial : MonoBehaviour
 
     void Terminar()
     {
+        bool eraPrimeraVez = primeraVez;
+        // v69: la mesa del tutorial se va (si seguía).
+        MesaEntrada.QuitarParaTutorial();
+        mesaTutorial = false;
         if (control != null)
         {
             control.soloNodosAlBorrar = false;
@@ -956,6 +967,14 @@ public class Tutorial : MonoBehaviour
         OcultarFlecha();
         if (dibujo != null)
             dibujo.RecuperarDeTutorial();
+        // v69: la primera vez, al terminar quedas en un ARCHIVO 3D NUEVO.
+        if (eraPrimeraVez && dibujo != null)
+        {
+            if (dibujo.HayArchivoAbierto)
+                dibujo.ArchivoNuevo();
+            if (dibujo.plano)
+                dibujo.PonerPlano(false);
+        }
         Desarmar();
         Cambiar(Estado.Nada);
     }
@@ -1334,7 +1353,7 @@ public class Tutorial : MonoBehaviour
     {
         OcultarGuia();
         // Tu línea suena con el piano (el carrusel pasa al piano: hay varios sonidos para elegir).
-        control.InstrumentoDelTutorial(Sonidos.Piano);
+        control.InstrumentoDelTutorial(Sonidos.Arpa);   // v69: arpa (antes piano)
         // Si tu mano izquierda sigue en OK desde el paso 1, ya cuenta (no hace falta abrir y cerrar).
         control.AceptarPellizcoActual();
         if (lineaDemo != null)
@@ -2220,13 +2239,76 @@ public class Tutorial : MonoBehaviour
         {
             PararPista();
             Exito(8, control.Izq.valida ? control.Izq.pulgar : raiz.TransformPoint(ManoCentro));
-            Pausa(EmpezarDemo9);
+            Pausa(EntrarPaso3D);   // v69: antes de cambiar el tamaño, "3D esto"
             return;
         }
         if (control.GestoIzq != ControlManos.Gesto.Ninguno)
             ultimaActividad = Time.time;
         if (TocaPista() && Demo8(Time.time - pistaDesde, false))
             PararPista();
+    }
+
+    // ==================== v69: "3D esto" (tu dibujo 2D pasa a 3D) ====================
+
+    bool mesaTutorial;
+    Vector3 donde3D;
+
+    static string Texto3D => Tx("Tap \"Make it 3D\" on the desk: your drawing jumps into 3D",
+                                "Toca «3D esto» en la mesa: tu dibujo pasa a 3D");
+
+    void EntrarPaso3D()
+    {
+        OcultarGuia();
+        OcultarFlecha();
+        if (!mesaTutorial || !MesaEntrada.Boton3DTutorial(true, out donde3D))
+        {
+            // Sin la mesa: pasa a 3D solo y sigue.
+            mesaTutorial = false;
+            if (dibujo.PlanoActivo)
+                dibujo.PonerPlano(false);
+            EmpezarDemo9();
+            return;
+        }
+        MesaEntrada.TresDTocado = false;
+        PonerVineta(Texto3D, VinetaLinea, -1);
+        pistaDesde = Time.time;   // la mano guía lo muestra de una vez
+        Cambiar(Estado.Paso3D);
+    }
+
+    void Paso3D()
+    {
+        ActualizarFigura();
+        if (MesaEntrada.TresDTocado || !dibujo.PlanoActivo)
+        {
+            MesaEntrada.TresDTocado = false;
+            mesaTutorial = false;
+            PararPista();
+            if (fuente != null)
+                fuente.PlayOneShot(Sonidos.Ding, 0.8f);
+            Confeti(donde3D, 45, 0.6f);
+            Chispas(donde3D, 12, 0.25f);
+            Pausa(EmpezarDemo9);
+            return;
+        }
+        if (TocaPista() && Demo3D(Time.time - pistaDesde))
+            PararPista();
+    }
+
+    // La mano guía derecha toca "3D esto" (abajo, en la mesa) un par de veces.
+    bool Demo3D(float t)
+    {
+        float alfa = Mathf.Clamp01(t / 0.4f) * (1f - Mathf.Clamp01((t - 3.6f) / 0.5f));
+        PonerAlfaGuia(alfa);
+        Vector3 haciaTi = control.Cabeza != null ? control.Cabeza.position - donde3D : -raiz.forward;
+        if (haciaTi.sqrMagnitude < 1e-6f)
+            haciaTi = -raiz.forward;
+        haciaTi.Normalize();
+        float toque = Mathf.Abs(Mathf.Sin(t * 2.6f));
+        Vector3 punta = donde3D + haciaTi * (0.012f + 0.05f * toque);
+        PoseMano.ConIndiceEn(puntosDer, false, punta, -haciaTi, Dir(0f, -1f, 0.2f), 0f, 0f, 1f);
+        manoDer.Poner(alfa > 0.01f ? puntosDer : null);
+        manoIzq.Poner(null);
+        return t >= 4.2f;
     }
 
     // ==================== Paso 9: tamaño y giro con las dos manos ====================
