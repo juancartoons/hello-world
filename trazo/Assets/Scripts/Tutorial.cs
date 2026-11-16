@@ -934,12 +934,26 @@ public class Tutorial : MonoBehaviour
         if (titere != null && titere.Encendido)
             titere.Parar();
         dibujo.ApartarParaTutorial();
-        Armar();
-        // v69: el tutorial empieza en 2D: tu línea va en una hoja (plano) delante de ti y la mesa queda abajo.
-        // Después del deshacer, "3D esto" lo pasa a 3D y sigue igual que siempre.
+        // v69: el tutorial empieza en 2D, SOBRE LA HOJA DE LA MESA (inclinada, como una mesa de animación).
+        // Después del deshacer, "3D esto" lo pasa a 3D y sigue igual que siempre. (Primero sale la mesa, para saber
+        // dónde queda su hoja; luego se arma el tutorial sobre ella.)
         mesaTutorial = false;
-        if (dibujo.PlanoParaTutorial(raiz.position, raiz.forward))
-            mesaTutorial = MesaEntrada.VerParaTutorial();
+        hayHojaMesa = false;
+        {
+            Transform cabT = control.Cabeza;
+            Vector3 adel = Horizontal(cabT.forward);
+            if (dibujo.PlanoParaTutorial(cabT.position + adel * 0.5f, adel)
+                && MesaEntrada.VerParaTutorial(out hojaMesaPos, out hojaMesaGiro, out hojaMesaAncho))
+            {
+                mesaTutorial = true;
+                hayHojaMesa = hojaMesaAncho > 0.05f;
+            }
+        }
+        Armar();
+        if (hayHojaMesa && hojaTut != null)
+            dibujo.PlanoInclinadoParaTutorial(hojaTut.position, hojaTut.forward);
+        else
+            dibujo.PlanoParaTutorial(raiz.position, raiz.forward);
         // En el tutorial, una línea solo empieza en el punto A (y solo en el paso 2).
         control.permitirEmpezarLinea = p => estado == Estado.Paso2 && raiz != null && Vector3.Distance(p, A) < 0.045f;
         Cambiar(Estado.Demo1);
@@ -991,6 +1005,21 @@ public class Tutorial : MonoBehaviour
         raiz.SetParent(transform, false);
         raiz.SetPositionAndRotation(cab.position + adelante * 0.45f - Vector3.up * 0.12f + derecha * CorrerDerecha,
                                     Quaternion.LookRotation(adelante, Vector3.up));
+        // v69: la hoja de la mesa (si está): ahí va la línea, más corta para que quepa.
+        hojaTut = raiz;
+        escalaCurva = 1f;
+        escalaPiezas = 1f;
+        escalaMuneco = EscalaMuneco;
+        if (hayHojaMesa)
+        {
+            var h = new GameObject("HojaTutorial").transform;
+            h.SetParent(raiz, false);
+            h.SetPositionAndRotation(hojaMesaPos, hojaMesaGiro);
+            hojaTut = h;
+            escalaCurva = Mathf.Clamp(hojaMesaAncho * 0.84f / (2f * MitadLinea), 0.2f, 1f);
+            escalaPiezas = Mathf.Clamp(escalaCurva * 1.4f, 0.5f, 1f);
+            escalaMuneco = EscalaMuneco * Mathf.Clamp(escalaCurva * 1.3f, 0.35f, 1f);
+        }
 
         // "First time?" arriba, con letras de colores.
         encabezado = CrearTexto(raiz, Tx("First time?", "¿Primera vez?"), new Vector3(0f, 0.27f, 0.12f), new Vector2(0.42f, 0.09f), 1.2f, Color.white);
@@ -1011,7 +1040,8 @@ public class Tutorial : MonoBehaviour
         vinetaLista = false;
 
         // Botones "Skip" (abajo a la derecha, bien lejos) y "Next" (para seguir después de jugar con el muñeco).
-        btnSaltar = CrearBoton(Tx("Skip", "Saltar"), new Vector3(0.52f, -0.24f, 0.04f), new Vector2(0.07f, 0.026f));
+        // v69: con la mesa, "Saltar" va arriba a la derecha (abajo quedaría dentro de la madera).
+        btnSaltar = CrearBoton(Tx("Skip", "Saltar"), hayHojaMesa ? new Vector3(0.46f, 0.25f, 0.04f) : new Vector3(0.52f, -0.24f, 0.04f), new Vector2(0.07f, 0.026f));
         btnSaltar.alTocar.AddListener(Terminar);
         btnSiguiente = CrearBoton(Tx("Next >", "Siguiente >"), new Vector3(0.42f, 0.13f, 0f), new Vector2(0.09f, 0.03f));
         btnSiguiente.alTocar.AddListener(() => siguientePedido = true);
@@ -1029,15 +1059,18 @@ public class Tutorial : MonoBehaviour
         // Punto A (azul) y bandera en B (aparecen después del paso 1).
         curvaDemo.Clear();
         for (int i = 0; i <= 60; i++)
-            curvaDemo.Add(raiz.TransformPoint(Curva(i / 60f)));
+            curvaDemo.Add(PuntoCurva(i / 60f));
         puntoA = new GameObject("PuntoA").transform;
-        puntoA.SetParent(raiz, false);
-        puntoA.localPosition = Curva(0f) + new Vector3(0f, 0f, -0.003f);
+        puntoA.SetParent(hojaTut, false);
+        puntoA.localPosition = CurvaLocal(0f) + new Vector3(0f, 0f, -0.003f);
+        puntoA.localScale = Vector3.one * escalaPiezas;
         Disco(puntoA, materialNegro, 0.036f, new Vector3(0f, 0f, 0.001f));
         Disco(puntoA, materialAzul, 0.03f, Vector3.zero);
         bandera = new GameObject("Bandera").transform;
-        bandera.SetParent(raiz, false);
-        bandera.localPosition = Curva(1f);
+        bandera.SetParent(hojaTut, false);
+        bandera.localPosition = CurvaLocal(1f);
+        bandera.rotation = raiz.rotation;   // el palo siempre derecho (aunque la hoja esté inclinada)
+        bandera.localScale = Vector3.one * escalaPiezas;
         var palo = Pieza(PrimitiveType.Cube, bandera, materialNegro);
         palo.transform.localPosition = new Vector3(0f, 0.065f, 0f);
         palo.transform.localScale = new Vector3(0.004f, 0.13f, 0.004f);
@@ -1082,7 +1115,7 @@ public class Tutorial : MonoBehaviour
 
         // El muñeco: pequeño, con 3 hebras finas que tiemblan.
         figura = new MunecoGuia(transform, materialNegro, AnchoMuneco, 3);
-        figura.escala = EscalaMuneco;
+        figura.escala = escalaMuneco;
         figura.temblor = 0.004f;
         figura.alPisar = () => Pasito(0.22f);
         figura.Poner(Vector3.zero, Vector3.right, Vector3.up, 0f, 0f);
@@ -1169,8 +1202,8 @@ public class Tutorial : MonoBehaviour
         return new Vector3(Mathf.Lerp(-MitadLinea, MitadLinea, u), y, 0f);
     }
 
-    Vector3 A => raiz.TransformPoint(Curva(0f));
-    Vector3 B => raiz.TransformPoint(Curva(1f));
+    Vector3 A => PuntoCurva(0f);
+    Vector3 B => PuntoCurva(1f);
 
     // OK de la demostración: dos veces (pellizca, sostiene, suelta, vuelve a pellizcar y se queda).
     static float PinzaDosVeces(float t)
@@ -1305,14 +1338,16 @@ public class Tutorial : MonoBehaviour
         else if (t < 3.9f)
         {
             u = Suave((t - 1.1f) / 2.8f);
-            punta = raiz.TransformPoint(Curva(u));
+            punta = PuntoCurva(u);
         }
         else
         {
             u = 1f;
             punta = B;
         }
-        PoseMano.ConIndiceEn(puntosDer, false, punta, Dir(-0.1f, 0.25f, 1f), Dir(0f, -1f, 0.2f), 0f, 0f, 1f);
+        // v69: sobre la mesa el índice apunta hacia la hoja (hacia abajo y al frente).
+        Vector3 dedosDemo = hayHojaMesa && hojaTut != null ? (hojaTut.forward * 0.8f + raiz.forward * 0.5f).normalized : Dir(-0.1f, 0.25f, 1f);
+        PoseMano.ConIndiceEn(puntosDer, false, punta, dedosDemo, Dir(0f, -1f, 0.2f), 0f, 0f, 1f);
         manoDer.Poner(alfa > 0.01f ? puntosDer : null);
         if (completa)
         {
@@ -1326,8 +1361,8 @@ public class Tutorial : MonoBehaviour
             // La línea de la mano guía también suena (sube = agudo, baja = grave) y termina con un acorde.
             if (t >= 1.1f && t < 3.9f)
             {
-                float recorrido = u * MitadLinea * 2f;
-                if (recorrido - recorridoMelodia >= 0.035f || notaDemo < 0)
+                float recorrido = u * MitadLinea * 2f * escalaCurva;
+                if (recorrido - recorridoMelodia >= 0.035f * escalaCurva || notaDemo < 0)
                 {
                     recorridoMelodia = recorrido;
                     notaDemo = ControlManos.IndicePorAltura(Curva(u).y - Curva(0f).y);
@@ -1371,7 +1406,7 @@ public class Tutorial : MonoBehaviour
             ultimaActividad = Time.time;
             SeguirLineaNueva(tr);
             // ¡Llegaste a la bandera! (paso 2). Ahora hay que abrir los dedos (paso 3).
-            if (Vector3.Distance(control.Der.indice, B) < 0.07f && LargoCamino >= MitadLinea * 2f * 0.6f)
+            if (Vector3.Distance(control.Der.indice, B) < 0.07f * Mathf.Max(0.6f, escalaCurva) && LargoCamino >= MitadLinea * 2f * escalaCurva * 0.6f)
             {
                 // La mano derecha queda "atrapada" en la bandera (una copia quieta) y la línea ya no crece:
                 // aunque sigas moviendo la mano, no se daña el camino. Para seguir hay que abrir la mano izquierda.
@@ -1415,7 +1450,7 @@ public class Tutorial : MonoBehaviour
         }
         LeerCamino(tr);
         float largo = LargoCamino;
-        if (!figuraEnLinea && largo >= MitadLinea * 2f * 0.45f)
+        if (!figuraEnLinea && largo >= MitadLinea * 2f * escalaCurva * 0.45f)
         {
             figuraEnLinea = true;
             figuraS = 0f;
@@ -1532,7 +1567,7 @@ public class Tutorial : MonoBehaviour
             // Raya punteada de tu índice al tronco del muñeco: tú lo controlas.
             if (lineaTitere == null)
                 lineaTitere = new LineaPunteada();
-            Vector3 tronco = PuntoCamino(figuraS) + Vector3.up * (0.003f + figuraAltura + 0.4f * EscalaMuneco * 0.55f * figuraTam);
+            Vector3 tronco = PuntoCamino(figuraS) + Vector3.up * (0.003f + figuraAltura + 0.4f * escalaMuneco * 0.55f * figuraTam);
             if (control.Cabeza != null)
                 lineaTitere.Poner(der.indice, tronco, control.Cabeza.position);
         }
@@ -1835,7 +1870,7 @@ public class Tutorial : MonoBehaviour
         figuraMov = 2f; // siempre corriendo (aunque borres despacio)
         figuraPanico = Mathf.MoveTowards(figuraPanico, 1f, Time.deltaTime * 6f);
         if (figura != null)
-            figura.Avanzar(Time.deltaTime * (rapido ? 0.45f : 0.35f) * EscalaMuneco, 2f);
+            figura.Avanzar(Time.deltaTime * (rapido ? 0.45f : 0.35f) * escalaMuneco, 2f);
         ActualizarFigura();
     }
 
@@ -2252,6 +2287,26 @@ public class Tutorial : MonoBehaviour
 
     bool mesaTutorial;
     Vector3 donde3D;
+    // v69: la línea del tutorial va SOBRE LA HOJA INCLINADA DE LA MESA: su marco (hojaTut), más corta (escalaCurva)
+    // y con el muñeco, la bandera y el punto A más chicos. La mano guía NO cambia: es del tamaño de tu mano.
+    Transform hojaTut;
+    float escalaCurva = 1f;
+    float escalaMuneco = EscalaMuneco;
+    float escalaPiezas = 1f;
+    bool hayHojaMesa;
+    Vector3 hojaMesaPos;
+    Quaternion hojaMesaGiro = Quaternion.identity;
+    float hojaMesaAncho;
+
+    Vector3 CurvaLocal(float u)
+    {
+        return Curva(u) * escalaCurva;
+    }
+
+    Vector3 PuntoCurva(float u)
+    {
+        return (hojaTut != null ? hojaTut : raiz).TransformPoint(CurvaLocal(u));
+    }
 
     static string Texto3D => Tx("Tap \"Make it 3D\" on the desk: your drawing jumps into 3D",
                                 "Toca «3D esto» en la mesa: tu dibujo pasa a 3D");
@@ -2812,7 +2867,7 @@ public class Tutorial : MonoBehaviour
             return null;
         var d = new DatosTrazo { ancho = dibujo.AnchoNuevoLocal() };
         for (int i = 0; i <= 8; i++)
-            d.nodos.Add(dibujo.transform.InverseTransformPoint(raiz.TransformPoint(Curva(i / 8f))));
+            d.nodos.Add(dibujo.transform.InverseTransformPoint(PuntoCurva(i / 8f)));
         dibujo.GuardarParaDeshacer();
         return dibujo.AgregarTrazo(d);
     }

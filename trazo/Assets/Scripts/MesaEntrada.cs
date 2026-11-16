@@ -495,6 +495,42 @@ public class MesaEntrada : MonoBehaviour
     // La mesa abajo (como en Mesa flexible), sin sus botones; el tutorial pide después "3D esto".
     public static bool TresDTocado { get; set; }
 
+    // v69: la mesa en su lugar de siempre (inclinada, delante de ti) con su hoja en blanco: ahí se hace el tutorial.
+    // Devuelve dónde está la hoja (un poquito delante del papel), su giro (adelante = hacia la mesa) y su ancho.
+    bool modoTutorial;
+    Material matHojaTut, matHojaAntes;
+
+    public static bool VerParaTutorial(out Vector3 centro, out Quaternion giro, out float ancho)
+    {
+        centro = Vector3.zero;
+        giro = Quaternion.identity;
+        ancho = 0f;
+        if (!VerParaTutorial())
+            return false;
+        var m = instancia;
+        m.Colocar();   // la mesa normal (no abajo): la hoja queda a la mano
+        m.raiz.SetPositionAndRotation(m.baseMesa, m.giroMesa);   // sin el zoom ni el lugar que le hayas dado
+        m.raiz.localScale = Vector3.one;
+        m.giratorio.localRotation = Quaternion.identity;
+        m.hoja.gameObject.SetActive(true);
+        var r = m.hoja.GetComponent<Renderer>();
+        if (r != null)
+        {
+            if (m.matHojaTut == null)
+            {
+                m.matHojaTut = new Material(m.matImagen);
+                PonerTextura(m.matHojaTut, Texture2D.whiteTexture);
+            }
+            m.matHojaAntes = r.sharedMaterial;
+            r.sharedMaterial = m.matHojaTut;
+        }
+        m.modoTutorial = true;
+        centro = m.hoja.position - m.hoja.forward * 0.0015f;
+        giro = m.hoja.rotation;
+        ancho = AnchoHoja * m.hoja.parent.lossyScale.x;
+        return true;
+    }
+
     public static bool VerParaTutorial()
     {
         if (instancia == null || instancia.dibujo == null || instancia.control == null)
@@ -668,6 +704,14 @@ public class MesaEntrada : MonoBehaviour
         verArchivo = false;
         activa = false;
         flexible = false;
+        if (modoTutorial)
+        {
+            modoTutorial = false;
+            var rh = hoja != null ? hoja.GetComponent<Renderer>() : null;
+            if (rh != null && matHojaAntes != null)
+                rh.sharedMaterial = matHojaAntes;
+            matHojaAntes = null;
+        }
         foreach (var g in escondidosVer)
             if (g != null)
                 g.SetActive(true);

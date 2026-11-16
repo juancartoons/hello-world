@@ -2536,6 +2536,23 @@ public class Dibujo : MonoBehaviour
         return PlanoActivo;
     }
 
+    // v69: el plano del tutorial sobre la hoja INCLINADA de la mesa (sin poner la hoja de pie como DefinirPlano).
+    public bool PlanoInclinadoParaTutorial(Vector3 mundo, Vector3 normalMundo)
+    {
+        AsegurarCapas();
+        if (normalMundo.sqrMagnitude < 1e-6f)
+            return false;
+        plano = true;
+        var c = CapaActual;
+        c.en2D = true;
+        c.planoPunto = transform.InverseTransformPoint(mundo);
+        c.planoNormal = transform.InverseTransformDirection(normalMundo.normalized).normalized;
+        c.hayPlano = true;
+        RefrescarPlano();
+        ActualizarGuia();
+        return PlanoActivo;
+    }
+
     public void RecuperarDeTutorial()
     {
         if (apartado == null)

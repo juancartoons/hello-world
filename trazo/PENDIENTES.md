@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v69***
+*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v70***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -955,5 +955,5 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - HECHO: MESA FLEXIBLE (opción C) y "3D ESTO" en la mesa.
 - HECHO: tutorial en 2D (hoja delante con la mesa abajo, arpa, el muñeco aparece al dibujar), paso "3D esto" después de Deshacer, y la primera vez termina en un archivo 3D nuevo.
 - PENDIENTE: en la mesa inicial, al empezar a dibujar crear el archivo y mostrar los menús; arriba, en lugar de los recientes, la línea de tiempo con sus cuadros y el reproductor (y las 3 pestañas como panel replegable).
-- PENDIENTE: que el tutorial dibuje literalmente sobre la hoja inclinada de la mesa (hoy la hoja va delante de ti y la mesa abajo, como en Mesa flexible).
+- HECHO (v70): el tutorial dibuja sobre la hoja inclinada de la mesa (mesa a su tamaño normal; línea, muñeco, bandera y punto A más chicos; la mano guía del tamaño de la mano real; "Saltar" arriba a la derecha).
 - POR PROBAR: Mesa flexible (botones abajo a la mano), 3D esto, el paso 3D del tutorial, los tramos de color al unir, el Teatro en Mis archivos.
