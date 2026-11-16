@@ -30,7 +30,7 @@ public class TutorialNovedades : TarjetaTutorial
     readonly List<Vector3> otra = new List<Vector3>();
     readonly List<Vector3> tramo = new List<Vector3>();
 
-    protected override int Paginas => 37;
+    protected override int Paginas => 38;
 
     protected override void ArmarExtra()
     {
@@ -89,7 +89,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 33: return Tx("34 · Glowing fingertips, the 3D button and swipe the background", "34 · Dedos que brillan, el botón 3D y desliza el fondo");
             case 34: return Tx("35 · Flexible desk, Make it 3D, Theater and a 2D tutorial", "35 · Mesa flexible, 3D esto, Teatro y un tutorial en 2D");
             case 35: return Tx("36 · Your file starts on the desk, with its timeline", "36 · Tu archivo empieza en la mesa, con su línea de tiempo");
-            default: return Tx("37 · Desk fixes and turn toward me", "37 · Arreglos de la mesa y girar hacia ti");
+            case 36: return Tx("37 · Desk fixes and turn toward me", "37 · Arreglos de la mesa y girar hacia ti");
+            default: return Tx("38 · Onion skin on the desk, the layer handle and say \"desk\"", "38 · Cebolla en la mesa, la casilla de las capas y di \"mesa\"");
         }
     }
 
@@ -146,6 +147,10 @@ public class TutorialNovedades : TarjetaTutorial
                     "DESERT SUNSET: a new living background: dunes all around you lit by a low golden sun, violet shadows, a pink and purple sky with thin clouds, the first stars and the wind lifting dust far away. Say \"desert\". LAYERS: each one shows a thumbnail on its left; say \"layer 2\" to jump to it; leave your finger still on the name to rename it; delete with the little trash can (tap twice). The camera is a layer of its own (\"+ Camera\" = another one). The panels open with either hand, whatever the other one is doing.",
                     "ATARDECER EN EL DESIERTO: un fondo vivo nuevo: dunas a tu alrededor con la luz dorada del sol bajito, sombras violeta, un cielo rosado y morado con nubes finas, las primeras estrellas y el viento levantando polvo a lo lejos. Di \"desierto\". CAPAS: cada una muestra su miniatura a la izquierda; di \"capa 2\" para ir a ella; deja el dedo quieto en el nombre para cambiarlo; borra con el basurerito (toca dos veces). La cámara es su propia capa (\"+ Cámara\" = otra). Las persianas se abren con cualquier mano, haga lo que haga la otra.");
             default:
+                return Tx(
+                    "On the desk with your file, two new buttons on the left: ONION SKIN (yes/no) and FRAME BY FRAME (yes/no, for the layer you are on, pencil or ink): each frame starts empty and the others are seen faint and colored. Undo on the desk no longer makes your tracing image disappear. Center desk and the turning arrow are now at the bottom of the desk (so a quick turn doesn't open a recent file). Say \"desk\" (or Desk (2D) in Properties) while in 3D and your file goes to the normal desk, with its timeline. LAYERS: on the right of the layer card there is a strip with two little arrows: put one finger there and push in or move down = next layer; pull toward you or move up = previous one (several in a row without letting go). It has no buttons, so no accidents. The layer buttons now appear faster. Properties opens a little closer to the center. In the tutorial, your line and the little guy no longer sink into the desk sheet.",
+                    "En la mesa con tu archivo, dos botones nuevos a la izquierda: PAPEL CEBOLLA (sí/no) y CUADRO A CUADRO (sí/no, de la capa en la que estás, lápiz o tinta): cada cuadro empieza vacío y los demás se ven tenues y de color. Deshacer en la mesa ya no hace desaparecer la imagen para calcar. Centrar mesa y la flechita que gira ahora están abajo de la mesa (así, al girar rápido, no se abre un archivo reciente). Di \"mesa\" (o Mesa (2D) en Propiedades) estando en 3D y tu archivo pasa a la mesa normal, con su línea de tiempo. CAPAS: a la derecha de la tarjeta de la capa hay una casilla con dos flechitas: pon un dedo ahí y empuja hacia el fondo o baja = la capa siguiente; atrae hacia ti o sube = la anterior (varias seguidas sin soltar). No tiene botones, así no hay accidentes. Los botones de la capa ahora salen más rápido. Propiedades se abre un poco más cerca del centro. En el tutorial, tu línea y el muñeco ya no se hunden en la hoja de la mesa.");
+            case 37:
                 return Tx(
                     "On the desk with your file, the image you trace (like the sample drawing) is visible again while you ink, and your lines no longer sink into the paper (also in the tutorial: the line and the little guy stay on top of the sheet). The pencils and the pens stay on the right like at the start: tap a pencil = Pencil layer; the technical pen or the nib = Ink layer. A new file no longer brings the images of the previous one. Next to Center desk there is a small button with a turning arrow: the desk stays where it is but turns to face you. The watch menu on the desk now has Files. The pencil now starts in String mode (Properties: Stuck, Soft or String).",
                     "En la mesa con tu archivo, la imagen que calcas (como el dibujo de muestra) se vuelve a ver mientras entintas, y tus líneas ya no se hunden en el papel (también en el tutorial: la línea y el muñeco quedan encima de la hoja). Los lápices y las plumas siguen a la derecha como al principio: toca un lápiz = capa Lápiz; el rapidógrafo o la plumilla = capa Tinta. Un archivo nuevo ya no trae las imágenes del anterior. Al lado de Centrar mesa hay un botoncito con una flecha que gira: la mesa se queda donde está pero gira para mirarte. El reloj en la mesa ahora tiene Archivos. El lápiz ahora empieza en modo Cuerda (Propiedades: Pegado, Suave o Cuerda).");

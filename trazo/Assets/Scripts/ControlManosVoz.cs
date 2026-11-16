@@ -83,7 +83,7 @@ public partial class ControlManos
           new[] { "gira atrás", "girar atrás", "da la vuelta", "media vuelta" }, new[] { "turn around", "around" }),
         C(ComandoVoz.Capas, "Capas", "Layers", new[] { "capas", "las capas" }, new[] { "layers" }),
         C(ComandoVoz.CapaNueva, "Capa nueva", "New layer", new[] { "capa nueva", "nueva capa", "otra capa" }, new[] { "new layer", "add layer" }),
-        C(ComandoVoz.Mesa, "Línea de tiempo", "Timeline", new[] { "línea de tiempo", "linea de tiempo", "mesa", "la mesa" }, new[] { "timeline", "desk" }),
+        C(ComandoVoz.Mesa, "Línea de tiempo", "Timeline", new[] { "línea de tiempo", "linea de tiempo" }, new[] { "timeline" }),   // v75: "mesa" ahora es la mesa (2D)
         C(ComandoVoz.Play, "Play", "Play", new[] { "play", "reproduce", "reproducir", "dale" }, new[] { "play" }),
         C(ComandoVoz.Pausa, "Pausa", "Pause", new[] { "pausa", "pausar" }, new[] { "pause" }),
         C(ComandoVoz.Siguiente, "Siguiente", "Next", new[] { "siguiente", "adelante" }, new[] { "next", "forward" }),
@@ -303,8 +303,8 @@ public partial class ControlManos
                 new[] { "exit", "exit file", "go to the desk" }));
         l.Add(C(ComandoVoz.CentrarMesa, "Centrar mesa", "Center desk", new[] { "centrar mesa", "centra la mesa", "mesa al centro" },
                 new[] { "center desk", "center the desk" }));
-        l.Add(C(ComandoVoz.VerEnLaMesa, "Mesa (2D)", "Desk (2D)", new[] { "mesa dos de", "ver en la mesa", "mesa de animación" },
-                new[] { "desk two d", "see on the desk", "animation desk" }));
+        l.Add(C(ComandoVoz.VerEnLaMesa, "Mesa (2D)", "Desk (2D)", new[] { "mesa", "la mesa", "modo mesa", "mesa dos de", "ver en la mesa", "mesa de animación" },
+                new[] { "desk", "the desk", "desk mode", "desk two d", "see on the desk", "animation desk" }));
         l.Add(C(ComandoVoz.CortarAqui, "Cortar aquí", "Cut here",
                 new[] { "cortar aquí", "corta aquí", "cortar aqui", "separar aquí" }, new[] { "cut here", "split here" }));
         l.Add(C(ComandoVoz.Plastilina, "Plastilina", "Clay",

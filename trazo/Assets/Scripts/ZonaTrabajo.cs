@@ -61,7 +61,8 @@ public static class ZonaTrabajo
                 Vector3 dir = hacia / dist;
                 Vector3 lado = Vector3.Cross(Vector3.up, dir).normalized * signo;
                 float d = Mathf.Clamp(dist, 0.35f, 0.9f);
-                Vector3 pos = cab.position + dir * d + lado * (radio + medioAncho + 0.05f);
+                // v75: un poco más cerca del centro (antes radio + medio ancho + 5 cm: quedaba casi escondido).
+                Vector3 pos = cab.position + dir * d + lado * (radio * 0.6f + medioAncho * 0.85f + 0.02f);
                 pos.y = Mathf.Clamp(centro.y, cab.position.y - 0.45f, cab.position.y + 0.1f);
                 return pos;
             }
@@ -71,6 +72,6 @@ public static class ZonaTrabajo
             adelante = Vector3.forward;
         adelante.Normalize();
         Vector3 derecha = Vector3.Cross(Vector3.up, adelante).normalized * signo;
-        return cab.position + adelante * 0.36f + derecha * 0.44f + Vector3.up * 0.06f;
+        return cab.position + adelante * 0.38f + derecha * 0.34f + Vector3.up * 0.06f;   // v75: antes 0.44 de lado
     }
 }

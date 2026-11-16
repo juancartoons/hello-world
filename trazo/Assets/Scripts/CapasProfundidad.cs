@@ -44,7 +44,8 @@ public class CapasProfundidad : MonoBehaviour
     const float FilaBotones = -0.006f;                      // la fila de botones (abajo de la tarjeta)
     const float FilaBotones2 = -0.03f;                      // v43: la tercera fila (2D, 3D, Nombre, Borrar)
     const float HundirBoton = 0.01f;                        // v43: el toque se activa 1 cm detrás del botón
-    const float EsperaBotones = 1f;                         // v43: segundos quietas antes de que salgan los botones
+    const float EsperaBotones = 0.3f;                       // v43: segundos quietas antes de que salgan los botones (v75: antes 1 s)
+    const float AnchoAsa = 0.026f;                          // v75: la casilla de la derecha (solo para cambiar de capa)
     const float FinZonaNombre = 0.04f;                      // la zona para empujar llega hasta aquí (a la derecha: "+" y X)
     const string AyudaNormal = "Empuja: capa de adelante · Atrae: la de atrás · Deja el dedo quieto en el nombre: cambiarlo";
     const float MantenerNombre = 1f;                        // v44: segundos con el dedo quieto en el nombre = teclado
@@ -98,6 +99,8 @@ public class CapasProfundidad : MonoBehaviour
     int capaMostrada = -1;
     bool empujando, esperarSalir;
     float zInicio, desdeEmpuje, sacudida;
+    bool arrastrandoAsa;                 // v75: el dedo está en la casilla de la derecha
+    float yAsaInicio;
     bool porPersiana;                     // v38: abiertas con la persiana (se quedan hasta que las recojas)
     bool abajoAhora;                      // v41: abiertas ABAJO de tu mirada (la pastilla estaba abajo)
     Persiana persianaArriba, tiradorArriba;
@@ -208,6 +211,7 @@ public class CapasProfundidad : MonoBehaviour
         // v45: la tarjeta es más ancha a la izquierda: ahí va la miniatura, DENTRO de la tarjeta.
         Quad(tarjeta, "Fondo", new Vector3(-ExtraIzq * 0.5f, 0f, 0f), new Vector2(Ancho + ExtraIzq, Alto), materialPanel);
         Marco(tarjeta, materialBotonMarcado, 0.0018f, -0.0004f);
+        ArmarAsa();
         nombre = Texto(tarjeta, "Capa 1", new Vector3(-0.06f, 0.024f, -0.002f), new Vector2(0.11f, 0.02f), 0.26f, Color.black);
         // v50: "Nombre" es un BOTÓN (tocar el nombre empujaba la capa): abre el teclado de la app.
         btnNombre = Boton(tarjeta, "Nombre", new Vector3(Ancho * 0.5f - 0.103f, 0.026f, 0f), new Vector2(0.04f, 0.018f));
@@ -274,6 +278,42 @@ public class CapasProfundidad : MonoBehaviour
         ayuda.outlineWidth = 0.25f;
         ayuda.outlineColor = new Color32(30, 30, 40, 255);
         AsegurarFantasmas(Actual);
+    }
+
+    // v75: LA CASILLA DE LA DERECHA: pegada a la tarjeta, del mismo alto, con dos flechitas que se dan la espalda
+    // (una arriba y otra abajo). No tiene botones: solo sirve para cambiar de capa con un dedo, sin accidentes.
+    // Pon el dedo y empuja hacia el fondo (o baja el dedo) = la capa de adelante; atrae hacia ti (o sube) = la de atrás.
+    // Se pueden pasar varias capas sin soltar.
+    void ArmarAsa()
+    {
+        var asa = new GameObject("CasillaCapas").transform;
+        asa.SetParent(tarjeta, false);
+        float cx = Ancho * 0.5f + AnchoAsa * 0.5f;
+        Quad(asa, "FondoCasilla", new Vector3(cx, 0f, 0f), new Vector2(AnchoAsa, Alto), materialBoton != null ? materialBoton : materialPanel);
+        const float g = 0.0018f;
+        Quad(asa, "BordeCasillaArriba", new Vector3(cx, Alto * 0.5f, -0.0004f), new Vector2(AnchoAsa + g, g), materialBotonMarcado);
+        Quad(asa, "BordeCasillaAbajo", new Vector3(cx, -Alto * 0.5f, -0.0004f), new Vector2(AnchoAsa + g, g), materialBotonMarcado);
+        Quad(asa, "BordeCasillaDerecha", new Vector3(Ancho * 0.5f + AnchoAsa, 0f, -0.0004f), new Vector2(g, Alto + g), materialBotonMarcado);
+        Flechita(asa, new Vector3(cx, 0.009f, -0.001f), true);
+        Flechita(asa, new Vector3(cx, -0.009f, -0.001f), false);
+    }
+
+    void Flechita(Transform padre, Vector3 pos, bool arriba)
+    {
+        var go = new GameObject(arriba ? "FlechaArriba" : "FlechaAbajo");
+        go.transform.SetParent(padre, false);
+        go.transform.localPosition = pos;
+        const float w = 0.009f, h = 0.008f;
+        float sgn = arriba ? 1f : -1f;
+        var malla = new Mesh { name = "Flechita" };
+        malla.vertices = new[] { new Vector3(-w * 0.5f, -sgn * h * 0.5f, 0f), new Vector3(0f, sgn * h * 0.5f, 0f), new Vector3(w * 0.5f, -sgn * h * 0.5f, 0f) };
+        malla.triangles = new[] { 0, 1, 2, 0, 2, 1 };   // de los dos lados
+        malla.RecalculateBounds();
+        go.AddComponent<MeshFilter>().sharedMesh = malla;
+        var r = go.AddComponent<MeshRenderer>();
+        r.sharedMaterial = materialBotonMarcado;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        r.receiveShadows = false;
     }
 
     bool ManoAbiertaCerca(ManoSeguida m)
@@ -773,7 +813,7 @@ public class CapasProfundidad : MonoBehaviour
         tarjeta.localPosition = Lugar(sActual) + new Vector3(x, 0f, 0f);
         tarjeta.localScale = Vector3.one * Mathf.Lerp(0.9f, 1f, Suave(aparece));
         // v43: los botones, solo con todo quieto (y un momento después).
-        if (empujando || Mathf.Abs(sActual) > 0.03f || Mathf.Abs(z) > 0.002f)
+        if (empujando || arrastrandoAsa || Mathf.Abs(sActual) > 0.03f || Mathf.Abs(z) > 0.002f)
             quietoDesde = Time.time;
         // v49: "mano de empujar" vs "dedo de tocar": con una mano ABIERTA (los cuatro dedos estirados) cerca de las
         // capas, los botones se apagan; vuelven cuando cierras la mano y señalas con el índice solo.
@@ -878,6 +918,7 @@ public class CapasProfundidad : MonoBehaviour
         if (!der.valida)
         {
             empujando = false;
+            arrastrandoAsa = false;
             return;
         }
         Vector3 p = raiz.InverseTransformPoint(der.indice);
@@ -887,6 +928,42 @@ public class CapasProfundidad : MonoBehaviour
         {
             cercaCuadro = Time.frameCount;
             ultimoToque = Time.time;
+        }
+        // v75: la CASILLA de la derecha: solo cambia de capa (con un dedo), varias seguidas sin soltar.
+        if (arrastrandoAsa)
+        {
+            bool sigue = p.x > Ancho * 0.5f - 0.03f && p.x < Ancho * 0.5f + AnchoAsa + 0.04f && Mathf.Abs(p.y) < Alto * 0.5f + 0.08f
+                         && Mathf.Abs(p.z) < 0.08f;
+            if (!sigue)
+            {
+                arrastrandoAsa = false;
+                return;
+            }
+            cercaCuadro = Time.frameCount;
+            ultimoToque = Time.time;
+            float dy = p.y - yAsaInicio;
+            if (abajoAhora)
+                dy = -dy;   // (abajo, en espejo, las de adelante bajan)
+            float d = (p.z - zInicio) - dy;   // empujar o bajar = +; atraer o subir = −
+            z = Mathf.Clamp(d, -Empujon, Empujon);
+            if (Mathf.Abs(d) > Empujon)
+            {
+                Cambiar(d > 0f ? 1 : -1, z);
+                z = 0f;
+                esperarSalir = false;
+                zInicio = p.z;
+                yAsaInicio = p.y;
+            }
+            return;
+        }
+        bool enCasilla = p.x > Ancho * 0.5f - 0.002f && p.x < Ancho * 0.5f + AnchoAsa + 0.006f && Mathf.Abs(p.y) < Alto * 0.5f + 0.004f;
+        if (enCasilla && !empujando && Mathf.Abs(p.z) < 0.015f)
+        {
+            arrastrandoAsa = true;
+            esperarSalir = false;
+            zInicio = p.z;
+            yAsaInicio = p.y;
+            return;
         }
         // La parte de arriba de la tarjeta (la del nombre), lejos de "+ Capa" y de la X.
         bool enZona = p.x > -Ancho * 0.5f + 0.004f && p.x < FinZonaNombre && p.y > FilaBotones + 0.013f && p.y < Alto * 0.5f;

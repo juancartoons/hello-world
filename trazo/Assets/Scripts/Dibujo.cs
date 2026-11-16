@@ -2449,13 +2449,34 @@ public class Dibujo : MonoBehaviour
         };
     }
 
+    // v75: con tu archivo en la mesa, deshacer y rehacer NO mueven el dibujo (la mesa decide dónde va). Antes podía
+    // volver a un lugar viejo y la imagen para calcar (pegada al dibujo) se perdía de vista.
+    public bool poseFija;
+
     void AplicarFoto(FotoDeshacer foto)
     {
         if (foto == null)
             return;
         var d = JsonUtility.FromJson<DatosDibujo>(foto.datos);
-        if (d != null)
-            Aplicar(d, false, foto.claves ?? new List<string>());
+        if (d == null)
+            return;
+        Vector3 p = transform.localPosition, e = transform.localScale;
+        Quaternion r = transform.localRotation;
+        Aplicar(d, false, foto.claves ?? new List<string>());
+        if (poseFija)
+        {
+            transform.localPosition = p;
+            transform.localRotation = r;
+            transform.localScale = e;
+        }
+    }
+
+    // v75: el historial de deshacer empieza de cero (la mesa lo usa al recibir tu archivo).
+    public void LimpiarHistorial()
+    {
+        historial.Clear();
+        rehacer.Clear();
+        rehacerRespaldo.Clear();
     }
 
     public void BorrarTodo()

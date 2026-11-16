@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v74***
+*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v75***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -988,3 +988,13 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ## v74
 - HECHO: el lápiz (2D en archivos) empieza en modo CUERDA (String). Se usa una clave nueva de PlayerPrefs para que también cambie en los visores que ya tenían otro modo guardado; después se recuerda lo que elijas en Propiedades.
+
+## v75
+- HECHO: tutorial: la línea ya no se hunde: al terminarla, Tutorial.Aplanar la aplanaba contra un plano de PIE (raiz.forward) y no contra la hoja inclinada de la mesa. Ahora usa la hoja (hojaTut).
+- HECHO: deshacer en la mesa con tu archivo ya no mueve el dibujo ni pierde la imagen para calcar (Dibujo.poseFija + el historial empieza de cero al recibir el archivo).
+- HECHO: en la mesa con tu archivo: "Papel cebolla: sí/no" y "Cuadro a cuadro: sí/no" a la izquierda. Una capa nueva (también la de cuadro a cuadro) se queda en la mesa en 2D (antes la mesa se iba a 3D).
+- HECHO: "Centrar mesa" y "Girar hacia mí" abajo, a la derecha.
+- HECHO: la voz "mesa" (y Mesa (2D) en Propiedades) desde 3D lleva tu archivo a la mesa NORMAL con su línea de tiempo; desde la flexible, a la normal. "Línea de tiempo" sigue con su propia palabra.
+- HECHO: capas: los botones salen a los 0,3 s (antes 1 s); casilla a la derecha de la tarjeta con dos flechitas (solo para cambiar de capa con un dedo: empujar/bajar = siguiente, atraer/subir = anterior; varias seguidas).
+- HECHO: Propiedades (y los paneles a un lado) un poco más cerca del centro.
+- POR PROBAR: la casilla de las capas; cuadro a cuadro en la mesa; deshacer con la imagen de calcar; decir "mesa" en 3D.

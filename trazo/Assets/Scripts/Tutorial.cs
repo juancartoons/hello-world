@@ -2839,8 +2839,11 @@ public class Tutorial : MonoBehaviour
     {
         if (t == null || t.nodos.Count < 2 || raiz == null)
             return;
-        Vector3 n = raiz.forward;
-        Vector3 fin = dibujo.transform.TransformPoint(t.nodos[t.nodos.Count - 1]);
+        // v75: sobre la mesa, la línea se aplana contra LA HOJA INCLINADA (antes contra un plano de pie: la línea
+        // quedaba cruzando la hoja y se "hundía" en el papel, con el muñeco, el borrado y los nodos).
+        bool enMesa = hayHojaMesa && hojaTut != null && hojaTut != raiz;
+        Vector3 n = enMesa ? hojaTut.forward : raiz.forward;
+        Vector3 fin = enMesa ? hojaTut.position : dibujo.transform.TransformPoint(t.nodos[t.nodos.Count - 1]);
         for (int i = 0; i < t.nodos.Count; i++)
         {
             Vector3 w = dibujo.transform.TransformPoint(t.nodos[i]);
