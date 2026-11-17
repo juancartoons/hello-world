@@ -30,6 +30,19 @@ public static class PrepararMetaStore
                 "Armar", "Cancelar"))
             return;
 
+        // 0) v78: la voz DENTRO de la app (si aún no está, se ofrece bajarla una vez).
+        if (!IncluirVoz.Listos())
+        {
+            int r = EditorUtility.DisplayDialogComplex("Meta Store",
+                "La voz todavía no va dentro de la app (sin ella, el visor la baja de internet la primera vez).\n\n" +
+                "¿Bajo ahora los dos idiomas (unos 80 MB, solo esta vez) para incluirlos?",
+                "Sí, incluir la voz", "Cancelar", "Seguir sin ella");
+            if (r == 1)
+                return;
+            if (r == 0 && !IncluirVoz.Bajar())
+                return;
+        }
+
         // 1) Android.
         if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android)
             EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Android, BuildTarget.Android);

@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v78***
+*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v79***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -1010,3 +1010,6 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ## v78
 - HECHO: menú TrazoVR > Meta Store: armar APK para subir (paquete com.juancartoons.jcartoons si era el de Unity, versión que sube sola, ARM64 + IL2CPP, firma propia en FirmaMeta/ con su clave, .apk en Builds/).
+
+## v79
+- HECHO: la voz puede ir DENTRO de la app: menú TrazoVR > Voz: incluir los idiomas en la app (baja una vez los 2 modelos de Vosk a Assets/StreamingAssets, ~80 MB). TrazoVoz.java los saca del apk sin internet; si no están (o fallan), los baja de internet como antes. El menú Meta Store lo ofrece si faltan.

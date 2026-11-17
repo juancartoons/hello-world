@@ -78,12 +78,26 @@ public class TrazoVoz {
             public void run() {
                 try {
                     if (!tieneModelo(carpeta)) {
-                        estado = "bajando";
-                        File zip = new File(carpeta + ".zip");
-                        bajar(url, zip);
-                        estado = "descomprimiendo";
-                        descomprimir(zip, new File(carpeta));
-                        zip.delete();
+                        // v78: si el modelo viene DENTRO de la app (StreamingAssets), se saca de ahí: sin internet.
+                        boolean listo = false;
+                        InputStream deLaApp = modeloDeLaApp(url);
+                        if (deLaApp != null) {
+                            try {
+                                estado = "descomprimiendo";
+                                descomprimir(deLaApp, new File(carpeta));
+                                listo = true;
+                            } catch (Throwable e) {
+                                listo = false;   // si algo falla, se baja de internet como siempre
+                            }
+                        }
+                        if (!listo) {
+                            estado = "bajando";
+                            File zip = new File(carpeta + ".zip");
+                            bajar(url, zip);
+                            estado = "descomprimiendo";
+                            descomprimir(zip, new File(carpeta));
+                            zip.delete();
+                        }
                         new FileOutputStream(new File(carpeta, "listo.txt")).close();
                     }
                     estado = "cargando";
@@ -327,10 +341,27 @@ public class TrazoVoz {
         }
     }
 
+    // v78: el zip del modelo, si viene dentro de la app (StreamingAssets = la carpeta "assets" del apk). null = no viene.
+    static InputStream modeloDeLaApp(String url) {
+        try {
+            String nombre = url.substring(url.lastIndexOf('/') + 1);
+            Object actividad = Class.forName("com.unity3d.player.UnityPlayer").getField("currentActivity").get(null);
+            if (!(actividad instanceof android.content.Context))
+                return null;
+            return ((android.content.Context) actividad).getAssets().open(nombre);
+        } catch (Throwable e) {
+            return null;
+        }
+    }
+
     static void descomprimir(File zip, File carpeta) throws Exception {
+        descomprimir(new java.io.FileInputStream(zip), carpeta);
+    }
+
+    static void descomprimir(InputStream origen, File carpeta) throws Exception {
         carpeta.mkdirs();
         String base = carpeta.getCanonicalPath();
-        ZipInputStream z = new ZipInputStream(new BufferedInputStream(new java.io.FileInputStream(zip)));
+        ZipInputStream z = new ZipInputStream(new BufferedInputStream(origen));
         try {
             ZipEntry e;
             byte[] buffer = new byte[1 << 16];
