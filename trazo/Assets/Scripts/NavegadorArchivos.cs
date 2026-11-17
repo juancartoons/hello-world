@@ -64,7 +64,8 @@ public class NavegadorArchivos : MonoBehaviour
     BotonTocable btnMostrar, btnVerImagenes, btnVolver;
     // Acciones sobre la miniatura elegida
     GameObject acciones;
-    BotonTocable btnAccion1, btnAccion2, btnAccion3;
+    BotonTocable btnAccion1, btnAccion2, btnAccion3, btnAccion4;   // v81: 4 = Nombre (cambiar el nombre)
+    BotonTocable btnGuardarComo;
     int accionesEn = -1; // sobre qué miniatura están (al cambiar, se bloquean un momento: no se tocan sin querer)
     // Abajo
     BotonTocable btnAnterior, btnSiguiente;
@@ -399,6 +400,8 @@ public class NavegadorArchivos : MonoBehaviour
         bool confirmar = confirmarBorrarHasta > 0f;
         btnAccion1.PonerTexto(esDibujo ? "Abrir" : a.tipo == "SVG" ? "Dónde" : "Ver");
         Mostrar(btnAccion2, esDibujo);
+        bool renombrable = esDibujo && a.ruta != dibujo.RutaGuardadoAnterior && EnCarpetaDibujos(a.ruta);
+        Mostrar(btnAccion4, renombrable);
         btnAccion3.PonerTexto(confirmar ? "¿Seguro?" : "Borrar");
         btnAccion3.Marcar(confirmar);
         // En fila sobre la parte de abajo de la miniatura (2 o 3 botones, centrados).
@@ -408,6 +411,8 @@ public class NavegadorArchivos : MonoBehaviour
             Colocar(btnAccion1, new Vector3(f.centro.x - 0.045f, y, -0.012f));
             Colocar(btnAccion2, new Vector3(f.centro.x, y, -0.012f));
             Colocar(btnAccion3, new Vector3(f.centro.x + 0.045f, y, -0.012f));
+            if (renombrable)
+                Colocar(btnAccion4, new Vector3(f.centro.x, y + 0.026f, -0.012f));
         }
         else
         {
@@ -604,6 +609,57 @@ public class NavegadorArchivos : MonoBehaviour
         elegido = -1;
         Listar();
         Mostrar();
+    }
+
+    // v81: ¿está en la carpeta de los dibujos? (las versiones anteriores no se renombran)
+    bool EnCarpetaDibujos(string ruta)
+    {
+        try
+        {
+            string carpeta = Path.GetFullPath(dibujo.CarpetaArchivosDibujo).TrimEnd('/', '\\');
+            string suya = Path.GetFullPath(Path.GetDirectoryName(ruta)).TrimEnd('/', '\\');
+            return string.Equals(carpeta, suya, System.StringComparison.Ordinal);
+        }
+        catch (System.Exception)
+        {
+            return false;
+        }
+    }
+
+    // v81: cambiar el nombre de un dibujo guardado (sale el teclado con su nombre).
+    void RenombrarElegido()
+    {
+        if (elegido < 0 || elegido >= archivos.Count || archivos[elegido].tipo != "Dibujo")
+            return;
+        string ruta = archivos[elegido].ruta;
+        TecladoVR.Abrir("Nuevo nombre", Path.GetFileNameWithoutExtension(ruta), nombre =>
+        {
+            if (dibujo == null || string.IsNullOrEmpty(nombre))
+                return;
+            if (dibujo.RenombrarGuardado(ruta, nombre))
+            {
+                elegido = -1;
+                Listar();
+                Mostrar();
+            }
+        });
+    }
+
+    // v81: Guardar como (sale el teclado; sigues trabajando en el dibujo con el nombre nuevo).
+    void GuardarComo()
+    {
+        string actual = string.IsNullOrEmpty(dibujo.NombreArchivo) ? "" : dibujo.NombreArchivo;
+        TecladoVR.Abrir("Guardar como", actual, nombre =>
+        {
+            if (dibujo == null || string.IsNullOrEmpty(nombre))
+                return;
+            if (dibujo.GuardarComo(nombre))
+            {
+                Listar();
+                Mostrar();
+                CargarMiniActual();
+            }
+        });
     }
 
     void Borrar()
@@ -833,7 +889,10 @@ public class NavegadorArchivos : MonoBehaviour
         Texto(raiz, "toca el nombre para cambiarlo", new Vector3(-0.19f, 0.177f, -0.002f), new Vector2(0.15f, 0.01f), 0.08f).color = new Color(0.4f, 0.4f, 0.45f);
         btnGuardar = Boton(raiz, "Guardar", new Vector3(-0.06f, 0.2f, 0f), new Vector2(0.07f, 0.03f));
         btnGuardar.alTocar.AddListener(Guardar);
-        btnCompartir = Boton(raiz, "Compartir ▼", new Vector3(0.03f, 0.2f, 0f), new Vector2(0.09f, 0.03f));
+        // v81: Guardar como (y Compartir y Ayuda se corren un poco a la derecha).
+        btnGuardarComo = Boton(raiz, "Guardar como", new Vector3(0.026f, 0.2f, 0f), new Vector2(0.088f, 0.03f));
+        btnGuardarComo.alTocar.AddListener(GuardarComo);
+        btnCompartir = Boton(raiz, "Compartir ▼", new Vector3(0.117f, 0.2f, 0f), new Vector2(0.086f, 0.03f));
         btnCompartir.alTocar.AddListener(() => AbrirAbanico(abanico != null && !abanico.activeSelf));
         btnGrabar = Boton(raiz, "● Grabar", new Vector3(0.13f, 0.2f, 0f), new Vector2(0.09f, 0.03f));
         btnGrabar.alTocar.AddListener(() =>
@@ -845,7 +904,7 @@ public class NavegadorArchivos : MonoBehaviour
         });
         Mostrar(btnGrabar, false);   // v43: "Grabar proceso" se quita de la vista (el código queda para después)
         // v44: en su lugar, AYUDA: los tutoriales (y la ayuda de la mesa, que antes estaba en la mesa).
-        var ayudaArchivos = Boton(raiz, "Ayuda", new Vector3(0.13f, 0.2f, 0f), new Vector2(0.07f, 0.03f));
+        var ayudaArchivos = Boton(raiz, "Ayuda", new Vector3(0.199f, 0.2f, 0f), new Vector2(0.066f, 0.03f));
         ayudaArchivos.alTocar.AddListener(() =>
         {
             Cerrar();
@@ -932,6 +991,9 @@ public class NavegadorArchivos : MonoBehaviour
         btnAccion2.alTocar.AddListener(Duplicar);
         btnAccion3 = Boton(acciones.transform, "Borrar", Vector3.zero, new Vector2(0.042f, 0.022f));
         btnAccion3.alTocar.AddListener(Borrar);
+        btnAccion4 = Boton(acciones.transform, "Nombre", Vector3.zero, new Vector2(0.042f, 0.022f));
+        btnAccion4.alTocar.AddListener(RenombrarElegido);
+        Mostrar(btnAccion4, false);
         acciones.SetActive(false);
 
         var goVisor = GameObject.CreatePrimitive(PrimitiveType.Quad);

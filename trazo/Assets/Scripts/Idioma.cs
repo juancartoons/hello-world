@@ -549,6 +549,8 @@ public static class Idioma
         "Salir", "Exit",
         "Función", "Show",
         "Fin de la función", "End of the show",
+        "Guardar como", "Save as",
+        "Nuevo nombre", "New name",
         "Papel cebolla: sí", "Onion skin: on",
         "Papel cebolla: no", "Onion skin: off",
         "Cuadro a cuadro: sí", "Frame by frame: on",

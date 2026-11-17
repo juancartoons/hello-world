@@ -2938,6 +2938,57 @@ public class Dibujo : MonoBehaviour
         }
     }
 
+    // v81: GUARDAR COMO: tu dibujo se guarda con otro nombre y sigues trabajando en ese (el de antes queda igual).
+    public bool GuardarComo(string nuevo)
+    {
+        nuevo = LimpiarNombre(nuevo);
+        if (string.IsNullOrEmpty(nuevo))
+            return false;
+        if (nuevo != NombreArchivo && File.Exists(RutaProyecto(nuevo)))
+        {
+            Mensaje("Ya existe un dibujo llamado " + nuevo);
+            return false;
+        }
+        NombreArchivo = nuevo;
+        Guardar();
+        return true;
+    }
+
+    // v81: cambia el nombre de un dibujo YA GUARDADO (desde Archivos). Si es el que tienes abierto, también el suyo.
+    public bool RenombrarGuardado(string ruta, string nuevo)
+    {
+        nuevo = LimpiarNombre(nuevo);
+        if (string.IsNullOrEmpty(nuevo) || string.IsNullOrEmpty(ruta) || !File.Exists(ruta))
+            return false;
+        string destino = Path.Combine(Path.GetDirectoryName(ruta), nuevo + Path.GetExtension(ruta));
+        if (string.Equals(Path.GetFullPath(destino), Path.GetFullPath(ruta), System.StringComparison.Ordinal))
+            return false;
+        if (File.Exists(destino))
+        {
+            Mensaje("Ya existe un dibujo llamado " + nuevo);
+            return false;
+        }
+        bool esActual = !string.IsNullOrEmpty(NombreArchivo)
+                        && string.Equals(Path.GetFullPath(RutaProyecto(NombreArchivo)), Path.GetFullPath(ruta), System.StringComparison.Ordinal);
+        try
+        {
+            string mini = RutaMiniatura(ruta);
+            File.Move(ruta, destino);
+            if (File.Exists(mini))
+                File.Move(mini, RutaMiniatura(destino));
+            if (esActual)
+                NombreArchivo = nuevo;
+            Mensaje("Ahora se llama: " + nuevo);
+            return true;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("TrazoVR: no se pudo renombrar: " + e.Message);
+            Mensaje("No se pudo cambiar el nombre");
+            return false;
+        }
+    }
+
     // Guarda una copia con otro nombre ("Dibujo 3 (copia)") y sigues trabajando en la copia.
     public void GuardarCopia()
     {

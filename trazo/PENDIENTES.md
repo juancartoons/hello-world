@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v80***
+*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v81***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -1020,3 +1020,6 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 - HECHO: hojas de lápiz ocultas durante el tutorial (era el "marco" que se veía después del reset).
 - HECHO: halo en las líneas 3D de una capa de boceto (solo las de la hoja van sin halo).
 - POR PROBAR: el marco que a veces queda al salir de un archivo (si sigue, foto de cuándo pasa).
+
+## v81
+- HECHO: Archivos: "Guardar como" (arriba, con el teclado; sigues en el dibujo nuevo) y botón "Nombre" en cada dibujo guardado (renombra el archivo y su miniatura; si es el abierto, también su nombre). Las versiones anteriores y el guardado anterior no se renombran.
