@@ -30,7 +30,7 @@ public class TutorialNovedades : TarjetaTutorial
     readonly List<Vector3> otra = new List<Vector3>();
     readonly List<Vector3> tramo = new List<Vector3>();
 
-    protected override int Paginas => 39;
+    protected override int Paginas => 40;
 
     protected override void ArmarExtra()
     {
@@ -91,7 +91,8 @@ public class TutorialNovedades : TarjetaTutorial
             case 35: return Tx("36 · Your file starts on the desk, with its timeline", "36 · Tu archivo empieza en la mesa, con su línea de tiempo");
             case 36: return Tx("37 · Desk fixes and turn toward me", "37 · Arreglos de la mesa y girar hacia ti");
             case 37: return Tx("38 · Onion skin on the desk, the layer handle and say \"desk\"", "38 · Cebolla en la mesa, la casilla de las capas y di \"mesa\"");
-            default: return Tx("39 · Pencil frame by frame and a new ending", "39 · Lápiz cuadro a cuadro y un final nuevo");
+            case 38: return Tx("39 · Pencil frame by frame and a new ending", "39 · Lápiz cuadro a cuadro y un final nuevo");
+            default: return Tx("40 · A clean start", "40 · Un inicio limpio");
         }
     }
 
@@ -148,6 +149,10 @@ public class TutorialNovedades : TarjetaTutorial
                     "DESERT SUNSET: a new living background: dunes all around you lit by a low golden sun, violet shadows, a pink and purple sky with thin clouds, the first stars and the wind lifting dust far away. Say \"desert\". LAYERS: each one shows a thumbnail on its left; say \"layer 2\" to jump to it; leave your finger still on the name to rename it; delete with the little trash can (tap twice). The camera is a layer of its own (\"+ Camera\" = another one). The panels open with either hand, whatever the other one is doing.",
                     "ATARDECER EN EL DESIERTO: un fondo vivo nuevo: dunas a tu alrededor con la luz dorada del sol bajito, sombras violeta, un cielo rosado y morado con nubes finas, las primeras estrellas y el viento levantando polvo a lo lejos. Di \"desierto\". CAPAS: cada una muestra su miniatura a la izquierda; di \"capa 2\" para ir a ella; deja el dedo quieto en el nombre para cambiarlo; borra con el basurerito (toca dos veces). La cámara es su propia capa (\"+ Cámara\" = otra). Las persianas se abren con cualquier mano, haga lo que haga la otra.");
             default:
+                return Tx(
+                    "When you open the app you always start at the desk, clean: the file you were working on is saved by itself (it is in Files, nothing is lost) and no old frames or sheets remain. The voice can now come inside the app: the first time you turn it on it no longer downloads anything from the internet. Double right fist (clean view) now also works at the starting desk. In a sketch layer, lines that went to 3D now have halo (lines on the sheet stay without it).",
+                    "Al abrir la app siempre empiezas en la mesa, limpia: el archivo en el que estabas se guarda solo (está en Archivos, no se pierde nada) y no quedan marcos ni hojas de antes. La voz ya puede venir dentro de la app: la primera vez que la prendes ya no baja nada de internet. El doble puño derecho (vista limpia) ahora también funciona en la mesa de inicio. En una capa de boceto, las líneas que pasaron a 3D ahora sí llevan halo (las de la hoja siguen sin él).");
+            case 39:
                 return Tx(
                     "PENCIL FRAME BY FRAME: on a pencil layer with Frame by frame: yes, each frame starts as a blank sheet; what you draw belongs only to that frame. With Onion skin: yes you see the previous frame reddish and the next one greenish (just like ink). Playing, each drawing lasts until the next one. LAYER HANDLE: now it has weight: it ignores the small trembles of your hand, you move your finger a bit more for each layer and the stack no longer shakes. THE TUTORIAL ENDS DIFFERENTLY: the talking head is gone. Now, at the end, you look at your palm and change your line's color, then go above the clouds and fly: the tutorial ends right there and you keep drawing in 3D while you fly. A note tells you where the other tutorials are (the ? button on your wrist menu). REFERENCE IMAGES: 100% / 50% / 20% / hidden is always respected.",
                     "LÁPIZ CUADRO A CUADRO: en una capa de lápiz con Cuadro a cuadro: sí, cada cuadro empieza como una hoja en blanco; lo que dibujas es solo de ese cuadro. Con Papel cebolla: sí ves el cuadro anterior rojizo y el siguiente verdoso (igual que con la tinta). Al reproducir, cada dibujo dura hasta el siguiente. CASILLA DE LAS CAPAS: ahora tiene peso: no hace caso a los temblores chiquitos de tu mano, mueves el dedo un poco más por cada capa y el montón ya no tiembla. EL TUTORIAL TERMINA DISTINTO: ya no está la cabeza que dice hola. Ahora, al final, miras tu palma y cambias el color de tu línea, luego te vas sobre las nubes y vuelas: ahí mismo termina el tutorial y sigues dibujando en 3D mientras vuelas. Un aviso te dice dónde están los demás tutoriales (botón ? del menú de tu muñeca). IMÁGENES DE REFERENCIA: 100% / 50% / 20% / oculta se respeta siempre.");

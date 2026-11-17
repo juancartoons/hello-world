@@ -21,7 +21,7 @@ public partial class ControlManos
     void RevisarVistaLimpia()
     {
         bool permitido = Der.valida && !Der.pellizco && GestoIzq == Gesto.Ninguno && !paletaAbierta && !menuAbierto
-                         && !flechaDer.activa && !Ocupado;
+                         && !flechaDer.activa && (!Ocupado || MesaEntrada.Activa);   // v80: también en la mesa de inicio
         if (!permitido)
         {
             derAbierta = false;

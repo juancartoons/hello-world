@@ -313,8 +313,39 @@ public class Dibujo : MonoBehaviour
         {
             var d = Leer(RutaAuto);
             if (d != null)
+            {
                 Aplicar(d, true);
+                // v80: al abrir la app ya NO se queda abierto el último archivo: se guarda (como al Salir) y empiezas
+                // en la mesa limpia, sin marcos ni hojas de antes. Un cuadro después, cuando todo ya arrancó.
+                if (HayArchivoAbierto)
+                    StartCoroutine(GuardarYLimpiarAlIniciar());
+            }
         }
+        ActualizarGuia();
+        Avisar();
+    }
+
+    IEnumerator GuardarYLimpiarAlIniciar()
+    {
+        yield return null;
+        bool hayAlgo = trazos.Count > 0 || (hojas != null && hojas.HayAlgo) || (figuras != null && figuras.HayFiguras);
+        bool hayImagenes = Refs != null && Refs.EstadoActual().Count > 0;
+        if (hayAlgo || hayImagenes)
+        {
+            HayCambios = true;          // lo último del autoguardado queda en su archivo (nada se pierde)
+            GuardarProyecto(true);
+            if (HayCambios)
+                yield break;            // no se pudo guardar: mejor dejarlo abierto (no se pierde nada)
+        }
+        Aplicar(new DatosDibujo(), false);
+        if (hayImagenes)
+            Refs.Reemplazar(null);
+        historial.Clear();
+        rehacer.Clear();
+        rehacerRespaldo.Clear();
+        NombreArchivo = "";
+        HayCambios = false;
+        Escribir(RutaAuto, JsonUtility.ToJson(DatosParaGuardar()));
         ActualizarGuia();
         Avisar();
     }
@@ -407,7 +438,8 @@ public class Dibujo : MonoBehaviour
         }
         foreach (var t in trazos)
         {
-            if (t == null || t.oculto || t.Invisible || !t.gameObject.activeInHierarchy || EsBoceto(t.capa))
+            // v80: en una capa de boceto solo las líneas SOBRE la hoja van sin halo; las que pasaron a 3D sí lo llevan.
+            if (t == null || t.oculto || t.Invisible || !t.gameObject.activeInHierarchy || (EsBoceto(t.capa) && t.EnHoja))
                 continue;
             var mr = t.RendererLinea;
             var malla = t.Malla;

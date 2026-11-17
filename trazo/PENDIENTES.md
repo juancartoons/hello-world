@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v79***
+*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v80***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -1013,3 +1013,10 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ## v79
 - HECHO: la voz puede ir DENTRO de la app: menú TrazoVR > Voz: incluir los idiomas en la app (baja una vez los 2 modelos de Vosk a Assets/StreamingAssets, ~80 MB). TrazoVoz.java los saca del apk sin internet; si no están (o fallan), los baja de internet como antes. El menú Meta Store lo ofrece si faltan.
+
+## v80
+- HECHO: al abrir la app ya no queda abierto el último archivo: se guarda (como Salir) un cuadro después de arrancar y empieza todo limpio (si no se pudo guardar, se deja abierto).
+- HECHO: doble puño derecho (vista limpia) también en la mesa de inicio.
+- HECHO: hojas de lápiz ocultas durante el tutorial (era el "marco" que se veía después del reset).
+- HECHO: halo en las líneas 3D de una capa de boceto (solo las de la hoja van sin halo).
+- POR PROBAR: el marco que a veces queda al salir de un archivo (si sigue, foto de cuándo pasa).

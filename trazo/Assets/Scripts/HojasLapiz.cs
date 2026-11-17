@@ -402,7 +402,8 @@ public class HojasLapiz : MonoBehaviour
             var h = par.Value;
             if (h.go == null)
                 continue;
-            bool ver = dibujo.CapaVisible(par.Key) && dibujo.EsBoceto(par.Key);
+            // v80: en el tutorial no se ve la hoja de lápiz de ningún archivo (su borde parecía un marco olvidado).
+            bool ver = dibujo.CapaVisible(par.Key) && dibujo.EsBoceto(par.Key) && !Tutorial.EnCurso;
             if (h.go.activeSelf != ver)
                 h.go.SetActive(ver);
             // v77: cuadro a cuadro: la hoja muestra solo el dibujo de ESTE cuadro (y el cebolla, los de al lado).
