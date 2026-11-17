@@ -2712,6 +2712,55 @@ public class Dibujo : MonoBehaviour
     }
 
     // La primera vez: los dibujos que estaban dentro de la app pasan a Descargas (y se borran de la app).
+    // v82: copia un archivo a esa carpeta con su nombre o, si no se puede (ya hay uno igual, quizás invisible: Android
+    // no deja ver ni reemplazar los archivos de OTRA instalación de la app), con "(2)", "(3)"... null = no se pudo.
+    static string CopiarConNombreLibre(string origen, string carpeta)
+    {
+        string baseNombre = Path.GetFileNameWithoutExtension(origen);
+        string ext = Path.GetExtension(origen);
+        for (int k = 1; k <= 30; k++)
+        {
+            string ruta = Path.Combine(carpeta, (k == 1 ? baseNombre : baseNombre + " (" + k + ")") + ext);
+            if (File.Exists(ruta))
+                continue;
+            try
+            {
+                File.Copy(origen, ruta, false);
+                return ruta;
+            }
+            catch (System.Exception)
+            {
+                // ocupado (o invisible): el siguiente nombre
+            }
+        }
+        return null;
+    }
+
+    // v82: escribe el proyecto. Si ya hay un archivo con ese nombre que esta app no puede ver ni reemplazar (de una
+    // instalación anterior), se guarda como "Nombre (2)", "Nombre (3)"... y ese pasa a ser su nombre.
+    bool EscribirProyecto(string json)
+    {
+        string baseNombre = NombreArchivo;
+        for (int k = 1; k <= 30; k++)
+        {
+            string nombre = k == 1 ? baseNombre : baseNombre + " (" + k + ")";
+            if (k > 1 && File.Exists(RutaProyecto(nombre)))
+                continue;
+            try
+            {
+                File.WriteAllText(RutaProyecto(nombre), json);
+                NombreArchivo = nombre;
+                return true;
+            }
+            catch (System.Exception e)
+            {
+                if (k == 1)
+                    Debug.LogWarning("TrazoVR: no se pudo guardar como " + nombre + ": " + e.Message);
+            }
+        }
+        return false;
+    }
+
     void MoverProyectosViejos()
     {
         string destino = CarpetaArchivos;
@@ -2721,22 +2770,30 @@ public class Dibujo : MonoBehaviour
         try
         {
             string privada = CarpetaPrivadaArchivos;
-            if (Directory.Exists(privada))
-                foreach (var f in Directory.GetFiles(privada))
+            // v82: la carpeta existe siempre: ahí se pueden poner dibujos desde el PC (Android/data/<app>/files/
+            // Dibujos/Archivos) y al abrir la app pasan a tus archivos (sirve para recuperar los de otra instalación).
+            Directory.CreateDirectory(privada);
+            foreach (var f in Directory.GetFiles(privada))
+            {
+                string ext = Path.GetExtension(f).ToLowerInvariant();
+                if (ext != Extension && ext != ".json")
+                    continue;
+                string nuevo = CopiarConNombreLibre(f, destino);
+                if (nuevo == null)
+                    continue;
+                try
                 {
-                    string ext = Path.GetExtension(f).ToLowerInvariant();
-                    if (ext != Extension && ext != ".json")
-                        continue;
-                    string nuevo = Path.Combine(destino, Path.GetFileName(f));
-                    if (File.Exists(nuevo))
-                        nuevo = Path.Combine(destino, Path.GetFileNameWithoutExtension(f) + " (de la app)" + ext);
-                    File.Copy(f, nuevo, true);
                     string mini = RutaMiniatura(f);
                     if (File.Exists(mini) && RutaMiniatura(nuevo) != mini)
                         File.Copy(mini, RutaMiniatura(nuevo), true);
                     File.Delete(f);
-                    movidos++;
                 }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning("TrazoVR: " + e.Message);
+                }
+                movidos++;
+            }
             // Fotos, videos y SVG que ya tienen su copia en Descargas/JCartoons: se borra la de la app (espacio).
             string publica = Galeria.CarpetaPublica;
             if (!string.IsNullOrEmpty(publica) && Directory.Exists(publica) && Directory.Exists(Carpeta))
@@ -2815,11 +2872,10 @@ public class Dibujo : MonoBehaviour
             // Al guardar tú (no el autoguardado), la versión anterior queda aparte.
             if (!silencioso)
                 GuardarVersion(RutaProyecto(NombreArchivo));
-            File.WriteAllText(RutaProyecto(NombreArchivo), json);
-            ok = true;
+            ok = EscribirProyecto(json);   // v82
             // Si venía de un .json de antes con el mismo nombre, ya quedó convertido a .jc.
             string viejo = Path.Combine(CarpetaArchivos, NombreArchivo + ".json");
-            if (File.Exists(viejo))
+            if (ok && File.Exists(viejo))
             {
                 File.Delete(viejo);
                 string miniVieja = RutaMiniatura(viejo);

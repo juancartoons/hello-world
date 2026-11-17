@@ -1,6 +1,6 @@
 # JCartoons — Pendientes y recomendaciones
 
-*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v81***
+*Actualizado: 16 de noviembre de 2026 · Versión actual en la rama `claude/trazo-vr`: **v82***
 
 Este documento reúne todo lo que falta por hacer y las recomendaciones para el futuro. Las casillas `[ ]` se marcan `[x]` cuando algo queda hecho.
 
@@ -1023,3 +1023,8 @@ Este documento reúne todo lo que falta por hacer y las recomendaciones para el 
 
 ## v81
 - HECHO: Archivos: "Guardar como" (arriba, con el teclado; sigues en el dibujo nuevo) y botón "Nombre" en cada dibujo guardado (renombra el archivo y su miniatura; si es el abierto, también su nombre). Las versiones anteriores y el guardado anterior no se renombran.
+
+## v82
+- HECHO: Guardar no falla si en Descargas/JCartoons/Proyectos hay archivos de OTRA instalación (Android no deja verlos ni reemplazarlos): se guarda como "Nombre (2)"...
+- HECHO: recuperar dibujos: lo que se ponga desde el PC en Android/data/com.juancartoons.jcartoons/files/Dibujos/Archivos pasa a Proyectos al abrir la app (la carpeta se crea sola).
+- NOTA: desinstalar/reinstalar (o pasar de Build And Run a la tienda) deja los dibujos viejos invisibles para la app nueva: recuperarlos con lo de arriba.
